@@ -35,10 +35,7 @@ export const getPuzzle = async (req: AuthRequest, res: Response) => {
 
     const puzzleData = {
       ...puzzle.toObject(),
-      clues: {
-        across: puzzle.clues.across.map(c => ({ ...c, answer: undefined })),
-        down: puzzle.clues.down.map(c => ({ ...c, answer: undefined }))
-      }
+      clues: puzzle.clues
     };
 
     res.json({ puzzle: puzzleData });

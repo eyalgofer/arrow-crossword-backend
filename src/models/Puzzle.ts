@@ -6,10 +6,7 @@ export interface IPuzzle extends Document {
   difficulty: Difficulty;
   category: string;
   grid: PuzzleGrid;
-  clues: {
-    across: PuzzleClue[];
-    down: PuzzleClue[];
-  };
+  clues: PuzzleClue[];
   estimatedTime: number;
   xpReward: number;
   isActive: boolean;
@@ -45,10 +42,7 @@ const puzzleSchema = new Schema<IPuzzle>({
     cols: { type: Number, required: true },
     cells: [[String]]
   },
-  clues: {
-    across: [puzzleClueSchema],
-    down: [puzzleClueSchema]
-  },
+  clues: [puzzleClueSchema],
   estimatedTime: {
     type: Number,
     required: true

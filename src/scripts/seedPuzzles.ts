@@ -21,18 +21,15 @@ const samplePuzzles = [
         ['S', 'U', 'N', 'N', 'Y']
       ]
     },
-    clues: {
-      across: [
+    clues:  [
         { number: 1, direction: 'across' as const, clue: 'Feline pet', answer: 'CAT', startRow: 0, startCol: 0 },
         { number: 3, direction: 'across' as const, clue: 'Sprint', answer: 'RUN', startRow: 2, startCol: 0 },
-        { number: 4, direction: 'across' as const, clue: 'Bright weather', answer: 'SUNNY', startRow: 4, startCol: 0 }
-      ],
-      down: [
+        { number: 4, direction: 'across' as const, clue: 'Bright weather', answer: 'SUNNY', startRow: 4, startCol: 0 },
         { number: 1, direction: 'down' as const, clue: 'Automobile', answer: 'CAR', startRow: 0, startCol: 0 },
         { number: 2, direction: 'down' as const, clue: 'Also', answer: 'TOO', startRow: 0, startCol: 2 },
         { number: 5, direction: 'down' as const, clue: 'Canine', answer: 'DOG', startRow: 0, startCol: 4 }
       ]
-    },
+    ,
     estimatedTime: 120,
     xpReward: 10
   },
@@ -53,19 +50,16 @@ const samplePuzzles = [
         ['S', 'T', 'O', 'R', 'M', 'Y', '#']
       ]
     },
-    clues: {
-      across: [
+    clues:  [
         { number: 1, direction: 'across' as const, clue: 'Baked food', answer: 'BREAD', startRow: 0, startCol: 0 },
         { number: 2, direction: 'across' as const, clue: 'Small cat', answer: 'KITEY', startRow: 2, startCol: 0 },
         { number: 3, direction: 'across' as const, clue: 'Water body', answer: 'RIVER', startRow: 4, startCol: 0 },
-        { number: 4, direction: 'across' as const, clue: 'Weather with rain', answer: 'STORMY', startRow: 6, startCol: 0 }
-      ],
-      down: [
+        { number: 4, direction: 'across' as const, clue: 'Weather with rain', answer: 'STORMY', startRow: 6, startCol: 0 },
         { number: 1, direction: 'down' as const, clue: 'Person who bakes', answer: 'BAKER', startRow: 0, startCol: 0 },
         { number: 5, direction: 'down' as const, clue: 'Computer input device', answer: 'MOUSE', startRow: 0, startCol: 6 },
         { number: 6, direction: 'down' as const, clue: 'Not night', answer: 'DAYES', startRow: 0, startCol: 4 }
       ]
-    },
+    ,
     estimatedTime: 300,
     xpReward: 25
   },
@@ -88,20 +82,17 @@ const samplePuzzles = [
         ['S', 'T', 'R', 'E', 'A', 'M', '#', '#', '#']
       ]
     },
-    clues: {
-      across: [
+    clues:  [
         { number: 1, direction: 'across' as const, clue: 'Programming language', answer: 'PYTHON', startRow: 0, startCol: 0 },
         { number: 2, direction: 'across' as const, clue: 'Large bodies of water', answer: 'OCEANS', startRow: 2, startCol: 0 },
         { number: 3, direction: 'across' as const, clue: 'Space vehicle', answer: 'ROCKET', startRow: 4, startCol: 0 },
         { number: 4, direction: 'across' as const, clue: 'High elevations', answer: 'MOUNTAINS', startRow: 6, startCol: 0 },
-        { number: 5, direction: 'across' as const, clue: 'Small river', answer: 'STREAM', startRow: 8, startCol: 0 }
-      ],
-      down: [
+        { number: 5, direction: 'across' as const, clue: 'Small river', answer: 'STREAM', startRow: 8, startCol: 0 },
         { number: 1, direction: 'down' as const, clue: 'Computer software', answer: 'PROGRAM', startRow: 0, startCol: 0 },
         { number: 6, direction: 'down' as const, clue: 'Laptop or desktop', answer: 'COMPUTER', startRow: 0, startCol: 7 },
         { number: 7, direction: 'down' as const, clue: 'Mobile phone', answer: 'CELLPHONE', startRow: 0, startCol: 8 }
       ]
-    },
+    ,
     estimatedTime: 600,
     xpReward: 50
   }
