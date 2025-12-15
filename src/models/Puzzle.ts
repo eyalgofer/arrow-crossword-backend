@@ -42,7 +42,10 @@ const puzzleSchema = new Schema<IPuzzle>({
     cols: { type: Number, required: true },
     cells: [[String]]
   },
-  clues: [puzzleClueSchema],
+  clues: {
+    type: [puzzleClueSchema],
+    required: true
+  },
   estimatedTime: {
     type: Number,
     required: true
