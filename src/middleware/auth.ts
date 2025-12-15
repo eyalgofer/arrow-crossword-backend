@@ -1,31 +1,27 @@
-import { Response, NextFunction } from 'express';
-import { verifyFirebaseToken } from '../config/firebase';
-import { AuthRequest } from '../types';
+import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 
-export const authenticate = async (
+export interface AuthRequest extends Request {
+  userId?: string;
+}
+
+export function authenticateToken(
   req: AuthRequest,
   res: Response,
   next: NextFunction
-) => {
+) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+
   try {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'No token provided' });
-    }
-
-    const token = authHeader.split('Bearer ')[1];
-
-    const decodedToken = await verifyFirebaseToken(token);
-    
-    req.user = {
-      uid: decodedToken.uid,
-      email: decodedToken.email
-    };
-
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+    req.userId = payload.userId;
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    return res.status(401).json({ error: 'Invalid token' });
   }
-};
+}

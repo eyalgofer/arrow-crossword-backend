@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { getMatchHistory, getMatch } from '../controllers/matchController';
-import { authenticate } from '../middleware/auth';
+import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
-router.get('/history', authenticate, getMatchHistory);
-router.get('/:matchId', authenticate, getMatch);
+router.get('/history', authenticateToken, getMatchHistory);
+router.get('/:matchId', authenticateToken, getMatch);
 
 export default router;

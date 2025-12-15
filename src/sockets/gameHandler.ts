@@ -1,5 +1,4 @@
 import { Server, Socket } from 'socket.io';
-import { verifyFirebaseToken } from '../config/firebase';
 import { User } from '../models/User';
 import { Match } from '../models/Match';
 import { Puzzle } from '../models/Puzzle';
@@ -22,9 +21,9 @@ export const setupSocketHandlers = (io: Server) => {
       if (!token) {
         return next(new Error('Authentication error'));
       }
-
-      const decodedToken = await verifyFirebaseToken(token);
-      socket.userId = decodedToken.uid;
+      // TODO: Implement authentication token verification
+      // const decodedToken = await authenticateToken(token);
+      // socket.userId = decodedToken.uid;
       next();
     } catch (error) {
       next(new Error('Authentication error'));

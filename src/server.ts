@@ -4,9 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { connectDatabase } from './config/database';
-import { initializeFirebase } from './config/firebase';
 import { errorHandler } from './middleware/errorHandler';
-import { setupSocketHandlers } from './sockets/gameHandler';
 
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
@@ -43,11 +41,8 @@ const startServer = async () => {
     await connectDatabase();
     console.log('✅ MongoDB connected');
 
-    initializeFirebase();
-    console.log('✅ Firebase initialized');
-
-    setupSocketHandlers(io);
-    console.log('✅ Socket.io configured');
+    // setupSocketHandlers(io);
+    // console.log('✅ Socket.io configured');
 
     const PORT = process.env.PORT || 3000;
     server.listen(PORT, () => {

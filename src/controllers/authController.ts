@@ -12,7 +12,7 @@ export const register = async (req: AuthRequest, res: Response) => {
     if (user) {
       return res.status(200).json({ 
         message: 'User already exists',
-        user 
+        user
       });
     }
 
