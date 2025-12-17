@@ -32,8 +32,8 @@ export const getLeaderboard = async (req: AuthRequest, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 100;
     
     const leaderboard = await User.find()
-      .select('displayName level xp stats photoURL')
-      .sort({ level: -1, xp: -1 })
+      .select('displayName coins stats photoURL')
+      .sort({ coins: -1 })
       .limit(limit);
 
     res.json({ leaderboard });
@@ -46,13 +46,13 @@ export const getLeaderboard = async (req: AuthRequest, res: Response) => {
 export const getUserStats = async (req: AuthRequest, res: Response) => {
   try {
     const user = await User.findOne({ firebaseUid: req.user!.uid })
-      .select('stats level xp');
+      .select('stats coins');
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json({ stats: user.stats, level: user.level, xp: user.xp });
+    res.json({ stats: user.stats, coins: user.coins });
   } catch (error) {
     console.error('Get stats error:', error);
     res.status(500).json({ error: 'Failed to get stats' });

@@ -72,16 +72,13 @@ export const saveProgress = async (req: AuthRequest, res: Response) => {
         const puzzle = await Puzzle.findById(puzzleId);
         if (puzzle) {
           user.stats.totalGames += 1;
-          user.xp += puzzle.xpReward;
+          user.coins += puzzle.coinReward;
           user.stats.totalTime += timeSpent;
           user.stats.averageTime = user.stats.totalTime / user.stats.totalGames;
           
           if (user.stats.fastestTime === 0 || timeSpent < user.stats.fastestTime) {
             user.stats.fastestTime = timeSpent;
           }
-
-          const newLevel = Math.floor(user.xp / 100) + 1;
-          user.level = newLevel;
 
           await user.save();
         }

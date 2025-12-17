@@ -6,8 +6,7 @@ export interface IUser extends Document {
   email: string;
   displayName: string;
   photoURL?: string;
-  level: number;
-  xp: number;
+  coins: number;
   stats: UserStats;
   preferences: {
     soundEnabled: boolean;
@@ -36,11 +35,7 @@ const userSchema = new Schema<IUser>({
   photoURL: {
     type: String
   },
-  level: {
-    type: Number,
-    default: 1
-  },
-  xp: {
+  coins: {
     type: Number,
     default: 0
   },
@@ -60,6 +55,6 @@ const userSchema = new Schema<IUser>({
   timestamps: true
 });
 
-userSchema.index({ level: -1, xp: -1 });
+userSchema.index({ coins: -1 });
 
 export const User = mongoose.model<IUser>('User', userSchema);

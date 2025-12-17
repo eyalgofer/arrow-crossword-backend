@@ -8,7 +8,7 @@ export interface IPuzzle extends Document {
   grid: PuzzleGrid;
   clues: PuzzleClue[];
   estimatedTime: number;
-  xpReward: number;
+  coinReward: number;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -49,7 +49,7 @@ const puzzleSchema = new Schema<IPuzzle>({
     type: Number,
     required: true
   },
-  xpReward: {
+  coinReward: {
     type: Number,
     required: true
   },

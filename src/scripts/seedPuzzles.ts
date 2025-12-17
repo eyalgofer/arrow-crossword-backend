@@ -24,7 +24,7 @@ const samplePuzzles = [
       { number: 8, direction: 'across', clue: 'homeowners association', answer: 'HOA', startRow: 3, startCol: 1 },
     ],
     estimatedTime: 120,
-    xpReward: 10
+    coinReward: 10
   },
   {
     title: "Daily Challenge",
@@ -44,7 +44,7 @@ const samplePuzzles = [
       { number: 8, direction: 'across', clue: 'homeowners association', answer: 'HOA', startRow: 3, startCol: 1 },
     ],
     estimatedTime: 300,
-    xpReward: 25
+    coinReward: 25
   },
   {
     title: "Hip Hop Caviar",
@@ -64,7 +64,7 @@ const samplePuzzles = [
       { number: 8, direction: 'across', clue: 'homeowners association', answer: 'HOA', startRow: 3, startCol: 1 },
     ],
     estimatedTime: 600,
-    xpReward: 50
+    coinReward: 50
   }
   ,
   {
@@ -85,7 +85,7 @@ const samplePuzzles = [
       { number: 8, direction: 'across', clue: 'homeowners association', answer: 'HOA', startRow: 3, startCol: 1 },
     ],
     estimatedTime: 600,
-    xpReward: 50
+    coinReward: 50
   }
   ,
   {
@@ -106,7 +106,7 @@ const samplePuzzles = [
       { number: 8, direction: 'across', clue: 'homeowners association', answer: 'HOA', startRow: 3, startCol: 1 },
     ],
     estimatedTime: 600,
-    xpReward: 50
+    coinReward: 50
   }
   ,
   {
@@ -127,7 +127,7 @@ const samplePuzzles = [
       { number: 8, direction: 'across', clue: 'homeowners association', answer: 'HOA', startRow: 3, startCol: 1 },
     ],
     estimatedTime: 600,
-    xpReward: 50
+    coinReward: 50
   }
   ,
   {
@@ -148,7 +148,7 @@ const samplePuzzles = [
       { number: 8, direction: 'across', clue: 'homeowners association', answer: 'HOA', startRow: 3, startCol: 1 },
     ],
     estimatedTime: 600,
-    xpReward: 50
+    coinReward: 50
   }
   ,
   {
@@ -169,7 +169,7 @@ const samplePuzzles = [
       { number: 8, direction: 'across', clue: 'homeowners association', answer: 'HOA', startRow: 3, startCol: 1 },
     ],
     estimatedTime: 600,
-    xpReward: 50
+    coinReward: 50
   }
   ,
   {
@@ -190,7 +190,7 @@ const samplePuzzles = [
       { number: 8, direction: 'across', clue: 'homeowners association', answer: 'HOA', startRow: 3, startCol: 1 }
     ],
     estimatedTime: 600,
-    xpReward: 50
+    coinReward: 50
   }
 ];
 
