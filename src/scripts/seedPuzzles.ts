@@ -19,7 +19,9 @@ const samplePuzzles = [
       { number: 3, direction: 'across', clue: 'Edo is', answer: 'SLIM', startRow: 4, startCol: 0 },
       { number: 4, direction: 'down', clue: 'A vehicle', answer: 'CAR', startRow: 0, startCol: 0 },
       { number: 5, direction: 'down', clue: 'Wonder', answer: 'ROAM', startRow: 0, startCol: 4 },
-      { number: 5, direction: 'down', clue: 'Wonder', answer: 'ROAM', startRow: 0, startCol: 4 },
+      { number: 6, direction: 'across', clue: 'not this and not that', answer: 'NOR', startRow: 1, startCol: 1 },
+      { number: 7, direction: 'across', clue: 'scary sound', answer: 'BOO', startRow: 2, startCol: 1 },
+      { number: 8, direction: 'across', clue: 'homeowners association', answer: 'HOA', startRow: 3, startCol: 1 },
     ],
     estimatedTime: 120,
     xpReward: 10
