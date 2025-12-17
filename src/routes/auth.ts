@@ -27,6 +27,7 @@ router.post('/google', async (req: Request, res: Response) => {
         email: googleUser.email,
         name: googleUser.name,
         avatar: googleUser.picture,
+        coins: 0,
         createdAt: new Date(),
       };
       users.set(googleUser.googleId, user);
@@ -52,6 +53,7 @@ router.post('/google', async (req: Request, res: Response) => {
         email: user.email,
         name: user.name,
         avatar: user.avatar,
+        coins: user.coins,
       },
     });
   } catch (error) {
