@@ -33,7 +33,7 @@ const samplePuzzles = [
       { number: 2, direction: 'down', clue: 'Sugar rush delivery', answer: 'DONUT', startRow: 0, startCol: 5 },
       { number: 3, direction: 'down-across', clue: 'Alarm clock victim', answer: 'SLEEP', startRow: 1, startCol: 0 },
       { number: 4, direction: 'across', clue: 'Office prison', answer: 'DESK', startRow: 2, startCol: 0 },
-      { number: 5, direction: 'up-across', clue: 'Monday feeling', answer: 'TIRED', startRow: 4, startCol: 0 },
+      { number: 5, direction: 'up-across', clue: 'Monday feeling', answer: 'TIRED', startRow: 3, startCol: 0 },
       { number: 6, direction: 'across', clue: 'Clock watching goal', answer: 'FIVE', startRow: 4, startCol: 0 },
     ],
     estimatedTime: 90,
