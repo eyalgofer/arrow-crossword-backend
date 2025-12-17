@@ -15,21 +15,10 @@ const samplePuzzles = [
       cols: 5
     },
     clues: [
-      // ACROSS
       { number: 1, direction: 'across', clue: 'Feline pet', answer: 'CAT', startRow: 0, startCol: 0 },
-      // C A T
-      { number: 2, direction: 'across', clue: 'Run quickly', answer: 'RUN', startRow: 2, startCol: 0 },
-      // R U N
-      { number: 3, direction: 'across', clue: 'Bright and not cloudy', answer: 'SUNNY', startRow: 4, startCol: 0 },
-      // S U N N Y
-
-      // DOWN
+      { number: 3, direction: 'across', clue: 'Edo is', answer: 'SLIM', startRow: 4, startCol: 0 },
       { number: 4, direction: 'down', clue: 'A vehicle', answer: 'CAR', startRow: 0, startCol: 0 },
-      // C A R
-      { number: 5, direction: 'down', clue: 'Hot weather dog', answer: 'DOG', startRow: 0, startCol: 4 },
-      // D O G
-      { number: 6, direction: 'down', clue: 'Used for shade', answer: 'SUN', startRow: 2, startCol: 2 },
-      // N N Y (vertical from row 2 col 2)
+      { number: 5, direction: 'down', clue: 'Wonder', answer: 'ROAM', startRow: 0, startCol: 4 },
     ],
     estimatedTime: 120,
     xpReward: 10
@@ -90,38 +79,9 @@ const samplePuzzles = [
   }
 ];
 
-// Integrity check for clues and grids: All clues' answers should match the puzzle grid. 
-// That means each clue (across or down) will be double-checked 
-// so that the cells starting from startRow/startCol match its answer.
-
-const validatePuzzles = (puzzles: typeof samplePuzzles) => {
-  for (const puzzle of puzzles) {
-    for (const clue of puzzle.clues) {
-      let computed = '';
-      let { startRow, startCol, answer, direction } = clue;
-      for (let i = 0; i < answer.length; i++) {
-        let r = startRow, c = startCol;
-        if (direction === 'across') c += i;
-        else r += i;
-        // bounds check
-        if (
-          r < 0 || r >= puzzle.grid.rows ||
-          c < 0 || c >= puzzle.grid.cols
-        ) {
-          throw new Error(`Clue "${clue.clue}" answer runs out of puzzle bounds for "${puzzle.title}"`);
-        }
-        let letter = puzzle.grid.cells[r][c];
-        if (letter === '#' || letter !== answer[i]) {
-          throw new Error(`Clue "${clue.clue}" does not match grid in puzzle "${puzzle.title}"`);
-        }
-      }
-    }
-  }
-};
 
 const seedDatabase = async () => {
   try {
-    // validatePuzzles(samplePuzzles);
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/arrow-crossword');
     console.log('Connected to MongoDB');
 
