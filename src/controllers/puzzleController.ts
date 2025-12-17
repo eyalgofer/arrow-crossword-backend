@@ -6,7 +6,7 @@ import { AuthRequest } from '../types';
 
 export const getPuzzles = async (req: AuthRequest, res: Response) => {
   try {
-    const { difficulty, category, limit = 20 } = req.query;
+    const { difficulty, category, limit = 30 } = req.query;
 
     const query: any = { isActive: true };
     if (difficulty) query.difficulty = difficulty;
