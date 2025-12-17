@@ -18,7 +18,7 @@ export interface UserStats {
 
 export interface PuzzleClue {
   number: number;
-  direction: 'across' | 'down';
+  direction: 'across' | 'down' | 'right-down' | 'left-down' | 'down-across' | 'up-across';
   clue: string;
   answer: string;
   startRow: number;

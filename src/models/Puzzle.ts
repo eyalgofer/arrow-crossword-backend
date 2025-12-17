@@ -16,7 +16,7 @@ export interface IPuzzle extends Document {
 
 const puzzleClueSchema = new Schema({
   number: { type: Number, required: true },
-  direction: { type: String, enum: ['across', 'down'], required: true },
+  direction: { type: String, enum: ['across', 'down', 'right-down', 'left-down', 'down-across', 'up-across'], required: true },
   clue: { type: String, required: true },
   answer: { type: String, required: true },
   startRow: { type: Number, required: true },
