@@ -19,6 +19,7 @@ const samplePuzzles = [
       { number: 3, direction: 'across', clue: 'Edo is', answer: 'SLIM', startRow: 4, startCol: 0 },
       { number: 4, direction: 'down', clue: 'A vehicle', answer: 'CAR', startRow: 0, startCol: 0 },
       { number: 5, direction: 'down', clue: 'Wonder', answer: 'ROAM', startRow: 0, startCol: 4 },
+      { number: 5, direction: 'down', clue: 'Wonder', answer: 'ROAM', startRow: 0, startCol: 4 },
     ],
     estimatedTime: 120,
     xpReward: 10
@@ -32,47 +33,135 @@ const samplePuzzles = [
       cols: 7
     },
     clues: [
-      // ACROSS
-      { number: 1, direction: 'across', clue: 'Baked good', answer: 'BREAD', startRow: 0, startCol: 0 }, // 0,0
-      // B R E A D
-      { number: 2, direction: 'across', clue: 'Flying toy', answer: 'KITE', startRow: 2, startCol: 0 }, // 2,0
-      // K I T E
-      { number: 3, direction: 'across', clue: 'Water flowing', answer: 'RIVER', startRow: 4, startCol: 0 }, // 4,0
-      // R I V E R
-      { number: 4, direction: 'across', clue: 'Wild weather', answer: 'STORMY', startRow: 6, startCol: 0 }, // 6,0
-      // S T O R M Y
-
-      // DOWN
-      { number: 5, direction: 'down', clue: 'Person who bakes', answer: 'BAKER', startRow: 0, startCol: 0 }, // B A K E R
-      // 0,0 downwards
-      { number: 6, direction: 'down', clue: 'Bread ingredient', answer: 'YEAST', startRow: 0, startCol: 4 }, // D A Y S T
-      // 0,4 downwards
-      { number: 7, direction: 'down', clue: 'Computer rodent', answer: 'MOUSE', startRow: 0, startCol: 6 }, // M O U S E
-      // 0,6 downwards
+      { number: 1, direction: 'across', clue: 'Feline pet', answer: 'CAT', startRow: 0, startCol: 0 },
+      { number: 3, direction: 'across', clue: 'Edo is', answer: 'SLIM', startRow: 4, startCol: 0 },
+      { number: 4, direction: 'down', clue: 'A vehicle', answer: 'CAR', startRow: 0, startCol: 0 },
+      { number: 5, direction: 'down', clue: 'Wonder', answer: 'ROAM', startRow: 0, startCol: 4 },
     ],
     estimatedTime: 300,
     xpReward: 25
   },
   {
-    title: "Expert Level",
-    difficulty: Difficulty.HARD,
-    category: "General",
+    title: "Hip Hop Caviar",
+    difficulty: Difficulty.EXPERT,
+    category: "Music",
     grid: {
-      rows: 9,
-      cols: 9
+      rows: 6,
+      cols: 6
     },
     clues: [
-      // ACROSS
-      { number: 1, direction: 'across', clue: 'Coding snake', answer: 'PYTHON', startRow: 0, startCol: 0 }, // 0,0
-      { number: 2, direction: 'across', clue: 'Large water bodies', answer: 'OCEANS', startRow: 2, startCol: 0 }, // 2,0
-      { number: 3, direction: 'across', clue: 'Space vehicle', answer: 'ROCKET', startRow: 4, startCol: 0 }, // 4,0
-      { number: 4, direction: 'across', clue: 'Tall landforms', answer: 'MOUNTAINS', startRow: 6, startCol: 0 }, // 6,0
-      { number: 5, direction: 'across', clue: 'Small river', answer: 'STREAM', startRow: 8, startCol: 0 }, // 8,0
-
-      // DOWN
-      { number: 6, direction: 'down', clue: 'Code block', answer: 'PROGRAM', startRow: 0, startCol: 0 }, // 0,0
-      { number: 7, direction: 'down', clue: 'Electronic brain', answer: 'COMPUTER', startRow: 0, startCol: 7 }, // 0,7
-      { number: 8, direction: 'down', clue: 'Pocket phone', answer: 'CELLPHONE', startRow: 0, startCol: 8 } // 0,8
+      { number: 1, direction: 'across', clue: 'Feline pet', answer: 'CAT', startRow: 0, startCol: 0 },
+      { number: 3, direction: 'across', clue: 'Edo is', answer: 'SLIM', startRow: 4, startCol: 0 },
+      { number: 4, direction: 'down', clue: 'A vehicle', answer: 'CAR', startRow: 0, startCol: 0 },
+      { number: 5, direction: 'down', clue: 'Wonder', answer: 'ROAM', startRow: 0, startCol: 4 },
+    ],
+    estimatedTime: 600,
+    xpReward: 50
+  }
+  ,
+  {
+    title: "History challenge",
+    difficulty: Difficulty.HARD,
+    category: "History",
+    grid: {
+      rows: 6,
+      cols: 6
+    },
+    clues: [
+      { number: 1, direction: 'across', clue: 'Feline pet', answer: 'CAT', startRow: 0, startCol: 0 },
+      { number: 3, direction: 'across', clue: 'Edo is', answer: 'SLIM', startRow: 4, startCol: 0 },
+      { number: 4, direction: 'down', clue: 'A vehicle', answer: 'CAR', startRow: 0, startCol: 0 },
+      { number: 5, direction: 'down', clue: 'Wonder', answer: 'ROAM', startRow: 0, startCol: 4 },
+    ],
+    estimatedTime: 600,
+    xpReward: 50
+  }
+  ,
+  {
+    title: "Physics challenge",
+    difficulty: Difficulty.EXPERT,
+    category: "Physics",
+    grid: {
+      rows: 6,
+      cols: 6
+    },
+    clues: [
+      { number: 1, direction: 'across', clue: 'Feline pet', answer: 'CAT', startRow: 0, startCol: 0 },
+      { number: 3, direction: 'across', clue: 'Edo is', answer: 'SLIM', startRow: 4, startCol: 0 },
+      { number: 4, direction: 'down', clue: 'A vehicle', answer: 'CAR', startRow: 0, startCol: 0 },
+      { number: 5, direction: 'down', clue: 'Wonder', answer: 'ROAM', startRow: 0, startCol: 4 },
+    ],
+    estimatedTime: 600,
+    xpReward: 50
+  }
+  ,
+  {
+    title: "Nutrition challenge",
+    difficulty: Difficulty.EXPERT,
+    category: "Nutrition",
+    grid: {
+      rows: 6,
+      cols: 6
+    },
+    clues: [
+      { number: 1, direction: 'across', clue: 'Feline pet', answer: 'CAT', startRow: 0, startCol: 0 },
+      { number: 3, direction: 'across', clue: 'Edo is', answer: 'SLIM', startRow: 4, startCol: 0 },
+      { number: 4, direction: 'down', clue: 'A vehicle', answer: 'CAR', startRow: 0, startCol: 0 },
+      { number: 5, direction: 'down', clue: 'Wonder', answer: 'ROAM', startRow: 0, startCol: 4 },
+    ],
+    estimatedTime: 600,
+    xpReward: 50
+  }
+  ,
+  {
+    title: "Tv shows challenge",
+    difficulty: Difficulty.HARD,
+    category: "Tv shows",
+    grid: {
+      rows: 6,
+      cols: 6
+    },
+    clues: [
+      { number: 1, direction: 'across', clue: 'Feline pet', answer: 'CAT', startRow: 0, startCol: 0 },
+      { number: 3, direction: 'across', clue: 'Edo is', answer: 'SLIM', startRow: 4, startCol: 0 },
+      { number: 4, direction: 'down', clue: 'A vehicle', answer: 'CAR', startRow: 0, startCol: 0 },
+      { number: 5, direction: 'down', clue: 'Wonder', answer: 'ROAM', startRow: 0, startCol: 4 },
+    ],
+    estimatedTime: 600,
+    xpReward: 50
+  }
+  ,
+  {
+    title: "Movies challenge",
+    difficulty: Difficulty.MEDIUM,
+    category: "Movies",
+    grid: {
+      rows: 6,
+      cols: 6
+    },
+    clues: [
+      { number: 1, direction: 'across', clue: 'Feline pet', answer: 'CAT', startRow: 0, startCol: 0 },
+      { number: 3, direction: 'across', clue: 'Edo is', answer: 'SLIM', startRow: 4, startCol: 0 },
+      { number: 4, direction: 'down', clue: 'A vehicle', answer: 'CAR', startRow: 0, startCol: 0 },
+      { number: 5, direction: 'down', clue: 'Wonder', answer: 'ROAM', startRow: 0, startCol: 4 },
+    ],
+    estimatedTime: 600,
+    xpReward: 50
+  }
+  ,
+  {
+    title: "Sports challenge",
+    difficulty: Difficulty.EXPERT,
+    category: "Sports",
+    grid: {
+      rows: 6,
+      cols: 6
+    },
+    clues: [
+      { number: 1, direction: 'across', clue: 'Feline pet', answer: 'CAT', startRow: 0, startCol: 0 },
+      { number: 3, direction: 'across', clue: 'Edo is', answer: 'SLIM', startRow: 4, startCol: 0 },
+      { number: 4, direction: 'down', clue: 'A vehicle', answer: 'CAR', startRow: 0, startCol: 0 },
+      { number: 5, direction: 'down', clue: 'Wonder', answer: 'ROAM', startRow: 0, startCol: 4 },
     ],
     estimatedTime: 600,
     xpReward: 50
