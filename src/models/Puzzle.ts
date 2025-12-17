@@ -39,8 +39,7 @@ const puzzleSchema = new Schema<IPuzzle>({
   },
   grid: {
     rows: { type: Number, required: true },
-    cols: { type: Number, required: true },
-    cells: [[String]]
+    cols: { type: Number, required: true }
   },
   clues: {
     type: [puzzleClueSchema],

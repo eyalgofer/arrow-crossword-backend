@@ -35,7 +35,7 @@ export const getPuzzle = async (req: AuthRequest, res: Response) => {
 
     const puzzleData = {
       ...puzzle.toObject(),
-      clues: puzzle.clues
+      clues: puzzle.clues,
     };
 
     res.json({ puzzle: puzzleData });

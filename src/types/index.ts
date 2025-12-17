@@ -28,7 +28,6 @@ export interface PuzzleClue {
 export interface PuzzleGrid {
   rows: number;
   cols: number;
-  cells: string[][];
 }
 
 export enum MatchStatus {
