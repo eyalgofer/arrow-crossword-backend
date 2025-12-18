@@ -56,9 +56,18 @@ router.post('/google', async (req: Request, res: Response) => {
         coins: user.coins,
       },
     });
-  } catch (error) {
-    console.error('Google auth error:', error);
-    res.status(401).json({ error: error });
+  } catch (error: any) {
+    console.error('❌ Google auth error:', error?.message || error);
+    console.error('   Full error:', JSON.stringify(error, null, 2));
+    res.status(401).json({ 
+      error: 'Authentication failed',
+      message: error?.message || 'Unknown error',
+      hint: error?.message?.includes('audience') 
+        ? 'Client ID mismatch - check GOOGLE_WEB_CLIENT_ID and GOOGLE_IOS_CLIENT_ID env vars'
+        : error?.message?.includes('expired')
+        ? 'Token has expired - user needs to sign in again'
+        : undefined
+    });
   }
 });
 
