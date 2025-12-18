@@ -24,33 +24,56 @@ dotenv.config();
 const samplePuzzles = [
   // ==================== EASY PUZZLES ====================
   {
-    title: "Coffee Addict",
+    title: "Good Example",
     difficulty: Difficulty.EASY,
     category: "Daily Life",
-    grid: { rows: 5, cols: 6 },
+    grid: { rows: 11, cols: 9 },
     clues: [
-      { number: 1, direction: 'across', clue: 'Morning fuel for zombies', answer: 'COFFEE', startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Sugar rush delivery', answer: 'DONUT', startRow: 0, startCol: 5 },
-      { number: 3, direction: 'down-across', clue: 'Alarm clock victim', answer: 'SLEEP', startRow: 1, startCol: 0 },
-      { number: 4, direction: 'across', clue: 'Office prison', answer: 'DESK', startRow: 2, startCol: 0 },
-      { number: 5, direction: 'up-across', clue: 'Monday feeling', answer: 'TIRED', startRow: 3, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Clock watching goal', answer: 'FIVE', startRow: 4, startCol: 0 },
+      { number: 1, direction: 'right-down', clue: 'Ensure', answer: 'SEE', startRow: 0, startCol: 0 },
+      { number: 2, direction: 'down', clue: 'Private', answer: 'PERSONAL', startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Stores', answer: 'FILES', startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Roman marketplace', answer: 'FORUM', startRow: 0, startCol: 6 },
+      { number: 5, direction: 'left-down', clue: 'Second Greek letter', answer: 'BETA', startRow: 0, startCol: 8 },
+      { number: 6, direction: 'across', clue: 'Incidents', answer: 'EPISODES', startRow: 1, startCol: 0 },
+      { number: 7, direction: 'down', clue: 'Strip', answer: 'GUR', startRow: 2, startCol: 4 },
+      { number: 8, direction: 'down', clue: 'Loan', answer: 'LEND', startRow: 2, startCol: 6 },
+      { number: 9, direction: 'down', clue: 'Fury', answer: 'RAGE', startRow: 2, startCol: 8 },
+      { number: 10, direction: 'up-across', clue: 'Touch', answer: 'FEEL', startRow: 3, startCol: 0 },
+      { number: 11, direction: 'across', clue: 'Usual', answer: 'REGULAR', startRow: 3, startCol: 1 },
+      { number: 12, direction: 'across', clue: 'Take for granted', answer: 'ASSUME', startRow: 4, startCol: 0 },
+      { number: 13, direction: 'down', clue: 'Assert', answer: 'ALLEGE', startRow: 4, startCol: 7 },
+      { number: 14, direction: 'down-across', clue: 'Short skirt', answer: 'MINI', startRow: 5, startCol: 0 },
+      { number: 15, direction: 'down', clue: 'Units', answer: 'ITEMS', startRow: 5, startCol: 1 },
+      { number: 16, direction: 'down', clue: 'Deduce', answer: 'INFER', startRow: 5, startCol: 3 },
+      { number: 17, direction: 'across', clue: 'Pester', answer: 'NAG', startRow: 5, startCol: 5 },
+      { number: 18, direction: 'across', clue: 'Lazy', answer: 'IDLE', startRow: 6, startCol: 4 },
+      { number: 19, direction: 'across', clue: 'Large basin', answer: 'TANK', startRow: 7, startCol: 0 },
+      { number: 20, direction: 'down', clue: 'Kitchen container', answer: 'POT', startRow: 7, startCol: 5 },
+      { number: 21, direction: 'down', clue: 'Belonging to us', answer: 'OUR', startRow: 7, startCol: 6 },
+      { number: 22, direction: 'down', clue: 'Definite article', answer: 'THE', startRow: 7, startCol: 8 },
+      { number: 23, direction: 'across', clue: 'Fairy', answer: 'ELF', startRow: 8, startCol: 0 },
+      { number: 24, direction: 'across', clue: 'Bard', answer: 'POET', startRow: 8, startCol: 4 },
+      { number: 25, direction: 'down-across', clue: 'Operator', answer: 'USER', startRow: 9, startCol: 0 },
+      { number: 26, direction: 'across', clue: 'Sufficient', answer: 'ENOUGH', startRow: 9, startCol: 2 },
+      { number: 27, direction: 'across', clue: 'Woody plant', answer: 'TREE', startRow: 10, startCol: 4 }
     ],
     estimatedTime: 90,
     coinReward: 10
   },
   {
-    title: "Pet Chaos",
+    title: "Yeali's Puzzle",
     difficulty: Difficulty.EASY,
     category: "Animals",
     grid: { rows: 5, cols: 6 },
     clues: [
-      { number: 1, direction: 'across', clue: 'Barks at mailman', answer: 'DOG', startRow: 0, startCol: 0 },
-      { number: 2, direction: 'right-down', clue: 'Ignores you royally', answer: 'CAT', startRow: 0, startCol: 4 },
-      { number: 3, direction: 'across', clue: 'Tank swimmer', answer: 'FISH', startRow: 1, startCol: 0 },
-      { number: 4, direction: 'down-across', clue: 'Wheel runner', answer: 'HAMSTER', startRow: 2, startCol: 0 },
-      { number: 5, direction: 'across', clue: 'Talks but never listens', answer: 'PARROT', startRow: 3, startCol: 0 },
-      { number: 6, direction: 'up-across', clue: 'Hops around', answer: 'BUNNY', startRow: 4, startCol: 0 },
+      { number: 1, direction: 'across', clue: 'Car manufacturer', answer: 'VOLVO', startRow: 0, startCol: 0 },
+      { number: 2, direction: 'down', clue: 'State (physics)', answer: 'SOLID', startRow: 0, startCol: 0 },
+      { number: 3, direction: 'across', clue: 'Dog breed', answer: 'PUG', startRow: 3, startCol: 1 },
+      { number: 4, direction: 'right-down', clue: 'Hops around', answer: 'BUNNY', startRow: 1, startCol: 4 },
+      { number: 5, direction: 'down', clue: 'have', answer: 'GOT', startRow: 3, startCol: 4 },
+      { number: 5, direction: 'down', clue: 'have', answer: 'GOT', startRow: 3, startCol: 4 },
+      { number: 5, direction: 'down', clue: 'have', answer: 'GOT', startRow: 3, startCol: 4 },
+      { number: 5, direction: 'down', clue: 'have', answer: 'GOT', startRow: 3, startCol: 4 },
     ],
     estimatedTime: 90,
     coinReward: 10
@@ -416,12 +439,12 @@ const samplePuzzles = [
     coinReward: 50
   }
 ];
-
-const MONGODB_URI_CLUSTER1 = "mongodb+srv://eyalgo:m6pp3kZx12@cluster1.0w7fepf.mongodb.net/arrow-crossword?retryWrites=true&w=majority"
+// to see the puzzles in the cloud MongoDB, use this URI:
+// const MONGODB_URI_CLUSTER1 = "mongodb+srv://eyalgo:m6pp3kZx12@cluster1.0w7fepf.mongodb.net/arrow-crossword?retryWrites=true&w=majority"
 
 const seedDatabase = async () => {
   try {
-    await mongoose.connect(MONGODB_URI_CLUSTER1);
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/arrow-crossword');
     console.log('Connected to MongoDB');
 
     await Puzzle.deleteMany({});
