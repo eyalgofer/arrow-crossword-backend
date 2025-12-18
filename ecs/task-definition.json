@@ -32,15 +32,15 @@
       "secrets": [
         {
           "name": "MONGODB_URI",
-          "valueFrom": "arn:aws:secretsmanager:eu-north-1:211888002768:secret:arrow-crossword/mongodb-uri"
+          "valueFrom": "arn:aws:secretsmanager:eu-north-1:211888002768:secret:arrow-crossword/mongodb-uri-Ce1eFr"
         },
         {
           "name": "JWT_SECRET",
-          "valueFrom": "arn:aws:secretsmanager:eu-north-1:211888002768:secret:arrow-crossword/jwt-secret"
+          "valueFrom": "arn:aws:secretsmanager:eu-north-1:211888002768:secret:arrow-crossword/jwt-secret-j3xGL3"
         },
         {
           "name": "GOOGLE_CLIENT_ID",
-          "valueFrom": "arn:aws:secretsmanager:eu-north-1:211888002768:secret:arrow-crossword/google-client-id"
+          "valueFrom": "arn:aws:secretsmanager:eu-north-1:211888002768:secret:arrow-crossword/google-client-id-N5IfkE"
         }
       ],
       "logConfiguration": {
