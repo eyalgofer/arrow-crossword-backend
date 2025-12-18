@@ -417,10 +417,11 @@ const samplePuzzles = [
   }
 ];
 
+const MONGODB_URI_CLUSTER1 = "mongodb+srv://eyalgo:m6pp3kZx12@cluster1.0w7fepf.mongodb.net/arrow-crossword?retryWrites=true&w=majority"
 
 const seedDatabase = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/arrow-crossword');
+    await mongoose.connect(MONGODB_URI_CLUSTER1);
     console.log('Connected to MongoDB');
 
     await Puzzle.deleteMany({});
