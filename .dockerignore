@@ -1,0 +1,46 @@
+# Dependencies
+node_modules
+
+# Build output (we build inside Docker)
+dist
+
+# Git
+.git
+.gitignore
+
+# Environment files (secrets should come from AWS)
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Documentation
+*.md
+docs/
+
+# Tests
+__tests__
+*.test.ts
+*.spec.ts
+coverage
+
+# Docker files (not needed inside container)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# AWS deployment files
+ecs/
+*.json.template
+
