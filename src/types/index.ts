@@ -60,6 +60,7 @@ export interface GameState {
 export enum Difficulty {
   EASY = 'easy',
   MEDIUM = 'medium',
+  CHALLENGING = 'challenging',
   HARD = 'hard',
   EXPERT = 'expert'
 }
