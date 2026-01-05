@@ -20,7 +20,8 @@ const puzzleClueSchema = new Schema({
   clue: { type: String, required: true },
   answer: { type: String, required: true },
   startRow: { type: Number, required: true },
-  startCol: { type: Number, required: true }
+  startCol: { type: Number, required: true },
+  enumeration: { type: [Number], required: true},
 }, { _id: false });
 
 const puzzleSchema = new Schema<IPuzzle>({
