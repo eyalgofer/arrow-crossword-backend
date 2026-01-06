@@ -61,6 +61,7 @@ const samplePuzzles = [
   },
   // ============================================
   // PUZZLE 1: "Kitchen Basics" - EASY (8x7)
+  // Verified crossings: COOK/OPEN(O), COOK/KNOB(K), PAN/OPEN(P), PAN/KNOB(N), TEA/OPEN(E), MUG/CUP(U), CUP/PIE(P)
   // ============================================
   {
     title: "Kitchen Basics",
@@ -69,45 +70,39 @@ const samplePuzzles = [
     grid: { rows: 8, cols: 7 },
     clues: [
       { number: 1, direction: 'right-down', clue: 'Prepare food', answer: 'COOK', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Cooking vessel', answer: 'PAN', enumeration: [3], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Cutting tool', answer: 'KNIFE', enumeration: [5], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Consume', answer: 'EAT', enumeration: [3], startRow: 0, startCol: 5 },
-      { number: 5, direction: 'down', clue: 'Refrigerator', answer: 'FRIDGE', enumeration: [6], startRow: 0, startCol: 6 },
-      { number: 6, direction: 'across', clue: 'Oven product', answer: 'BREAD', enumeration: [5], startRow: 1, startCol: 0 },
-      { number: 7, direction: 'up-across', clue: 'Morning meal', answer: 'BRUNCH', enumeration: [6], startRow: 2, startCol: 0 },
-      { number: 8, direction: 'across', clue: 'Warm liquid', answer: 'SOUP', enumeration: [4], startRow: 3, startCol: 0 },
-      { number: 9, direction: 'down-across', clue: 'Frozen water', answer: 'ICE', enumeration: [3], startRow: 4, startCol: 0 },
-      { number: 10, direction: 'across', clue: 'Hen product', answer: 'EGG', enumeration: [3], startRow: 4, startCol: 2 },
-      { number: 11, direction: 'across', clue: 'Spoon partner', answer: 'FORK', enumeration: [4], startRow: 5, startCol: 1 },
-      { number: 12, direction: 'across', clue: 'Beverage', answer: 'TEA', enumeration: [3], startRow: 6, startCol: 0 },
-      { number: 13, direction: 'across', clue: 'Dairy product', answer: 'MILK', enumeration: [4], startRow: 7, startCol: 2 }
+      { number: 2, direction: 'down', clue: 'Kitchen vessel', answer: 'PAN', enumeration: [3], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Hot beverage', answer: 'TEA', enumeration: [3], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Cook in oil', answer: 'FRY', enumeration: [3], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Not closed', answer: 'OPEN', enumeration: [4], startRow: 1, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Door handle', answer: 'KNOB', enumeration: [4], startRow: 3, startCol: 0 },
+      { number: 7, direction: 'across', clue: 'Chicken product', answer: 'EGG', enumeration: [3], startRow: 4, startCol: 3 },
+      { number: 8, direction: 'down-across', clue: 'Drinking cup', answer: 'MUG', enumeration: [3], startRow: 5, startCol: 0 },
+      { number: 9, direction: 'down', clue: 'Drink holder', answer: 'CUP', enumeration: [3], startRow: 4, startCol: 1 },
+      { number: 10, direction: 'across', clue: 'Dessert pastry', answer: 'PIE', enumeration: [3], startRow: 7, startCol: 0 }
     ],
     estimatedTime: 60,
     coinReward: 8
   },
 
   // ============================================
-  // PUZZLE 2: "Office Life" - EASY (9x8)
+  // PUZZLE 2: "Office Life" - EASY (8x7)
+  // Verified crossings: MEMO/BOX(O), ART/WORK(R)
   // ============================================
   {
     title: "Office Life",
     difficulty: Difficulty.EASY,
     category: "Work",
-    grid: { rows: 9, cols: 8 },
+    grid: { rows: 8, cols: 7 },
     clues: [
-      { number: 1, direction: 'right-down', clue: 'Work surface', answer: 'DESK', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Meeting', answer: 'SESSION', enumeration: [7], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Electronic mail', answer: 'EMAIL', enumeration: [5], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Leader', answer: 'BOSS', enumeration: [4], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'down', clue: 'Occupation', answer: 'WORK', enumeration: [4], startRow: 0, startCol: 7 },
-      { number: 6, direction: 'across', clue: 'Employment', answer: 'JOB', enumeration: [3], startRow: 1, startCol: 0 },
-      { number: 7, direction: 'up-across', clue: 'Work team', answer: 'STAFF', enumeration: [5], startRow: 2, startCol: 0 },
-      { number: 8, direction: 'across', clue: 'Document', answer: 'FILE', enumeration: [4], startRow: 2, startCol: 2 },
-      { number: 9, direction: 'down-across', clue: 'Break beverage', answer: 'COFFEE', enumeration: [6], startRow: 3, startCol: 0 },
-      { number: 10, direction: 'across', clue: 'Assignment', answer: 'TASK', enumeration: [4], startRow: 3, startCol: 2 },
-      { number: 11, direction: 'across', clue: 'Schedule', answer: 'PLAN', enumeration: [4], startRow: 4, startCol: 2 },
-      { number: 12, direction: 'across', clue: 'Computer input', answer: 'TYPE', enumeration: [4], startRow: 5, startCol: 0 },
-      { number: 13, direction: 'across', clue: 'Phone call', answer: 'RING', enumeration: [4], startRow: 6, startCol: 3 }
+      { number: 1, direction: 'right-down', clue: 'Work', answer: 'JOB', enumeration: [3], startRow: 0, startCol: 0 },
+      { number: 2, direction: 'down', clue: 'Quick note', answer: 'MEMO', enumeration: [4], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Document', answer: 'FILE', enumeration: [4], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Employment', answer: 'WORK', enumeration: [4], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Container', answer: 'BOX', enumeration: [3], startRow: 4, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Work surface', answer: 'DESK', enumeration: [4], startRow: 6, startCol: 0 },
+      { number: 7, direction: 'across', clue: 'Writing tool', answer: 'PEN', enumeration: [3], startRow: 5, startCol: 2 },
+      { number: 8, direction: 'across', clue: 'Utilize', answer: 'USE', enumeration: [3], startRow: 7, startCol: 0 },
+      { number: 9, direction: 'up-across', clue: 'Skill', answer: 'ART', enumeration: [3], startRow: 3, startCol: 4 }
     ],
     estimatedTime: 55,
     coinReward: 8
@@ -714,7 +709,10 @@ const samplePuzzles = [
 // const MONGODB_URI_CLUSTER1 = "mongodb+srv://eyalgo:m6pp3kZx12@cluster1.0w7fepf.mongodb.net/arrow-crossword?retryWrites=true&w=majority"
 
 /**
- * Validation function to check if all clues fit within the grid boundaries.
+ * Validation function to check:
+ * 1. All clues fit within grid boundaries
+ * 2. Answer cells don't overlap with clue cells
+ * 3. Answer cells that overlap have matching letters (valid crossings)
  * 
  * Rules for each direction:
  * - 'down': answer starts at (startRow+1, startCol), goes DOWN
@@ -731,98 +729,185 @@ interface ValidationError {
   answer: string;
   direction: string;
   error: string;
-  availableSpace: number;
-  requiredSpace: number;
+  availableSpace?: number;
+  requiredSpace?: number;
+}
+
+type CellType = 'clue' | 'answer';
+interface CellInfo {
+  type: CellType;
+  clueNumber: number;
+  letter?: string; // For answer cells
+  clueText?: string; // For clue cells
+}
+
+function getAnswerCells(clue: typeof samplePuzzles[0]['clues'][0]): Array<{row: number, col: number, letter: string}> {
+  const { startRow, startCol, direction, answer } = clue;
+  const cells: Array<{row: number, col: number, letter: string}> = [];
+  
+  let answerStartRow = startRow;
+  let answerStartCol = startCol;
+  let goesDown = false;
+  
+  switch (direction) {
+    case 'down':
+      answerStartRow = startRow + 1;
+      goesDown = true;
+      break;
+    case 'right-down':
+      answerStartCol = startCol + 1;
+      goesDown = true;
+      break;
+    case 'left-down':
+      answerStartCol = startCol - 1;
+      goesDown = true;
+      break;
+    case 'across':
+      answerStartCol = startCol + 1;
+      goesDown = false;
+      break;
+    case 'down-across':
+      answerStartRow = startRow + 1;
+      goesDown = false;
+      break;
+    case 'up-across':
+      answerStartRow = startRow - 1;
+      goesDown = false;
+      break;
+  }
+  
+  for (let i = 0; i < answer.length; i++) {
+    if (goesDown) {
+      cells.push({ row: answerStartRow + i, col: answerStartCol, letter: answer[i] });
+    } else {
+      cells.push({ row: answerStartRow, col: answerStartCol + i, letter: answer[i] });
+    }
+  }
+  
+  return cells;
 }
 
 function validatePuzzle(puzzle: typeof samplePuzzles[0]): ValidationError[] {
   const errors: ValidationError[] = [];
   const { rows, cols } = puzzle.grid;
-
+  
+  // Build grid to track cell usage
+  // Each cell can be: empty, clue cell, or answer cell(s)
+  const clueCells = new Map<string, {clueNumber: number, clueText: string}>();
+  const answerCells = new Map<string, Array<{clueNumber: number, letter: string}>>();
+  
+  // First pass: mark all clue cells
+  for (const clue of puzzle.clues) {
+    const key = `${clue.startRow},${clue.startCol}`;
+    clueCells.set(key, { clueNumber: clue.number, clueText: clue.clue });
+  }
+  
+  // Second pass: validate each clue's answer placement
   for (const clue of puzzle.clues) {
     const answerLength = clue.answer.length;
     const { startRow, startCol, direction, answer, number: clueNum } = clue;
     
-    let availableSpace = 0;
-    let requiredSpace = answerLength;
-    let errorMsg = '';
-
+    // Check boundary constraints first
+    let boundaryError = '';
+    
     switch (direction) {
       case 'down':
-        // Answer starts at (startRow+1, startCol), goes DOWN
-        availableSpace = rows - startRow - 1;
-        if (answerLength > availableSpace) {
-          errorMsg = `DOWN: starts at row ${startRow + 1}, needs ${answerLength} rows but only ${availableSpace} available`;
+        if (startRow + 1 + answerLength > rows) {
+          boundaryError = `DOWN: answer needs rows ${startRow + 1}-${startRow + answerLength} but grid only has ${rows} rows`;
         }
         break;
-
       case 'right-down':
-        // Answer starts at (startRow, startCol+1), goes DOWN
-        availableSpace = rows - startRow;
-        if (answerLength > availableSpace) {
-          errorMsg = `RIGHT-DOWN: starts at row ${startRow}, needs ${answerLength} rows but only ${availableSpace} available`;
-        }
         if (startCol + 1 >= cols) {
-          errorMsg = `RIGHT-DOWN: startCol+1 (${startCol + 1}) is out of bounds (cols=${cols})`;
+          boundaryError = `RIGHT-DOWN: startCol+1 (${startCol + 1}) is out of bounds (cols=${cols})`;
+        } else if (startRow + answerLength > rows) {
+          boundaryError = `RIGHT-DOWN: answer needs rows ${startRow}-${startRow + answerLength - 1} but grid only has ${rows} rows`;
         }
         break;
-
       case 'left-down':
-        // Answer starts at (startRow, startCol-1), goes DOWN
-        availableSpace = rows - startRow;
-        if (answerLength > availableSpace) {
-          errorMsg = `LEFT-DOWN: starts at row ${startRow}, needs ${answerLength} rows but only ${availableSpace} available`;
-        }
         if (startCol - 1 < 0) {
-          errorMsg = `LEFT-DOWN: startCol-1 (${startCol - 1}) is out of bounds`;
+          boundaryError = `LEFT-DOWN: startCol-1 (${startCol - 1}) is out of bounds`;
+        } else if (startRow + answerLength > rows) {
+          boundaryError = `LEFT-DOWN: answer needs rows ${startRow}-${startRow + answerLength - 1} but grid only has ${rows} rows`;
         }
         break;
-
       case 'across':
-        // Answer starts at (startRow, startCol+1), goes RIGHT
-        availableSpace = cols - startCol - 1;
-        if (answerLength > availableSpace) {
-          errorMsg = `ACROSS: starts at col ${startCol + 1}, needs ${answerLength} cols but only ${availableSpace} available`;
+        if (startCol + 1 + answerLength > cols) {
+          boundaryError = `ACROSS: answer needs cols ${startCol + 1}-${startCol + answerLength} but grid only has ${cols} cols`;
         }
         break;
-
       case 'down-across':
-        // Answer starts at (startRow+1, startCol), goes RIGHT
-        availableSpace = cols - startCol;
-        if (answerLength > availableSpace) {
-          errorMsg = `DOWN-ACROSS: starts at col ${startCol}, needs ${answerLength} cols but only ${availableSpace} available`;
-        }
         if (startRow + 1 >= rows) {
-          errorMsg = `DOWN-ACROSS: startRow+1 (${startRow + 1}) is out of bounds (rows=${rows})`;
+          boundaryError = `DOWN-ACROSS: startRow+1 (${startRow + 1}) is out of bounds (rows=${rows})`;
+        } else if (startCol + answerLength > cols) {
+          boundaryError = `DOWN-ACROSS: answer needs cols ${startCol}-${startCol + answerLength - 1} but grid only has ${cols} cols`;
         }
         break;
-
       case 'up-across':
-        // Answer starts at (startRow-1, startCol), goes RIGHT
-        availableSpace = cols - startCol;
-        if (answerLength > availableSpace) {
-          errorMsg = `UP-ACROSS: starts at col ${startCol}, needs ${answerLength} cols but only ${availableSpace} available`;
-        }
         if (startRow - 1 < 0) {
-          errorMsg = `UP-ACROSS: startRow-1 (${startRow - 1}) is out of bounds`;
+          boundaryError = `UP-ACROSS: startRow-1 (${startRow - 1}) is out of bounds`;
+        } else if (startCol + answerLength > cols) {
+          boundaryError = `UP-ACROSS: answer needs cols ${startCol}-${startCol + answerLength - 1} but grid only has ${cols} cols`;
         }
         break;
     }
-
-    if (errorMsg) {
+    
+    if (boundaryError) {
       errors.push({
         puzzleTitle: puzzle.title,
         clueNumber: clueNum,
         clue: clue.clue,
         answer,
         direction,
-        error: errorMsg,
-        availableSpace,
-        requiredSpace
+        error: boundaryError
       });
+      continue; // Skip overlap check if boundary error
+    }
+    
+    // Check for overlaps with clue cells
+    const answerCellPositions = getAnswerCells(clue);
+    for (const cell of answerCellPositions) {
+      const key = `${cell.row},${cell.col}`;
+      
+      // Check if this answer cell overlaps with a clue cell
+      if (clueCells.has(key)) {
+        const conflictingClue = clueCells.get(key)!;
+        errors.push({
+          puzzleTitle: puzzle.title,
+          clueNumber: clueNum,
+          clue: clue.clue,
+          answer,
+          direction,
+          error: `OVERLAP: Letter "${cell.letter}" at (${cell.row},${cell.col}) conflicts with clue cell #${conflictingClue.clueNumber} ("${conflictingClue.clueText}")`
+        });
+      }
+      
+      // Track answer cells for crossing validation
+      if (!answerCells.has(key)) {
+        answerCells.set(key, []);
+      }
+      answerCells.get(key)!.push({ clueNumber: clueNum, letter: cell.letter });
     }
   }
-
+  
+  // Third pass: check for letter mismatches at crossings
+  for (const [key, cellAnswers] of answerCells) {
+    if (cellAnswers.length > 1) {
+      const letters = new Set(cellAnswers.map(a => a.letter));
+      if (letters.size > 1) {
+        const [row, col] = key.split(',').map(Number);
+        const clueNumbers = cellAnswers.map(a => `#${a.clueNumber}(${a.letter})`).join(', ');
+        errors.push({
+          puzzleTitle: puzzle.title,
+          clueNumber: cellAnswers[0].clueNumber,
+          clue: 'Multiple clues',
+          answer: 'N/A',
+          direction: 'crossing',
+          error: `LETTER MISMATCH at (${row},${col}): ${clueNumbers}`
+        });
+      }
+    }
+  }
+  
   return errors;
 }
 
