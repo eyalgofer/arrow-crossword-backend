@@ -127,3 +127,29 @@ export const spendCoins = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ error: 'Failed to spend coins' });
   }
 };
+
+export const searchByEmail = async (req: AuthRequest, res: Response) => {
+  try {
+    const { email } = req.query;
+
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: 'Email query parameter is required' });
+    }
+
+    // Get the current user to exclude from search results
+    const currentUser = await User.findOne({ firebaseUid: req.user!.uid });
+
+    // Search for users by email (case-insensitive partial match)
+    const users = await User.find({
+      email: { $regex: email, $options: 'i' },
+      ...(currentUser && { _id: { $ne: currentUser._id } }) // Exclude current user
+    })
+      .select('_id displayName email photoURL')
+      .limit(10);
+
+    res.json({ users });
+  } catch (error) {
+    console.error('Search by email error:', error);
+    res.status(500).json({ error: 'Failed to search users' });
+  }
+};

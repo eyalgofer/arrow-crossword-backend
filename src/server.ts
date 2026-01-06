@@ -10,6 +10,8 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import puzzleRoutes from './routes/puzzles';
 import matchRoutes from './routes/matches';
+import inviteRoutes from './routes/invites';
+import { setupSocketHandlers } from './sockets/gameHandler';
 
 dotenv.config();
 
@@ -33,6 +35,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/puzzles', puzzleRoutes);
 app.use('/api/matches', matchRoutes);
+app.use('/api/invites', inviteRoutes);
 
 app.use(errorHandler);
 
@@ -41,8 +44,8 @@ const startServer = async () => {
     await connectDatabase();
     console.log('✅ MongoDB connected');
 
-    // setupSocketHandlers(io);
-    // console.log('✅ Socket.io configured');
+    setupSocketHandlers(io);
+    console.log('✅ Socket.io configured');
 
     const PORT = process.env.PORT || 3000;
     server.listen(PORT, () => {

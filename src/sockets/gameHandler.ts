@@ -1,4 +1,5 @@
 import { Server, Socket } from 'socket.io';
+import jwt from 'jsonwebtoken';
 import { User } from '../models/User';
 import { Match } from '../models/Match';
 import { Puzzle } from '../models/Puzzle';
@@ -12,6 +13,13 @@ interface SocketWithAuth extends Socket {
 // Store active games in memory
 const activeGames = new Map<string, GameState>();
 const waitingPlayers = new Map<string, { userId: string; socketId: string; displayName: string }>();
+// Track active sockets by userId (firebaseUid)
+const userSockets = new Map<string, Set<string>>(); // userId -> Set of socketIds
+
+// Export function to check if user has active sockets
+export const getUserActiveSockets = (userId: string): number => {
+  return userSockets.get(userId)?.size || 0;
+};
 
 export const setupSocketHandlers = (io: Server) => {
   // Socket authentication middleware
@@ -19,19 +27,39 @@ export const setupSocketHandlers = (io: Server) => {
     try {
       const token = socket.handshake.auth.token;
       if (!token) {
-        return next(new Error('Authentication error'));
+        return next(new Error('Authentication error: No token provided'));
       }
-      // TODO: Implement authentication token verification
-      // const decodedToken = await authenticateToken(token);
-      // socket.userId = decodedToken.uid;
+
+      // Verify JWT token (same as REST API)
+      const payload = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+      socket.userId = payload.userId; // This is the firebaseUid
+      
+      console.log(`Socket authenticated for user: ${socket.userId}`);
       next();
     } catch (error) {
-      next(new Error('Authentication error'));
+      console.error('Socket authentication error:', error);
+      next(new Error('Authentication error: Invalid token'));
     }
   });
 
   io.on('connection', (socket: SocketWithAuth) => {
     console.log(`User connected: ${socket.userId}`);
+
+    // Join a personal room for receiving direct notifications (e.g., invite_accepted)
+    if (socket.userId) {
+      const userRoom = `user:${socket.userId}`;
+      socket.join(userRoom);
+      
+      // Track this socket for this user
+      if (!userSockets.has(socket.userId)) {
+        userSockets.set(socket.userId, new Set());
+      }
+      userSockets.get(socket.userId)!.add(socket.id);
+      
+      console.log(`Socket ${socket.id} joined room: ${userRoom} (total sockets for user: ${userSockets.get(socket.userId)!.size})`);
+    } else {
+      console.warn(`Socket ${socket.id} connected without userId!`);
+    }
 
     // Find match
     socket.on('find_match', async (data) => {
@@ -124,6 +152,109 @@ export const setupSocketHandlers = (io: Server) => {
     socket.on('cancel_matchmaking', () => {
       waitingPlayers.delete(socket.userId!);
       socket.emit('matchmaking_cancelled');
+    });
+
+    // Join a match room (for friend invites)
+    socket.on('join_match', async ({ matchId }) => {
+      try {
+        const match = await Match.findById(matchId);
+        if (!match) {
+          socket.emit('error', { message: 'Match not found' });
+          return;
+        }
+
+        const user = await User.findOne({ firebaseUid: socket.userId });
+        if (!user) {
+          socket.emit('error', { message: 'User not found' });
+          return;
+        }
+
+        // Verify user is part of this match
+        const isPlayer = match.players.some(
+          p => p.userId.toString() === user._id.toString()
+        );
+
+        if (!isPlayer) {
+          socket.emit('error', { message: 'Not authorized to join this match' });
+          return;
+        }
+
+        // Join the socket room
+        socket.join(matchId);
+        socket.matchId = matchId;
+
+        // Initialize game state if not already present
+        if (!activeGames.has(matchId)) {
+          const gameState: GameState = {
+            matchId,
+            players: match.players.map(p => ({
+              userId: p.userId.toString(),
+              displayName: p.displayName,
+              progress: p.progress
+            })),
+            puzzleId: match.puzzleId.toString(),
+            moves: match.moves || [],
+            startedAt: match.startedAt
+          };
+          activeGames.set(matchId, gameState);
+        }
+
+        // Notify room that player joined
+        socket.to(matchId).emit('player_joined', {
+          userId: user._id.toString(),
+          displayName: user.displayName
+        });
+
+        socket.emit('joined_match', { matchId });
+
+        console.log(`User ${user.displayName} joined match ${matchId}`);
+      } catch (error) {
+        console.error('Join match error:', error);
+        socket.emit('error', { message: 'Failed to join match' });
+      }
+    });
+
+    // Leave a match room
+    socket.on('leave_match', ({ matchId }) => {
+      socket.leave(matchId);
+      if (socket.matchId === matchId) {
+        socket.matchId = undefined;
+      }
+      console.log(`User ${socket.userId} left match ${matchId}`);
+    });
+
+    // Progress update - broadcast progress percentage to opponent
+    socket.on('progress_update', async ({ matchId, progress }) => {
+      try {
+        const gameState = activeGames.get(matchId);
+        
+        const user = await User.findOne({ firebaseUid: socket.userId });
+        if (!user) return;
+
+        // Update progress in game state if it exists
+        if (gameState) {
+          const player = gameState.players.find(
+            p => p.userId === user._id.toString()
+          );
+          if (player) {
+            player.progress = progress;
+          }
+        }
+
+        // Update progress in database
+        await Match.updateOne(
+          { _id: matchId, 'players.userId': user._id },
+          { $set: { 'players.$.progress': progress } }
+        );
+
+        // Broadcast to other players in the match
+        socket.to(matchId).emit('opponent_progress', {
+          userId: user._id.toString(),
+          progress
+        });
+      } catch (error) {
+        console.error('Progress update error:', error);
+      }
     });
 
     // Player makes a move
@@ -238,8 +369,17 @@ export const setupSocketHandlers = (io: Server) => {
 
     // Disconnect
     socket.on('disconnect', () => {
-      console.log(`User disconnected: ${socket.userId}`);
+      console.log(`User disconnected: ${socket.userId} (socket: ${socket.id})`);
       waitingPlayers.delete(socket.userId!);
+      
+      // Remove socket from tracking
+      if (socket.userId && userSockets.has(socket.userId)) {
+        userSockets.get(socket.userId)!.delete(socket.id);
+        if (userSockets.get(socket.userId)!.size === 0) {
+          userSockets.delete(socket.userId);
+        }
+        console.log(`Removed socket ${socket.id} from user ${socket.userId} (remaining: ${userSockets.get(socket.userId)?.size || 0})`);
+      }
     });
   });
 };

@@ -756,11 +756,11 @@ function validateAllPuzzles(): void {
   }
 }
 
-// Run validation before seeding
-validateAllPuzzles();
-
 const seedDatabase = async () => {
   try {
+    // Run validation before seeding
+    validateAllPuzzles();
+
     await mongoose.connect('mongodb://localhost:27017/arrow-crossword');
     console.log('Connected to MongoDB');
 
