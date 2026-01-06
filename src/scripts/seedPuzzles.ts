@@ -110,6 +110,8 @@ const samplePuzzles = [
 
   // ============================================
   // PUZZLE 3: "Pet Corner" - EASY (7x7)
+  // Layout: C1(0,0)→CAT↓@col1, C2(0,2)→DOG↓@col2, C3(0,4)→PET↓@col3, C4(0,6)→FUR↓@col5
+  // No across crossings - simple independent layout
   // ============================================
   {
     title: "Pet Corner",
@@ -119,586 +121,402 @@ const samplePuzzles = [
     clues: [
       { number: 1, direction: 'right-down', clue: 'Feline', answer: 'CAT', enumeration: [3], startRow: 0, startCol: 0 },
       { number: 2, direction: 'down', clue: 'Canine', answer: 'DOG', enumeration: [3], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Aquarium dweller', answer: 'FISH', enumeration: [4], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Small rodent', answer: 'RAT', enumeration: [3], startRow: 0, startCol: 5 },
-      { number: 5, direction: 'down', clue: 'Pet toy', answer: 'BONE', enumeration: [4], startRow: 0, startCol: 6 },
-      { number: 6, direction: 'across', clue: 'Animal food', answer: 'FEED', enumeration: [4], startRow: 1, startCol: 0 },
-      { number: 7, direction: 'up-across', clue: 'Pet shelter', answer: 'CAGE', enumeration: [4], startRow: 2, startCol: 0 },
-      { number: 8, direction: 'across', clue: 'Walk the dog', answer: 'LEAD', enumeration: [4], startRow: 2, startCol: 1 },
-      { number: 9, direction: 'down-across', clue: 'Animal hair', answer: 'FUR', enumeration: [3], startRow: 3, startCol: 0 },
-      { number: 10, direction: 'across', clue: 'Fetch toy', answer: 'BALL', enumeration: [4], startRow: 3, startCol: 2 },
-      { number: 11, direction: 'across', clue: 'Pet sound', answer: 'BARK', enumeration: [4], startRow: 4, startCol: 1 },
-      { number: 12, direction: 'across', clue: 'Cat sound', answer: 'MEOW', enumeration: [4], startRow: 5, startCol: 0 },
-      { number: 13, direction: 'across', clue: 'Animal foot', answer: 'PAW', enumeration: [3], startRow: 6, startCol: 3 }
+      { number: 3, direction: 'left-down', clue: 'Companion', answer: 'PET', enumeration: [3], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Animal coat', answer: 'FUR', enumeration: [3], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Dog sound', answer: 'BARK', enumeration: [4], startRow: 4, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Animal foot', answer: 'PAW', enumeration: [3], startRow: 5, startCol: 0 },
+      { number: 7, direction: 'across', clue: 'Fetch toy', answer: 'BALL', enumeration: [4], startRow: 6, startCol: 2 }
     ],
     estimatedTime: 50,
     coinReward: 8
   },
 
   // ============================================
-  // PUZZLE 4: "Music Notes" - MEDIUM (10x8)
+  // PUZZLE 4: "Music Notes" - MEDIUM (8x7)
+  // Down words: TUNE@col1, SONG@col2(from row1), BEAT@col3, TAP@col5
+  // Across words placed below down words to avoid conflicts
   // ============================================
   {
     title: "Music Notes",
     difficulty: Difficulty.MEDIUM,
     category: "Entertainment",
-    grid: { rows: 10, cols: 8 },
+    grid: { rows: 8, cols: 7 },
     clues: [
       { number: 1, direction: 'right-down', clue: 'Melody', answer: 'TUNE', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Musical drama', answer: 'OPERA', enumeration: [5], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Song words', answer: 'LYRICS', enumeration: [6], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Percussion', answer: 'DRUM', enumeration: [4], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'down', clue: 'Wind instrument', answer: 'FLUTE', enumeration: [5], startRow: 0, startCol: 7 },
-      { number: 6, direction: 'across', clue: 'Music group', answer: 'BAND', enumeration: [4], startRow: 1, startCol: 0 },
-      { number: 7, direction: 'up-across', clue: 'Hit song', answer: 'SINGLE', enumeration: [6], startRow: 2, startCol: 0 },
-      { number: 8, direction: 'across', clue: 'Record', answer: 'ALBUM', enumeration: [5], startRow: 3, startCol: 2 },
-      { number: 9, direction: 'across', clue: 'Music speed', answer: 'TEMPO', enumeration: [5], startRow: 4, startCol: 0 },
-      { number: 10, direction: 'down-across', clue: 'Piano key', answer: 'NOTE', enumeration: [4], startRow: 5, startCol: 0 },
-      { number: 11, direction: 'down', clue: 'Guitar string', answer: 'WIRE', enumeration: [4], startRow: 5, startCol: 2 },
-      { number: 12, direction: 'across', clue: 'Volume', answer: 'LOUD', enumeration: [4], startRow: 5, startCol: 3 },
-      { number: 13, direction: 'across', clue: 'Concert venue', answer: 'ARENA', enumeration: [5], startRow: 6, startCol: 1 },
-      { number: 14, direction: 'across', clue: 'Jazz style', answer: 'SWING', enumeration: [5], startRow: 7, startCol: 0 },
-      { number: 15, direction: 'across', clue: 'Music lover', answer: 'FAN', enumeration: [3], startRow: 8, startCol: 0 },
-      { number: 16, direction: 'across', clue: 'String instrument', answer: 'HARP', enumeration: [4], startRow: 9, startCol: 2 }
+      { number: 2, direction: 'down', clue: 'Music words', answer: 'SONG', enumeration: [4], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Rhythm', answer: 'BEAT', enumeration: [4], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Drum sound', answer: 'TAP', enumeration: [3], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Music group', answer: 'BAND', enumeration: [4], startRow: 5, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Music lover', answer: 'FAN', enumeration: [3], startRow: 6, startCol: 0 },
+      { number: 7, direction: 'across', clue: 'String instrument', answer: 'HARP', enumeration: [4], startRow: 7, startCol: 2 }
     ],
     estimatedTime: 75,
     coinReward: 12
   },
 
   // ============================================
-  // PUZZLE 5: "Travel Bug" - MEDIUM (10x9)
+  // PUZZLE 5: "Travel Bug" - MEDIUM (8x7)
+  // Down words: TRIP@col1, BAGS@col2(row1-4), PACK@col3, MAP@col5
+  // Across words placed in rows 5-7 to avoid conflicts
   // ============================================
   {
     title: "Travel Bug",
     difficulty: Difficulty.MEDIUM,
     category: "Travel",
-    grid: { rows: 10, cols: 9 },
+    grid: { rows: 8, cols: 7 },
     clues: [
       { number: 1, direction: 'right-down', clue: 'Journey', answer: 'TRIP', enumeration: [4], startRow: 0, startCol: 0 },
       { number: 2, direction: 'down', clue: 'Luggage', answer: 'BAGS', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Travel document', answer: 'PASSPORT', enumeration: [8], startRow: 0, startCol: 5 },
-      { number: 4, direction: 'left-down', clue: 'Airplane', answer: 'JET', enumeration: [3], startRow: 0, startCol: 7 },
-      { number: 5, direction: 'down', clue: 'Beach material', answer: 'SAND', enumeration: [4], startRow: 0, startCol: 8 },
-      { number: 6, direction: 'across', clue: 'Accommodation', answer: 'HOTEL', enumeration: [5], startRow: 1, startCol: 0 },
-      { number: 7, direction: 'up-across', clue: 'Excursion', answer: 'TOUR', enumeration: [4], startRow: 2, startCol: 0 },
-      { number: 8, direction: 'across', clue: 'City plan', answer: 'MAP', enumeration: [3], startRow: 2, startCol: 2 },
-      { number: 9, direction: 'across', clue: 'Ship journey', answer: 'CRUISE', enumeration: [6], startRow: 3, startCol: 0 },
-      { number: 10, direction: 'down-across', clue: 'Travel by car', answer: 'DRIVE', enumeration: [5], startRow: 4, startCol: 0 },
-      { number: 11, direction: 'down', clue: 'Traveler', answer: 'TOURIST', enumeration: [7], startRow: 2, startCol: 7 },
-      { number: 12, direction: 'across', clue: 'Pack clothes', answer: 'FOLD', enumeration: [4], startRow: 4, startCol: 3 },
-      { number: 13, direction: 'across', clue: 'Border check', answer: 'VISA', enumeration: [4], startRow: 5, startCol: 1 },
-      { number: 14, direction: 'across', clue: 'Navigate', answer: 'GUIDE', enumeration: [5], startRow: 6, startCol: 0 },
-      { number: 15, direction: 'across', clue: 'Departure time', answer: 'GATE', enumeration: [4], startRow: 7, startCol: 4 },
-      { number: 16, direction: 'across', clue: 'Train station', answer: 'DEPOT', enumeration: [5], startRow: 8, startCol: 0 },
-      { number: 17, direction: 'across', clue: 'Souvenir', answer: 'GIFT', enumeration: [4], startRow: 9, startCol: 4 }
+      { number: 3, direction: 'left-down', clue: 'Bundle', answer: 'PACK', enumeration: [4], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'City plan', answer: 'MAP', enumeration: [3], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Border check', answer: 'VISA', enumeration: [4], startRow: 5, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Souvenir', answer: 'GIFT', enumeration: [4], startRow: 6, startCol: 0 },
+      { number: 7, direction: 'across', clue: 'Train station', answer: 'DEPOT', enumeration: [5], startRow: 7, startCol: 1 }
     ],
     estimatedTime: 80,
     coinReward: 12
   },
 
   // ============================================
-  // PUZZLE 6: "Tech Talk" - MEDIUM (11x8)
+  // PUZZLE 6: "Tech Talk" - MEDIUM (8x7)
+  // Down words: CODE@col1(r0-3), WEB@col2(r1-3), APP@col3(r0-2), BUG@col5(r0-2)
+  // Across words placed in rows 5-7 to avoid conflicts
   // ============================================
   {
     title: "Tech Talk",
     difficulty: Difficulty.MEDIUM,
     category: "Technology",
-    grid: { rows: 11, cols: 8 },
+    grid: { rows: 8, cols: 7 },
     clues: [
-      { number: 1, direction: 'right-down', clue: 'Information', answer: 'DATA', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Software error', answer: 'BUG', enumeration: [3], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Internet connection', answer: 'WIFI', enumeration: [4], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Application', answer: 'APP', enumeration: [3], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'down', clue: 'Restart', answer: 'REBOOT', enumeration: [6], startRow: 0, startCol: 7 },
-      { number: 6, direction: 'across', clue: 'Digital image', answer: 'PIXEL', enumeration: [5], startRow: 1, startCol: 0 },
-      { number: 7, direction: 'up-across', clue: 'Screen display', answer: 'MONITOR', enumeration: [7], startRow: 2, startCol: 0 },
-      { number: 8, direction: 'across', clue: 'Write code', answer: 'PROGRAM', enumeration: [7], startRow: 3, startCol: 0 },
-      { number: 9, direction: 'down-across', clue: 'Save location', answer: 'CLOUD', enumeration: [5], startRow: 4, startCol: 0 },
-      { number: 10, direction: 'down', clue: 'Web address', answer: 'URL', enumeration: [3], startRow: 4, startCol: 2 },
-      { number: 11, direction: 'across', clue: 'Computer brain', answer: 'CPU', enumeration: [3], startRow: 4, startCol: 4 },
-      { number: 12, direction: 'across', clue: 'Input device', answer: 'MOUSE', enumeration: [5], startRow: 5, startCol: 1 },
-      { number: 13, direction: 'down', clue: 'Computer memory', answer: 'RAM', enumeration: [3], startRow: 6, startCol: 6 },
-      { number: 14, direction: 'across', clue: 'Send message', answer: 'TEXT', enumeration: [4], startRow: 7, startCol: 0 },
-      { number: 15, direction: 'across', clue: 'Download', answer: 'GET', enumeration: [3], startRow: 8, startCol: 1 },
-      { number: 16, direction: 'across', clue: 'Search engine', answer: 'GOOGLE', enumeration: [6], startRow: 10, startCol: 0 }
+      { number: 1, direction: 'right-down', clue: 'Program', answer: 'CODE', enumeration: [4], startRow: 0, startCol: 0 },
+      { number: 2, direction: 'down', clue: 'Internet', answer: 'WEB', enumeration: [3], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Software', answer: 'APP', enumeration: [3], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Error', answer: 'BUG', enumeration: [3], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Input device', answer: 'MOUSE', enumeration: [5], startRow: 5, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Information', answer: 'DATA', enumeration: [4], startRow: 6, startCol: 0 },
+      { number: 7, direction: 'across', clue: 'Download', answer: 'GET', enumeration: [3], startRow: 7, startCol: 0 }
     ],
     estimatedTime: 85,
     coinReward: 12
   },
 
   // ============================================
-  // PUZZLE 7: "Garden Path" - MEDIUM (10x9)
+  // PUZZLE 7: "Garden Path" - MEDIUM (8x7)
+  // Down words: SEED@col1(r0-3), LEAF@col2(r1-4), ROSE@col3(r0-3), POT@col5(r0-2)
+  // Across words placed in rows 5-7 to avoid conflicts
   // ============================================
   {
     title: "Garden Path",
     difficulty: Difficulty.MEDIUM,
     category: "Nature",
-    grid: { rows: 10, cols: 9 },
+    grid: { rows: 8, cols: 7 },
     clues: [
-      { number: 1, direction: 'right-down', clue: 'Flower part', answer: 'PETAL', enumeration: [5], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Garden tool', answer: 'RAKE', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Plant stem', answer: 'STALK', enumeration: [5], startRow: 0, startCol: 5 },
-      { number: 4, direction: 'left-down', clue: 'Tree juice', answer: 'SAP', enumeration: [3], startRow: 0, startCol: 7 },
-      { number: 5, direction: 'down', clue: 'Plant food', answer: 'MULCH', enumeration: [5], startRow: 0, startCol: 8 },
-      { number: 6, direction: 'across', clue: 'Grass area', answer: 'LAWN', enumeration: [4], startRow: 1, startCol: 0 },
-      { number: 7, direction: 'down', clue: 'Garden pest', answer: 'SLUG', enumeration: [4], startRow: 1, startCol: 5 },
-      { number: 8, direction: 'up-across', clue: 'Plant holder', answer: 'POT', enumeration: [3], startRow: 2, startCol: 0 },
-      { number: 9, direction: 'across', clue: 'Dig tool', answer: 'SPADE', enumeration: [5], startRow: 2, startCol: 2 },
-      { number: 10, direction: 'across', clue: 'Water plants', answer: 'SPRAY', enumeration: [5], startRow: 3, startCol: 0 },
-      { number: 11, direction: 'down-across', clue: 'Tree part', answer: 'ROOT', enumeration: [4], startRow: 4, startCol: 0 },
-      { number: 12, direction: 'across', clue: 'Garden barrier', answer: 'HEDGE', enumeration: [5], startRow: 5, startCol: 3 },
-      { number: 13, direction: 'across', clue: 'Flower gift', answer: 'BLOOM', enumeration: [5], startRow: 6, startCol: 1 },
-      { number: 14, direction: 'across', clue: 'Garden earth', answer: 'SOIL', enumeration: [4], startRow: 7, startCol: 0 },
-      { number: 15, direction: 'across', clue: 'Rose defense', answer: 'THORN', enumeration: [5], startRow: 8, startCol: 3 }
+      { number: 1, direction: 'right-down', clue: 'Plant starter', answer: 'SEED', enumeration: [4], startRow: 0, startCol: 0 },
+      { number: 2, direction: 'down', clue: 'Tree part', answer: 'LEAF', enumeration: [4], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Flower', answer: 'ROSE', enumeration: [4], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Plant holder', answer: 'POT', enumeration: [3], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Garden earth', answer: 'SOIL', enumeration: [4], startRow: 5, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Dig tool', answer: 'SPADE', enumeration: [5], startRow: 6, startCol: 1 },
+      { number: 7, direction: 'across', clue: 'Grass area', answer: 'LAWN', enumeration: [4], startRow: 7, startCol: 0 }
     ],
     estimatedTime: 70,
     coinReward: 12
   },
 
   // ============================================
-  // PUZZLE 8: "Sports Arena" - HARD (11x9)
+  // PUZZLE 8: "Sports Arena" - HARD (8x7)
+  // Down words: GOAL@col1(r0-3), TEAM@col2(r1-4), BALL@col3(r0-3), WIN@col5(r0-2)
+  // Across words placed in rows 5-7 to avoid conflicts
   // ============================================
   {
     title: "Sports Arena",
     difficulty: Difficulty.HARD,
     category: "Sports",
-    grid: { rows: 11, cols: 9 },
+    grid: { rows: 8, cols: 7 },
     clues: [
-      { number: 1, direction: 'right-down', clue: 'Competition', answer: 'MATCH', enumeration: [5], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Athletic', answer: 'FIT', enumeration: [3], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Victory', answer: 'WIN', enumeration: [3], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Sports group', answer: 'TEAM', enumeration: [4], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'down', clue: 'Ball game', answer: 'TENNIS', enumeration: [6], startRow: 0, startCol: 7 },
-      { number: 6, direction: 'down', clue: 'Team uniform', answer: 'JERSEY', enumeration: [6], startRow: 0, startCol: 8 },
-      { number: 7, direction: 'across', clue: 'Exercise', answer: 'TRAIN', enumeration: [5], startRow: 1, startCol: 0 },
-      { number: 8, direction: 'up-across', clue: 'Sports field', answer: 'ARENA', enumeration: [5], startRow: 2, startCol: 0 },
-      { number: 9, direction: 'across', clue: 'Race finish', answer: 'GOAL', enumeration: [4], startRow: 2, startCol: 2 },
-      { number: 10, direction: 'across', clue: 'Sport break', answer: 'TIMEOUT', enumeration: [7], startRow: 3, startCol: 0 },
-      { number: 11, direction: 'down-across', clue: 'Run fast', answer: 'SPRINT', enumeration: [6], startRow: 4, startCol: 0 },
-      { number: 12, direction: 'down', clue: 'Medal metal', answer: 'GOLD', enumeration: [4], startRow: 4, startCol: 2 },
-      { number: 13, direction: 'across', clue: 'Game official', answer: 'REFEREE', enumeration: [7], startRow: 5, startCol: 1 },
-      { number: 14, direction: 'across', clue: 'Game points', answer: 'SCORE', enumeration: [5], startRow: 6, startCol: 0 },
-      { number: 15, direction: 'across', clue: 'Sport shoe', answer: 'CLEAT', enumeration: [5], startRow: 7, startCol: 2 },
-      { number: 16, direction: 'across', clue: 'Pool sport', answer: 'SWIM', enumeration: [4], startRow: 8, startCol: 0 },
-      { number: 17, direction: 'across', clue: 'Ball thrower', answer: 'PITCHER', enumeration: [7], startRow: 10, startCol: 0 }
+      { number: 1, direction: 'right-down', clue: 'Score point', answer: 'GOAL', enumeration: [4], startRow: 0, startCol: 0 },
+      { number: 2, direction: 'down', clue: 'Group', answer: 'TEAM', enumeration: [4], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Throw toy', answer: 'BALL', enumeration: [4], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Victory', answer: 'WIN', enumeration: [3], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Game points', answer: 'SCORE', enumeration: [5], startRow: 5, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Pool sport', answer: 'SWIM', enumeration: [4], startRow: 6, startCol: 0 },
+      { number: 7, direction: 'across', clue: 'Run fast', answer: 'RACE', enumeration: [4], startRow: 7, startCol: 2 }
     ],
     estimatedTime: 100,
     coinReward: 15
   },
 
   // ============================================
-  // PUZZLE 9: "Movie Night" - HARD (12x9)
+  // PUZZLE 9: "Movie Night" - HARD (8x7)
+  // Down words: FILM@col1(r0-3), STAR@col2(r1-4), PLOT@col3(r0-3), ROLE@col5(r0-3)
+  // Across words placed in rows 5-7 to avoid conflicts
   // ============================================
   {
     title: "Movie Night",
     difficulty: Difficulty.HARD,
     category: "Entertainment",
-    grid: { rows: 12, cols: 9 },
+    grid: { rows: 8, cols: 7 },
     clues: [
-      { number: 1, direction: 'right-down', clue: 'Cinema snack', answer: 'POPCORN', enumeration: [7], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Film location', answer: 'SET', enumeration: [3], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Movie star', answer: 'ACTOR', enumeration: [5], startRow: 0, startCol: 5 },
-      { number: 4, direction: 'left-down', clue: 'Film genre', answer: 'DRAMA', enumeration: [5], startRow: 0, startCol: 7 },
-      { number: 5, direction: 'down', clue: 'Movie ending', answer: 'CREDITS', enumeration: [7], startRow: 0, startCol: 8 },
-      { number: 6, direction: 'across', clue: 'Film script', answer: 'LINES', enumeration: [5], startRow: 1, startCol: 0 },
-      { number: 7, direction: 'down', clue: 'Cinema seat', answer: 'ROW', enumeration: [3], startRow: 1, startCol: 6 },
-      { number: 8, direction: 'up-across', clue: 'Movie plot', answer: 'STORY', enumeration: [5], startRow: 2, startCol: 0 },
-      { number: 9, direction: 'across', clue: 'Film music', answer: 'SCORE', enumeration: [5], startRow: 2, startCol: 2 },
-      { number: 10, direction: 'across', clue: 'Movie preview', answer: 'TRAILER', enumeration: [7], startRow: 3, startCol: 0 },
-      { number: 11, direction: 'down-across', clue: 'Film part', answer: 'SCENE', enumeration: [5], startRow: 4, startCol: 0 },
-      { number: 12, direction: 'down', clue: 'Camera work', answer: 'SHOT', enumeration: [4], startRow: 4, startCol: 2 },
-      { number: 13, direction: 'across', clue: 'Award statue', answer: 'OSCAR', enumeration: [5], startRow: 5, startCol: 3 },
-      { number: 14, direction: 'across', clue: 'Film director', answer: 'HELM', enumeration: [4], startRow: 6, startCol: 1 },
-      { number: 15, direction: 'down', clue: 'Cinema chain', answer: 'AMC', enumeration: [3], startRow: 6, startCol: 5 },
-      { number: 16, direction: 'across', clue: 'Film opening', answer: 'DEBUT', enumeration: [5], startRow: 7, startCol: 0 },
-      { number: 17, direction: 'across', clue: 'Horror movie', answer: 'SCARE', enumeration: [5], startRow: 8, startCol: 2 },
-      { number: 18, direction: 'across', clue: 'Film roll', answer: 'REEL', enumeration: [4], startRow: 9, startCol: 0 },
-      { number: 19, direction: 'across', clue: 'Cast member', answer: 'ROLE', enumeration: [4], startRow: 10, startCol: 3 },
-      { number: 20, direction: 'across', clue: 'Film festival', answer: 'CANNES', enumeration: [6], startRow: 11, startCol: 0 }
+      { number: 1, direction: 'right-down', clue: 'Cinema', answer: 'FILM', enumeration: [4], startRow: 0, startCol: 0 },
+      { number: 2, direction: 'down', clue: 'Celebrity', answer: 'STAR', enumeration: [4], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Story', answer: 'PLOT', enumeration: [4], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Part', answer: 'ROLE', enumeration: [4], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Film roll', answer: 'REEL', enumeration: [4], startRow: 5, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Film part', answer: 'SCENE', enumeration: [5], startRow: 6, startCol: 1 },
+      { number: 7, direction: 'across', clue: 'Award', answer: 'OSCAR', enumeration: [5], startRow: 7, startCol: 0 }
     ],
     estimatedTime: 110,
     coinReward: 15
   },
 
   // ============================================
-  // PUZZLE 10: "Weather Watch" - HARD (10x10)
+  // PUZZLE 10: "Weather Watch" - HARD (8x7)
+  // Down words: RAIN@col1(r0-3), WIND@col2(r1-4), COLD@col3(r0-3), SNOW@col5(r0-3)
+  // Across words placed in rows 5-7 to avoid conflicts
   // ============================================
   {
     title: "Weather Watch",
     difficulty: Difficulty.HARD,
     category: "Nature",
-    grid: { rows: 10, cols: 10 },
+    grid: { rows: 8, cols: 7 },
     clues: [
       { number: 1, direction: 'right-down', clue: 'Downpour', answer: 'RAIN', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Temperature', answer: 'HEAT', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Weather forecast', answer: 'OUTLOOK', enumeration: [7], startRow: 0, startCol: 5 },
-      { number: 4, direction: 'left-down', clue: 'Frozen rain', answer: 'SLEET', enumeration: [5], startRow: 0, startCol: 7 },
-      { number: 5, direction: 'down', clue: 'Air movement', answer: 'WIND', enumeration: [4], startRow: 0, startCol: 8 },
-      { number: 6, direction: 'down', clue: 'Ice crystal', answer: 'SNOW', enumeration: [4], startRow: 0, startCol: 9 },
-      { number: 7, direction: 'across', clue: 'Sky cover', answer: 'CLOUDS', enumeration: [6], startRow: 1, startCol: 0 },
-      { number: 8, direction: 'up-across', clue: 'Electric flash', answer: 'BOLT', enumeration: [4], startRow: 2, startCol: 0 },
-      { number: 9, direction: 'across', clue: 'Storm warning', answer: 'ALERT', enumeration: [5], startRow: 2, startCol: 2 },
-      { number: 10, direction: 'across', clue: 'Mist', answer: 'FOG', enumeration: [3], startRow: 3, startCol: 0 },
-      { number: 11, direction: 'across', clue: 'Tornado', answer: 'TWISTER', enumeration: [7], startRow: 4, startCol: 2 },
-      { number: 12, direction: 'down-across', clue: 'Cold season', answer: 'WINTER', enumeration: [6], startRow: 5, startCol: 0 },
-      { number: 13, direction: 'across', clue: 'Very hot', answer: 'HUMID', enumeration: [5], startRow: 5, startCol: 4 },
-      { number: 14, direction: 'across', clue: 'Rainbow maker', answer: 'PRISM', enumeration: [5], startRow: 6, startCol: 1 },
-      { number: 15, direction: 'across', clue: 'Sunshine', answer: 'CLEAR', enumeration: [5], startRow: 7, startCol: 0 },
-      { number: 16, direction: 'across', clue: 'Thunder sound', answer: 'RUMBLE', enumeration: [6], startRow: 8, startCol: 0 },
-      { number: 17, direction: 'across', clue: 'Air pressure', answer: 'LOW', enumeration: [3], startRow: 9, startCol: 5 }
+      { number: 2, direction: 'down', clue: 'Air current', answer: 'WIND', enumeration: [4], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Chilly', answer: 'COLD', enumeration: [4], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Ice', answer: 'SNOW', enumeration: [4], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Mist', answer: 'FOG', enumeration: [3], startRow: 5, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Warmth', answer: 'HEAT', enumeration: [4], startRow: 6, startCol: 2 },
+      { number: 7, direction: 'across', clue: 'Sunshine', answer: 'SUNNY', enumeration: [5], startRow: 7, startCol: 0 }
     ],
     estimatedTime: 95,
     coinReward: 15
   },
 
   // ============================================
-  // PUZZLE 11: "Culinary Arts" - HARD (11x10)
+  // PUZZLE 11: "Culinary Arts" - HARD (8x7)
+  // Down words: BAKE@col1(r0-3), CHEF@col2(r1-4), STIR@col3(r0-3), CHOP@col5(r0-3)
+  // Across words placed in rows 5-7 to avoid conflicts
   // ============================================
   {
     title: "Culinary Arts",
     difficulty: Difficulty.HARD,
     category: "Food",
-    grid: { rows: 11, cols: 10 },
+    grid: { rows: 8, cols: 7 },
     clues: [
-      { number: 1, direction: 'right-down', clue: 'Head chef', answer: 'MASTER', enumeration: [6], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Bake goods', answer: 'PASTRY', enumeration: [6], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Cookbook list', answer: 'RECIPE', enumeration: [6], startRow: 0, startCol: 5 },
-      { number: 4, direction: 'left-down', clue: 'Taste enhancer', answer: 'SPICE', enumeration: [5], startRow: 0, startCol: 7 },
-      { number: 5, direction: 'down', clue: 'Oven heat', answer: 'BROIL', enumeration: [5], startRow: 0, startCol: 8 },
-      { number: 6, direction: 'down', clue: 'Egg dish', answer: 'OMELET', enumeration: [6], startRow: 0, startCol: 9 },
-      { number: 7, direction: 'across', clue: 'Food prep', answer: 'CHOP', enumeration: [4], startRow: 1, startCol: 0 },
-      { number: 8, direction: 'across', clue: 'Dessert', answer: 'CAKE', enumeration: [4], startRow: 1, startCol: 5 },
-      { number: 9, direction: 'up-across', clue: 'Grill meat', answer: 'SEAR', enumeration: [4], startRow: 2, startCol: 0 },
-      { number: 10, direction: 'across', clue: 'Blend smooth', answer: 'PUREE', enumeration: [5], startRow: 2, startCol: 2 },
-      { number: 11, direction: 'across', clue: 'Hot pot', answer: 'SIMMER', enumeration: [6], startRow: 3, startCol: 0 },
-      { number: 12, direction: 'down-across', clue: 'Cut thin', answer: 'SLICE', enumeration: [5], startRow: 4, startCol: 0 },
-      { number: 13, direction: 'down', clue: 'Liquid base', answer: 'STOCK', enumeration: [5], startRow: 4, startCol: 2 },
-      { number: 14, direction: 'across', clue: 'Deep fry', answer: 'CRISP', enumeration: [5], startRow: 5, startCol: 4 },
-      { number: 15, direction: 'across', clue: 'Flavor base', answer: 'SAUCE', enumeration: [5], startRow: 6, startCol: 1 },
-      { number: 16, direction: 'across', clue: 'Bread dough', answer: 'KNEAD', enumeration: [5], startRow: 7, startCol: 0 },
-      { number: 17, direction: 'across', clue: 'Meat juice', answer: 'GRAVY', enumeration: [5], startRow: 7, startCol: 4 },
-      { number: 18, direction: 'across', clue: 'Wine partner', answer: 'DINE', enumeration: [4], startRow: 8, startCol: 0 },
-      { number: 19, direction: 'across', clue: 'Fruit preserve', answer: 'JAM', enumeration: [3], startRow: 9, startCol: 0 },
-      { number: 20, direction: 'across', clue: 'Kitchen chief', answer: 'CHEF', enumeration: [4], startRow: 10, startCol: 4 }
+      { number: 1, direction: 'right-down', clue: 'Cook in oven', answer: 'BAKE', enumeration: [4], startRow: 0, startCol: 0 },
+      { number: 2, direction: 'down', clue: 'Kitchen boss', answer: 'CHEF', enumeration: [4], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Mix pot', answer: 'STIR', enumeration: [4], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Food prep', answer: 'CHOP', enumeration: [4], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Flavor base', answer: 'SAUCE', enumeration: [5], startRow: 5, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Dessert', answer: 'CAKE', enumeration: [4], startRow: 6, startCol: 0 },
+      { number: 7, direction: 'across', clue: 'Meat juice', answer: 'GRAVY', enumeration: [5], startRow: 7, startCol: 1 }
     ],
     estimatedTime: 105,
     coinReward: 15
   },
 
   // ============================================
-  // PUZZLE 12: "Space Explorer" - CHALLENGING (12x10)
+  // PUZZLE 12: "Space Explorer" - CHALLENGING (8x7)
+  // Down words: STAR@col1(r0-3), MOON@col2(r1-4), SUN@col3(r0-2), MARS@col5(r0-3)
+  // Across words placed in rows 5-7 to avoid conflicts
   // ============================================
   {
     title: "Space Explorer",
     difficulty: Difficulty.CHALLENGING,
     category: "Science",
-    grid: { rows: 12, cols: 10 },
+    grid: { rows: 8, cols: 7 },
     clues: [
-      { number: 1, direction: 'right-down', clue: 'Night sky', answer: 'STARS', enumeration: [5], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Space rock', answer: 'ASTEROID', enumeration: [8], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Red planet', answer: 'MARS', enumeration: [4], startRow: 0, startCol: 5 },
-      { number: 4, direction: 'left-down', clue: 'Space station', answer: 'ISS', enumeration: [3], startRow: 0, startCol: 7 },
-      { number: 5, direction: 'down', clue: 'Star path', answer: 'ORBIT', enumeration: [5], startRow: 0, startCol: 8 },
-      { number: 6, direction: 'down', clue: 'Space vehicle', answer: 'SHUTTLE', enumeration: [7], startRow: 0, startCol: 9 },
-      { number: 7, direction: 'across', clue: 'Space agency', answer: 'NASA', enumeration: [4], startRow: 1, startCol: 0 },
-      { number: 8, direction: 'across', clue: 'Moon phase', answer: 'LUNAR', enumeration: [5], startRow: 1, startCol: 4 },
-      { number: 9, direction: 'up-across', clue: 'Rocket fuel', answer: 'THRUST', enumeration: [6], startRow: 2, startCol: 0 },
-      { number: 10, direction: 'across', clue: 'Space walk', answer: 'EVA', enumeration: [3], startRow: 2, startCol: 4 },
-      { number: 11, direction: 'across', clue: 'Solar burst', answer: 'FLARE', enumeration: [5], startRow: 3, startCol: 0 },
-      { number: 12, direction: 'down-across', clue: 'Star system', answer: 'GALAXY', enumeration: [6], startRow: 4, startCol: 0 },
-      { number: 13, direction: 'down', clue: 'Space suit', answer: 'GEAR', enumeration: [4], startRow: 4, startCol: 2 },
-      { number: 14, direction: 'across', clue: 'Alien search', answer: 'SETI', enumeration: [4], startRow: 5, startCol: 5 },
-      { number: 15, direction: 'across', clue: 'Icy comet', answer: 'TAIL', enumeration: [4], startRow: 6, startCol: 1 },
-      { number: 16, direction: 'across', clue: 'Star death', answer: 'NOVA', enumeration: [4], startRow: 7, startCol: 0 },
-      { number: 17, direction: 'across', clue: 'Jupiter moon', answer: 'EUROPA', enumeration: [6], startRow: 8, startCol: 3 },
-      { number: 18, direction: 'across', clue: 'Telescope view', answer: 'NEBULA', enumeration: [6], startRow: 9, startCol: 0 },
-      { number: 19, direction: 'across', clue: 'Space float', answer: 'ZERO', enumeration: [4], startRow: 10, startCol: 2 },
-      { number: 20, direction: 'across', clue: 'Gravity force', answer: 'PULL', enumeration: [4], startRow: 11, startCol: 0 },
-      { number: 21, direction: 'across', clue: 'Space probe', answer: 'ROVER', enumeration: [5], startRow: 11, startCol: 4 }
+      { number: 1, direction: 'right-down', clue: 'Night light', answer: 'STAR', enumeration: [4], startRow: 0, startCol: 0 },
+      { number: 2, direction: 'down', clue: 'Earth satellite', answer: 'MOON', enumeration: [4], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Day light', answer: 'SUN', enumeration: [3], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Red planet', answer: 'MARS', enumeration: [4], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Star path', answer: 'ORBIT', enumeration: [5], startRow: 5, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Space agency', answer: 'NASA', enumeration: [4], startRow: 6, startCol: 0 },
+      { number: 7, direction: 'across', clue: 'Star burst', answer: 'NOVA', enumeration: [4], startRow: 7, startCol: 2 }
     ],
     estimatedTime: 120,
     coinReward: 18
   },
 
   // ============================================
-  // PUZZLE 13: "Literary Corner" - CHALLENGING (12x12)
+  // PUZZLE 13: "Literary Corner" - CHALLENGING (8x7)
+  // Down words: BOOK@col1(r0-3), READ@col2(r1-4), POEM@col3(r0-3), TALE@col5(r0-3)
+  // Across words placed in rows 5-7 to avoid conflicts
   // ============================================
   {
     title: "Literary Corner",
     difficulty: Difficulty.CHALLENGING,
     category: "Culture",
-    grid: { rows: 12, cols: 12 },
+    grid: { rows: 8, cols: 7 },
     clues: [
-      { number: 1, direction: 'right-down', clue: 'Story writer', answer: 'AUTHOR', enumeration: [6], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Book part', answer: 'CHAPTER', enumeration: [7], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Story type', answer: 'GENRE', enumeration: [5], startRow: 0, startCol: 5 },
-      { number: 4, direction: 'left-down', clue: 'Book intro', answer: 'PREFACE', enumeration: [7], startRow: 0, startCol: 8 },
-      { number: 5, direction: 'down', clue: 'Story end', answer: 'FINALE', enumeration: [6], startRow: 0, startCol: 9 },
-      { number: 6, direction: 'down', clue: 'Tale moral', answer: 'LESSON', enumeration: [6], startRow: 0, startCol: 11 },
-      { number: 7, direction: 'across', clue: 'Tale setting', answer: 'PLOT', enumeration: [4], startRow: 1, startCol: 0 },
-      { number: 8, direction: 'across', clue: 'Book award', answer: 'NOBEL', enumeration: [5], startRow: 1, startCol: 6 },
-      { number: 9, direction: 'up-across', clue: 'Story hero', answer: 'PROTAGONIST', enumeration: [11], startRow: 2, startCol: 0 },
-      { number: 10, direction: 'across', clue: 'Book shelf', answer: 'LIBRARY', enumeration: [7], startRow: 3, startCol: 0 },
-      { number: 11, direction: 'down-across', clue: 'Writing style', answer: 'PROSE', enumeration: [5], startRow: 4, startCol: 0 },
-      { number: 12, direction: 'down', clue: 'Story verse', answer: 'POEM', enumeration: [4], startRow: 4, startCol: 2 },
-      { number: 13, direction: 'across', clue: 'Book review', answer: 'CRITIC', enumeration: [6], startRow: 5, startCol: 5 },
-      { number: 14, direction: 'across', clue: 'Story quote', answer: 'PASSAGE', enumeration: [7], startRow: 6, startCol: 1 },
-      { number: 15, direction: 'across', clue: 'Book print', answer: 'EDITION', enumeration: [7], startRow: 7, startCol: 0 },
-      { number: 16, direction: 'across', clue: 'Story form', answer: 'NOVEL', enumeration: [5], startRow: 8, startCol: 2 },
-      { number: 17, direction: 'across', clue: 'Book lover', answer: 'READER', enumeration: [6], startRow: 9, startCol: 0 },
-      { number: 18, direction: 'across', clue: 'Page turner', answer: 'THRILL', enumeration: [6], startRow: 10, startCol: 4 },
-      { number: 19, direction: 'across', clue: 'Story teller', answer: 'NARRATOR', enumeration: [8], startRow: 11, startCol: 0 }
+      { number: 1, direction: 'right-down', clue: 'Novel', answer: 'BOOK', enumeration: [4], startRow: 0, startCol: 0 },
+      { number: 2, direction: 'down', clue: 'Peruse', answer: 'READ', enumeration: [4], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Verse', answer: 'POEM', enumeration: [4], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Story', answer: 'TALE', enumeration: [4], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Story outline', answer: 'PLOT', enumeration: [4], startRow: 5, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Chapter', answer: 'PART', enumeration: [4], startRow: 6, startCol: 0 },
+      { number: 7, direction: 'across', clue: 'Book lover', answer: 'READER', enumeration: [6], startRow: 7, startCol: 0 }
     ],
     estimatedTime: 130,
     coinReward: 18
   },
 
   // ============================================
-  // PUZZLE 14: "Medical Terms" - CHALLENGING (12x12)
+  // PUZZLE 14: "Medical Terms" - CHALLENGING (8x7)
+  // Down words: CURE@col1(r0-3), PILL@col2(r1-4), DOSE@col3(r0-3), ACHE@col5(r0-3)
+  // Across words placed in rows 5-7 to avoid conflicts
   // ============================================
   {
     title: "Medical Terms",
     difficulty: Difficulty.CHALLENGING,
     category: "Science",
-    grid: { rows: 12, cols: 12 },
+    grid: { rows: 8, cols: 7 },
     clues: [
-      { number: 1, direction: 'right-down', clue: 'Medical exam', answer: 'CHECKUP', enumeration: [7], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Heart organ', answer: 'CARDIAC', enumeration: [7], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Bone doctor', answer: 'SURGEON', enumeration: [7], startRow: 0, startCol: 5 },
-      { number: 4, direction: 'left-down', clue: 'Medicine dose', answer: 'TABLET', enumeration: [6], startRow: 0, startCol: 7 },
-      { number: 5, direction: 'down', clue: 'Fever reducer', answer: 'ASPIRIN', enumeration: [7], startRow: 0, startCol: 8 },
-      { number: 6, direction: 'down', clue: 'Blood vessel', answer: 'ARTERY', enumeration: [6], startRow: 0, startCol: 11 },
-      { number: 7, direction: 'across', clue: 'Hospital bed', answer: 'WARD', enumeration: [4], startRow: 1, startCol: 0 },
-      { number: 8, direction: 'up-across', clue: 'Blood test', answer: 'LAB', enumeration: [3], startRow: 2, startCol: 0 },
-      { number: 9, direction: 'across', clue: 'Skin doctor', answer: 'DERMA', enumeration: [5], startRow: 2, startCol: 2 },
-      { number: 10, direction: 'across', clue: 'Bone image', answer: 'XRAY', enumeration: [4], startRow: 3, startCol: 0 },
-      { number: 11, direction: 'across', clue: 'Treatment', answer: 'THERAPY', enumeration: [7], startRow: 4, startCol: 4 },
-      { number: 12, direction: 'down-across', clue: 'Heart rate', answer: 'PULSE', enumeration: [5], startRow: 5, startCol: 0 },
-      { number: 13, direction: 'down', clue: 'Nerve cell', answer: 'NEURON', enumeration: [6], startRow: 5, startCol: 2 },
-      { number: 14, direction: 'across', clue: 'Sleep study', answer: 'REST', enumeration: [4], startRow: 5, startCol: 5 },
-      { number: 15, direction: 'down', clue: 'Injection', answer: 'SHOT', enumeration: [4], startRow: 6, startCol: 7 },
-      { number: 16, direction: 'across', clue: 'Organ scan', answer: 'MRI', enumeration: [3], startRow: 6, startCol: 1 },
-      { number: 17, direction: 'across', clue: 'Pain relief', answer: 'ANALGESIC', enumeration: [9], startRow: 7, startCol: 2 },
-      { number: 18, direction: 'across', clue: 'Care giver', answer: 'NURSE', enumeration: [5], startRow: 8, startCol: 2 },
-      { number: 19, direction: 'across', clue: 'Illness', answer: 'DISEASE', enumeration: [7], startRow: 9, startCol: 0 },
-      { number: 20, direction: 'across', clue: 'Eye doctor', answer: 'OPTICIAN', enumeration: [8], startRow: 10, startCol: 0 },
-      { number: 21, direction: 'across', clue: 'Health plan', answer: 'DIET', enumeration: [4], startRow: 11, startCol: 2 },
-      { number: 22, direction: 'across', clue: 'First aid', answer: 'BANDAGE', enumeration: [7], startRow: 11, startCol: 4 }
+      { number: 1, direction: 'right-down', clue: 'Heal', answer: 'CURE', enumeration: [4], startRow: 0, startCol: 0 },
+      { number: 2, direction: 'down', clue: 'Medicine', answer: 'PILL', enumeration: [4], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Amount', answer: 'DOSE', enumeration: [4], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Hurt', answer: 'ACHE', enumeration: [4], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Care giver', answer: 'NURSE', enumeration: [5], startRow: 5, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Bone image', answer: 'XRAY', enumeration: [4], startRow: 6, startCol: 0 },
+      { number: 7, direction: 'across', clue: 'Relax', answer: 'REST', enumeration: [4], startRow: 7, startCol: 2 }
     ],
     estimatedTime: 140,
     coinReward: 18
   },
 
   // ============================================
-  // PUZZLE 15: "Fashion Forward" - CHALLENGING (11x11)
+  // PUZZLE 15: "Fashion Forward" - CHALLENGING (8x7)
+  // Down words: COAT@col1(r0-3), SHOE@col2(r1-4), BELT@col3(r0-3), HAT@col5(r0-2)
+  // Across words placed in rows 5-7 to avoid conflicts
   // ============================================
   {
     title: "Fashion Forward",
     difficulty: Difficulty.CHALLENGING,
     category: "Lifestyle",
-    grid: { rows: 11, cols: 11 },
+    grid: { rows: 8, cols: 7 },
     clues: [
-      { number: 1, direction: 'right-down', clue: 'Clothes maker', answer: 'TAILOR', enumeration: [6], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Dress fabric', answer: 'SILK', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Fashion show', answer: 'RUNWAY', enumeration: [6], startRow: 0, startCol: 5 },
-      { number: 4, direction: 'left-down', clue: 'Shoe style', answer: 'HEEL', enumeration: [4], startRow: 0, startCol: 7 },
-      { number: 5, direction: 'down', clue: 'Clothing label', answer: 'BRAND', enumeration: [5], startRow: 0, startCol: 9 },
-      { number: 6, direction: 'down', clue: 'Ring holder', answer: 'FINGER', enumeration: [6], startRow: 0, startCol: 10 },
-      { number: 7, direction: 'across', clue: 'Hat type', answer: 'CAP', enumeration: [3], startRow: 1, startCol: 0 },
-      { number: 8, direction: 'across', clue: 'Leg wear', answer: 'PANTS', enumeration: [5], startRow: 1, startCol: 4 },
-      { number: 9, direction: 'up-across', clue: 'Fashion trend', answer: 'STYLE', enumeration: [5], startRow: 2, startCol: 0 },
-      { number: 10, direction: 'across', clue: 'Neck accessory', answer: 'SCARF', enumeration: [5], startRow: 2, startCol: 3 },
-      { number: 11, direction: 'across', clue: 'Jacket type', answer: 'BLAZER', enumeration: [6], startRow: 3, startCol: 0 },
-      { number: 12, direction: 'down-across', clue: 'Denim pants', answer: 'JEANS', enumeration: [5], startRow: 4, startCol: 0 },
-      { number: 13, direction: 'down', clue: 'Bag type', answer: 'PURSE', enumeration: [5], startRow: 4, startCol: 2 },
-      { number: 14, direction: 'across', clue: 'Formal wear', answer: 'SUIT', enumeration: [4], startRow: 4, startCol: 4 },
-      { number: 15, direction: 'across', clue: 'Belt buckle', answer: 'CLASP', enumeration: [5], startRow: 5, startCol: 1 },
-      { number: 16, direction: 'across', clue: 'Watch band', answer: 'STRAP', enumeration: [5], startRow: 6, startCol: 0 },
-      { number: 17, direction: 'across', clue: 'Fabric pattern', answer: 'PLAID', enumeration: [5], startRow: 7, startCol: 4 },
-      { number: 18, direction: 'across', clue: 'Casual top', answer: 'SHIRT', enumeration: [5], startRow: 8, startCol: 2 },
-      { number: 19, direction: 'across', clue: 'Designer name', answer: 'COUTURE', enumeration: [7], startRow: 9, startCol: 0 },
-      { number: 20, direction: 'across', clue: 'Shoe bottom', answer: 'SOLE', enumeration: [4], startRow: 10, startCol: 6 }
+      { number: 1, direction: 'right-down', clue: 'Jacket', answer: 'COAT', enumeration: [4], startRow: 0, startCol: 0 },
+      { number: 2, direction: 'down', clue: 'Footwear', answer: 'SHOE', enumeration: [4], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Waist band', answer: 'BELT', enumeration: [4], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Head cover', answer: 'HAT', enumeration: [3], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Fabric', answer: 'SILK', enumeration: [4], startRow: 5, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Leg wear', answer: 'PANTS', enumeration: [5], startRow: 6, startCol: 1 },
+      { number: 7, direction: 'across', clue: 'Fashion trend', answer: 'STYLE', enumeration: [5], startRow: 7, startCol: 0 }
     ],
     estimatedTime: 125,
     coinReward: 18
   },
 
   // ============================================
-  // PUZZLE 16: "Ocean Deep" - EXPERT (13x11)
+  // PUZZLE 16: "Ocean Deep" - EXPERT (8x7)
+  // Down words: WAVE@col1(r0-3), FISH@col2(r1-4), TIDE@col3(r0-3), KELP@col5(r0-3)
+  // Across words placed in rows 5-7 to avoid conflicts
   // ============================================
   {
     title: "Ocean Deep",
     difficulty: Difficulty.EXPERT,
     category: "Nature",
-    grid: { rows: 13, cols: 11 },
+    grid: { rows: 8, cols: 7 },
     clues: [
-      { number: 1, direction: 'right-down', clue: 'Sea creature', answer: 'DOLPHIN', enumeration: [7], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Ocean wave', answer: 'TIDE', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Coral home', answer: 'REEF', enumeration: [4], startRow: 0, startCol: 5 },
-      { number: 4, direction: 'left-down', clue: 'Sea plant', answer: 'KELP', enumeration: [4], startRow: 0, startCol: 7 },
-      { number: 5, direction: 'down', clue: 'Ocean floor', answer: 'SEABED', enumeration: [6], startRow: 0, startCol: 9 },
-      { number: 6, direction: 'down', clue: 'Eight arms', answer: 'OCTOPUS', enumeration: [7], startRow: 0, startCol: 10 },
-      { number: 7, direction: 'across', clue: 'Water salt', answer: 'BRINE', enumeration: [5], startRow: 1, startCol: 0 },
-      { number: 8, direction: 'across', clue: 'Fish eggs', answer: 'ROE', enumeration: [3], startRow: 1, startCol: 6 },
-      { number: 9, direction: 'up-across', clue: 'Deep diver', answer: 'SCUBA', enumeration: [5], startRow: 2, startCol: 0 },
-      { number: 10, direction: 'across', clue: 'Shell home', answer: 'CONCH', enumeration: [5], startRow: 2, startCol: 3 },
-      { number: 11, direction: 'across', clue: 'Sea mammal', answer: 'WHALE', enumeration: [5], startRow: 3, startCol: 0 },
-      { number: 12, direction: 'across', clue: 'Ocean zone', answer: 'PELAGIC', enumeration: [7], startRow: 4, startCol: 3 },
-      { number: 13, direction: 'down-across', clue: 'Sailor term', answer: 'NAUTICAL', enumeration: [8], startRow: 5, startCol: 0 },
-      { number: 14, direction: 'down', clue: 'Sea predator', answer: 'SHARK', enumeration: [5], startRow: 5, startCol: 2 },
-      { number: 15, direction: 'across', clue: 'Beach bird', answer: 'GULL', enumeration: [4], startRow: 5, startCol: 5 },
-      { number: 16, direction: 'across', clue: 'Ocean depth', answer: 'ABYSS', enumeration: [5], startRow: 6, startCol: 1 },
-      { number: 17, direction: 'across', clue: 'Sea current', answer: 'STREAM', enumeration: [6], startRow: 7, startCol: 0 },
-      { number: 18, direction: 'across', clue: 'Fish breathe', answer: 'GILLS', enumeration: [5], startRow: 8, startCol: 2 },
-      { number: 19, direction: 'across', clue: 'Ocean motion', answer: 'SWELL', enumeration: [5], startRow: 9, startCol: 0 },
-      { number: 20, direction: 'across', clue: 'Sea foam', answer: 'FROTH', enumeration: [5], startRow: 10, startCol: 4 },
-      { number: 21, direction: 'across', clue: 'Fishing net', answer: 'TRAWL', enumeration: [5], startRow: 11, startCol: 1 },
-      { number: 22, direction: 'across', clue: 'Sea anchor', answer: 'MOORING', enumeration: [7], startRow: 12, startCol: 0 },
-      { number: 23, direction: 'across', clue: 'Beach sand', answer: 'SHORE', enumeration: [5], startRow: 12, startCol: 5 }
+      { number: 1, direction: 'right-down', clue: 'Ocean motion', answer: 'WAVE', enumeration: [4], startRow: 0, startCol: 0 },
+      { number: 2, direction: 'down', clue: 'Sea creature', answer: 'FISH', enumeration: [4], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Ocean rise', answer: 'TIDE', enumeration: [4], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Sea plant', answer: 'KELP', enumeration: [4], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Coral home', answer: 'REEF', enumeration: [4], startRow: 5, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Beach sand', answer: 'SHORE', enumeration: [5], startRow: 6, startCol: 1 },
+      { number: 7, direction: 'across', clue: 'Sea mammal', answer: 'WHALE', enumeration: [5], startRow: 7, startCol: 0 }
     ],
     estimatedTime: 150,
     coinReward: 22
   },
 
   // ============================================
-  // PUZZLE 17: "Legal Eagles" - EXPERT (14x11)
+  // PUZZLE 17: "Legal Eagles" - EXPERT (8x7)
+  // Down words: LAWS@col1(r0-3), JURY@col2(r1-4), CASE@col3(r0-3), OATH@col5(r0-3)
+  // Across words placed in rows 5-7 to avoid conflicts
   // ============================================
   {
     title: "Legal Eagles",
     difficulty: Difficulty.EXPERT,
     category: "Profession",
-    grid: { rows: 14, cols: 11 },
+    grid: { rows: 8, cols: 7 },
     clues: [
-      { number: 1, direction: 'right-down', clue: 'Court case', answer: 'TRIAL', enumeration: [5], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Legal advisor', answer: 'COUNSEL', enumeration: [7], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Judge decision', answer: 'VERDICT', enumeration: [7], startRow: 0, startCol: 5 },
-      { number: 4, direction: 'left-down', clue: 'Court order', answer: 'WRIT', enumeration: [4], startRow: 0, startCol: 7 },
-      { number: 5, direction: 'down', clue: 'Legal paper', answer: 'DOCUMENT', enumeration: [8], startRow: 0, startCol: 8 },
-      { number: 6, direction: 'down', clue: 'Legal binding', answer: 'CONTRACT', enumeration: [8], startRow: 0, startCol: 10 },
-      { number: 7, direction: 'across', clue: 'Legal team', answer: 'FIRM', enumeration: [4], startRow: 1, startCol: 0 },
-      { number: 8, direction: 'up-across', clue: 'Court panel', answer: 'JURY', enumeration: [4], startRow: 2, startCol: 0 },
-      { number: 9, direction: 'across', clue: 'Witness stand', answer: 'BOX', enumeration: [3], startRow: 2, startCol: 3 },
-      { number: 10, direction: 'across', clue: 'Legal suit', answer: 'LAWSUIT', enumeration: [7], startRow: 3, startCol: 0 },
-      { number: 11, direction: 'down-across', clue: 'Court plea', answer: 'APPEAL', enumeration: [6], startRow: 4, startCol: 0 },
-      { number: 12, direction: 'down', clue: 'Evidence', answer: 'PROOF', enumeration: [5], startRow: 4, startCol: 2 },
-      { number: 13, direction: 'across', clue: 'Legal right', answer: 'CLAIM', enumeration: [5], startRow: 5, startCol: 5 },
-      { number: 14, direction: 'across', clue: 'Court fine', answer: 'PENALTY', enumeration: [7], startRow: 6, startCol: 1 },
-      { number: 15, direction: 'across', clue: 'Judge robe', answer: 'GOWN', enumeration: [4], startRow: 7, startCol: 0 },
-      { number: 16, direction: 'across', clue: 'Legal oath', answer: 'SWEAR', enumeration: [5], startRow: 8, startCol: 2 },
-      { number: 17, direction: 'across', clue: 'Court session', answer: 'HEARING', enumeration: [7], startRow: 9, startCol: 0 },
-      { number: 18, direction: 'across', clue: 'Legal defense', answer: 'ALIBI', enumeration: [5], startRow: 10, startCol: 1 },
-      { number: 19, direction: 'across', clue: 'Court charge', answer: 'INDICT', enumeration: [6], startRow: 11, startCol: 0 },
-      { number: 20, direction: 'across', clue: 'Legal brief', answer: 'MOTION', enumeration: [6], startRow: 12, startCol: 4 },
-      { number: 21, direction: 'across', clue: 'Witness list', answer: 'ROSTER', enumeration: [6], startRow: 13, startCol: 0 }
+      { number: 1, direction: 'right-down', clue: 'Rules', answer: 'LAWS', enumeration: [4], startRow: 0, startCol: 0 },
+      { number: 2, direction: 'down', clue: 'Court panel', answer: 'JURY', enumeration: [4], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Court matter', answer: 'CASE', enumeration: [4], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Vow', answer: 'OATH', enumeration: [4], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Court case', answer: 'TRIAL', enumeration: [5], startRow: 5, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Legal team', answer: 'FIRM', enumeration: [4], startRow: 6, startCol: 0 },
+      { number: 7, direction: 'across', clue: 'Judge seat', answer: 'BENCH', enumeration: [5], startRow: 7, startCol: 1 }
     ],
     estimatedTime: 160,
     coinReward: 22
   },
 
   // ============================================
-  // PUZZLE 18: "Ancient History" - EXPERT (13x12)
+  // PUZZLE 18: "Ancient History" - EXPERT (8x7)
+  // Down words: ROME@col1(r0-3), KING@col2(r1-4), AGES@col3(r0-3), WAR@col5(r0-2)
+  // Across words placed in rows 5-7 to avoid conflicts
   // ============================================
   {
     title: "Ancient History",
     difficulty: Difficulty.EXPERT,
     category: "History",
-    grid: { rows: 13, cols: 12 },
+    grid: { rows: 8, cols: 7 },
     clues: [
-      { number: 1, direction: 'right-down', clue: 'Egyptian king', answer: 'PHARAOH', enumeration: [7], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Greek temple', answer: 'PARTHENON', enumeration: [9], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Roman ruler', answer: 'EMPEROR', enumeration: [7], startRow: 0, startCol: 6 },
-      { number: 4, direction: 'left-down', clue: 'Ancient text', answer: 'SCROLL', enumeration: [6], startRow: 0, startCol: 8 },
-      { number: 5, direction: 'down', clue: 'Stone pillar', answer: 'OBELISK', enumeration: [7], startRow: 0, startCol: 10 },
-      { number: 6, direction: 'down', clue: 'Greek warrior', answer: 'HOPLITE', enumeration: [7], startRow: 0, startCol: 11 },
-      { number: 7, direction: 'across', clue: 'Battle ground', answer: 'ARENA', enumeration: [5], startRow: 1, startCol: 0 },
-      { number: 8, direction: 'across', clue: 'Greek city', answer: 'SPARTA', enumeration: [6], startRow: 2, startCol: 5 },
-      { number: 9, direction: 'up-across', clue: 'Roman road', answer: 'VIA', enumeration: [3], startRow: 3, startCol: 0 },
-      { number: 10, direction: 'across', clue: 'Ancient ship', answer: 'GALLEY', enumeration: [6], startRow: 3, startCol: 4 },
-      { number: 11, direction: 'across', clue: 'Greek myth', answer: 'LEGEND', enumeration: [6], startRow: 4, startCol: 0 },
-      { number: 12, direction: 'down-across', clue: 'Ancient tomb', answer: 'PYRAMID', enumeration: [7], startRow: 5, startCol: 0 },
-      { number: 13, direction: 'down', clue: 'Greek god', answer: 'ZEUS', enumeration: [4], startRow: 5, startCol: 2 },
-      { number: 14, direction: 'across', clue: 'Roman bath', answer: 'THERMAE', enumeration: [7], startRow: 6, startCol: 4 },
-      { number: 15, direction: 'across', clue: 'Ancient coin', answer: 'DENARIUS', enumeration: [8], startRow: 7, startCol: 1 },
-      { number: 16, direction: 'across', clue: 'Roman senate', answer: 'FORUM', enumeration: [5], startRow: 8, startCol: 0 },
-      { number: 17, direction: 'across', clue: 'Ancient empire', answer: 'PERSIAN', enumeration: [7], startRow: 9, startCol: 4 },
-      { number: 18, direction: 'across', clue: 'Greek column', answer: 'IONIC', enumeration: [5], startRow: 10, startCol: 2 },
-      { number: 19, direction: 'across', clue: 'Ancient art', answer: 'MOSAIC', enumeration: [6], startRow: 11, startCol: 0 },
-      { number: 20, direction: 'across', clue: 'Roman soldier', answer: 'LEGION', enumeration: [6], startRow: 11, startCol: 5 },
-      { number: 21, direction: 'across', clue: 'Greek theater', answer: 'DRAMA', enumeration: [5], startRow: 12, startCol: 6 },
-      { number: 22, direction: 'across', clue: 'Ancient script', answer: 'HIEROGLYPH', enumeration: [10], startRow: 12, startCol: 0 }
+      { number: 1, direction: 'right-down', clue: 'Italian city', answer: 'ROME', enumeration: [4], startRow: 0, startCol: 0 },
+      { number: 2, direction: 'down', clue: 'Ruler', answer: 'KING', enumeration: [4], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Time periods', answer: 'AGES', enumeration: [4], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Conflict', answer: 'WAR', enumeration: [3], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Greek god', answer: 'ZEUS', enumeration: [4], startRow: 5, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Greek myth', answer: 'LEGEND', enumeration: [6], startRow: 6, startCol: 0 },
+      { number: 7, direction: 'across', clue: 'Ancient tomb', answer: 'CRYPT', enumeration: [5], startRow: 7, startCol: 1 }
     ],
     estimatedTime: 170,
     coinReward: 22
   },
 
   // ============================================
-  // PUZZLE 19: "Business World" - EXPERT (13x11)
+  // PUZZLE 19: "Business World" - EXPERT (8x7)
+  // Down words: DEAL@col1(r0-3), SALE@col2(r1-4), CASH@col3(r0-3), BOND@col5(r0-3)
+  // Across words placed in rows 5-7 to avoid conflicts
   // ============================================
   {
     title: "Business World",
     difficulty: Difficulty.EXPERT,
     category: "Finance",
-    grid: { rows: 13, cols: 11 },
+    grid: { rows: 8, cols: 7 },
     clues: [
-      { number: 1, direction: 'right-down', clue: 'Company head', answer: 'CHAIRMAN', enumeration: [8], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Stock market', answer: 'EXCHANGE', enumeration: [8], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Business plan', answer: 'STRATEGY', enumeration: [8], startRow: 0, startCol: 6 },
-      { number: 4, direction: 'left-down', clue: 'Profit margin', answer: 'GAIN', enumeration: [4], startRow: 0, startCol: 8 },
-      { number: 5, direction: 'down', clue: 'Market share', answer: 'SEGMENT', enumeration: [7], startRow: 0, startCol: 9 },
-      { number: 6, direction: 'down', clue: 'Investment', answer: 'CAPITAL', enumeration: [7], startRow: 0, startCol: 10 },
-      { number: 7, direction: 'across', clue: 'Bank account', answer: 'DEPOSIT', enumeration: [7], startRow: 1, startCol: 0 },
-      { number: 8, direction: 'up-across', clue: 'Trade deal', answer: 'MERGER', enumeration: [6], startRow: 2, startCol: 0 },
-      { number: 9, direction: 'across', clue: 'Budget item', answer: 'EXPENSE', enumeration: [7], startRow: 3, startCol: 3 },
-      { number: 10, direction: 'across', clue: 'Company stock', answer: 'SHARES', enumeration: [6], startRow: 4, startCol: 0 },
-      { number: 11, direction: 'down-across', clue: 'Tax report', answer: 'RETURN', enumeration: [6], startRow: 5, startCol: 0 },
-      { number: 12, direction: 'down', clue: 'Money lender', answer: 'BANKER', enumeration: [6], startRow: 5, startCol: 2 },
-      { number: 13, direction: 'across', clue: 'Sales pitch', answer: 'PROPOSAL', enumeration: [8], startRow: 6, startCol: 2 },
-      { number: 14, direction: 'across', clue: 'Asset value', answer: 'EQUITY', enumeration: [6], startRow: 7, startCol: 1 },
-      { number: 15, direction: 'across', clue: 'Board meeting', answer: 'AGENDA', enumeration: [6], startRow: 8, startCol: 0 },
-      { number: 16, direction: 'across', clue: 'Market trend', answer: 'GROWTH', enumeration: [6], startRow: 9, startCol: 2 },
-      { number: 17, direction: 'across', clue: 'Trade balance', answer: 'SURPLUS', enumeration: [7], startRow: 10, startCol: 0 },
-      { number: 18, direction: 'across', clue: 'Finance term', answer: 'REVENUE', enumeration: [7], startRow: 11, startCol: 1 },
-      { number: 19, direction: 'across', clue: 'Startup fund', answer: 'VENTURE', enumeration: [7], startRow: 12, startCol: 0 },
-      { number: 20, direction: 'across', clue: 'Stock option', answer: 'BOND', enumeration: [4], startRow: 12, startCol: 6 },
-      { number: 21, direction: 'across', clue: 'Annual report', answer: 'STATEMENT', enumeration: [9], startRow: 12, startCol: 0 }
+      { number: 1, direction: 'right-down', clue: 'Agreement', answer: 'DEAL', enumeration: [4], startRow: 0, startCol: 0 },
+      { number: 2, direction: 'down', clue: 'Transaction', answer: 'SALE', enumeration: [4], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Money', answer: 'CASH', enumeration: [4], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Stock unit', answer: 'BOND', enumeration: [4], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Income', answer: 'PROFIT', enumeration: [6], startRow: 5, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Company', answer: 'FIRM', enumeration: [4], startRow: 6, startCol: 0 },
+      { number: 7, direction: 'across', clue: 'Increase', answer: 'GROWTH', enumeration: [6], startRow: 7, startCol: 0 }
     ],
     estimatedTime: 165,
     coinReward: 22
   },
 
   // ============================================
-  // PUZZLE 20: "Architecture" - EXPERT (14x12)
+  // PUZZLE 20: "Architecture" - EXPERT (8x7)
+  // Down words: WALL@col1(r0-3), ROOF@col2(r1-4), DOOR@col3(r0-3), TILE@col5(r0-3)
+  // Across words placed in rows 5-7 to avoid conflicts
   // ============================================
   {
     title: "Architecture",
     difficulty: Difficulty.EXPERT,
     category: "Art",
-    grid: { rows: 14, cols: 12 },
+    grid: { rows: 8, cols: 7 },
     clues: [
-      { number: 1, direction: 'right-down', clue: 'Building design', answer: 'BLUEPRINT', enumeration: [9], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Roof style', answer: 'GABLE', enumeration: [5], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Support beam', answer: 'PILLAR', enumeration: [6], startRow: 0, startCol: 5 },
-      { number: 4, direction: 'left-down', clue: 'Window type', answer: 'DORMER', enumeration: [6], startRow: 0, startCol: 8 },
-      { number: 5, direction: 'down', clue: 'Floor plan', answer: 'LAYOUT', enumeration: [6], startRow: 0, startCol: 10 },
-      { number: 6, direction: 'down', clue: 'Roof edge', answer: 'EAVES', enumeration: [5], startRow: 0, startCol: 11 },
-      { number: 7, direction: 'across', clue: 'Building front', answer: 'FACADE', enumeration: [6], startRow: 1, startCol: 0 },
-      { number: 8, direction: 'up-across', clue: 'Curved roof', answer: 'DOME', enumeration: [4], startRow: 2, startCol: 0 },
-      { number: 9, direction: 'across', clue: 'Stone work', answer: 'MASONRY', enumeration: [7], startRow: 3, startCol: 4 },
-      { number: 10, direction: 'across', clue: 'Entry hall', answer: 'FOYER', enumeration: [5], startRow: 4, startCol: 0 },
-      { number: 11, direction: 'across', clue: 'Stair rail', answer: 'BANISTER', enumeration: [8], startRow: 4, startCol: 3 },
-      { number: 12, direction: 'down-across', clue: 'Design style', answer: 'MODERN', enumeration: [6], startRow: 5, startCol: 0 },
-      { number: 13, direction: 'down', clue: 'Column base', answer: 'PLINTH', enumeration: [6], startRow: 5, startCol: 2 },
-      { number: 14, direction: 'across', clue: 'Window frame', answer: 'SASH', enumeration: [4], startRow: 5, startCol: 5 },
-      { number: 15, direction: 'across', clue: 'Floor tile', answer: 'MARBLE', enumeration: [6], startRow: 6, startCol: 1 },
-      { number: 16, direction: 'across', clue: 'Wall finish', answer: 'PLASTER', enumeration: [7], startRow: 7, startCol: 0 },
-      { number: 17, direction: 'across', clue: 'Open area', answer: 'ATRIUM', enumeration: [6], startRow: 8, startCol: 2 },
-      { number: 18, direction: 'across', clue: 'Stone arch', answer: 'KEYSTONE', enumeration: [8], startRow: 9, startCol: 0 },
-      { number: 19, direction: 'across', clue: 'Room divider', answer: 'PARTITION', enumeration: [9], startRow: 10, startCol: 0 },
-      { number: 20, direction: 'across', clue: 'Ceiling art', answer: 'FRESCO', enumeration: [6], startRow: 11, startCol: 1 },
-      { number: 21, direction: 'across', clue: 'Building wing', answer: 'ANNEX', enumeration: [5], startRow: 12, startCol: 0 },
-      { number: 22, direction: 'across', clue: 'Design plan', answer: 'SKETCH', enumeration: [6], startRow: 12, startCol: 5 },
-      { number: 23, direction: 'across', clue: 'Tower top', answer: 'SPIRE', enumeration: [5], startRow: 13, startCol: 2 },
-      { number: 24, direction: 'across', clue: 'Porch column', answer: 'POST', enumeration: [4], startRow: 13, startCol: 7 }
+      { number: 1, direction: 'right-down', clue: 'Barrier', answer: 'WALL', enumeration: [4], startRow: 0, startCol: 0 },
+      { number: 2, direction: 'down', clue: 'Top cover', answer: 'ROOF', enumeration: [4], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Entry', answer: 'DOOR', enumeration: [4], startRow: 0, startCol: 4 },
+      { number: 4, direction: 'left-down', clue: 'Floor', answer: 'TILE', enumeration: [4], startRow: 0, startCol: 6 },
+      { number: 5, direction: 'across', clue: 'Stone', answer: 'BRICK', enumeration: [5], startRow: 5, startCol: 0 },
+      { number: 6, direction: 'across', clue: 'Glass panel', answer: 'PANE', enumeration: [4], startRow: 6, startCol: 0 },
+      { number: 7, direction: 'across', clue: 'Tower top', answer: 'SPIRE', enumeration: [5], startRow: 7, startCol: 1 }
     ],
     estimatedTime: 180,
     coinReward: 25
