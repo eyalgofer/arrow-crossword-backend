@@ -37,8 +37,9 @@ export const register = async (req: AuthRequest, res: Response) => {
 
 export const getProfile = async (req: AuthRequest, res: Response) => {
   try {
-    const user = await User.findOne({ firebaseUid: req.user!.uid });
-
+    const user = await User.findOne({  });
+    console.log("user", user);
+    console.log("req.user!.uid", req.user!.uid);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }

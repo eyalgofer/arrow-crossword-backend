@@ -761,7 +761,7 @@ validateAllPuzzles();
 
 const seedDatabase = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/arrow-crossword');
+    await mongoose.connect('mongodb://localhost:27017/arrow-crossword');
     console.log('Connected to MongoDB');
 
     await Puzzle.deleteMany({});

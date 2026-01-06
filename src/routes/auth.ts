@@ -1,11 +1,9 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { verifyGoogleToken } from '../services/google';
+import { User } from '../models/User';
 
 const router = Router();
-
-// In-memory user store (replace with your database)
-const users = new Map<string, any>();
 
 router.post('/google', async (req: Request, res: Response) => {
   try {
@@ -18,30 +16,30 @@ router.post('/google', async (req: Request, res: Response) => {
     // Verify the token with Google
     const googleUser = await verifyGoogleToken(idToken);
 
-    // Find or create user
-    let user = users.get(googleUser.googleId);
+    // Find or create user in MongoDB
+    let user = await User.findOne({ firebaseUid: googleUser.googleId });
 
     if (!user) {
-      user = {
-        id: googleUser.googleId,
+      user = new User({
+        firebaseUid: googleUser.googleId,
         email: googleUser.email,
-        name: googleUser.name,
-        avatar: googleUser.picture,
+        displayName: googleUser.name,
+        photoURL: googleUser.picture,
         coins: 0,
-        createdAt: new Date(),
-      };
-      users.set(googleUser.googleId, user);
+      });
+      await user.save();
       console.log('Created new user:', user.email);
     } else {
       // Update user info in case it changed
-      user.name = googleUser.name;
-      user.avatar = googleUser.picture;
+      user.displayName = googleUser.name;
+      user.photoURL = googleUser.picture;
+      await user.save();
       console.log('Existing user signed in:', user.email);
     }
 
     // Create JWT session token
     const token = jwt.sign(
-      { userId: user.id },
+      { userId: user.firebaseUid },
       process.env.JWT_SECRET!,
       { expiresIn: '7d' }
     );
@@ -49,10 +47,10 @@ router.post('/google', async (req: Request, res: Response) => {
     res.json({
       token,
       user: {
-        id: user.id,
+        id: user.firebaseUid,
         email: user.email,
-        name: user.name,
-        avatar: user.avatar,
+        name: user.displayName,
+        avatar: user.photoURL,
         coins: user.coins,
       },
     });

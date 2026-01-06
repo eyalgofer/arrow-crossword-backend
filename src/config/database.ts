@@ -2,7 +2,8 @@ import mongoose from 'mongoose';
 
 export const connectDatabase = async (): Promise<void> => {
   try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/arrow-crossword';
+    // const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/arrow-crossword';
+    const mongoUri = 'mongodb://localhost:27017/arrow-crossword';
     
     await mongoose.connect(mongoUri);
     

@@ -3,6 +3,9 @@ import jwt from 'jsonwebtoken';
 
 export interface AuthRequest extends Request {
   userId?: string;
+  user?: {
+    uid: string;
+  };
 }
 
 export function authenticateToken(
@@ -20,6 +23,7 @@ export function authenticateToken(
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
     req.userId = payload.userId;
+    req.user = { uid: payload.userId };
     next();
   } catch (error) {
     return res.status(401).json({ error: 'Invalid token' });
