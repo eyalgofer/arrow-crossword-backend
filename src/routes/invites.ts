@@ -27,6 +27,6 @@ router.post('/:id/accept', authenticateToken, acceptInvite);
 router.post('/:id/decline', authenticateToken, declineInvite);
 
 // Cancel a sent invite
-router.delete('/:id', authenticateToken, cancelInvite);
+router.post('/:id/cancel', authenticateToken, cancelInvite);
 
 export default router;

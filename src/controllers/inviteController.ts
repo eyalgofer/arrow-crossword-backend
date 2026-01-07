@@ -213,7 +213,7 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
 
 export const declineInvite = async (req: AuthRequest, res: Response) => {
   try {
-    const { id } = req.params;
+    const { inviteId } = req.body;
 
     // Get the current user
     const currentUser = await User.findOne({ firebaseUid: req.user!.uid });
@@ -223,7 +223,7 @@ export const declineInvite = async (req: AuthRequest, res: Response) => {
 
     // Find the invite and verify ownership
     const invite = await Invite.findOne({
-      _id: id,
+      _id: inviteId,
       to: currentUser._id,
       status: InviteStatus.PENDING
     });
