@@ -726,6 +726,98 @@ function validatePuzzle(puzzle: typeof samplePuzzles[0]): ValidationError[] {
     }
   }
   
+  // Fourth pass: check for invalid word combinations
+  // Build a 2D grid with all letters placed
+  const grid: (string | null)[][] = Array(rows).fill(null).map(() => Array(cols).fill(null));
+  
+  // Mark clue cells as special markers (we'll ignore them)
+  for (const clue of puzzle.clues) {
+    grid[clue.startRow][clue.startCol] = 'CLUE';
+  }
+  
+  // Place all answer letters in the grid
+  for (const clue of puzzle.clues) {
+    const answerCellPositions = getAnswerCells(clue);
+    for (const cell of answerCellPositions) {
+      if (grid[cell.row][cell.col] === null || grid[cell.row][cell.col] === 'CLUE') {
+        grid[cell.row][cell.col] = cell.letter;
+      }
+    }
+  }
+  
+  // Get all valid answer words (for comparison)
+  const validWords = new Set(puzzle.clues.map(c => c.answer));
+  
+  // Check all horizontal sequences (rows)
+  for (let row = 0; row < rows; row++) {
+    let sequence = '';
+    let startCol = -1;
+    
+    for (let col = 0; col <= cols; col++) {
+      const cell = col < cols ? grid[row][col] : null;
+      
+      if (cell && cell !== 'CLUE' && typeof cell === 'string') {
+        // Letter cell - add to sequence
+        if (sequence === '') {
+          startCol = col;
+        }
+        sequence += cell;
+      } else {
+        // Empty or clue cell - check if we have a sequence to validate
+        if (sequence.length > 1) {
+          // Check if this sequence matches any valid answer word
+          if (!validWords.has(sequence)) {
+            errors.push({
+              puzzleTitle: puzzle.title,
+              clueNumber: 0,
+              clue: 'Invalid word combination',
+              answer: sequence,
+              direction: 'across',
+              error: `INVALID WORD: "${sequence}" found horizontally at row ${row}, cols ${startCol}-${startCol + sequence.length - 1}. This sequence is not a valid answer word.`
+            });
+          }
+        }
+        sequence = '';
+        startCol = -1;
+      }
+    }
+  }
+  
+  // Check all vertical sequences (columns)
+  for (let col = 0; col < cols; col++) {
+    let sequence = '';
+    let startRow = -1;
+    
+    for (let row = 0; row <= rows; row++) {
+      const cell = row < rows ? grid[row][col] : null;
+      
+      if (cell && cell !== 'CLUE' && typeof cell === 'string') {
+        // Letter cell - add to sequence
+        if (sequence === '') {
+          startRow = row;
+        }
+        sequence += cell;
+      } else {
+        // Empty or clue cell - check if we have a sequence to validate
+        if (sequence.length > 1) {
+          // Check if this sequence matches any valid answer word
+          if (!validWords.has(sequence)) {
+            errors.push({
+              puzzleTitle: puzzle.title,
+              clueNumber: 0,
+              clue: 'Invalid word combination',
+              answer: sequence,
+              direction: 'down',
+              error: `INVALID WORD: "${sequence}" found vertically at col ${col}, rows ${startRow}-${startRow + sequence.length - 1}. This sequence is not a valid answer word.`
+            });
+          }
+        }
+        sequence = '';
+        startRow = -1;
+      }
+    }
+  }
+  
   return errors;
 }
 
