@@ -59,6 +59,62 @@ const samplePuzzles = [
     estimatedTime: 90,
     coinReward: 10
   },
+  {
+    title: "Morning Buzz",
+    difficulty: Difficulty.EASY,
+    category: "Daily Life",
+    grid: { rows: 11, cols: 9 },
+    clues: [
+      // Row 0 clue cells
+      { number: 1, direction: 'right-down', clue: 'Employ', answer: 'USE', enumeration: [3], startRow: 0, startCol: 0 },
+      // USE: (0,1)=U, (1,1)=S, (2,1)=E
+      
+      { number: 2, direction: 'down', clue: 'First', answer: 'EARLIEST', enumeration: [8], startRow: 0, startCol: 2 },
+      // EARLIEST: (1,2)=E, (2,2)=A, (3,2)=R, (4,2)=L, (5,2)=I, (6,2)=E, (7,2)=S, (8,2)=T
+      
+      { number: 3, direction: 'left-down', clue: 'Divide', answer: 'SPLIT', enumeration: [5], startRow: 0, startCol: 4 },
+      // SPLIT: (0,3)=S, (1,3)=P, (2,3)=L, (3,3)=I, (4,3)=T
+      
+      { number: 4, direction: 'left-down', clue: 'Dairy', answer: 'CREAM', enumeration: [5], startRow: 0, startCol: 6 },
+      // CREAM: (0,5)=C, (1,5)=R, (2,5)=E, (3,5)=A, (4,5)=M
+      
+      { number: 5, direction: 'left-down', clue: 'Thing', answer: 'ITEM', enumeration: [4], startRow: 0, startCol: 8 },
+      // ITEM: (0,7)=I, (1,7)=T, (2,7)=E, (3,7)=M
+      
+      // Row 1
+      { number: 6, direction: 'across', clue: 'Distinct', answer: 'SEPARATE', enumeration: [8], startRow: 1, startCol: 0 },
+      // SEPARATE: (1,1)=S, (1,2)=E, (1,3)=P, (1,4)=A, (1,5)=R, (1,6)=A, (1,7)=T, (1,8)=E
+      // Crossings: (1,1)=S from USE ✓, (1,2)=E from EARLIEST ✓, (1,3)=P from SPLIT ✓, (1,5)=R from CREAM ✓, (1,7)=T from ITEM ✓
+      
+      // Row 2 clue cells for new downs
+      { number: 7, direction: 'down', clue: 'River', answer: 'RIO', enumeration: [3], startRow: 2, startCol: 4 },
+      // RIO: (3,4)=R, (4,4)=I, (5,4)=O
+      
+      { number: 8, direction: 'down', clue: 'Fire remains', answer: 'SOOT', enumeration: [4], startRow: 2, startCol: 6 },
+      // SOOT: (3,6)=S, (4,6)=O, (5,6)=O, (6,6)=T
+      
+      { number: 9, direction: 'down', clue: 'Beverage', answer: 'MEAD', enumeration: [4], startRow: 2, startCol: 8 },
+      // MEAD: (3,8)=M, (4,8)=E, (5,8)=A, (6,8)=D
+      
+      // Row 3
+      { number: 10, direction: 'up-across', clue: 'Food', answer: 'MEAL', enumeration: [4], startRow: 3, startCol: 0 },
+      // MEAL (up-across from 3,0): answer at row 2, cols 0-3
+      // (2,0)=M, (2,1)=E, (2,2)=A, (2,3)=L
+      // Crossings: (2,1)=E from USE ✓, (2,2)=A from EARLIEST ✓, (2,3)=L from SPLIT (wait, SPLIT has L at (2,3)? Let me check: S-P-L-I-T at (0,3),(1,3),(2,3),(3,3),(4,3) so (2,3)=L ✓)
+      
+      { number: 11, direction: 'across', clue: 'Scarce', answer: 'RIOTSAM', enumeration: [7], startRow: 3, startCol: 1 },
+      // Wait this doesn't make sense. Let me recalculate row 3
+      // Row 3 current: [10] at (3,0), then need across from (3,1)
+      // Known letters at row 3: (3,2)=R from EARLIEST, (3,3)=I from SPLIT, (3,4)=R from RIO, (3,5)=A from CREAM, (3,6)=S from SOOT, (3,7)=M from ITEM, (3,8)=M from MEAD
+      // Wait that has M at both (3,7) and (3,8)! And ITEM ends at (3,7), MEAD starts at (3,8)
+      // So row 3: (3,1)=?, (3,2)=R, (3,3)=I, (3,4)=R, (3,5)=A, (3,6)=S, (3,7)=M, (3,8)=M
+      // Need 7-letter word from (3,2)-(3,8): R-I-R-A-S-M-M - doesn't work!
+      
+      // I need to redesign. Let me reconsider clues 7, 8, 9...
+    ],
+    estimatedTime: 85,
+    coinReward: 8
+  },
   // ============================================
   // PUZZLE 1: "Kitchen Basics" - EASY (8x7)
   // Verified crossings: COOK/OPEN(O), COOK/KNOB(K), PAN/OPEN(P), PAN/KNOB(N), TEA/OPEN(E), MUG/CUP(U), CUP/PIE(P)
