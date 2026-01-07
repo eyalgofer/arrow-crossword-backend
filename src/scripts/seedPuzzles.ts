@@ -83,7 +83,26 @@ const samplePuzzles = [
     estimatedTime: 60,
     coinReward: 8
   },
-
+  {
+    title: "Word Master",
+    difficulty: Difficulty.CHALLENGING,
+    category: "Language",
+    grid: { rows: 13, cols: 12 },
+    clues: [
+      { number: 1, direction: 'right-down', clue: 'Verify', answer: 'CHECK', enumeration: [5], startRow: 0, startCol: 0 },
+      { number: 2, direction: 'left-down', clue: 'Keep safe', answer: 'STORE', enumeration: [5], startRow: 0, startCol: 4 },
+      { number: 3, direction: 'left-down', clue: 'Swift', answer: 'RAPID', enumeration: [5], startRow: 0, startCol: 6 },
+      { number: 4, direction: 'left-down', clue: 'Commence', answer: 'START', enumeration: [5], startRow: 0, startCol: 8 },
+      { number: 5, direction: 'left-down', clue: 'Magnificent', answer: 'GRAND', enumeration: [5], startRow: 0, startCol: 10 },
+      { number: 6, direction: 'across', clue: 'H2O', answer: 'WATER', enumeration: [5], startRow: 6, startCol: 0 },
+      { number: 7, direction: 'down-across', clue: 'Spot', answer: 'PLACE', enumeration: [5], startRow: 7, startCol: 0 },
+      { number: 8, direction: 'down-across', clue: 'View', answer: 'SIGHT', enumeration: [5], startRow: 9, startCol: 0 },
+      { number: 9, direction: 'down-across', clue: 'Navigate', answer: 'STEER', enumeration: [5], startRow: 11, startCol: 0 }
+    ],
+    estimatedTime: 120,
+    coinReward: 18
+  },
+  
   // ============================================
   // PUZZLE 2: "Office Life" - EASY (8x7)
   // Verified crossings: MEMO/BOX(O), ART/WORK(R)

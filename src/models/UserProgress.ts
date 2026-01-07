@@ -13,7 +13,7 @@ export interface IUserProgress extends Document {
   completedAt?: Date;
   lastPlayedAt: Date;
 }
-
+// TODO: this is currently being handled in the client will pass it here soon
 const userProgressSchema = new Schema<IUserProgress>({
   userId: {
     type: Schema.Types.ObjectId,
