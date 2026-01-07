@@ -8,7 +8,8 @@ export const getPuzzles = async (req: AuthRequest, res: Response) => {
   try {
     const { difficulty, category, limit = 30 } = req.query;
 
-    const query: any = { isActive: true };
+    // Query for puzzles where isActive is not false (handles true, undefined, and null)
+    const query: any = { isActive: { $ne: false } };
     if (difficulty) query.difficulty = difficulty;
     if (category) query.category = category;
 
@@ -20,6 +21,30 @@ export const getPuzzles = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Get puzzles error:', error);
     res.status(500).json({ error: 'Failed to get puzzles' });
+  }
+};
+
+export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
+  try {
+    // For now, return the same puzzle every day
+    // Later this will be changed to return different puzzles per day
+    const puzzle = await Puzzle.findOne({ isActive: { $ne: false } })
+      .select('-clues.across.answer -clues.down.answer')
+      .sort({ createdAt: 1 });
+
+    if (!puzzle) {
+      return res.status(404).json({ error: 'No daily puzzle available' });
+    }
+
+    const puzzleData = {
+      ...puzzle.toObject(),
+      clues: puzzle.clues,
+    };
+
+    res.json({ puzzle: puzzleData });
+  } catch (error) {
+    console.error('Get daily puzzle error:', error);
+    res.status(500).json({ error: 'Failed to get daily puzzle' });
   }
 };
 
