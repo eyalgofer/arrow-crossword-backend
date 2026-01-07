@@ -22,6 +22,7 @@ dotenv.config();
  */
 
 const samplePuzzles = [
+  // working examples
   {
     title: "Good Example",
     difficulty: Difficulty.EASY,
@@ -59,10 +60,26 @@ const samplePuzzles = [
     estimatedTime: 90,
     coinReward: 10
   },
-  // ============================================
-  // PUZZLE 1: "Kitchen Basics" - EASY (8x7)
-  // Verified crossings: COOK/OPEN(O), COOK/KNOB(K), PAN/OPEN(P), PAN/KNOB(N), TEA/OPEN(E), MUG/CUP(U), CUP/PIE(P)
-  // ============================================
+  {
+    title: "Word Master",
+    difficulty: Difficulty.CHALLENGING,
+    category: "Language",
+    grid: { rows: 13, cols: 12 },
+    clues: [
+      { number: 1, direction: 'right-down', clue: 'Verify', answer: 'CHECK', enumeration: [5], startRow: 0, startCol: 0 },
+      { number: 2, direction: 'left-down', clue: 'Keep safe', answer: 'STORE', enumeration: [5], startRow: 0, startCol: 4 },
+      { number: 3, direction: 'left-down', clue: 'Swift', answer: 'RAPID', enumeration: [5], startRow: 0, startCol: 6 },
+      { number: 4, direction: 'left-down', clue: 'Commence', answer: 'START', enumeration: [5], startRow: 0, startCol: 8 },
+      { number: 5, direction: 'left-down', clue: 'Magnificent', answer: 'GRAND', enumeration: [5], startRow: 0, startCol: 10 },
+      { number: 6, direction: 'across', clue: 'H2O', answer: 'WATER', enumeration: [5], startRow: 6, startCol: 0 },
+      { number: 7, direction: 'down-across', clue: 'Spot', answer: 'PLACE', enumeration: [5], startRow: 7, startCol: 0 },
+      { number: 8, direction: 'down-across', clue: 'View', answer: 'SIGHT', enumeration: [5], startRow: 9, startCol: 0 },
+      { number: 9, direction: 'down-across', clue: 'Navigate', answer: 'STEER', enumeration: [5], startRow: 11, startCol: 0 }
+    ],
+    estimatedTime: 120,
+    coinReward: 18
+  },
+  // not working examples
   {
     title: "Kitchen Basics",
     difficulty: Difficulty.EASY,
@@ -84,30 +101,6 @@ const samplePuzzles = [
     coinReward: 8
   },
   {
-    title: "Word Master",
-    difficulty: Difficulty.CHALLENGING,
-    category: "Language",
-    grid: { rows: 13, cols: 12 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Verify', answer: 'CHECK', enumeration: [5], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'left-down', clue: 'Keep safe', answer: 'STORE', enumeration: [5], startRow: 0, startCol: 4 },
-      { number: 3, direction: 'left-down', clue: 'Swift', answer: 'RAPID', enumeration: [5], startRow: 0, startCol: 6 },
-      { number: 4, direction: 'left-down', clue: 'Commence', answer: 'START', enumeration: [5], startRow: 0, startCol: 8 },
-      { number: 5, direction: 'left-down', clue: 'Magnificent', answer: 'GRAND', enumeration: [5], startRow: 0, startCol: 10 },
-      { number: 6, direction: 'across', clue: 'H2O', answer: 'WATER', enumeration: [5], startRow: 6, startCol: 0 },
-      { number: 7, direction: 'down-across', clue: 'Spot', answer: 'PLACE', enumeration: [5], startRow: 7, startCol: 0 },
-      { number: 8, direction: 'down-across', clue: 'View', answer: 'SIGHT', enumeration: [5], startRow: 9, startCol: 0 },
-      { number: 9, direction: 'down-across', clue: 'Navigate', answer: 'STEER', enumeration: [5], startRow: 11, startCol: 0 }
-    ],
-    estimatedTime: 120,
-    coinReward: 18
-  },
-  
-  // ============================================
-  // PUZZLE 2: "Office Life" - EASY (8x7)
-  // Verified crossings: MEMO/BOX(O), ART/WORK(R)
-  // ============================================
-  {
     title: "Office Life",
     difficulty: Difficulty.EASY,
     category: "Work",
@@ -126,12 +119,6 @@ const samplePuzzles = [
     estimatedTime: 55,
     coinReward: 8
   },
-
-  // ============================================
-  // PUZZLE 3: "Pet Corner" - EASY (7x7)
-  // Layout: C1(0,0)→CAT↓@col1, C2(0,2)→DOG↓@col2, C3(0,4)→PET↓@col3, C4(0,6)→FUR↓@col5
-  // No across crossings - simple independent layout
-  // ============================================
   {
     title: "Pet Corner",
     difficulty: Difficulty.EASY,
@@ -149,12 +136,6 @@ const samplePuzzles = [
     estimatedTime: 50,
     coinReward: 8
   },
-
-  // ============================================
-  // PUZZLE 4: "Music Notes" - MEDIUM (8x7)
-  // Down words: TUNE@col1, SONG@col2(from row1), BEAT@col3, TAP@col5
-  // Across words placed below down words to avoid conflicts
-  // ============================================
   {
     title: "Music Notes",
     difficulty: Difficulty.MEDIUM,
@@ -172,12 +153,6 @@ const samplePuzzles = [
     estimatedTime: 75,
     coinReward: 12
   },
-
-  // ============================================
-  // PUZZLE 5: "Travel Bug" - MEDIUM (8x7)
-  // Down words: TRIP@col1, BAGS@col2(row1-4), PACK@col3, MAP@col5
-  // Across words placed in rows 5-7 to avoid conflicts
-  // ============================================
   {
     title: "Travel Bug",
     difficulty: Difficulty.MEDIUM,
@@ -195,12 +170,6 @@ const samplePuzzles = [
     estimatedTime: 80,
     coinReward: 12
   },
-
-  // ============================================
-  // PUZZLE 6: "Tech Talk" - MEDIUM (8x7)
-  // Down words: CODE@col1(r0-3), WEB@col2(r1-3), APP@col3(r0-2), BUG@col5(r0-2)
-  // Across words placed in rows 5-7 to avoid conflicts
-  // ============================================
   {
     title: "Tech Talk",
     difficulty: Difficulty.MEDIUM,
@@ -218,12 +187,6 @@ const samplePuzzles = [
     estimatedTime: 85,
     coinReward: 12
   },
-
-  // ============================================
-  // PUZZLE 7: "Garden Path" - MEDIUM (8x7)
-  // Down words: SEED@col1(r0-3), LEAF@col2(r1-4), ROSE@col3(r0-3), POT@col5(r0-2)
-  // Across words placed in rows 5-7 to avoid conflicts
-  // ============================================
   {
     title: "Garden Path",
     difficulty: Difficulty.MEDIUM,
@@ -241,12 +204,6 @@ const samplePuzzles = [
     estimatedTime: 70,
     coinReward: 12
   },
-
-  // ============================================
-  // PUZZLE 8: "Sports Arena" - HARD (8x7)
-  // Down words: GOAL@col1(r0-3), TEAM@col2(r1-4), BALL@col3(r0-3), WIN@col5(r0-2)
-  // Across words placed in rows 5-7 to avoid conflicts
-  // ============================================
   {
     title: "Sports Arena",
     difficulty: Difficulty.HARD,
@@ -264,12 +221,6 @@ const samplePuzzles = [
     estimatedTime: 100,
     coinReward: 15
   },
-
-  // ============================================
-  // PUZZLE 9: "Movie Night" - HARD (8x7)
-  // Down words: FILM@col1(r0-3), STAR@col2(r1-4), PLOT@col3(r0-3), ROLE@col5(r0-3)
-  // Across words placed in rows 5-7 to avoid conflicts
-  // ============================================
   {
     title: "Movie Night",
     difficulty: Difficulty.HARD,
@@ -287,12 +238,6 @@ const samplePuzzles = [
     estimatedTime: 110,
     coinReward: 15
   },
-
-  // ============================================
-  // PUZZLE 10: "Weather Watch" - HARD (8x7)
-  // Down words: RAIN@col1(r0-3), WIND@col2(r1-4), COLD@col3(r0-3), SNOW@col5(r0-3)
-  // Across words placed in rows 5-7 to avoid conflicts
-  // ============================================
   {
     title: "Weather Watch",
     difficulty: Difficulty.HARD,
@@ -310,12 +255,6 @@ const samplePuzzles = [
     estimatedTime: 95,
     coinReward: 15
   },
-
-  // ============================================
-  // PUZZLE 11: "Culinary Arts" - HARD (8x7)
-  // Down words: BAKE@col1(r0-3), CHEF@col2(r1-4), STIR@col3(r0-3), CHOP@col5(r0-3)
-  // Across words placed in rows 5-7 to avoid conflicts
-  // ============================================
   {
     title: "Culinary Arts",
     difficulty: Difficulty.HARD,
@@ -333,12 +272,6 @@ const samplePuzzles = [
     estimatedTime: 105,
     coinReward: 15
   },
-
-  // ============================================
-  // PUZZLE 12: "Space Explorer" - CHALLENGING (8x7)
-  // Down words: STAR@col1(r0-3), MOON@col2(r1-4), SUN@col3(r0-2), MARS@col5(r0-3)
-  // Across words placed in rows 5-7 to avoid conflicts
-  // ============================================
   {
     title: "Space Explorer",
     difficulty: Difficulty.CHALLENGING,
@@ -356,12 +289,6 @@ const samplePuzzles = [
     estimatedTime: 120,
     coinReward: 18
   },
-
-  // ============================================
-  // PUZZLE 13: "Literary Corner" - CHALLENGING (8x7)
-  // Down words: BOOK@col1(r0-3), READ@col2(r1-4), POEM@col3(r0-3), TALE@col5(r0-3)
-  // Across words placed in rows 5-7 to avoid conflicts
-  // ============================================
   {
     title: "Literary Corner",
     difficulty: Difficulty.CHALLENGING,
@@ -379,12 +306,6 @@ const samplePuzzles = [
     estimatedTime: 130,
     coinReward: 18
   },
-
-  // ============================================
-  // PUZZLE 14: "Medical Terms" - CHALLENGING (8x7)
-  // Down words: CURE@col1(r0-3), PILL@col2(r1-4), DOSE@col3(r0-3), ACHE@col5(r0-3)
-  // Across words placed in rows 5-7 to avoid conflicts
-  // ============================================
   {
     title: "Medical Terms",
     difficulty: Difficulty.CHALLENGING,
@@ -402,12 +323,6 @@ const samplePuzzles = [
     estimatedTime: 140,
     coinReward: 18
   },
-
-  // ============================================
-  // PUZZLE 15: "Fashion Forward" - CHALLENGING (8x7)
-  // Down words: COAT@col1(r0-3), SHOE@col2(r1-4), BELT@col3(r0-3), HAT@col5(r0-2)
-  // Across words placed in rows 5-7 to avoid conflicts
-  // ============================================
   {
     title: "Fashion Forward",
     difficulty: Difficulty.CHALLENGING,
@@ -425,12 +340,6 @@ const samplePuzzles = [
     estimatedTime: 125,
     coinReward: 18
   },
-
-  // ============================================
-  // PUZZLE 16: "Ocean Deep" - EXPERT (8x7)
-  // Down words: WAVE@col1(r0-3), FISH@col2(r1-4), TIDE@col3(r0-3), KELP@col5(r0-3)
-  // Across words placed in rows 5-7 to avoid conflicts
-  // ============================================
   {
     title: "Ocean Deep",
     difficulty: Difficulty.EXPERT,
@@ -448,12 +357,6 @@ const samplePuzzles = [
     estimatedTime: 150,
     coinReward: 22
   },
-
-  // ============================================
-  // PUZZLE 17: "Legal Eagles" - EXPERT (8x7)
-  // Down words: LAWS@col1(r0-3), JURY@col2(r1-4), CASE@col3(r0-3), OATH@col5(r0-3)
-  // Across words placed in rows 5-7 to avoid conflicts
-  // ============================================
   {
     title: "Legal Eagles",
     difficulty: Difficulty.EXPERT,
@@ -471,12 +374,6 @@ const samplePuzzles = [
     estimatedTime: 160,
     coinReward: 22
   },
-
-  // ============================================
-  // PUZZLE 18: "Ancient History" - EXPERT (8x7)
-  // Down words: ROME@col1(r0-3), KING@col2(r1-4), AGES@col3(r0-3), WAR@col5(r0-2)
-  // Across words placed in rows 5-7 to avoid conflicts
-  // ============================================
   {
     title: "Ancient History",
     difficulty: Difficulty.EXPERT,
@@ -494,12 +391,6 @@ const samplePuzzles = [
     estimatedTime: 170,
     coinReward: 22
   },
-
-  // ============================================
-  // PUZZLE 19: "Business World" - EXPERT (8x7)
-  // Down words: DEAL@col1(r0-3), SALE@col2(r1-4), CASH@col3(r0-3), BOND@col5(r0-3)
-  // Across words placed in rows 5-7 to avoid conflicts
-  // ============================================
   {
     title: "Business World",
     difficulty: Difficulty.EXPERT,
@@ -517,12 +408,6 @@ const samplePuzzles = [
     estimatedTime: 165,
     coinReward: 22
   },
-
-  // ============================================
-  // PUZZLE 20: "Architecture" - EXPERT (8x7)
-  // Down words: WALL@col1(r0-3), ROOF@col2(r1-4), DOOR@col3(r0-3), TILE@col5(r0-3)
-  // Across words placed in rows 5-7 to avoid conflicts
-  // ============================================
   {
     title: "Architecture",
     difficulty: Difficulty.EXPERT,
