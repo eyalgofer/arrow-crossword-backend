@@ -190,6 +190,7 @@ export const setupSocketHandlers = (io: Server) => {
             players: match.players.map(p => ({
               userId: p.userId.toString(),
               displayName: p.displayName,
+              photoURL: p.photoURL,
               progress: p.progress
             })),
             puzzleId: match.puzzleId.toString(),

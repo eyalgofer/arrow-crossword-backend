@@ -5,6 +5,7 @@ export interface IMatch extends Document {
   players: {
     userId: mongoose.Types.ObjectId;
     displayName: string;
+    photoURL: string;
     progress: number;
     completedAt?: Date;
   }[];
@@ -29,6 +30,7 @@ const matchSchema = new Schema<IMatch>({
   players: [{
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     displayName: { type: String, required: true },
+    photoURL: { type: String, required: true },
     progress: { type: Number, default: 0 },
     completedAt: { type: Date }
   }],
