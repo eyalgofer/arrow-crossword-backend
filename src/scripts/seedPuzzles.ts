@@ -79,352 +79,43 @@ const samplePuzzles = [
     estimatedTime: 120,
     coinReward: 18
   },
-  // not working examples
   {
-    title: "Kitchen Basics",
-    difficulty: Difficulty.EASY,
-    category: "Daily Life",
-    grid: { rows: 8, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Prepare food', answer: 'COOK', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Kitchen vessel', answer: 'PAN', enumeration: [3], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Hot beverage', answer: 'TEA', enumeration: [3], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Cook in oil', answer: 'FRY', enumeration: [3], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Not closed', answer: 'OPEN', enumeration: [4], startRow: 1, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Door handle', answer: 'KNOB', enumeration: [4], startRow: 3, startCol: 0 },
-      { number: 7, direction: 'across', clue: 'Chicken product', answer: 'EGG', enumeration: [3], startRow: 4, startCol: 3 },
-      { number: 8, direction: 'down-across', clue: 'Drinking cup', answer: 'MUG', enumeration: [3], startRow: 5, startCol: 0 },
-      { number: 9, direction: 'down', clue: 'Drink holder', answer: 'CUP', enumeration: [3], startRow: 4, startCol: 1 },
-      { number: 10, direction: 'across', clue: 'Dessert pastry', answer: 'PIE', enumeration: [3], startRow: 7, startCol: 0 }
-    ],
-    estimatedTime: 60,
-    coinReward: 8
-  },
-  {
-    title: "Office Life",
-    difficulty: Difficulty.EASY,
-    category: "Work",
-    grid: { rows: 8, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Work', answer: 'JOB', enumeration: [3], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Quick note', answer: 'MEMO', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Document', answer: 'FILE', enumeration: [4], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Employment', answer: 'WORK', enumeration: [4], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Container', answer: 'BOX', enumeration: [3], startRow: 4, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Work surface', answer: 'DESK', enumeration: [4], startRow: 6, startCol: 0 },
-      { number: 7, direction: 'across', clue: 'Writing tool', answer: 'PEN', enumeration: [3], startRow: 5, startCol: 2 },
-      { number: 8, direction: 'across', clue: 'Utilize', answer: 'USE', enumeration: [3], startRow: 7, startCol: 0 },
-      { number: 9, direction: 'up-across', clue: 'Skill', answer: 'ART', enumeration: [3], startRow: 3, startCol: 4 }
-    ],
-    estimatedTime: 55,
-    coinReward: 8
-  },
-  {
-    title: "Pet Corner",
-    difficulty: Difficulty.EASY,
-    category: "Animals",
-    grid: { rows: 7, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Feline', answer: 'CAT', enumeration: [3], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Canine', answer: 'DOG', enumeration: [3], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Companion', answer: 'PET', enumeration: [3], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Animal coat', answer: 'FUR', enumeration: [3], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Dog sound', answer: 'BARK', enumeration: [4], startRow: 4, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Animal foot', answer: 'PAW', enumeration: [3], startRow: 5, startCol: 0 },
-      { number: 7, direction: 'across', clue: 'Fetch toy', answer: 'BALL', enumeration: [4], startRow: 6, startCol: 2 }
-    ],
-    estimatedTime: 50,
-    coinReward: 8
-  },
-  {
-    title: "Music Notes",
-    difficulty: Difficulty.MEDIUM,
-    category: "Entertainment",
-    grid: { rows: 8, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Melody', answer: 'TUNE', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Music words', answer: 'SONG', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Rhythm', answer: 'BEAT', enumeration: [4], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Drum sound', answer: 'TAP', enumeration: [3], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Music group', answer: 'BAND', enumeration: [4], startRow: 5, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Music lover', answer: 'FAN', enumeration: [3], startRow: 6, startCol: 0 },
-      { number: 7, direction: 'across', clue: 'String instrument', answer: 'HARP', enumeration: [4], startRow: 7, startCol: 2 }
-    ],
-    estimatedTime: 75,
-    coinReward: 12
-  },
-  {
-    title: "Travel Bug",
-    difficulty: Difficulty.MEDIUM,
-    category: "Travel",
-    grid: { rows: 8, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Journey', answer: 'TRIP', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Luggage', answer: 'BAGS', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Bundle', answer: 'PACK', enumeration: [4], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'City plan', answer: 'MAP', enumeration: [3], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Border check', answer: 'VISA', enumeration: [4], startRow: 5, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Souvenir', answer: 'GIFT', enumeration: [4], startRow: 6, startCol: 0 },
-      { number: 7, direction: 'across', clue: 'Train station', answer: 'DEPOT', enumeration: [5], startRow: 7, startCol: 1 }
-    ],
-    estimatedTime: 80,
-    coinReward: 12
-  },
-  {
-    title: "Tech Talk",
-    difficulty: Difficulty.MEDIUM,
-    category: "Technology",
-    grid: { rows: 8, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Program', answer: 'CODE', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Internet', answer: 'WEB', enumeration: [3], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Software', answer: 'APP', enumeration: [3], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Error', answer: 'BUG', enumeration: [3], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Input device', answer: 'MOUSE', enumeration: [5], startRow: 5, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Information', answer: 'DATA', enumeration: [4], startRow: 6, startCol: 0 },
-      { number: 7, direction: 'across', clue: 'Download', answer: 'GET', enumeration: [3], startRow: 7, startCol: 0 }
-    ],
-    estimatedTime: 85,
-    coinReward: 12
-  },
-  {
-    title: "Garden Path",
-    difficulty: Difficulty.MEDIUM,
-    category: "Nature",
-    grid: { rows: 8, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Plant starter', answer: 'SEED', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Tree part', answer: 'LEAF', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Flower', answer: 'ROSE', enumeration: [4], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Plant holder', answer: 'POT', enumeration: [3], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Garden earth', answer: 'SOIL', enumeration: [4], startRow: 5, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Dig tool', answer: 'SPADE', enumeration: [5], startRow: 6, startCol: 1 },
-      { number: 7, direction: 'across', clue: 'Grass area', answer: 'LAWN', enumeration: [4], startRow: 7, startCol: 0 }
-    ],
-    estimatedTime: 70,
-    coinReward: 12
-  },
-  {
-    title: "Sports Arena",
-    difficulty: Difficulty.HARD,
-    category: "Sports",
-    grid: { rows: 8, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Score point', answer: 'GOAL', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Group', answer: 'TEAM', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Throw toy', answer: 'BALL', enumeration: [4], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Victory', answer: 'WIN', enumeration: [3], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Game points', answer: 'SCORE', enumeration: [5], startRow: 5, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Pool sport', answer: 'SWIM', enumeration: [4], startRow: 6, startCol: 0 },
-      { number: 7, direction: 'across', clue: 'Run fast', answer: 'RACE', enumeration: [4], startRow: 7, startCol: 2 }
-    ],
-    estimatedTime: 100,
-    coinReward: 15
-  },
-  {
-    title: "Movie Night",
-    difficulty: Difficulty.HARD,
-    category: "Entertainment",
-    grid: { rows: 8, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Cinema', answer: 'FILM', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Celebrity', answer: 'STAR', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Story', answer: 'PLOT', enumeration: [4], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Part', answer: 'ROLE', enumeration: [4], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Film roll', answer: 'REEL', enumeration: [4], startRow: 5, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Film part', answer: 'SCENE', enumeration: [5], startRow: 6, startCol: 1 },
-      { number: 7, direction: 'across', clue: 'Award', answer: 'OSCAR', enumeration: [5], startRow: 7, startCol: 0 }
-    ],
-    estimatedTime: 110,
-    coinReward: 15
-  },
-  {
-    title: "Weather Watch",
-    difficulty: Difficulty.HARD,
-    category: "Nature",
-    grid: { rows: 8, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Downpour', answer: 'RAIN', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Air current', answer: 'WIND', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Chilly', answer: 'COLD', enumeration: [4], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Ice', answer: 'SNOW', enumeration: [4], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Mist', answer: 'FOG', enumeration: [3], startRow: 5, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Warmth', answer: 'HEAT', enumeration: [4], startRow: 6, startCol: 2 },
-      { number: 7, direction: 'across', clue: 'Sunshine', answer: 'SUNNY', enumeration: [5], startRow: 7, startCol: 0 }
-    ],
-    estimatedTime: 95,
-    coinReward: 15
-  },
-  {
-    title: "Culinary Arts",
-    difficulty: Difficulty.HARD,
-    category: "Food",
-    grid: { rows: 8, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Cook in oven', answer: 'BAKE', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Kitchen boss', answer: 'CHEF', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Mix pot', answer: 'STIR', enumeration: [4], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Food prep', answer: 'CHOP', enumeration: [4], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Flavor base', answer: 'SAUCE', enumeration: [5], startRow: 5, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Dessert', answer: 'CAKE', enumeration: [4], startRow: 6, startCol: 0 },
-      { number: 7, direction: 'across', clue: 'Meat juice', answer: 'GRAVY', enumeration: [5], startRow: 7, startCol: 1 }
-    ],
-    estimatedTime: 105,
-    coinReward: 15
-  },
-  {
-    title: "Space Explorer",
+    title: "Lexical Arrows Fixed",
     difficulty: Difficulty.CHALLENGING,
-    category: "Science",
-    grid: { rows: 8, cols: 7 },
+    category: "Language",
+    grid: { rows: 18, cols: 18 },
     clues: [
-      { number: 1, direction: 'right-down', clue: 'Night light', answer: 'STAR', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Earth satellite', answer: 'MOON', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Day light', answer: 'SUN', enumeration: [3], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Red planet', answer: 'MARS', enumeration: [4], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Star path', answer: 'ORBIT', enumeration: [5], startRow: 5, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Space agency', answer: 'NASA', enumeration: [4], startRow: 6, startCol: 0 },
-      { number: 7, direction: 'across', clue: 'Star burst', answer: 'NOVA', enumeration: [4], startRow: 7, startCol: 2 }
+      // ───────────── Top row (diagonal starters) ─────────────
+      { number: 1, direction: 'right-down', clue: 'Make certain', answer: 'ENSURE', enumeration: [6], startRow: 0, startCol: 0 },
+      { number: 2, direction: 'down', clue: 'Opposite of public', answer: 'PRIVATE', enumeration: [7], startRow: 0, startCol: 2 },
+      { number: 3, direction: 'left-down', clue: 'Written records', answer: 'ARCHIVES', enumeration: [8], startRow: 0, startCol: 6 },
+      { number: 4, direction: 'right-down', clue: 'Logical conclusion', answer: 'INFERENCE', enumeration: [9], startRow: 0, startCol: 11 },
+      { number: 5, direction: 'left-down', clue: 'Strong displeasure', answer: 'RESENTMENT', enumeration: [10], startRow: 0, startCol: 16 },
+  
+      // ───────────── Horizontal spine ─────────────
+      { number: 6, direction: 'across', clue: 'Take as true without proof', answer: 'ASSUMETRUE', enumeration: [6,4], startRow: 4, startCol: 0 },
+      { number: 7, direction: 'across', clue: 'Unchanging pattern of behavior', answer: 'HABITFORM', enumeration: [5,4], startRow: 6, startCol: 0 },
+      { number: 8, direction: 'across', clue: 'Capacity for understanding', answer: 'MENTALRANGE', enumeration: [6,5], startRow: 8, startCol: 0 },
+      { number: 9, direction: 'across', clue: 'Person lacking motivation', answer: 'CHRONICSLACKER', enumeration: [7,7], startRow: 10, startCol: 0 },
+  
+      // ───────────── Vertical anchors ─────────────
+      { number: 10, direction: 'down', clue: 'Formally accuse', answer: 'INDICT', enumeration: [6], startRow: 4, startCol: 5 },
+      { number: 11, direction: 'down', clue: 'Make evident', answer: 'REVEAL', enumeration: [6], startRow: 4, startCol: 9 },
+      { number: 12, direction: 'down', clue: 'Fail to notice', answer: 'OVERLOOK', enumeration: [8], startRow: 4, startCol: 14 },
+  
+      // ───────────── Mixed arrow complexity ─────────────
+      { number: 13, direction: 'down-across', clue: 'Brief period of relief', answer: 'RESPITETIME', enumeration: [6,4], startRow: 9, startCol: 2 },
+      { number: 14, direction: 'up-across', clue: 'Excessively detailed', answer: 'PEDANTIC', enumeration: [8], startRow: 14, startCol: 3 },
+      { number: 15, direction: 'right-down', clue: 'Reduce in importance', answer: 'DOWNPLAY', enumeration: [8], startRow: 9, startCol: 11 },
+      { number: 16, direction: 'left-down', clue: 'Clear mental picture', answer: 'VISUALIZE', enumeration: [9], startRow: 9, startCol: 16 },
+  
+      // ───────────── Bottom horizontals ─────────────
+      { number: 17, direction: 'across', clue: 'Express indirectly', answer: 'IMPLYMEANING', enumeration: [5,7], startRow: 15, startCol: 0 },
+      { number: 18, direction: 'across', clue: 'Gradual improvement', answer: 'SLOWUPTURN', enumeration: [4,6], startRow: 17, startCol: 0 }
     ],
-    estimatedTime: 120,
-    coinReward: 18
-  },
-  {
-    title: "Literary Corner",
-    difficulty: Difficulty.CHALLENGING,
-    category: "Culture",
-    grid: { rows: 8, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Novel', answer: 'BOOK', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Peruse', answer: 'READ', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Verse', answer: 'POEM', enumeration: [4], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Story', answer: 'TALE', enumeration: [4], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Story outline', answer: 'PLOT', enumeration: [4], startRow: 5, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Chapter', answer: 'PART', enumeration: [4], startRow: 6, startCol: 0 },
-      { number: 7, direction: 'across', clue: 'Book lover', answer: 'READER', enumeration: [6], startRow: 7, startCol: 0 }
-    ],
-    estimatedTime: 130,
-    coinReward: 18
-  },
-  {
-    title: "Medical Terms",
-    difficulty: Difficulty.CHALLENGING,
-    category: "Science",
-    grid: { rows: 8, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Heal', answer: 'CURE', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Medicine', answer: 'PILL', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Amount', answer: 'DOSE', enumeration: [4], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Hurt', answer: 'ACHE', enumeration: [4], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Care giver', answer: 'NURSE', enumeration: [5], startRow: 5, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Bone image', answer: 'XRAY', enumeration: [4], startRow: 6, startCol: 0 },
-      { number: 7, direction: 'across', clue: 'Relax', answer: 'REST', enumeration: [4], startRow: 7, startCol: 2 }
-    ],
-    estimatedTime: 140,
-    coinReward: 18
-  },
-  {
-    title: "Fashion Forward",
-    difficulty: Difficulty.CHALLENGING,
-    category: "Lifestyle",
-    grid: { rows: 8, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Jacket', answer: 'COAT', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Footwear', answer: 'SHOE', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Waist band', answer: 'BELT', enumeration: [4], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Head cover', answer: 'HAT', enumeration: [3], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Fabric', answer: 'SILK', enumeration: [4], startRow: 5, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Leg wear', answer: 'PANTS', enumeration: [5], startRow: 6, startCol: 1 },
-      { number: 7, direction: 'across', clue: 'Fashion trend', answer: 'STYLE', enumeration: [5], startRow: 7, startCol: 0 }
-    ],
-    estimatedTime: 125,
-    coinReward: 18
-  },
-  {
-    title: "Ocean Deep",
-    difficulty: Difficulty.EXPERT,
-    category: "Nature",
-    grid: { rows: 8, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Ocean motion', answer: 'WAVE', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Sea creature', answer: 'FISH', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Ocean rise', answer: 'TIDE', enumeration: [4], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Sea plant', answer: 'KELP', enumeration: [4], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Coral home', answer: 'REEF', enumeration: [4], startRow: 5, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Beach sand', answer: 'SHORE', enumeration: [5], startRow: 6, startCol: 1 },
-      { number: 7, direction: 'across', clue: 'Sea mammal', answer: 'WHALE', enumeration: [5], startRow: 7, startCol: 0 }
-    ],
-    estimatedTime: 150,
-    coinReward: 22
-  },
-  {
-    title: "Legal Eagles",
-    difficulty: Difficulty.EXPERT,
-    category: "Profession",
-    grid: { rows: 8, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Rules', answer: 'LAWS', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Court panel', answer: 'JURY', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Court matter', answer: 'CASE', enumeration: [4], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Vow', answer: 'OATH', enumeration: [4], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Court case', answer: 'TRIAL', enumeration: [5], startRow: 5, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Legal team', answer: 'FIRM', enumeration: [4], startRow: 6, startCol: 0 },
-      { number: 7, direction: 'across', clue: 'Judge seat', answer: 'BENCH', enumeration: [5], startRow: 7, startCol: 1 }
-    ],
-    estimatedTime: 160,
-    coinReward: 22
-  },
-  {
-    title: "Ancient History",
-    difficulty: Difficulty.EXPERT,
-    category: "History",
-    grid: { rows: 8, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Italian city', answer: 'ROME', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Ruler', answer: 'KING', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Time periods', answer: 'AGES', enumeration: [4], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Conflict', answer: 'WAR', enumeration: [3], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Greek god', answer: 'ZEUS', enumeration: [4], startRow: 5, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Greek myth', answer: 'LEGEND', enumeration: [6], startRow: 6, startCol: 0 },
-      { number: 7, direction: 'across', clue: 'Ancient tomb', answer: 'CRYPT', enumeration: [5], startRow: 7, startCol: 1 }
-    ],
-    estimatedTime: 170,
-    coinReward: 22
-  },
-  {
-    title: "Business World",
-    difficulty: Difficulty.EXPERT,
-    category: "Finance",
-    grid: { rows: 8, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Agreement', answer: 'DEAL', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Transaction', answer: 'SALE', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Money', answer: 'CASH', enumeration: [4], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Stock unit', answer: 'BOND', enumeration: [4], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Income', answer: 'PROFIT', enumeration: [6], startRow: 5, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Company', answer: 'FIRM', enumeration: [4], startRow: 6, startCol: 0 },
-      { number: 7, direction: 'across', clue: 'Increase', answer: 'GROWTH', enumeration: [6], startRow: 7, startCol: 0 }
-    ],
-    estimatedTime: 165,
-    coinReward: 22
-  },
-  {
-    title: "Architecture",
-    difficulty: Difficulty.EXPERT,
-    category: "Art",
-    grid: { rows: 8, cols: 7 },
-    clues: [
-      { number: 1, direction: 'right-down', clue: 'Barrier', answer: 'WALL', enumeration: [4], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Top cover', answer: 'ROOF', enumeration: [4], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Entry', answer: 'DOOR', enumeration: [4], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'left-down', clue: 'Floor', answer: 'TILE', enumeration: [4], startRow: 0, startCol: 6 },
-      { number: 5, direction: 'across', clue: 'Stone', answer: 'BRICK', enumeration: [5], startRow: 5, startCol: 0 },
-      { number: 6, direction: 'across', clue: 'Glass panel', answer: 'PANE', enumeration: [4], startRow: 6, startCol: 0 },
-      { number: 7, direction: 'across', clue: 'Tower top', answer: 'SPIRE', enumeration: [5], startRow: 7, startCol: 1 }
-    ],
-    estimatedTime: 180,
-    coinReward: 25
-  }
+    estimatedTime: 360,
+    coinReward: 45
+  }  
 ];
 
 // to see the puzzles in the cloud MongoDB, use this URI:
@@ -512,26 +203,24 @@ function getAnswerCells(clue: typeof samplePuzzles[0]['clues'][0]): Array<{row: 
 function validatePuzzle(puzzle: typeof samplePuzzles[0]): ValidationError[] {
   const errors: ValidationError[] = [];
   const { rows, cols } = puzzle.grid;
-  
+
   // Build grid to track cell usage
-  // Each cell can be: empty, clue cell, or answer cell(s)
-  const clueCells = new Map<string, {clueNumber: number, clueText: string}>();
-  const answerCells = new Map<string, Array<{clueNumber: number, letter: string}>>();
-  
+  const clueCells = new Map<string, { clueNumber: number; clueText: string }>();
+  const answerCells = new Map<string, Array<{ clueNumber: number; letter: string }>>();
+
   // First pass: mark all clue cells
   for (const clue of puzzle.clues) {
     const key = `${clue.startRow},${clue.startCol}`;
     clueCells.set(key, { clueNumber: clue.number, clueText: clue.clue });
   }
-  
+
   // Second pass: validate each clue's answer placement
   for (const clue of puzzle.clues) {
     const answerLength = clue.answer.length;
     const { startRow, startCol, direction, answer, number: clueNum } = clue;
-    
-    // Check boundary constraints first
+
     let boundaryError = '';
-    
+
     switch (direction) {
       case 'down':
         if (startRow + 1 + answerLength > rows) {
@@ -572,7 +261,7 @@ function validatePuzzle(puzzle: typeof samplePuzzles[0]): ValidationError[] {
         }
         break;
     }
-    
+
     if (boundaryError) {
       errors.push({
         puzzleTitle: puzzle.title,
@@ -582,15 +271,14 @@ function validatePuzzle(puzzle: typeof samplePuzzles[0]): ValidationError[] {
         direction,
         error: boundaryError
       });
-      continue; // Skip overlap check if boundary error
+      continue;
     }
-    
-    // Check for overlaps with clue cells
+
+    // Overlap + crossing tracking
     const answerCellPositions = getAnswerCells(clue);
     for (const cell of answerCellPositions) {
       const key = `${cell.row},${cell.col}`;
-      
-      // Check if this answer cell overlaps with a clue cell
+
       if (clueCells.has(key)) {
         const conflictingClue = clueCells.get(key)!;
         errors.push({
@@ -602,16 +290,15 @@ function validatePuzzle(puzzle: typeof samplePuzzles[0]): ValidationError[] {
           error: `OVERLAP: Letter "${cell.letter}" at (${cell.row},${cell.col}) conflicts with clue cell #${conflictingClue.clueNumber} ("${conflictingClue.clueText}")`
         });
       }
-      
-      // Track answer cells for crossing validation
+
       if (!answerCells.has(key)) {
         answerCells.set(key, []);
       }
       answerCells.get(key)!.push({ clueNumber: clueNum, letter: cell.letter });
     }
   }
-  
-  // Third pass: check for letter mismatches at crossings
+
+  // Third pass: crossing letter mismatches
   for (const [key, cellAnswers] of answerCells) {
     if (cellAnswers.length > 1) {
       const letters = new Set(cellAnswers.map(a => a.letter));
@@ -629,101 +316,64 @@ function validatePuzzle(puzzle: typeof samplePuzzles[0]): ValidationError[] {
       }
     }
   }
-  
-  // Fourth pass: check for invalid word combinations
-  // Build a 2D grid with all letters placed
-  const grid: (string | null)[][] = Array(rows).fill(null).map(() => Array(cols).fill(null));
-  
-  // Mark clue cells as special markers (we'll ignore them)
+
+  // ─────────────────────────────────────────────
+  // Fourth pass (REWRITTEN): validate each clue path
+  // ─────────────────────────────────────────────
+
+  const grid: (string | 'CLUE' | null)[][] =
+    Array(rows).fill(null).map(() => Array(cols).fill(null));
+
   for (const clue of puzzle.clues) {
     grid[clue.startRow][clue.startCol] = 'CLUE';
   }
-  
-  // Place all answer letters in the grid
+
   for (const clue of puzzle.clues) {
-    const answerCellPositions = getAnswerCells(clue);
-    for (const cell of answerCellPositions) {
-      if (grid[cell.row][cell.col] === null || grid[cell.row][cell.col] === 'CLUE') {
-        grid[cell.row][cell.col] = cell.letter;
-      }
+    for (const cell of getAnswerCells(clue)) {
+      grid[cell.row][cell.col] = cell.letter;
     }
   }
-  
-  // Get all valid answer words (for comparison)
-  const validWords = new Set(puzzle.clues.map(c => c.answer));
-  
-  // Check all horizontal sequences (rows)
-  for (let row = 0; row < rows; row++) {
-    let sequence = '';
-    let startCol = -1;
-    
-    for (let col = 0; col <= cols; col++) {
-      const cell = col < cols ? grid[row][col] : null;
-      
-      if (cell && cell !== 'CLUE' && typeof cell === 'string') {
-        // Letter cell - add to sequence
-        if (sequence === '') {
-          startCol = col;
-        }
-        sequence += cell;
-      } else {
-        // Empty or clue cell - check if we have a sequence to validate
-        if (sequence.length > 1) {
-          // Check if this sequence matches any valid answer word
-          if (!validWords.has(sequence)) {
-            errors.push({
-              puzzleTitle: puzzle.title,
-              clueNumber: 0,
-              clue: 'Invalid word combination',
-              answer: sequence,
-              direction: 'across',
-              error: `INVALID WORD: "${sequence}" found horizontally at row ${row}, cols ${startCol}-${startCol + sequence.length - 1}. This sequence is not a valid answer word.`
-            });
-          }
-        }
-        sequence = '';
-        startCol = -1;
+
+  for (const clue of puzzle.clues) {
+    const expected = clue.answer;
+    const cells = getAnswerCells(clue);
+
+    let reconstructed = '';
+
+    for (const cell of cells) {
+      const value = grid[cell.row][cell.col];
+
+      if (!value || value === 'CLUE') {
+        errors.push({
+          puzzleTitle: puzzle.title,
+          clueNumber: clue.number,
+          clue: clue.clue,
+          answer: expected,
+          direction: clue.direction,
+          error: `MISSING LETTER at (${cell.row},${cell.col})`
+        });
+        reconstructed = '';
+        break;
       }
+
+      reconstructed += value;
+    }
+
+    if (reconstructed && reconstructed !== expected) {
+      errors.push({
+        puzzleTitle: puzzle.title,
+        clueNumber: clue.number,
+        clue: clue.clue,
+        answer: expected,
+        direction: clue.direction,
+        error: `ANSWER MISMATCH: expected "${expected}" but found "${reconstructed}"`
+      });
     }
   }
-  
-  // Check all vertical sequences (columns)
-  for (let col = 0; col < cols; col++) {
-    let sequence = '';
-    let startRow = -1;
-    
-    for (let row = 0; row <= rows; row++) {
-      const cell = row < rows ? grid[row][col] : null;
-      
-      if (cell && cell !== 'CLUE' && typeof cell === 'string') {
-        // Letter cell - add to sequence
-        if (sequence === '') {
-          startRow = row;
-        }
-        sequence += cell;
-      } else {
-        // Empty or clue cell - check if we have a sequence to validate
-        if (sequence.length > 1) {
-          // Check if this sequence matches any valid answer word
-          if (!validWords.has(sequence)) {
-            errors.push({
-              puzzleTitle: puzzle.title,
-              clueNumber: 0,
-              clue: 'Invalid word combination',
-              answer: sequence,
-              direction: 'down',
-              error: `INVALID WORD: "${sequence}" found vertically at col ${col}, rows ${startRow}-${startRow + sequence.length - 1}. This sequence is not a valid answer word.`
-            });
-          }
-        }
-        sequence = '';
-        startRow = -1;
-      }
-    }
-  }
-  
+
   return errors;
 }
+
 
 function validateAllPuzzles(): void {
   console.log('\n🔍 Validating all puzzles...\n');
