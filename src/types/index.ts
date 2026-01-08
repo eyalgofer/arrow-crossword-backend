@@ -38,6 +38,7 @@ export enum MatchStatus {
 }
 
 export interface PlayerMove {
+  userId?: any; // Can be ObjectId or string
   row: number;
   col: number;
   letter: string;

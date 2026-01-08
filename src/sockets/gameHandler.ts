@@ -222,6 +222,15 @@ export const setupSocketHandlers = (io: Server) => {
         // Get current game state
         const gameState = activeGames.get(matchId);
 
+        // Get all moves
+        const allMoves = gameState?.moves || match.moves || [];
+        
+        // Filter moves for the current user
+        const userMoves = allMoves.filter(move => {
+          const moveUserId = move.userId?.toString ? move.userId.toString() : move.userId;
+          return moveUserId === user._id.toString();
+        });
+
         // Notify room that player joined
         socket.to(matchId).emit('player_joined', {
           userId: user._id.toString(),
@@ -244,7 +253,8 @@ export const setupSocketHandlers = (io: Server) => {
             photoURL: p.photoURL,
             progress: p.progress
           })),
-          moves: gameState?.moves || match.moves || [],
+          moves: allMoves,
+          userMoves: userMoves,
           startedAt: match.startedAt
         });
 
