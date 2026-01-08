@@ -1,5 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import { User } from '../models/User';
 import { Match } from '../models/Match';
 import { Puzzle } from '../models/Puzzle';
@@ -157,6 +158,12 @@ export const setupSocketHandlers = (io: Server) => {
     // Join a match room (for friend invites)
     socket.on('join_match', async ({ matchId }) => {
       try {
+        // Validate matchId
+        if (!matchId || matchId === 'undefined' || !mongoose.Types.ObjectId.isValid(matchId)) {
+          socket.emit('error', { message: 'Invalid match ID' });
+          return;
+        }
+
         const match = await Match.findById(matchId);
         if (!match) {
           socket.emit('error', { message: 'Match not found' });
@@ -200,13 +207,46 @@ export const setupSocketHandlers = (io: Server) => {
           activeGames.set(matchId, gameState);
         }
 
+        // Get the puzzle for the match
+        const puzzle = await Puzzle.findById(match.puzzleId);
+        if (!puzzle) {
+          socket.emit('error', { message: 'Puzzle not found' });
+          return;
+        }
+
+        // Get opponent info
+        const opponent = match.players.find(
+          p => p.userId.toString() !== user._id.toString()
+        );
+
+        // Get current game state
+        const gameState = activeGames.get(matchId);
+
         // Notify room that player joined
         socket.to(matchId).emit('player_joined', {
           userId: user._id.toString(),
           displayName: user.displayName
         });
 
-        socket.emit('joined_match', { matchId });
+        // Send full game state to the rejoining player
+        socket.emit('joined_match', {
+          matchId,
+          puzzle,
+          opponent: opponent ? {
+            userId: opponent.userId.toString(),
+            displayName: opponent.displayName,
+            photoURL: opponent.photoURL,
+            progress: opponent.progress
+          } : null,
+          players: gameState?.players || match.players.map(p => ({
+            userId: p.userId.toString(),
+            displayName: p.displayName,
+            photoURL: p.photoURL,
+            progress: p.progress
+          })),
+          moves: gameState?.moves || match.moves || [],
+          startedAt: match.startedAt
+        });
 
         console.log(`User ${user.displayName} joined match ${matchId}`);
       } catch (error) {
@@ -227,6 +267,12 @@ export const setupSocketHandlers = (io: Server) => {
     // Progress update - broadcast progress percentage to opponent
     socket.on('progress_update', async ({ matchId, progress }) => {
       try {
+        // Validate matchId
+        if (!matchId || matchId === 'undefined' || !mongoose.Types.ObjectId.isValid(matchId)) {
+          socket.emit('error', { message: 'Invalid match ID' });
+          return;
+        }
+
         const gameState = activeGames.get(matchId);
         
         const user = await User.findOne({ firebaseUid: socket.userId });
@@ -262,6 +308,13 @@ export const setupSocketHandlers = (io: Server) => {
     socket.on('player_move', async (data) => {
       try {
         const { matchId, row, col, letter } = data;
+        
+        // Validate matchId
+        if (!matchId || matchId === 'undefined' || !mongoose.Types.ObjectId.isValid(matchId)) {
+          socket.emit('error', { message: 'Invalid match ID' });
+          return;
+        }
+
         const gameState = activeGames.get(matchId);
 
         if (!gameState) {
@@ -305,6 +358,13 @@ export const setupSocketHandlers = (io: Server) => {
     socket.on('puzzle_completed', async (data) => {
       try {
         const { matchId, timeSpent } = data;
+        
+        // Validate matchId
+        if (!matchId || matchId === 'undefined' || !mongoose.Types.ObjectId.isValid(matchId)) {
+          socket.emit('error', { message: 'Invalid match ID' });
+          return;
+        }
+
         const gameState = activeGames.get(matchId);
 
         if (!gameState) {
