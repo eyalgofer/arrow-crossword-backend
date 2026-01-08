@@ -28,8 +28,12 @@ aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS 
 
 # Step 2: Build Docker image
 echo ""
-echo "🔨 Step 2: Building Docker image..."
-docker build -t ${ECR_REPOSITORY}:${IMAGE_TAG} .
+echo "🔨 Step 2: Building Docker image for linux/amd64 (ECS Fargate requires this)..."
+# Get the directory where this script is located, then go to project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${PROJECT_ROOT}"
+docker build --platform linux/amd64 -t ${ECR_REPOSITORY}:${IMAGE_TAG} .
 
 # Step 3: Tag image for ECR
 echo ""
@@ -44,13 +48,32 @@ docker push ${ECR_URI}:${IMAGE_TAG}
 # Step 5: Update ECS service (force new deployment)
 echo ""
 echo "🔄 Step 5: Updating ECS service..."
-aws ecs update-service \
+echo "   This may take a moment..."
+UPDATE_RESULT=$(aws ecs update-service \
   --cluster ${ECS_CLUSTER} \
   --service ${ECS_SERVICE} \
   --force-new-deployment \
-  --region ${AWS_REGION}
+  --region ${AWS_REGION} \
+  --no-cli-pager \
+  --output json 2>&1)
+
+if [ $? -eq 0 ]; then
+  echo "   ✅ Service update initiated successfully"
+else
+  echo "   ❌ Failed to update service:"
+  echo "$UPDATE_RESULT"
+  exit 1
+fi
 
 echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "✅ Deployment initiated!"
-echo "   Monitor progress at: https://${AWS_REGION}.console.aws.amazon.com/ecs/home?region=${AWS_REGION}#/clusters/${ECS_CLUSTER}/services/${ECS_SERVICE}/tasks"
+echo ""
+echo "📊 Monitor deployment progress:"
+echo "   Console: https://${AWS_REGION}.console.aws.amazon.com/ecs/home?region=${AWS_REGION}#/clusters/${ECS_CLUSTER}/services/${ECS_SERVICE}"
+echo ""
+echo "   Or run: ./ecs/check-deployment.sh"
+echo ""
+echo "⏳ The new deployment will be ready in 1-3 minutes"
+echo "   (ECS needs to pull the image, start the container, and pass health checks)"
 

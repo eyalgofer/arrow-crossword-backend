@@ -78,44 +78,7 @@ const samplePuzzles = [
     ],
     estimatedTime: 120,
     coinReward: 18
-  },
-  {
-    title: "Lexical Arrows Fixed",
-    difficulty: Difficulty.CHALLENGING,
-    category: "Language",
-    grid: { rows: 18, cols: 18 },
-    clues: [
-      // ───────────── Top row (diagonal starters) ─────────────
-      { number: 1, direction: 'right-down', clue: 'Make certain', answer: 'ENSURE', enumeration: [6], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Opposite of public', answer: 'PRIVATE', enumeration: [7], startRow: 0, startCol: 2 },
-      { number: 3, direction: 'left-down', clue: 'Written records', answer: 'ARCHIVES', enumeration: [8], startRow: 0, startCol: 6 },
-      { number: 4, direction: 'right-down', clue: 'Logical conclusion', answer: 'INFERENCE', enumeration: [9], startRow: 0, startCol: 11 },
-      { number: 5, direction: 'left-down', clue: 'Strong displeasure', answer: 'RESENTMENT', enumeration: [10], startRow: 0, startCol: 16 },
-  
-      // ───────────── Horizontal spine ─────────────
-      { number: 6, direction: 'across', clue: 'Take as true without proof', answer: 'ASSUMETRUE', enumeration: [6,4], startRow: 4, startCol: 0 },
-      { number: 7, direction: 'across', clue: 'Unchanging pattern of behavior', answer: 'HABITFORM', enumeration: [5,4], startRow: 6, startCol: 0 },
-      { number: 8, direction: 'across', clue: 'Capacity for understanding', answer: 'MENTALRANGE', enumeration: [6,5], startRow: 8, startCol: 0 },
-      { number: 9, direction: 'across', clue: 'Person lacking motivation', answer: 'CHRONICSLACKER', enumeration: [7,7], startRow: 10, startCol: 0 },
-  
-      // ───────────── Vertical anchors ─────────────
-      { number: 10, direction: 'down', clue: 'Formally accuse', answer: 'INDICT', enumeration: [6], startRow: 4, startCol: 5 },
-      { number: 11, direction: 'down', clue: 'Make evident', answer: 'REVEAL', enumeration: [6], startRow: 4, startCol: 9 },
-      { number: 12, direction: 'down', clue: 'Fail to notice', answer: 'OVERLOOK', enumeration: [8], startRow: 4, startCol: 14 },
-  
-      // ───────────── Mixed arrow complexity ─────────────
-      { number: 13, direction: 'down-across', clue: 'Brief period of relief', answer: 'RESPITETIME', enumeration: [6,4], startRow: 9, startCol: 2 },
-      { number: 14, direction: 'up-across', clue: 'Excessively detailed', answer: 'PEDANTIC', enumeration: [8], startRow: 14, startCol: 3 },
-      { number: 15, direction: 'right-down', clue: 'Reduce in importance', answer: 'DOWNPLAY', enumeration: [8], startRow: 9, startCol: 11 },
-      { number: 16, direction: 'left-down', clue: 'Clear mental picture', answer: 'VISUALIZE', enumeration: [9], startRow: 9, startCol: 16 },
-  
-      // ───────────── Bottom horizontals ─────────────
-      { number: 17, direction: 'across', clue: 'Express indirectly', answer: 'IMPLYMEANING', enumeration: [5,7], startRow: 15, startCol: 0 },
-      { number: 18, direction: 'across', clue: 'Gradual improvement', answer: 'SLOWUPTURN', enumeration: [4,6], startRow: 17, startCol: 0 }
-    ],
-    estimatedTime: 360,
-    coinReward: 45
-  }  
+  }
 ];
 
 // to see the puzzles in the cloud MongoDB, use this URI:
@@ -126,6 +89,7 @@ const samplePuzzles = [
  * 1. All clues fit within grid boundaries
  * 2. Answer cells don't overlap with clue cells
  * 3. Answer cells that overlap have matching letters (valid crossings)
+ * 4. Asnwer cells dont get combine with other letters making them incorrect
  * 
  * Rules for each direction:
  * - 'down': answer starts at (startRow+1, startCol), goes DOWN
@@ -406,8 +370,8 @@ const seedDatabase = async () => {
   try {
     // Run validation before seeding
     validateAllPuzzles();
-
-    await mongoose.connect('mongodb://localhost:27017/arrow-crossword');
+    const devMongoUri = 'mongodb://localhost:27017/arrow-crossword';
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/arrow-crossword');
     console.log('Connected to MongoDB');
 
     await Puzzle.deleteMany({});

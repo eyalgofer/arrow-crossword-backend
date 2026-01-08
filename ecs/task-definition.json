@@ -41,6 +41,14 @@
         {
           "name": "GOOGLE_CLIENT_ID",
           "valueFrom": "arn:aws:secretsmanager:eu-north-1:211888002768:secret:arrow-crossword/google-client-id-N5IfkE"
+        },
+        {
+          "name": "GOOGLE_WEB_CLIENT_ID",
+          "valueFrom": "arn:aws:secretsmanager:eu-north-1:211888002768:secret:arrow-crossword/google-web-client-id-kr5baD"
+        },
+        {
+          "name": "GOOGLE_IOS_CLIENT_ID",
+          "valueFrom": "arn:aws:secretsmanager:eu-north-1:211888002768:secret:arrow-crossword/google-ios-client-id-RzdcK8"
         }
       ],
       "logConfiguration": {
