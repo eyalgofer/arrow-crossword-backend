@@ -370,20 +370,91 @@ const seedDatabase = async () => {
   try {
     // Run validation before seeding
     validateAllPuzzles();
-    const devMongoUri = 'mongodb://localhost:27017/arrow-crossword';
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/arrow-crossword');
-    console.log('Connected to MongoDB');
+    let mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/arrow-crossword';
+
+    console.log('\n🔍 Connection Details:');
+    console.log(`   MONGODB_URI from env: ${process.env.MONGODB_URI ? 'SET' : 'NOT SET'}`);
+    
+    // Ensure the database name is 'arrow-crossword' in the connection string
+    // MongoDB connection strings: mongodb+srv://user:pass@host/database?options
+    if (mongoUri.includes('mongodb+srv://') || mongoUri.includes('mongodb://')) {
+      // Check if database name is specified
+      const uriParts = mongoUri.split('/');
+      const lastPart = uriParts[uriParts.length - 1];
+      
+      // If the last part contains '?' (options), extract database name
+      if (lastPart.includes('?')) {
+        const [dbName, options] = lastPart.split('?');
+        if (dbName && dbName !== 'arrow-crossword' && dbName !== 'test') {
+          console.log(`   ⚠️  Database in URI is "${dbName}", changing to "arrow-crossword"`);
+          uriParts[uriParts.length - 1] = `arrow-crossword?${options}`;
+          mongoUri = uriParts.join('/');
+        } else if (!dbName || dbName === 'test') {
+          console.log(`   ⚠️  No database specified or using "test", setting to "arrow-crossword"`);
+          uriParts[uriParts.length - 1] = `arrow-crossword${options ? '?' + options : ''}`;
+          mongoUri = uriParts.join('/');
+        }
+      } else {
+        // No options, check if database name exists
+        if (lastPart && lastPart !== 'arrow-crossword' && lastPart !== 'test') {
+          console.log(`   ⚠️  Database in URI is "${lastPart}", changing to "arrow-crossword"`);
+          uriParts[uriParts.length - 1] = 'arrow-crossword';
+          mongoUri = uriParts.join('/');
+        } else if (!lastPart || lastPart === 'test') {
+          console.log(`   ⚠️  No database specified or using "test", appending "arrow-crossword"`);
+          mongoUri = mongoUri.endsWith('/') ? `${mongoUri}arrow-crossword` : `${mongoUri}/arrow-crossword`;
+        }
+      }
+    }
+    
+    console.log(`   Using URI: ${mongoUri.substring(0, 50)}...`);
+    
+    await mongoose.connect(mongoUri);
+    
+    // Get actual connection details
+    const dbName = mongoose.connection.db?.databaseName;
+    const host = mongoose.connection.host;
+    const collectionName = Puzzle.collection.name;
+    
+    console.log(`✅ Connected to MongoDB`);
+    console.log(`   Host: ${host}`);
+    console.log(`   Database: ${dbName}`);
+    console.log(`   Collection: ${collectionName}`);
+    console.log('');
+
+    // Check current puzzle count before deletion
+    const countBefore = await Puzzle.countDocuments({});
+    console.log(`📊 Current puzzles in database: ${countBefore}`);
 
     await Puzzle.deleteMany({});
-    console.log('Cleared existing puzzles');
+    console.log('🗑️  Cleared existing puzzles');
+
+    // Verify deletion
+    const countAfter = await Puzzle.countDocuments({});
+    console.log(`📊 Puzzles remaining after deletion: ${countAfter}`);
+    
+    if (countAfter > 0) {
+      console.warn(`⚠️  WARNING: ${countAfter} puzzle(s) still exist!`);
+    }
 
     await Puzzle.insertMany(samplePuzzles);
-    console.log(`Inserted ${samplePuzzles.length} sample puzzles`);
+    console.log(`📥 Inserted ${samplePuzzles.length} sample puzzles`);
 
+    // Verify final count
+    const finalCount = await Puzzle.countDocuments({});
+    console.log(`📊 Final puzzle count: ${finalCount}`);
+    console.log('');
     console.log('✅ Database seeded successfully');
+    console.log(`   Make sure you're viewing: ${host}/${dbName}/${collectionName} in Compass`);
+    
+    await mongoose.connection.close();
     process.exit(0);
   } catch (error) {
-    console.error('Seeding error:', error);
+    console.error('❌ Seeding error:', error);
+    if (error instanceof Error) {
+      console.error('   Message:', error.message);
+    }
+    await mongoose.connection.close().catch(() => {});
     process.exit(1);
   }
 };
