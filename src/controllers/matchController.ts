@@ -46,23 +46,48 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
 
     // Enhance matches with opponent info and time elapsed
     const enhancedMatches = matches.map(match => {
+      const matchObj = match.toObject();
+      
+      // Ensure players array includes photoURL (from populated userId or stored value)
+      const enhancedPlayers = match.players.map(p => {
+        const populatedUser = p.userId as any; // userId is populated
+        return {
+          userId: populatedUser._id || populatedUser,
+          displayName: p.displayName || populatedUser.displayName,
+          photoURL: p.photoURL || populatedUser.photoURL,
+          progress: p.progress,
+          completedAt: p.completedAt
+        };
+      });
+
       const opponent = match.players.find(
-        p => p.userId.toString() !== user._id.toString()
+        p => {
+          const playerUserId = (p.userId as any)?._id || p.userId;
+          return playerUserId.toString() !== user._id.toString();
+        }
       );
       const currentUserPlayer = match.players.find(
-        p => p.userId.toString() === user._id.toString()
+        p => {
+          const playerUserId = (p.userId as any)?._id || p.userId;
+          return playerUserId.toString() === user._id.toString();
+        }
       );
       
       const timeElapsed = match.startedAt 
         ? Math.floor((Date.now() - match.startedAt.getTime()) / 1000) // seconds
         : 0;
 
+      // Get opponent photoURL from populated user or stored value
+      const opponentUserId = opponent ? ((opponent.userId as any)?._id || opponent.userId) : null;
+      const opponentPopulated = opponent ? (opponent.userId as any) : null;
+
       return {
-        ...match.toObject(),
+        ...matchObj,
+        players: enhancedPlayers,
         opponent: opponent ? {
-          userId: opponent.userId,
-          displayName: opponent.displayName,
-          photoURL: opponent.photoURL,
+          userId: opponentUserId,
+          displayName: opponent.displayName || opponentPopulated?.displayName,
+          photoURL: opponent.photoURL || opponentPopulated?.photoURL,
           progress: opponent.progress
         } : null,
         currentUserProgress: currentUserPlayer?.progress || 0,
