@@ -27,6 +27,23 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
+// Request logging middleware for auth endpoints
+app.use('/api/auth', (req, res, next) => {
+  console.log(`\n📥 ${req.method} ${req.path} - ${new Date().toISOString()}`);
+  if (req.body && Object.keys(req.body).length > 0) {
+    const bodyCopy = { ...req.body };
+    // Mask sensitive tokens in logs
+    if (bodyCopy.identityToken) {
+      bodyCopy.identityToken = bodyCopy.identityToken.substring(0, 20) + '...';
+    }
+    if (bodyCopy.idToken) {
+      bodyCopy.idToken = bodyCopy.idToken.substring(0, 20) + '...';
+    }
+    console.log('   Body:', JSON.stringify(bodyCopy, null, 2));
+  }
+  next();
+});
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
