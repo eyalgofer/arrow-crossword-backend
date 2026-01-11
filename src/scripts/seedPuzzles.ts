@@ -191,7 +191,7 @@ const samplePuzzles = [
     difficulty: Difficulty.HARD,
     category: "Food",
       grid: { rows: 13, cols: 11 },
-      clues: [
+    clues: [
         { number: 1, direction: 'down', clue: 'Breakfast grain', answer: 'OATMEAL', enumeration: [7], startRow: 0, startCol: 1 },
         { number: 2, direction: 'right-down', clue: 'Cooking professional', answer: 'CHEF', enumeration: [4], startRow: 0, startCol: 3 },
         { number: 3, direction: 'left-down', clue: 'Oven setting', answer: 'BAKE', enumeration: [4], startRow: 0, startCol: 6 },
@@ -211,7 +211,7 @@ const samplePuzzles = [
     },
     {
       title: "Ancient History",
-      difficulty: Difficulty.MEDIUM,
+    difficulty: Difficulty.MEDIUM,
       category: "History",
       grid: { rows: 12, cols: 12 },
     clues: [
@@ -246,7 +246,7 @@ const samplePuzzles = [
           { number: 7, direction: 'down', clue: 'Action star Chan', answer: 'JACKIE', enumeration: [6], startRow: 3, startCol: 9 },
           { number: 8, direction: 'across', clue: 'Film set', answer: 'STUDIO', enumeration: [6], startRow: 5, startCol: 3 },
           { number: 9, direction: 'down', clue: 'Director Nolan', answer: 'CHRIS', enumeration: [5], startRow: 5, startCol: 11 },
-          { number: 10, direction: 'left-down', clue: 'Pulp Fiction star', answer: 'SAMUELL', enumeration: [6], startRow: 4, startCol: 5 },
+          { number: 10, direction: 'left-down', clue: 'Pulp Fiction star', answer: 'SAMUEL', enumeration: [6], startRow: 4, startCol: 5 },
           { number: 11, direction: 'across', clue: 'Main actor', answer: 'LEAD', enumeration: [4], startRow: 7, startCol: 0 },
           { number: 12, direction: 'down-across', clue: 'Funny film', answer: 'COMEDY', enumeration: [6], startRow: 9, startCol: 1 },
           { number: 13, direction: 'across', clue: 'Wolverine', answer: 'LOGAN', enumeration: [5], startRow: 11, startCol: 5 }
@@ -256,7 +256,7 @@ const samplePuzzles = [
       },
       {
         title: "Musical Legends",
-        difficulty: Difficulty.HARD,
+    difficulty: Difficulty.HARD,
         category: "Music",
         grid: { rows: 13, cols: 11 },
     clues: [
@@ -283,7 +283,7 @@ const samplePuzzles = [
         category: "Cuisine",
         grid: { rows: 12, cols: 12 },
     clues: [
-          { number: 1, direction: 'right-down', clue: 'Frozen dessert', answer: 'ICECREAM', enumeration: [4, 5], startRow: 0, startCol: 0 },
+          { number: 1, direction: 'right-down', clue: 'Frozen dessert', answer: 'ICECREAM', enumeration: [4, 4], startRow: 0, startCol: 0 },
           { number: 2, direction: 'down', clue: 'Italian pie', answer: 'PIZZA', enumeration: [5], startRow: 0, startCol: 2 },
           { number: 3, direction: 'left-down', clue: 'Raw fish dish', answer: 'SUSHI', enumeration: [5], startRow: 0, startCol: 4 },
           { number: 4, direction: 'across', clue: 'Morning meal', answer: 'BREAKFAST', enumeration: [9], startRow: 1, startCol: 5 },
@@ -301,7 +301,7 @@ const samplePuzzles = [
       },
       {
         title: "Tech Giants",
-        difficulty: Difficulty.HARD,
+    difficulty: Difficulty.HARD,
         category: "Technology",
         grid: { rows: 11, cols: 11 },
     clues: [
@@ -388,7 +388,7 @@ const samplePuzzles = [
         difficulty: Difficulty.MEDIUM,
         category: "Gaming",
         grid: { rows: 11, cols: 11 },
-        clues: [
+    clues: [
           { number: 1, direction: 'down', clue: 'Nintendo plumber', answer: 'SUPERMARIO', enumeration: [5, 5], startRow: 0, startCol: 1 },
           { number: 2, direction: 'right-down', clue: 'Hylian hero', answer: 'LINK', enumeration: [4], startRow: 0, startCol: 3 },
           { number: 3, direction: 'left-down', clue: 'Blue blur', answer: 'SONIC', enumeration: [5], startRow: 0, startCol: 5 },
@@ -450,7 +450,7 @@ const samplePuzzles = [
         difficulty: Difficulty.HARD,
         category: "Entertainment",
         grid: { rows: 15, cols: 15 },
-        clues: [
+    clues: [
           // --- ROW 0 ORIGINS ---
           { number: 1, direction: 'right-down', clue: 'Mission Impossible star', answer: 'TOMCRUISE', enumeration: [3, 6], startRow: 0, startCol: 0 },
           { number: 2, direction: 'down', clue: 'Sun-dried brick', answer: 'ADOBE', enumeration: [5], startRow: 0, startCol: 2 },
@@ -467,7 +467,7 @@ const samplePuzzles = [
           { number: 11, direction: 'across', clue: 'Morning meal', answer: 'BREAKFAST', enumeration: [9], startRow: 3, startCol: 5 },
           
           // --- MID-GRID CLUES ---
-          { number: 12, direction: 'down-across', clue: 'Frozen dessert', answer: 'ICECREAM', enumeration: [3, 5], startRow: 5, startCol: 0 },
+          { number: 12, direction: 'down-across', clue: 'Frozen dessert', answer: 'ICECREAM', enumeration: [4, 4], startRow: 5, startCol: 0 },
           { number: 13, direction: 'up-across', clue: 'Apple founder', answer: 'STEVEJOBS', enumeration: [5, 4], startRow: 7, startCol: 1 },
           { number: 14, direction: 'down', clue: 'Egyptian tomb', answer: 'PYRAMID', enumeration: [7], startRow: 5, startCol: 7 },
           { number: 15, direction: 'across', clue: 'Not old', answer: 'MODERN', enumeration: [6], startRow: 6, startCol: 8 },
@@ -487,7 +487,7 @@ const samplePuzzles = [
         difficulty: Difficulty.HARD,
         category: "General Knowledge",
         grid: { rows: 12, cols: 12 },
-        clues: [
+    clues: [
           // --- TOP SECTION (High Density Vertical Starts) ---
           { number: 1, direction: 'right-down', clue: 'Action star (2 words)', answer: 'TOMCRUISE', enumeration: [3, 6], startRow: 0, startCol: 0 },
           { number: 2, direction: 'down', clue: 'Morning moisture', answer: 'DEW', enumeration: [3], startRow: 0, startCol: 2 },
@@ -506,14 +506,14 @@ const samplePuzzles = [
           { number: 10, direction: 'across', clue: 'Scientific study', answer: 'BIOLOGY', enumeration: [7], startRow: 5, startCol: 0 },
       
           // --- MID SECTION (Bridging the gap) ---
-          { number: 11, direction: 'down-across', clue: 'Harry Potter author (2 words)', answer: 'JKROWLING', enumeration: [2, 8], startRow: 6, startCol: 1 },
+          { number: 11, direction: 'down-across', clue: 'Harry Potter author (2 words)', answer: 'JKROWLING', enumeration: [2, 7], startRow: 6, startCol: 1 },
           { number: 12, direction: 'up-across', clue: 'Tech giant (2 words)', answer: 'STEVEJOBS', enumeration: [5, 4], startRow: 8, startCol: 2 },
           { number: 13, direction: 'down', clue: 'Egyptian river', answer: 'NILE', enumeration: [4], startRow: 4, startCol: 3 },
           { number: 14, direction: 'down', clue: 'Olympic gold (2 words)', answer: 'USAINBOLT', enumeration: [5, 4], startRow: 2, startCol: 6 },
           { number: 15, direction: 'right-down', clue: 'Paintings site', answer: 'LOUVRE', enumeration: [6], startRow: 5, startCol: 10 },
       
           // --- BOTTOM SECTION (Densely packed) ---
-          { number: 16, direction: 'across', clue: 'Frozen dessert (2 words)', answer: 'ICECREAM', enumeration: [3, 5], startRow: 9, startCol: 3 },
+          { number: 16, direction: 'across', clue: 'Frozen dessert (2 words)', answer: 'ICECREAM', enumeration: [4, 4], startRow: 9, startCol: 3 },
           { number: 17, direction: 'down-across', clue: 'Tennis legend (2 words)', answer: 'ROGERFEDERER', enumeration: [5, 7], startRow: 10, startCol: 0 },
           { number: 18, direction: 'across', clue: 'Lunar phase', answer: 'NEWMOON', enumeration: [3, 4], startRow: 11, startCol: 4 },
           { number: 19, direction: 'up-across', clue: 'Great lake', answer: 'ERIE', enumeration: [4], startRow: 11, startCol: 0 }
@@ -529,9 +529,9 @@ const samplePuzzles = [
     grid: { rows: 11, cols: 9 },
     clues: [
       { number: 1, direction: 'across', clue: 'Video streaming giant', answer: 'NETFLIX', enumeration: [7], startRow: 0, startCol: 0 },
-      { number: 2, direction: 'down', clue: 'Famous space saga', answer: 'STAR WARS', enumeration: [4, 4], startRow: 0, startCol: 2 },
+      { number: 2, direction: 'down', clue: 'Famous space saga', answer: 'STARWARS', enumeration: [4, 4], startRow: 0, startCol: 2 },
       { number: 3, direction: 'down', clue: 'Famous wizard boy', answer: 'HARRY', enumeration: [5], startRow: 0, startCol: 4 },
-      { number: 4, direction: 'right-down', clue: 'Web-slinging hero', answer: 'SPIDER MAN', enumeration: [6, 3], startRow: 0, startCol: 6 },
+      { number: 4, direction: 'right-down', clue: 'Web-slinging hero', answer: 'SPIDERMAN', enumeration: [6, 3], startRow: 0, startCol: 6 },
       { number: 5, direction: 'left-down', clue: 'Apple smartphone line', answer: 'IPHONE', enumeration: [6], startRow: 0, startCol: 8 },
   
       { number: 6, direction: 'across', clue: 'Marvel thunder god', answer: 'THOR', enumeration: [4], startRow: 1, startCol: 0 },
@@ -539,22 +539,22 @@ const samplePuzzles = [
       { number: 8, direction: 'down', clue: 'Taylor’s last name', answer: 'SWIFT', enumeration: [5], startRow: 1, startCol: 5 },
       { number: 9, direction: 'across', clue: 'Famous animated ogre', answer: 'SHREK', enumeration: [5], startRow: 1, startCol: 4 },
   
-      { number: 10, direction: 'down', clue: 'Superhero in a metal suit', answer: 'IRON MAN', enumeration: [4, 3], startRow: 2, startCol: 0 },
+      { number: 10, direction: 'down', clue: 'Superhero in a metal suit', answer: 'IRONMAN', enumeration: [4, 3], startRow: 2, startCol: 0 },
       { number: 11, direction: 'across', clue: 'Marios brother', answer: 'LUIGI', enumeration: [5], startRow: 2, startCol: 2 },
       { number: 12, direction: 'down', clue: 'Toy Story cowboy', answer: 'WOODY', enumeration: [5], startRow: 2, startCol: 7 },
   
       { number: 13, direction: 'across', clue: 'Big concert crowd reaction', answer: 'CHEERS', enumeration: [6], startRow: 3, startCol: 0 },
-      { number: 14, direction: 'down-across', clue: 'Fantasy hit with dragons', answer: 'GAME OF THRONES', enumeration: [4, 2, 7], startRow: 3, startCol: 4 },
+      { number: 14, direction: 'down-across', clue: 'Fantasy hit with dragons', answer: 'GAMEOFTHRONES', enumeration: [4, 2, 7], startRow: 3, startCol: 4 },
   
       { number: 15, direction: 'across', clue: 'Short video app', answer: 'TIKTOK', enumeration: [6], startRow: 4, startCol: 0 },
-      { number: 16, direction: 'down', clue: 'Video game console brand', answer: 'PLAY STATION', enumeration: [4, 7], startRow: 4, startCol: 6 },
-      { number: 17, direction: 'across', clue: 'Famous band from Liverpool', answer: 'THE BEATLES', enumeration: [3, 7], startRow: 4, startCol: 1 },
+      { number: 16, direction: 'down', clue: 'Video game console brand', answer: 'PLAYSTATION', enumeration: [4, 7], startRow: 4, startCol: 6 },
+      { number: 17, direction: 'across', clue: 'Famous band from Liverpool', answer: 'THEBEATLES', enumeration: [3, 7], startRow: 4, startCol: 1 },
   
       { number: 18, direction: 'down', clue: 'Disney ice princess movie', answer: 'FROZEN', enumeration: [6], startRow: 5, startCol: 2 },
       { number: 19, direction: 'across', clue: 'Smash hit pop genre', answer: 'POP', enumeration: [3], startRow: 6, startCol: 0 },
       { number: 20, direction: 'across', clue: 'Social media like icon', answer: 'HEART', enumeration: [5], startRow: 6, startCol: 4 },
   
-      { number: 21, direction: 'down', clue: 'Popular music star', answer: 'TAYLOR SWIFT', enumeration: [6, 5], startRow: 7, startCol: 0 },
+      { number: 21, direction: 'down', clue: 'Popular music star', answer: 'TAYLORSWIFT', enumeration: [6, 5], startRow: 7, startCol: 0 },
       { number: 22, direction: 'across', clue: 'Classic handheld game company', answer: 'NINTENDO', enumeration: [8], startRow: 8, startCol: 1 },
       { number: 23, direction: 'down-across', clue: 'Superhero team name', answer: 'AVENGERS', enumeration: [8], startRow: 8, startCol: 6 },
   
@@ -564,11 +564,6 @@ const samplePuzzles = [
     estimatedTime: 90,
     coinReward: 10
   }
-      
-      
-    
-    
-  
 ];
 
 // to see the puzzles in the cloud MongoDB, use this URI:
@@ -1011,8 +1006,25 @@ const seedDatabase = async () => {
       console.warn(`⚠️  WARNING: ${countAfter} puzzle(s) still exist!`);
     }
 
-    await Puzzle.insertMany(samplePuzzles);
-    console.log(`📥 Inserted ${samplePuzzles.length} sample puzzles`);
+    // Filter to only valid puzzles (no validation errors)
+    const validPuzzles = samplePuzzles.filter(puzzle => {
+      const errors = validatePuzzle(puzzle);
+      return errors.length === 0;
+    });
+    
+    console.log(`\n📊 Puzzle Validation Summary:`);
+    console.log(`   Total puzzles: ${samplePuzzles.length}`);
+    console.log(`   Valid puzzles: ${validPuzzles.length}`);
+    console.log(`   Invalid puzzles: ${samplePuzzles.length - validPuzzles.length}`);
+    
+    if (validPuzzles.length === 0) {
+      console.error('\n❌ No valid puzzles to seed! Please fix validation errors.');
+      await mongoose.connection.close();
+      process.exit(1);
+    }
+    
+    await Puzzle.insertMany(validPuzzles);
+    console.log(`\n📥 Inserted ${validPuzzles.length} valid puzzles`);
 
     // Verify final count
     const finalCount = await Puzzle.countDocuments({});
