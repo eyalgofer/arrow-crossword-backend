@@ -8,7 +8,7 @@ export const connectDatabase = async (): Promise<void> => {
     console.log('   NODE_ENV:', process.env.NODE_ENV);
     console.log('   Available env vars with MONGODB:', Object.keys(process.env).filter(k => k.includes('MONGO')).join(', ') || 'none');
     
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/arrow-crossword';
+    const mongoUri = 'mongodb://localhost:27017/arrow-crossword';
     
     if (!process.env.MONGODB_URI) {
       console.error('❌ MONGODB_URI environment variable is not set!');
