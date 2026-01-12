@@ -406,6 +406,8 @@ export function solveGrid(
   console.log(`  📋 Slot order: ${sortedSlots.map((s, i) => `${i + 1}. ${s.length} letters, ${s.crossings.length} crossings`).join(', ')}`);
   
   function backtrack(state: GridState, slotIndex: number, depth: number = 0): GridState | null {
+    // Increment attempts to track exploration depth
+    // This counts how many times we've entered the backtrack function
     attempts++;
     
     // Debug: log when we're at slot 3 (after placing slot 1 and slot 2)
@@ -622,6 +624,11 @@ export function solveGrid(
     for (let i = 0; i < candidatesToTry.length; i++) {
       const word = candidatesToTry[i];
       
+      // Check if we've exceeded max attempts before trying this word
+      if (attempts > config.maxAttempts) {
+        return null;
+      }
+      
       if (!canPlaceWord(state, word, cells)) {
         continue;
       }
@@ -682,6 +689,34 @@ export function solveGrid(
   }
   
   console.log(`  🧩 Solving template "${template.name}" with ${template.slots.length} slots...`);
+  
+  // Special optimization: if template has NO crossings, solve it greedily
+  // Since slots are independent, we can just pick the first valid word for each
+  const hasAnyCrossings = template.slots.some(slot => slot.crossings.length > 0);
+  if (!hasAnyCrossings) {
+    console.log(`  ⚡ Template has no crossings - using fast greedy solver`);
+    let currentState = initialState;
+    for (let i = 0; i < sortedSlots.length; i++) {
+      const slot = sortedSlots[i];
+      const cells = getSlotCells(slot);
+      const candidates = findMatchingWords(wordIndex, slot.length, new Map(), undefined);
+      if (candidates.length === 0) {
+        console.log(`  ❌ No words available for ${slot.length}-letter slot`);
+        return null;
+      }
+      // Just pick the first candidate
+      const word = candidates[0];
+      if (!canPlaceWord(currentState, word, cells)) {
+        console.log(`  ❌ Cannot place word "${word}" in slot ${i + 1}`);
+        return null;
+      }
+      currentState = placeWord(currentState, slot.id, word, cells);
+      console.log(`  ✅ Slot ${i + 1}/${sortedSlots.length}: Placed "${word}"`);
+    }
+    console.log(`  ✅ Solved template in ${attempts} attempts (greedy mode)`);
+    return currentState;
+  }
+  
   const startTime = Date.now();
   const result = backtrack(initialState, 0);
   const elapsed = Date.now() - startTime;
@@ -863,11 +898,12 @@ export function generateTemplate(
   size: 'small' | 'medium' | 'large' | 'xlarge',
   difficulty: Difficulty = Difficulty.EASY
 ): GridTemplate {
+  // Use much more conservative settings to ensure solvability
   const sizeConfig = {
-    small: { rows: 8, cols: 8, minSlots: 8, maxSlots: 12 },
-    medium: { rows: 12, cols: 12, minSlots: 15, maxSlots: 25 },
-    large: { rows: 15, cols: 15, minSlots: 25, maxSlots: 40 },
-    xlarge: { rows: 20, cols: 20, minSlots: 40, maxSlots: 60 }
+    small: { rows: 8, cols: 8, minSlots: 5, maxSlots: 8, maxCrossingsPerSlot: 2 },
+    medium: { rows: 10, cols: 10, minSlots: 8, maxSlots: 12, maxCrossingsPerSlot: 3 },
+    large: { rows: 12, cols: 12, minSlots: 12, maxSlots: 18, maxCrossingsPerSlot: 4 },
+    xlarge: { rows: 15, cols: 15, minSlots: 18, maxSlots: 25, maxCrossingsPerSlot: 5 }
   };
   
   const config = sizeConfig[size];
@@ -876,23 +912,30 @@ export function generateTemplate(
   const occupiedCells = new Set<string>(); // Track which cells have clues
   const answerCells = new Map<string, { slotId: string; position: number }>(); // Track answer cells for crossings
   
-  // Generate slots with strategic placement
+  // Generate slots with strategic placement - prefer simpler patterns
   let slotNumber = 1;
   const targetSlots = Math.floor(Math.random() * (config.maxSlots - config.minSlots + 1)) + config.minSlots;
   
-  // Create a pattern: mix of across and down clues with strategic crossings
-  const directions: Direction[] = ['across', 'down', 'right-down', 'left-down', 'down-across', 'up-across'];
+  // Use simpler directions more often - avoid complex arrow directions
+  const simpleDirections: Direction[] = ['across', 'down'];
+  const complexDirections: Direction[] = ['right-down', 'left-down', 'down-across', 'up-across'];
+  // 70% simple, 30% complex
+  const directions: Direction[] = [
+    ...simpleDirections, ...simpleDirections, ...simpleDirections,
+    ...simpleDirections, ...simpleDirections, ...simpleDirections, ...simpleDirections,
+    ...complexDirections
+  ];
   
   for (let i = 0; i < targetSlots && slotNumber <= targetSlots; i++) {
     // Try to place a slot
     let placed = false;
     let attempts = 0;
-    const maxPlacementAttempts = 50;
+    const maxPlacementAttempts = 100;
     
     while (!placed && attempts < maxPlacementAttempts) {
       attempts++;
       
-      // Random direction
+      // Random direction (weighted toward simple)
       const direction = directions[Math.floor(Math.random() * directions.length)];
       
       // Random starting position (leave margin for answer)
@@ -903,8 +946,8 @@ export function generateTemplate(
       if (direction === 'left-down' && startCol < 3) startCol = 3;
       if (direction === 'up-across' && startRow < 2) startRow = 2;
       
-      // Random word length (3-8 for small, 4-10 for medium+, longer for large)
-      const maxLength = size === 'small' ? 6 : size === 'medium' ? 8 : size === 'large' ? 10 : 12;
+      // Prefer shorter words for better solvability
+      const maxLength = size === 'small' ? 5 : size === 'medium' ? 7 : size === 'large' ? 8 : 10;
       const minLength = size === 'small' ? 3 : 4;
       const wordLength = Math.floor(Math.random() * (maxLength - minLength + 1)) + minLength;
       
@@ -937,6 +980,7 @@ export function generateTemplate(
       
       // Check if answer cells conflict with clue cells (but allow crossings with other answers)
       let canPlace = true;
+      let crossingCount = 0;
       
       for (const cell of answerCellsForSlot) {
         const cellKey = `${cell.row},${cell.col}`;
@@ -946,6 +990,22 @@ export function generateTemplate(
           canPlace = false;
           break;
         }
+        
+        // Count potential crossings (but don't block - crossings are good!)
+        if (answerCells.has(cellKey)) {
+          crossingCount++;
+        }
+      }
+      
+      // For small templates, prefer NO crossings to guarantee solvability
+      // For larger templates, allow minimal crossings
+      if (size === 'small' && crossingCount > 0) {
+        continue; // Small templates should have no crossings for guaranteed solvability
+      }
+      
+      // Limit crossings per slot to ensure solvability
+      if (crossingCount > config.maxCrossingsPerSlot) {
+        continue; // Too many crossings, try a different position
       }
       
       if (!canPlace) {
@@ -1013,18 +1073,28 @@ export function generateTemplate(
     }
   }
   
+  // Filter out slots with too many crossings (post-processing)
+  const filteredSlots = slots.filter(slot => slot.crossings.length <= config.maxCrossingsPerSlot);
+  
+  // Recalculate clue cells for filtered slots
+  const filteredClueCells = filteredSlots.map(slot => ({
+    row: slot.startRow,
+    col: slot.startCol,
+    direction: slot.direction
+  }));
+  
   return {
     id: `generated_${size}_${Date.now()}`,
     name: `Generated ${size} template`,
     rows: config.rows,
     cols: config.cols,
-    slots,
-    clueCells,
+    slots: filteredSlots,
+    clueCells: filteredClueCells,
     difficulty,
     categories: ['Generated'],
     metadata: {
       verified: false,
-      successRate: 0.5,
+      successRate: 0.7, // Higher success rate with simpler templates
       generated: true,
       size
     }

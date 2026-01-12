@@ -782,5 +782,28 @@ export const samplePuzzles = [
       ],
       estimatedTime: 240,
       coinReward: 50
+    },
+    {
+      title: "Classic Crossword Template",
+      difficulty: Difficulty.EASY,
+      category: "General Knowledge",
+      grid: { rows: 7, cols: 7 },
+      clues: [
+        // Simple structure with proper spacing - no clue/answer overlaps
+        // Down clues
+        { number: 1, direction: 'down', clue: 'Belonging to that man', answer: 'HIS', enumeration: [3], startRow: 0, startCol: 1 },
+        { number: 2, direction: 'down', clue: 'Black playing card', answer: 'SPADE', enumeration: [5], startRow: 0, startCol: 3 },
+        
+        // Across clues that cross the down clues
+        { number: 3, direction: 'across', clue: 'Inexpensive', answer: 'CHEAP', enumeration: [5], startRow: 1, startCol: 0 },
+        
+        { number: 4, direction: 'across', clue: 'Expression of sorrow', answer: 'ALAS', enumeration: [4], startRow: 2, startCol: 0 },
+        
+        { number: 5, direction: 'across', clue: 'Coloured part of the eye', answer: 'IRIS', enumeration: [4], startRow: 3, startCol: 0 },
+        
+        { number: 6, direction: 'across', clue: 'Comfort', answer: 'EASE', enumeration: [4], startRow: 4, startCol: 0 }
+      ],
+      estimatedTime: 90,
+      coinReward: 10
     }
 ];
