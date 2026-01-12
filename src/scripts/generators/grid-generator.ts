@@ -9,15 +9,9 @@ import {
   Puzzle, 
   Clue, 
   Direction, 
-  GridCell, 
-  Grid, 
   GridTemplate,
   ClueSlot,
-  CrossingPoint,
-  Difficulty,
-  WordEntry,
-  GenerationConfig,
-  GenerationResult 
+  Difficulty
 } from '../core/types';
 
 // ============================================================================
