@@ -850,3 +850,183 @@ export function generatePuzzleFromGrid(
     }
   };
 }
+
+// ============================================================================
+// PROGRAMMATIC TEMPLATE GENERATION
+// ============================================================================
+
+/**
+ * Generate a template programmatically for larger, more complex puzzles
+ * Creates a grid with strategic slot placement and crossings
+ */
+export function generateTemplate(
+  size: 'small' | 'medium' | 'large' | 'xlarge',
+  difficulty: Difficulty = Difficulty.EASY
+): GridTemplate {
+  const sizeConfig = {
+    small: { rows: 8, cols: 8, minSlots: 8, maxSlots: 12 },
+    medium: { rows: 12, cols: 12, minSlots: 15, maxSlots: 25 },
+    large: { rows: 15, cols: 15, minSlots: 25, maxSlots: 40 },
+    xlarge: { rows: 20, cols: 20, minSlots: 40, maxSlots: 60 }
+  };
+  
+  const config = sizeConfig[size];
+  const slots: ClueSlot[] = [];
+  const clueCells: Array<{ row: number; col: number; direction: Direction }> = [];
+  const occupiedCells = new Set<string>(); // Track which cells have clues
+  const answerCells = new Map<string, { slotId: string; position: number }>(); // Track answer cells for crossings
+  
+  // Generate slots with strategic placement
+  let slotNumber = 1;
+  const targetSlots = Math.floor(Math.random() * (config.maxSlots - config.minSlots + 1)) + config.minSlots;
+  
+  // Create a pattern: mix of across and down clues with strategic crossings
+  const directions: Direction[] = ['across', 'down', 'right-down', 'left-down', 'down-across', 'up-across'];
+  
+  for (let i = 0; i < targetSlots && slotNumber <= targetSlots; i++) {
+    // Try to place a slot
+    let placed = false;
+    let attempts = 0;
+    const maxPlacementAttempts = 50;
+    
+    while (!placed && attempts < maxPlacementAttempts) {
+      attempts++;
+      
+      // Random direction
+      const direction = directions[Math.floor(Math.random() * directions.length)];
+      
+      // Random starting position (leave margin for answer)
+      let startRow = Math.floor(Math.random() * config.rows);
+      let startCol = Math.floor(Math.random() * config.cols);
+      
+      // Adjust for direction constraints
+      if (direction === 'left-down' && startCol < 3) startCol = 3;
+      if (direction === 'up-across' && startRow < 2) startRow = 2;
+      
+      // Random word length (3-8 for small, 4-10 for medium+, longer for large)
+      const maxLength = size === 'small' ? 6 : size === 'medium' ? 8 : size === 'large' ? 10 : 12;
+      const minLength = size === 'small' ? 3 : 4;
+      const wordLength = Math.floor(Math.random() * (maxLength - minLength + 1)) + minLength;
+      
+      // Create a temporary slot to calculate answer cells
+      const tempSlot: ClueSlot = {
+        id: 'temp',
+        direction,
+        startRow,
+        startCol,
+        length: wordLength,
+        crossings: []
+      };
+      
+      const answerCellsForSlot = getSlotCells(tempSlot);
+      
+      // Check if answer fits in bounds
+      const lastCell = answerCellsForSlot[answerCellsForSlot.length - 1];
+      const endRow = lastCell.row;
+      const endCol = lastCell.col;
+      
+      if (endRow < 0 || endRow >= config.rows || endCol < 0 || endCol >= config.cols) {
+        continue; // Try again
+      }
+      
+      // Check if clue cell is available
+      const clueKey = `${startRow},${startCol}`;
+      if (occupiedCells.has(clueKey)) {
+        continue; // Clue cell already taken
+      }
+      
+      // Check if answer cells conflict with clue cells (but allow crossings with other answers)
+      let canPlace = true;
+      
+      for (const cell of answerCellsForSlot) {
+        const cellKey = `${cell.row},${cell.col}`;
+        
+        // Can't place answer in a clue cell
+        if (occupiedCells.has(cellKey)) {
+          canPlace = false;
+          break;
+        }
+      }
+      
+      if (!canPlace) {
+        continue;
+      }
+      
+      // Place the slot
+      const slotId = `slot_${slotNumber}`;
+      const slot: ClueSlot = {
+        id: slotId,
+        direction,
+        startRow,
+        startCol,
+        length: wordLength,
+        crossings: [] // Will calculate after all slots are placed
+      };
+      
+      slots.push(slot);
+      clueCells.push({ row: startRow, col: startCol, direction });
+      occupiedCells.add(clueKey);
+      
+      // Mark answer cells using the calculated cells
+      for (let j = 0; j < answerCellsForSlot.length; j++) {
+        const cell = answerCellsForSlot[j];
+        const cellKey = `${cell.row},${cell.col}`;
+        answerCells.set(cellKey, { slotId, position: j });
+      }
+      
+      placed = true;
+      slotNumber++;
+    }
+  }
+  
+  // Calculate crossings between slots
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i];
+    const slotCells = getSlotCells(slot);
+    
+    for (let j = i + 1; j < slots.length; j++) {
+      const otherSlot = slots[j];
+      const otherCells = getSlotCells(otherSlot);
+      
+      // Find crossing points
+      for (let pos = 0; pos < slotCells.length; pos++) {
+        const cell = slotCells[pos];
+        const cellKey = `${cell.row},${cell.col}`;
+        
+        for (let otherPos = 0; otherPos < otherCells.length; otherPos++) {
+          const otherCell = otherCells[otherPos];
+          if (cell.row === otherCell.row && cell.col === otherCell.col) {
+            // Found a crossing!
+            slot.crossings.push({
+              slotId: otherSlot.id,
+              thisPosition: pos,
+              otherPosition: otherPos
+            });
+            otherSlot.crossings.push({
+              slotId: slot.id,
+              thisPosition: otherPos,
+              otherPosition: pos
+            });
+          }
+        }
+      }
+    }
+  }
+  
+  return {
+    id: `generated_${size}_${Date.now()}`,
+    name: `Generated ${size} template`,
+    rows: config.rows,
+    cols: config.cols,
+    slots,
+    clueCells,
+    difficulty,
+    categories: ['Generated'],
+    metadata: {
+      verified: false,
+      successRate: 0.5,
+      generated: true,
+      size
+    }
+  };
+}
