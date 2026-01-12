@@ -1,0 +1,119 @@
+/**
+ * Type definitions for Swedish Arrow Crossword Puzzle Generator
+ */
+
+import { Difficulty } from '../../types';
+
+// Re-export Difficulty for use in other modules
+export { Difficulty };
+
+// ============================================================================
+// BASIC TYPES
+// ============================================================================
+
+export type Direction = 'across' | 'down' | 'right-down' | 'left-down' | 'down-across' | 'up-across';
+
+export interface GridCell {
+  row: number;
+  col: number;
+  letter?: string;
+  isClue?: boolean;
+}
+
+export interface Grid {
+  rows: number;
+  cols: number;
+  cells: GridCell[][];
+}
+
+// ============================================================================
+// CLUE AND PUZZLE TYPES
+// ============================================================================
+
+export interface Clue {
+  number: number;
+  direction: Direction;
+  clue: string;
+  answer: string;
+  enumeration: number[];
+  startRow: number;
+  startCol: number;
+}
+
+export interface Puzzle {
+  title: string;
+  difficulty: Difficulty;
+  category: string;
+  grid: {
+    rows: number;
+    cols: number;
+  };
+  clues: Clue[];
+  estimatedTime: number;
+  coinReward: number;
+  metadata?: {
+    templateId?: string;
+    generationMethod?: string;
+    [key: string]: any;
+  };
+}
+
+// ============================================================================
+// TEMPLATE TYPES
+// ============================================================================
+
+export interface CrossingPoint {
+  slotId: string;
+  thisPosition: number;
+  otherPosition: number;
+}
+
+export interface ClueSlot {
+  id: string;
+  direction: Direction;
+  startRow: number;
+  startCol: number;
+  length: number;
+  crossings: CrossingPoint[];
+}
+
+export interface GridTemplate {
+  id: string;
+  name: string;
+  rows: number;
+  cols: number;
+  slots: ClueSlot[];
+  clueCells: Array<{ row: number; col: number; direction: Direction }>;
+  difficulty: Difficulty;
+  categories: string[];
+  metadata?: {
+    verified?: boolean;
+    successRate?: number;
+    [key: string]: any;
+  };
+}
+
+// ============================================================================
+// WORD ENTRY AND GENERATION TYPES
+// ============================================================================
+
+export interface WordEntry {
+  word: string;
+  clues: string[];
+  frequency?: number;
+  difficulty?: Difficulty;
+}
+
+export interface GenerationConfig {
+  maxAttempts?: number;
+  shuffleWords?: boolean;
+  preferCommonWords?: boolean;
+  wordScorer?: (word: string) => number;
+}
+
+export interface GenerationResult {
+  success: boolean;
+  puzzle?: Puzzle;
+  attempts: number;
+  error?: string;
+}
