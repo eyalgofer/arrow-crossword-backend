@@ -809,12 +809,16 @@ export function generatePuzzleFromGrid(
     
     const clueText = clueDb.getClue(word, config.difficulty);
     
+    // Handle multi-word answers (e.g., "STAR WARS" -> [4, 4])
+    const words = word.split(' ');
+    const enumeration = words.map(w => w.length);
+    
     clues.push({
       number: clueNumber++,
       direction: slot.direction,
       clue: clueText,
       answer: word,
-      enumeration: [word.length],
+      enumeration: enumeration,
       startRow: slot.startRow,
       startCol: slot.startCol
     });
