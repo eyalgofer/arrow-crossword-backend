@@ -487,6 +487,24 @@ export function solveGrid(
     );
     
     // Log first attempt for each slot (only at top level)
+    if (depth === 0 && attempts === 1) {
+      const constraintInfo = constraints.size > 0 
+        ? ` with ${constraints.size} constraints: ${Array.from(constraints.entries()).map(([pos, letter]) => `pos${pos}='${letter}'`).join(', ')}`
+        : ' (no constraints)';
+      console.log(`  📍 Slot ${slotIndex + 1}/${sortedSlots.length} (${slot.length} letters${constraintInfo}): ${candidates.length} candidates`);
+      
+      // If no candidates, show why
+      if (candidates.length === 0) {
+        console.log(`     ❌ No candidates found for ${slot.length}-letter word${constraintInfo}`);
+        // Show all words of this length
+        const allWordsOfLength = Array.from(wordIndex.byLength.get(slot.length) || []);
+        console.log(`     All ${slot.length}-letter words: ${allWordsOfLength.length} total`);
+        if (constraints.size > 0) {
+          console.log(`     Constraints: ${Array.from(constraints.entries()).map(([pos, letter]) => `pos${pos}='${letter}'`).join(', ')}`);
+        }
+      }
+    }
+    
     if (depth === 0 && attempts <= 10) {
       const constraintInfo = constraints.size > 0
         ? ` with ${constraints.size} constraints: ${Array.from(constraints.entries()).map(([pos, letter]) => `pos${pos}='${letter}'`).join(', ')}`
