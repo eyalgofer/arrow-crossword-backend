@@ -2160,24 +2160,6 @@ const WORD_LIST: string[] = [
   'YOURSELF', 'YOUTH', 'ZONE'
 ];
 
-// Minimal valid template: CAT, AT, ATE
-// CAT across (0,0): C(0,1), A(0,2), T(0,3)
-// AT right-down (0,1): A(0,2), T(1,2) - crosses CAT at (0,2) = A matches A ✓
-// ATE across (1,0): A(1,1), T(1,2), E(1,3) - crosses AT at (1,2) = T matches T ✓
-const SIMPLE_PUZZLE: Puzzle = {
-  title: "Minimal Template",
-  difficulty: Difficulty.EASY,
-  category: "Daily Life",
-  grid: { rows: 3, cols: 4 },
-  clues: [
-    { number: 1, direction: 'across', clue: 'Feline', answer: 'CAT', enumeration: [3], startRow: 0, startCol: 0 },
-    { number: 2, direction: 'across', clue: 'Preposition', answer: 'AT', enumeration: [2], startRow: 1, startCol: 0 },
-    { number: 3, direction: 'across', clue: 'Consumed', answer: 'ATE', enumeration: [3], startRow: 2, startCol: 0 }
-  ],
-  estimatedTime: 30,
-  coinReward: 5
-};
-
 const GOOD_EXAMPLE_PUZZLE: Puzzle = {
   title: "Good Example",
   difficulty: Difficulty.EASY,
@@ -2216,209 +2198,6 @@ const GOOD_EXAMPLE_PUZZLE: Puzzle = {
   coinReward: 10
 };
 
-// ============================================================================
-// ADDITIONAL PUZZLE TEMPLATES
-// All templates use the pattern: word1[1] = word2[0], word2[1] = word3[1]
-// ============================================================================
-
-// Template 2: THE, HE, HER (3x4 grid) - Validated ✓
-const TEMPLATE_2: Puzzle = {
-  title: "Template 2",
-  difficulty: Difficulty.EASY,
-  category: "Daily Life",
-  grid: { rows: 3, cols: 4 },
-  clues: [
-    { number: 1, direction: 'across', clue: 'Definite article', answer: 'THE', enumeration: [3], startRow: 0, startCol: 0 },
-    { number: 2, direction: 'right-down', clue: 'Masculine pronoun', answer: 'HE', enumeration: [2], startRow: 0, startCol: 1 },
-    { number: 3, direction: 'across', clue: 'Possessive pronoun', answer: 'HER', enumeration: [3], startRow: 1, startCol: 0 }
-  ],
-  estimatedTime: 30,
-  coinReward: 5
-};
-
-// Template 3: DOG, OG, OGRE (3x5 grid) - Validated ✓
-const TEMPLATE_3: Puzzle = {
-  title: "Template 3",
-  difficulty: Difficulty.EASY,
-  category: "Daily Life",
-  grid: { rows: 3, cols: 5 },
-  clues: [
-    { number: 1, direction: 'across', clue: 'Canine', answer: 'DOG', enumeration: [3], startRow: 0, startCol: 0 },
-    { number: 2, direction: 'right-down', clue: 'Two letters', answer: 'OG', enumeration: [2], startRow: 0, startCol: 1 },
-    { number: 3, direction: 'across', clue: 'Mythical creature', answer: 'OGRE', enumeration: [4], startRow: 1, startCol: 0 }
-  ],
-  estimatedTime: 30,
-  coinReward: 5
-};
-
-// Template 4: SUN, UN, UNIT (3x5 grid) - Validated ✓
-const TEMPLATE_4: Puzzle = {
-  title: "Template 4",
-  difficulty: Difficulty.EASY,
-  category: "Daily Life",
-  grid: { rows: 3, cols: 5 },
-  clues: [
-    { number: 1, direction: 'across', clue: 'Star', answer: 'SUN', enumeration: [3], startRow: 0, startCol: 0 },
-    { number: 2, direction: 'right-down', clue: 'Prefix meaning not', answer: 'UN', enumeration: [2], startRow: 0, startCol: 1 },
-    { number: 3, direction: 'across', clue: 'Measurement', answer: 'UNIT', enumeration: [4], startRow: 1, startCol: 0 }
-  ],
-  estimatedTime: 30,
-  coinReward: 5
-};
-
-// Template 5: SEA, EA, EAT (3x4 grid) - Validated ✓
-const TEMPLATE_5: Puzzle = {
-  title: "Template 5",
-  difficulty: Difficulty.EASY,
-  category: "Daily Life",
-  grid: { rows: 3, cols: 4 },
-  clues: [
-    { number: 1, direction: 'across', clue: 'Ocean', answer: 'SEA', enumeration: [3], startRow: 0, startCol: 0 },
-    { number: 2, direction: 'right-down', clue: 'Two letters', answer: 'EA', enumeration: [2], startRow: 0, startCol: 1 },
-    { number: 3, direction: 'across', clue: 'Consume food', answer: 'EAT', enumeration: [3], startRow: 1, startCol: 0 }
-  ],
-  estimatedTime: 30,
-  coinReward: 5
-};
-
-// Template 6: RUN, UN, UNDER (3x6 grid) - Validated ✓
-const TEMPLATE_6: Puzzle = {
-  title: "Template 6",
-  difficulty: Difficulty.EASY,
-  category: "Daily Life",
-  grid: { rows: 3, cols: 6 },
-  clues: [
-    { number: 1, direction: 'across', clue: 'Sprint', answer: 'RUN', enumeration: [3], startRow: 0, startCol: 0 },
-    { number: 2, direction: 'right-down', clue: 'Prefix meaning not', answer: 'UN', enumeration: [2], startRow: 0, startCol: 1 },
-    { number: 3, direction: 'across', clue: 'Below', answer: 'UNDER', enumeration: [5], startRow: 1, startCol: 0 }
-  ],
-  estimatedTime: 30,
-  coinReward: 5
-};
-
-// Template 7: ICE, CE, CEDE (3x5 grid) - Validated ✓
-const TEMPLATE_7: Puzzle = {
-  title: "Template 7",
-  difficulty: Difficulty.EASY,
-  category: "Daily Life",
-  grid: { rows: 3, cols: 5 },
-  clues: [
-    { number: 1, direction: 'across', clue: 'Frozen water', answer: 'ICE', enumeration: [3], startRow: 0, startCol: 0 },
-    { number: 2, direction: 'right-down', clue: 'Two letters', answer: 'CE', enumeration: [2], startRow: 0, startCol: 1 },
-    { number: 3, direction: 'across', clue: 'Give up', answer: 'CEDE', enumeration: [4], startRow: 1, startCol: 0 }
-  ],
-  estimatedTime: 30,
-  coinReward: 5
-};
-
-// Template 8: TEA, EA, EAT (3x4 grid) - Validated ✓
-const TEMPLATE_8: Puzzle = {
-  title: "Template 8",
-  difficulty: Difficulty.EASY,
-  category: "Daily Life",
-  grid: { rows: 3, cols: 4 },
-  clues: [
-    { number: 1, direction: 'across', clue: 'Beverage', answer: 'TEA', enumeration: [3], startRow: 0, startCol: 0 },
-    { number: 2, direction: 'right-down', clue: 'Two letters', answer: 'EA', enumeration: [2], startRow: 0, startCol: 1 },
-    { number: 3, direction: 'across', clue: 'Consume food', answer: 'EAT', enumeration: [3], startRow: 1, startCol: 0 }
-  ],
-  estimatedTime: 30,
-  coinReward: 5
-};
-
-// Template 9: TAR, AR, ART (3x4 grid) - Validated ✓
-const TEMPLATE_9: Puzzle = {
-  title: "Template 9",
-  difficulty: Difficulty.EASY,
-  category: "Daily Life",
-  grid: { rows: 3, cols: 4 },
-  clues: [
-    { number: 1, direction: 'across', clue: 'Sticky substance', answer: 'TAR', enumeration: [3], startRow: 0, startCol: 0 },
-    { number: 2, direction: 'right-down', clue: 'Two letters', answer: 'AR', enumeration: [2], startRow: 0, startCol: 1 },
-    { number: 3, direction: 'across', clue: 'Creative work', answer: 'ART', enumeration: [3], startRow: 1, startCol: 0 }
-  ],
-  estimatedTime: 30,
-  coinReward: 5
-};
-
-// ============================================================================
-// LARGER PUZZLE TEMPLATES (5x5 and bigger)
-// ============================================================================
-
-// Template 10: 5x5 grid with 5 clues - No crossings (like Minimal Template)
-// All words are independent, making it easy to solve
-const TEMPLATE_10: Puzzle = {
-  title: "Template 10 - Medium",
-  difficulty: Difficulty.MEDIUM,
-  category: "Daily Life",
-  grid: { rows: 5, cols: 5 },
-  clues: [
-    { number: 1, direction: 'across', clue: 'Definite article', answer: 'THE', enumeration: [3], startRow: 0, startCol: 0 },
-    { number: 2, direction: 'across', clue: 'Feline', answer: 'CAT', enumeration: [3], startRow: 1, startCol: 0 },
-    { number: 3, direction: 'across', clue: 'Canine', answer: 'DOG', enumeration: [3], startRow: 2, startCol: 0 },
-    { number: 4, direction: 'across', clue: 'Star', answer: 'SUN', enumeration: [3], startRow: 3, startCol: 0 },
-    { number: 5, direction: 'across', clue: 'Ocean', answer: 'SEA', enumeration: [3], startRow: 4, startCol: 0 }
-  ],
-  estimatedTime: 60,
-  coinReward: 8
-};
-
-// Template 11: 6x6 grid with 6 clues - No crossings
-const TEMPLATE_11: Puzzle = {
-  title: "Template 11 - Large",
-  difficulty: Difficulty.MEDIUM,
-  category: "Daily Life",
-  grid: { rows: 6, cols: 6 },
-  clues: [
-    { number: 1, direction: 'across', clue: 'Definite article', answer: 'THE', enumeration: [3], startRow: 0, startCol: 0 },
-    { number: 2, direction: 'across', clue: 'Feline', answer: 'CAT', enumeration: [3], startRow: 1, startCol: 0 },
-    { number: 3, direction: 'across', clue: 'Canine', answer: 'DOG', enumeration: [3], startRow: 2, startCol: 0 },
-    { number: 4, direction: 'across', clue: 'Star', answer: 'SUN', enumeration: [3], startRow: 3, startCol: 0 },
-    { number: 5, direction: 'across', clue: 'Ocean', answer: 'SEA', enumeration: [3], startRow: 4, startCol: 0 },
-    { number: 6, direction: 'across', clue: 'Creative work', answer: 'ART', enumeration: [3], startRow: 5, startCol: 0 }
-  ],
-  estimatedTime: 90,
-  coinReward: 10
-};
-
-// Template 12: 7x7 grid with 7 clues - No crossings
-const TEMPLATE_12: Puzzle = {
-  title: "Template 12 - Extra Large",
-  difficulty: Difficulty.MEDIUM,
-  category: "Daily Life",
-  grid: { rows: 7, cols: 7 },
-  clues: [
-    { number: 1, direction: 'across', clue: 'Definite article', answer: 'THE', enumeration: [3], startRow: 0, startCol: 0 },
-    { number: 2, direction: 'across', clue: 'Feline', answer: 'CAT', enumeration: [3], startRow: 1, startCol: 0 },
-    { number: 3, direction: 'across', clue: 'Canine', answer: 'DOG', enumeration: [3], startRow: 2, startCol: 0 },
-    { number: 4, direction: 'across', clue: 'Star', answer: 'SUN', enumeration: [3], startRow: 3, startCol: 0 },
-    { number: 5, direction: 'across', clue: 'Ocean', answer: 'SEA', enumeration: [3], startRow: 4, startCol: 0 },
-    { number: 6, direction: 'across', clue: 'Creative work', answer: 'ART', enumeration: [3], startRow: 5, startCol: 0 },
-    { number: 7, direction: 'across', clue: 'Beverage', answer: 'TEA', enumeration: [3], startRow: 6, startCol: 0 }
-  ],
-  estimatedTime: 120,
-  coinReward: 12
-};
-
-// Template 13: 8x8 grid with 8 clues - No crossings
-const TEMPLATE_13: Puzzle = {
-  title: "Template 13 - Huge",
-  difficulty: Difficulty.HARD,
-  category: "Daily Life",
-  grid: { rows: 8, cols: 8 },
-  clues: [
-    { number: 1, direction: 'across', clue: 'Definite article', answer: 'THE', enumeration: [3], startRow: 0, startCol: 0 },
-    { number: 2, direction: 'across', clue: 'Feline', answer: 'CAT', enumeration: [3], startRow: 1, startCol: 0 },
-    { number: 3, direction: 'across', clue: 'Canine', answer: 'DOG', enumeration: [3], startRow: 2, startCol: 0 },
-    { number: 4, direction: 'across', clue: 'Star', answer: 'SUN', enumeration: [3], startRow: 3, startCol: 0 },
-    { number: 5, direction: 'across', clue: 'Ocean', answer: 'SEA', enumeration: [3], startRow: 4, startCol: 0 },
-    { number: 6, direction: 'across', clue: 'Creative work', answer: 'ART', enumeration: [3], startRow: 5, startCol: 0 },
-    { number: 7, direction: 'across', clue: 'Beverage', answer: 'TEA', enumeration: [3], startRow: 6, startCol: 0 },
-    { number: 8, direction: 'across', clue: 'Frozen water', answer: 'ICE', enumeration: [3], startRow: 7, startCol: 0 }
-  ],
-  estimatedTime: 150,
-  coinReward: 15
-};
 
 // ============================================================================
 // MAIN GENERATOR CLASS
@@ -2440,13 +2219,6 @@ export class PuzzleGenerator {
     const template = createTemplateFromPuzzle(puzzle);
     this.templates.push(template);
     console.log(`Added template: ${template.name} (${template.slots.length} slots)`);
-  }
-  
-  /**
-   * Add simple template for easier generation
-   */
-  addSimpleTemplate(): void {
-    this.addTemplateFromPuzzle(SIMPLE_PUZZLE);
   }
   
   /**
@@ -2575,27 +2347,8 @@ export function generatePuzzles(
   
   // Create generator
   const generator = new PuzzleGenerator();
-  
-  // Add all available templates
-  generator.addSimpleTemplate(); // SIMPLE_PUZZLE (CAT/AT/ATE) - 3x4
-  generator.addTemplateFromPuzzle(TEMPLATE_2); // THE/HE/HER - 3x4
-  generator.addTemplateFromPuzzle(TEMPLATE_3); // DOG/OG/OGRE - 3x5
-  generator.addTemplateFromPuzzle(TEMPLATE_4); // SUN/UN/UNIT - 3x5
-  generator.addTemplateFromPuzzle(TEMPLATE_5); // SEA/EA/EAT - 3x4
-  generator.addTemplateFromPuzzle(TEMPLATE_6); // RUN/UN/UNDER - 3x6
-  generator.addTemplateFromPuzzle(TEMPLATE_7); // ICE/CE/CEDE - 3x5
-  generator.addTemplateFromPuzzle(TEMPLATE_8); // TEA/EA/EAT - 3x4
-  generator.addTemplateFromPuzzle(TEMPLATE_9); // TAR/AR/ART - 3x4
-  
-  // Larger templates with bigger grids
-  generator.addTemplateFromPuzzle(TEMPLATE_10); // 5x5 grid, 5 clues
-  generator.addTemplateFromPuzzle(TEMPLATE_11); // 6x6 grid, 6 clues
-  generator.addTemplateFromPuzzle(TEMPLATE_12); // 7x7 grid, 7 clues
-  generator.addTemplateFromPuzzle(TEMPLATE_13); // 8x8 grid, 8 clues
-  
-  // GOOD_EXAMPLE_PUZZLE is too complex (27 slots with 7 crossings each)
-  // It's nearly impossible to solve with the current solver
-  // generator.addTemplateFromPuzzle(GOOD_EXAMPLE_PUZZLE);
+
+  generator.addTemplateFromPuzzle(GOOD_EXAMPLE_PUZZLE); // THE/HE/HER - 3x4
   
   const puzzles: Puzzle[] = [];
   puzzles.push(...generator.generateBatch(count, {
@@ -2617,19 +2370,6 @@ export function generatePuzzles(
 
 export { 
   GOOD_EXAMPLE_PUZZLE, 
-  SIMPLE_PUZZLE, 
-  TEMPLATE_2,
-  TEMPLATE_3,
-  TEMPLATE_4,
-  TEMPLATE_5,
-  TEMPLATE_6,
-  TEMPLATE_7,
-  TEMPLATE_8,
-  TEMPLATE_9,
-  TEMPLATE_10,
-  TEMPLATE_11,
-  TEMPLATE_12,
-  TEMPLATE_13,
   WORD_LIST, 
   getClue 
 };
