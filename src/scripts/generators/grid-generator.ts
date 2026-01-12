@@ -396,10 +396,13 @@ export function solveGrid(
     initialState.clueCells.add(`${clueCell.row},${clueCell.col}`);
   }
   
-  // Sort slots by most constrained first (MRV heuristic)
+  // CRITICAL FIX: Sort slots by LEAST constrained first (reverse MRV)
+  // For crossword generation, we want to solve EASIEST slots first to build up the grid
+  // Then use those letters to help solve harder slots
+  // This is opposite of standard CSP - we solve fewest crossings first
   const sortedSlots = [...template.slots].sort((a, b) => {
-    // Prioritize slots with more crossings
-    return b.crossings.length - a.crossings.length;
+    // Prioritize slots with FEWER crossings (easier to solve first)
+    return a.crossings.length - b.crossings.length;
   });
   
   // Log slot order for debugging
@@ -612,8 +615,10 @@ export function solveGrid(
       candidates = shuffleArray(candidates);
     }
     
-    // Limit candidates to avoid trying too many
-    const maxCandidatesToTry = 100;
+    // Limit candidates to avoid trying too many, but increase for constrained slots
+    // Slots with more constraints need more candidates tried
+    const constraintCount = constraints.size;
+    const maxCandidatesToTry = constraintCount > 2 ? 500 : constraintCount > 1 ? 300 : 200;
     const candidatesToTry = candidates.slice(0, maxCandidatesToTry);
     
     if (candidates.length > maxCandidatesToTry && depth === 0 && attempts % 50 === 0) {
@@ -627,6 +632,31 @@ export function solveGrid(
       // Check if we've exceeded max attempts before trying this word
       if (attempts > config.maxAttempts) {
         return null;
+      }
+      
+      // Debug: Log why first few words fail on first slot
+      if (slotIndex === 0 && i < 3 && depth === 0) {
+        const canPlace = canPlaceWord(state, word, cells);
+        if (!canPlace) {
+          // Check why it failed
+          for (let j = 0; j < word.length; j++) {
+            const { row, col } = cells[j];
+            const boundsOk = row >= 0 && row < state.rows && col >= 0 && col < state.cols;
+            const isClueCell = state.clueCells.has(`${row},${col}`);
+            const existing = boundsOk ? state.cells[row][col] : null;
+            const conflicts = existing !== null && existing !== word[j];
+            if (!boundsOk) {
+              console.log(`     ❌ Word "${word}" fails: cell ${j} (${row},${col}) out of bounds (grid: ${state.rows}x${state.cols})`);
+              break;
+            } else if (isClueCell) {
+              console.log(`     ❌ Word "${word}" fails: cell ${j} (${row},${col}) is a clue cell`);
+              break;
+            } else if (conflicts) {
+              console.log(`     ❌ Word "${word}" fails: cell ${j} (${row},${col}) has '${existing}' but needs '${word[j]}'`);
+              break;
+            }
+          }
+        }
       }
       
       if (!canPlaceWord(state, word, cells)) {
@@ -898,12 +928,15 @@ export function generateTemplate(
   size: 'small' | 'medium' | 'large' | 'xlarge',
   difficulty: Difficulty = Difficulty.EASY
 ): GridTemplate {
-  // Use much more conservative settings to ensure solvability
+  // Updated settings for denser, larger puzzles with all directions
+  // Minimum size is 14x14 as requested
+  // CRITICAL: maxCrossingsPerSlot must be low enough to ensure solvability
+  // Early slots (solved first) should have 0-2 crossings, later slots can have 3-4
   const sizeConfig = {
-    small: { rows: 8, cols: 8, minSlots: 5, maxSlots: 8, maxCrossingsPerSlot: 2 },
-    medium: { rows: 10, cols: 10, minSlots: 8, maxSlots: 12, maxCrossingsPerSlot: 3 },
-    large: { rows: 12, cols: 12, minSlots: 12, maxSlots: 18, maxCrossingsPerSlot: 4 },
-    xlarge: { rows: 15, cols: 15, minSlots: 18, maxSlots: 25, maxCrossingsPerSlot: 5 }
+    small: { rows: 14, cols: 14, minSlots: 15, maxSlots: 22, maxCrossingsPerSlot: 4, density: 0.35 },
+    medium: { rows: 14, cols: 14, minSlots: 18, maxSlots: 28, maxCrossingsPerSlot: 4, density: 0.40 },
+    large: { rows: 15, cols: 15, minSlots: 25, maxSlots: 35, maxCrossingsPerSlot: 4, density: 0.45 },
+    xlarge: { rows: 16, cols: 16, minSlots: 30, maxSlots: 45, maxCrossingsPerSlot: 5, density: 0.50 }
   };
   
   const config = sizeConfig[size];
@@ -912,43 +945,90 @@ export function generateTemplate(
   const occupiedCells = new Set<string>(); // Track which cells have clues
   const answerCells = new Map<string, { slotId: string; position: number }>(); // Track answer cells for crossings
   
-  // Generate slots with strategic placement - prefer simpler patterns
+  // Generate slots with strategic placement for dense puzzles
   let slotNumber = 1;
   const targetSlots = Math.floor(Math.random() * (config.maxSlots - config.minSlots + 1)) + config.minSlots;
   
-  // Use simpler directions more often - avoid complex arrow directions
-  const simpleDirections: Direction[] = ['across', 'down'];
-  const complexDirections: Direction[] = ['right-down', 'left-down', 'down-across', 'up-across'];
-  // 70% simple, 30% complex
-  const directions: Direction[] = [
-    ...simpleDirections, ...simpleDirections, ...simpleDirections,
-    ...simpleDirections, ...simpleDirections, ...simpleDirections, ...simpleDirections,
-    ...complexDirections
-  ];
+  // Use all 6 directions evenly for variety
+  // Track which directions have been used to ensure all are used
+  const allDirections: Direction[] = ['across', 'down', 'right-down', 'left-down', 'down-across', 'up-across'];
+  const directionUsage = new Map<Direction, number>();
+  allDirections.forEach(dir => directionUsage.set(dir, 0));
+  
+  // Create a balanced distribution - each direction appears multiple times
+  const directions: Direction[] = [];
+  for (let i = 0; i < Math.ceil(targetSlots / allDirections.length) + 2; i++) {
+    directions.push(...allDirections);
+  }
+  // Shuffle for randomness
+  for (let i = directions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [directions[i], directions[j]] = [directions[j], directions[i]];
+  }
   
   for (let i = 0; i < targetSlots && slotNumber <= targetSlots; i++) {
     // Try to place a slot
     let placed = false;
     let attempts = 0;
-    const maxPlacementAttempts = 100;
+    // Increase attempts for larger grids to ensure we fill them
+    const maxPlacementAttempts = size === 'xlarge' ? 500 : size === 'large' ? 300 : 200;
     
     while (!placed && attempts < maxPlacementAttempts) {
       attempts++;
       
-      // Random direction (weighted toward simple)
-      const direction = directions[Math.floor(Math.random() * directions.length)];
+      // Smart direction selection: prioritize unused directions, then balance
+      let direction: Direction;
+      if (i < allDirections.length) {
+        // First 6 slots: use each direction once to ensure all are used
+        direction = allDirections[i];
+      } else {
+        // After that, prefer less-used directions but allow all
+        const sortedDirections = [...allDirections].sort((a, b) => 
+          (directionUsage.get(a) || 0) - (directionUsage.get(b) || 0)
+        );
+        // 70% chance to pick from least-used, 30% random
+        if (Math.random() < 0.7 && sortedDirections.length > 0) {
+          const leastUsed = sortedDirections[0];
+          const leastUsedCount = directionUsage.get(leastUsed) || 0;
+          const candidates = sortedDirections.filter(d => 
+            (directionUsage.get(d) || 0) <= leastUsedCount + 1
+          );
+          direction = candidates[Math.floor(Math.random() * candidates.length)];
+        } else {
+          direction = directions[Math.floor(Math.random() * directions.length)];
+        }
+      }
       
-      // Random starting position (leave margin for answer)
-      let startRow = Math.floor(Math.random() * config.rows);
-      let startCol = Math.floor(Math.random() * config.cols);
+      // Smarter placement: after first few slots, try to place near existing answer cells for crossings
+      let startRow: number;
+      let startCol: number;
+      
+      if (i > 3 && answerCells.size > 0 && Math.random() < 0.6) {
+        // 60% chance to try placing near existing answer cells for crossings
+        const existingCells = Array.from(answerCells.keys());
+        const randomCellKey = existingCells[Math.floor(Math.random() * existingCells.length)];
+        const [cellRow, cellCol] = randomCellKey.split(',').map(Number);
+        
+        // Place clue cell near this answer cell (within 2-4 cells)
+        const offsetRow = Math.floor(Math.random() * 5) - 2; // -2 to 2
+        const offsetCol = Math.floor(Math.random() * 5) - 2;
+        startRow = Math.max(0, Math.min(config.rows - 1, cellRow + offsetRow));
+        startCol = Math.max(0, Math.min(config.cols - 1, cellCol + offsetCol));
+      } else {
+        // Random starting position
+        startRow = Math.floor(Math.random() * config.rows);
+        startCol = Math.floor(Math.random() * config.cols);
+      }
       
       // Adjust for direction constraints
-      if (direction === 'left-down' && startCol < 3) startCol = 3;
-      if (direction === 'up-across' && startRow < 2) startRow = 2;
+      if (direction === 'left-down' && startCol < 3) startCol = Math.max(3, startCol);
+      if (direction === 'up-across' && startRow < 2) startRow = Math.max(2, startRow);
+      if (direction === 'right-down' && startCol >= config.cols - 1) startCol = Math.max(0, config.cols - 2);
+      if (direction === 'down-across' && startRow >= config.rows - 1) startRow = Math.max(0, config.rows - 2);
       
-      // Prefer shorter words for better solvability
-      const maxLength = size === 'small' ? 5 : size === 'medium' ? 7 : size === 'large' ? 8 : 10;
-      const minLength = size === 'small' ? 3 : 4;
+      // Word length range - allow longer words for larger grids
+      const maxLength = size === 'small' ? 8 : size === 'medium' ? 10 : size === 'large' ? 12 : 14;
+      const minLength = size === 'small' ? 4 : size === 'medium' ? 5 : size === 'large' ? 5 : 6;
       const wordLength = Math.floor(Math.random() * (maxLength - minLength + 1)) + minLength;
       
       // Create a temporary slot to calculate answer cells
@@ -997,15 +1077,34 @@ export function generateTemplate(
         }
       }
       
-      // For small templates, prefer NO crossings to guarantee solvability
-      // For larger templates, allow minimal crossings
-      if (size === 'small' && crossingCount > 0) {
-        continue; // Small templates should have no crossings for guaranteed solvability
+      // CRITICAL: Progressive crossing limits during placement
+      // For solvability: MOST slots should have 0-1 crossings during placement
+      // Only a few can have 2 crossings
+      // Final crossings will be higher (after all slots placed), but we control it here
+      const progressRatio = i / targetSlots;
+      let maxAllowedCrossings: number;
+      
+      // Most slots (80%) should have 0-1 crossings during placement
+      // Only later slots (20%) can have 2 crossings
+      if (progressRatio < 0.8) {
+        maxAllowedCrossings = 1; // Most slots: max 1 crossing during placement
+      } else {
+        maxAllowedCrossings = 2; // Last 20%: max 2 crossings
       }
       
-      // Limit crossings per slot to ensure solvability
-      if (crossingCount > config.maxCrossingsPerSlot) {
-        continue; // Too many crossings, try a different position
+      // Strictly enforce crossing limits during placement
+      if (crossingCount > maxAllowedCrossings) {
+        continue; // Too many crossings for this stage, try a different position
+      }
+      
+      // Moderate preference for crossings to ensure density (but within limits)
+      // Don't be too aggressive - solvability is more important than density
+      const prefersCrossing = Math.random() < config.density;
+      if (prefersCrossing && crossingCount === 0 && i > targetSlots * 0.3) {
+        // After placing 30% of slots, prefer adding crossings for density
+        if (Math.random() < 0.3) {
+          continue; // 30% chance to skip slots without crossings (balanced for solvability)
+        }
       }
       
       if (!canPlace) {
@@ -1026,6 +1125,9 @@ export function generateTemplate(
       slots.push(slot);
       clueCells.push({ row: startRow, col: startCol, direction });
       occupiedCells.add(clueKey);
+      
+      // Track direction usage
+      directionUsage.set(direction, (directionUsage.get(direction) || 0) + 1);
       
       // Mark answer cells using the calculated cells
       for (let j = 0; j < answerCellsForSlot.length; j++) {
@@ -1073,30 +1175,107 @@ export function generateTemplate(
     }
   }
   
-  // Filter out slots with too many crossings (post-processing)
-  const filteredSlots = slots.filter(slot => slot.crossings.length <= config.maxCrossingsPerSlot);
+  // CRITICAL: Sort slots by crossing count (fewest first)
+  // The solver will solve slots with most crossings first (MRV heuristic),
+  // but we want the FIRST slots to have FEW crossings so they're solvable
+  // So we'll sort by crossing count ASCENDING, then filter
+  slots.sort((a, b) => a.crossings.length - b.crossings.length);
   
-  // Recalculate clue cells for filtered slots
-  const filteredClueCells = filteredSlots.map(slot => ({
+  // Filter out slots with excessive crossings
+  // CRITICAL: For solvability, we need MOST slots to have ≤2 crossings
+  // Only a few slots can have 3-4 crossings
+  // The solver solves most-constrained first, so early slots (fewest crossings) get solved last
+  // But we want them solvable, so keep crossings low overall
+  const filteredSlots: typeof slots = [];
+  let slotsWithManyCrossings = 0;
+  const maxSlotsWithManyCrossings = Math.floor(slots.length * 0.2); // Only 20% can have 3+ crossings
+  
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i];
+    const crossings = slot.crossings.length;
+    
+    // Most slots should have ≤2 crossings for solvability
+    if (crossings <= 2) {
+      filteredSlots.push(slot);
+    } else if (crossings <= 3 && slotsWithManyCrossings < maxSlotsWithManyCrossings) {
+      // Allow some slots with 3 crossings (up to 20% of slots)
+      filteredSlots.push(slot);
+      slotsWithManyCrossings++;
+    } else if (crossings <= 4 && slotsWithManyCrossings < maxSlotsWithManyCrossings * 0.5) {
+      // Very few slots can have 4 crossings (up to 10% of slots)
+      filteredSlots.push(slot);
+      slotsWithManyCrossings++;
+    }
+    // Slots with 5+ crossings are filtered out
+  }
+  
+  // Log direction usage for debugging
+  const directionCounts = Array.from(directionUsage.entries())
+    .map(([dir, count]) => `${dir}:${count}`)
+    .join(', ');
+  console.log(`  📊 Direction usage: ${directionCounts}`);
+  
+  // CRITICAL: Validate that no answer cells overlap with clue cells
+  // Build a set of all clue cell positions
+  const allClueCellPositions = new Set<string>();
+  for (const slot of filteredSlots) {
+    allClueCellPositions.add(`${slot.startRow},${slot.startCol}`);
+  }
+  
+  // Filter out any slots whose answer cells overlap with clue cells
+  const validatedSlots: typeof filteredSlots = [];
+  for (const slot of filteredSlots) {
+    const answerCells = getSlotCells(slot);
+    let hasOverlap = false;
+    for (const cell of answerCells) {
+      const cellKey = `${cell.row},${cell.col}`;
+      if (allClueCellPositions.has(cellKey)) {
+        // This answer cell overlaps with a clue cell - invalid!
+        hasOverlap = true;
+        break;
+      }
+    }
+    if (!hasOverlap) {
+      validatedSlots.push(slot);
+    } else {
+      console.log(`  ⚠️  Filtered out slot ${slot.id}: answer cells overlap with clue cells`);
+    }
+  }
+  
+  // If we filtered out too many, we have a problem - but this shouldn't happen
+  // since we enforced limits during placement
+  if (validatedSlots.length < config.minSlots * 0.8) {
+    console.warn(`⚠️  Warning: Filtered out too many slots (${slots.length} -> ${validatedSlots.length}). Template may be too dense.`);
+  }
+  
+  // Recalculate clue cells for validated slots
+  const filteredClueCells = validatedSlots.map(slot => ({
     row: slot.startRow,
     col: slot.startCol,
     direction: slot.direction
   }));
+  
+  // Calculate average crossings for metadata
+  const avgCrossings = validatedSlots.length > 0 
+    ? validatedSlots.reduce((sum, s) => sum + s.crossings.length, 0) / validatedSlots.length 
+    : 0;
   
   return {
     id: `generated_${size}_${Date.now()}`,
     name: `Generated ${size} template`,
     rows: config.rows,
     cols: config.cols,
-    slots: filteredSlots,
+    slots: validatedSlots,
     clueCells: filteredClueCells,
     difficulty,
     categories: ['Generated'],
     metadata: {
       verified: false,
-      successRate: 0.7, // Higher success rate with simpler templates
+      successRate: avgCrossings <= 2 ? 0.8 : avgCrossings <= 3 ? 0.7 : 0.6,
       generated: true,
-      size
+      size,
+      density: config.density,
+      avgCrossings: avgCrossings.toFixed(2)
     }
   };
 }
