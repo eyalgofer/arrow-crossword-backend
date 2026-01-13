@@ -495,6 +495,7 @@ const seedDatabase = async () => {
     console.log(`   Generated perfect puzzle: ${generatedPuzzles.length}`);
     console.log(`   Total: ${allPuzzles.length}`);
     
+
     if (allPuzzles.length === 0) {
       console.error('\n❌ No valid puzzles to seed! Please fix validation errors.');
       await mongoose.connection.close();

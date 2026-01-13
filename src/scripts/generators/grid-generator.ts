@@ -428,35 +428,63 @@ export function solveGrid(
     initialState.clueCells.add(`${clueCell.row},${clueCell.col}`);
   }
   
-  // CRITICAL FIX: Sort slots by LEAST constrained first (reverse MRV)
-  // For crossword generation, we want to solve EASIEST slots first to build up the grid
-  // Then use those letters to help solve harder slots
-  // This is opposite of standard CSP - we solve fewest crossings first
-  const sortedSlots = [...template.slots].sort((a, b) => {
-    // Prioritize slots with FEWER crossings (easier to solve first)
-    return a.crossings.length - b.crossings.length;
-  });
-  
-  // Log slot order for debugging
-  console.log(`  📋 Slot order: ${sortedSlots.map((s, i) => `${i + 1}. ${s.length} letters, ${s.crossings.length} crossings`).join(', ')}`);
+  // IMPROVED: Use true MRV (Minimum Remaining Values) heuristic
+  // Dynamically select the slot with fewest valid candidates at each step
+  // This is the correct CSP approach - fail fast on most constrained slots
   
   // Track stuck states to detect infinite loops
   const stuckStates = new Map<string, number>(); // state signature -> attempt count
   
-  function backtrack(state: GridState, slotIndex: number, depth: number = 0): GridState | null {
+  /**
+   * Select the next slot using MRV (Minimum Remaining Values) heuristic
+   * Returns the slot with the fewest valid placeable candidates
+   */
+  function selectNextSlot(state: GridState, remainingSlots: ClueSlot[]): ClueSlot | null {
+    let bestSlot: ClueSlot | null = null;
+    let minCandidates = Infinity;
+    
+    for (const slot of remainingSlots) {
+      const cells = getSlotCells(slot);
+      const constraints = getCrossingConstraints(state, cells);
+      
+      // Find matching words
+      const excludeWords = config.allowWordReuse === false 
+        ? new Set(state.placedWords.values())
+        : undefined;
+      const candidates = findMatchingWords(wordIndex, slot.length, constraints, excludeWords);
+      
+      // CRITICAL: Pre-filter by placeability (key improvement from improved generator)
+      const validCandidates = candidates.filter(w => canPlaceWord(state, w, cells));
+      
+      // Fail fast - if a slot has no valid candidates, return it immediately
+      if (validCandidates.length === 0) {
+        return slot; // This will cause backtrack to fail fast
+      }
+      
+      // MRV: Select slot with fewest valid candidates
+      if (validCandidates.length < minCandidates) {
+        minCandidates = validCandidates.length;
+        bestSlot = slot;
+      }
+    }
+    
+    return bestSlot;
+  }
+  
+  function backtrack(state: GridState, remainingSlots: ClueSlot[], depth: number = 0): GridState | null {
     // Increment attempts to track exploration depth
     // This counts how many times we've entered the backtrack function
     attempts++;
     
-    // Detect if we're stuck in a loop (same slot, many attempts)
-    if (depth === 0 && slotIndex < sortedSlots.length) {
-      const stateSignature = `${slotIndex}_${Array.from(state.placedWords.keys()).sort().join(',')}`;
+    // Detect if we're stuck in a loop
+    if (depth === 0 && remainingSlots.length > 0) {
+      const stateSignature = `${remainingSlots.length}_${Array.from(state.placedWords.keys()).sort().join(',')}`;
       const previousAttempt = stuckStates.get(stateSignature) || 0;
       const attemptsSinceLast = attempts - previousAttempt;
       
       // If we've tried this exact state 5000+ times, we're stuck
       if (previousAttempt > 0 && attemptsSinceLast > 5000) {
-        console.log(`  ⚠️  Detected stuck state at slot ${slotIndex + 1}/${sortedSlots.length} after ${attemptsSinceLast} attempts`);
+        console.log(`  ⚠️  Detected stuck state with ${remainingSlots.length} slots remaining after ${attemptsSinceLast} attempts`);
         console.log(`     Placed words: ${Array.from(state.placedWords.values()).join(', ')}`);
         stuckStates.delete(stateSignature); // Reset to allow retry
         return null; // Exit this branch
@@ -467,73 +495,56 @@ export function solveGrid(
       }
     }
     
-    // Debug: log when we're at slot 3 (after placing slot 1 and slot 2)
-    if (depth === 1 && slotIndex === 2 && attempts <= 1000) {
-      const slot = sortedSlots[slotIndex];
-      const cells = getSlotCells(slot);
-      const constraints = getCrossingConstraints(state, cells);
-      const placedWords = Array.from(state.placedWords.values());
-      const constraintInfo = constraints.size > 0 
-        ? ` with ${constraints.size} constraints: ${Array.from(constraints.entries()).map(([pos, letter]) => `pos${pos}='${letter}'`).join(', ')}`
-        : ' (no constraints)';
-      const excludeWords = config.allowWordReuse === false 
-        ? new Set(state.placedWords.values())
-        : undefined;
-      const candidates = findMatchingWords(wordIndex, slot.length, constraints, excludeWords);
-      console.log(`  🔍 [Depth 1] Attempt ${attempts}: Slot ${slotIndex + 1}/${sortedSlots.length} (${slot.length} letters${constraintInfo})`);
-      console.log(`     Placed words: ${placedWords.join(', ')}`);
-      console.log(`     Candidates: ${candidates.length}`);
-      if (candidates.length === 0) {
-        console.log(`     ❌ Slot 3 has NO candidates - this is why we're failing!`);
-      } else if (candidates.length <= 10) {
-        console.log(`     Slot 3 candidates: ${candidates.join(', ')}`);
-      }
-    }
-    
     // Progress logging every 10k attempts
     if (attempts % 10000 === 0 && depth === 0) {
       const placedWords = Array.from(state.placedWords.values());
-      console.log(`  🔄 Solver progress: ${attempts}/${config.maxAttempts} attempts, ${placedWords.length}/${sortedSlots.length} slots filled`);
+      const totalSlots = template.slots.length;
+      console.log(`  🔄 Solver progress: ${attempts}/${config.maxAttempts} attempts, ${placedWords.length}/${totalSlots} slots filled`);
     }
     
     if (attempts > config.maxAttempts) {
       if (attempts === config.maxAttempts + 1) {
-        console.log(`  ⚠️  Max attempts (${config.maxAttempts}) reached. Progress: ${slotIndex}/${sortedSlots.length} slots filled`);
-        // Show what we've placed so far
         const placedWords = Array.from(state.placedWords.values());
+        const totalSlots = template.slots.length;
+        console.log(`  ⚠️  Max attempts (${config.maxAttempts}) reached. Progress: ${placedWords.length}/${totalSlots} slots filled`);
         if (placedWords.length > 0) {
           console.log(`     Placed words: ${placedWords.join(', ')}`);
         }
         // Show the current slot that's failing
-        if (slotIndex < sortedSlots.length) {
-          const currentSlot = sortedSlots[slotIndex];
-          const cells = getSlotCells(currentSlot);
+        if (remainingSlots.length > 0) {
+          const nextSlot = selectNextSlot(state, remainingSlots);
+          if (nextSlot) {
+            const cells = getSlotCells(nextSlot);
           const constraints = getCrossingConstraints(state, cells);
           const constraintInfo = constraints.size > 0 
             ? ` with ${constraints.size} constraints: ${Array.from(constraints.entries()).map(([pos, letter]) => `pos${pos}='${letter}'`).join(', ')}`
             : ' (no constraints)';
-          console.log(`     Current slot: ${currentSlot.length} letters${constraintInfo}`);
+            console.log(`     Current slot: ${nextSlot.length} letters${constraintInfo}`);
+          }
         }
       }
       return null;
     }
     
     // All slots filled successfully
-    if (slotIndex >= sortedSlots.length) {
+    if (remainingSlots.length === 0) {
       if (depth === 0) {
         console.log(`  ✅ All slots filled successfully!`);
       }
       return state;
     }
     
-    const slot = sortedSlots[slotIndex];
-    const cells = getSlotCells(slot);
+    // IMPROVED: Use MRV to select the most constrained slot dynamically
+    const slot = selectNextSlot(state, remainingSlots);
+    if (!slot) {
+      // No slot selected means all remaining slots have 0 valid candidates - fail fast
+      return null;
+    }
     
-    // Get constraints from existing letters
+    const cells = getSlotCells(slot);
     const constraints = getCrossingConstraints(state, cells);
     
     // Find candidate words
-    // Only exclude words if allowWordReuse is false
     const excludeWords = config.allowWordReuse === false 
       ? new Set(state.placedWords.values())
       : undefined;
@@ -545,16 +556,25 @@ export function solveGrid(
       excludeWords
     );
     
+    // CRITICAL IMPROVEMENT: Pre-filter candidates by placeability
+    // This avoids wasting time trying words that can't be placed
+    const placeableCandidates = candidates.filter(w => canPlaceWord(state, w, cells));
+    
+    // IMPROVEMENT: Limit candidates to avoid trying too many (from improved generator)
+    candidates = placeableCandidates.slice(0, 100);
+    
     // Log first attempt for each slot (only at top level)
     if (depth === 0 && attempts === 1) {
       const constraintInfo = constraints.size > 0 
         ? ` with ${constraints.size} constraints: ${Array.from(constraints.entries()).map(([pos, letter]) => `pos${pos}='${letter}'`).join(', ')}`
         : ' (no constraints)';
-      console.log(`  📍 Slot ${slotIndex + 1}/${sortedSlots.length} (${slot.length} letters${constraintInfo}): ${candidates.length} candidates`);
+      const totalSlots = template.slots.length;
+      const remainingCount = remainingSlots.length;
+      console.log(`  📍 Selected slot (${remainingCount} remaining): ${slot.length} letters${constraintInfo}, ${candidates.length} placeable candidates`);
       
       // If no candidates, show why
       if (candidates.length === 0) {
-        console.log(`     ❌ No candidates found for ${slot.length}-letter word${constraintInfo}`);
+        console.log(`     ❌ No placeable candidates found for ${slot.length}-letter word${constraintInfo}`);
         // Show all words of this length
         const allWordsOfLength = Array.from(wordIndex.byLength.get(slot.length) || []);
         console.log(`     All ${slot.length}-letter words: ${allWordsOfLength.length} total`);
@@ -562,38 +582,6 @@ export function solveGrid(
           console.log(`     Constraints: ${Array.from(constraints.entries()).map(([pos, letter]) => `pos${pos}='${letter}'`).join(', ')}`);
         }
       }
-    }
-    
-    if (depth === 0 && attempts <= 10) {
-      const constraintInfo = constraints.size > 0
-        ? ` with ${constraints.size} constraints: ${Array.from(constraints.entries()).map(([pos, letter]) => `pos${pos}='${letter}'`).join(', ')}`
-        : ' (no constraints)';
-      console.log(`  📍 Slot ${slotIndex + 1}/${sortedSlots.length} (${slot.length} letters${constraintInfo}): ${candidates.length} candidates`);
-      if (candidates.length > 0 && candidates.length <= 10) {
-        console.log(`     Candidates: ${candidates.slice(0, 10).join(', ')}`);
-      }
-    }
-    
-    // Log when we're about to fail (near max attempts)
-    if (depth === 0 && attempts >= 950 && attempts <= 957) {
-      const constraintInfo = constraints.size > 0
-        ? ` with ${constraints.size} constraints: ${Array.from(constraints.entries()).map(([pos, letter]) => `pos${pos}='${letter}'`).join(', ')}`
-        : ' (no constraints)';
-      const placedWords = Array.from(state.placedWords.values());
-      console.log(`  🔍 Attempt ${attempts}: Slot ${slotIndex + 1}/${sortedSlots.length} (${slot.length} letters${constraintInfo})`);
-      console.log(`     Placed words: ${placedWords.length > 0 ? placedWords.join(', ') : 'none'}`);
-      console.log(`     Candidates: ${candidates.length}`);
-      if (candidates.length > 0 && candidates.length <= 20) {
-        console.log(`     Candidate list: ${candidates.join(', ')}`);
-      }
-    }
-    
-    // Also log when we're about to try a word (for debugging backtracking)
-    if (depth === 0 && attempts > 10 && attempts <= 20 && slotIndex < 3) {
-      const constraintInfo = constraints.size > 0 
-        ? ` with ${constraints.size} constraints: ${Array.from(constraints.entries()).map(([pos, letter]) => `pos${pos}='${letter}'`).join(', ')}`
-        : ' (no constraints)';
-      console.log(`  🔄 Slot ${slotIndex + 1}/${sortedSlots.length} (${slot.length} letters${constraintInfo}): ${candidates.length} candidates, attempt ${attempts}`);
     }
     
     if (candidates.length === 0) {
@@ -604,7 +592,9 @@ export function solveGrid(
           ? ` with ${constraints.size} constraints: ${Array.from(constraints.entries()).map(([pos, letter]) => `pos${pos}='${letter}'`).join(', ')}`
           : ' (no constraints)';
         const wordsOfLength = wordIndex.byLength.get(slot.length) || [];
-        console.log(`\n  🔍 Slot ${slotIndex + 1}/${sortedSlots.length} (${slot.length} letters${constraintInfo}): No candidates found`);
+        const remainingCount = remainingSlots.length;
+        const totalSlots = template.slots.length;
+        console.log(`\n  🔍 Selected slot (${remainingCount}/${totalSlots} remaining) (${slot.length} letters${constraintInfo}): No candidates found`);
         console.log(`     Available words of length ${slot.length}: ${wordsOfLength.length} total`);
         if (wordsOfLength.length > 0 && wordsOfLength.length <= 20) {
           console.log(`     All words of this length: ${wordsOfLength.join(', ')}`);
@@ -675,84 +665,29 @@ export function solveGrid(
       candidates = shuffleArray(candidates);
     }
     
-    // Limit candidates to avoid trying too many, but increase for constrained slots
-    // Slots with more constraints need more candidates tried
-    const constraintCount = constraints.size;
-    const maxCandidatesToTry = constraintCount > 2 ? 500 : constraintCount > 1 ? 300 : 200;
-    const candidatesToTry = candidates.slice(0, maxCandidatesToTry);
-    
-    // Early exit if no candidates at all
+    // Early exit if no candidates at all (already filtered by placeability)
     if (candidates.length === 0) {
       if (depth === 0) {
         const constraintInfo = constraints.size > 0 
           ? ` with ${constraints.size} constraints: ${Array.from(constraints.entries()).map(([pos, letter]) => `pos${pos}='${letter}'`).join(', ')}`
           : ' (no constraints)';
-        console.log(`  ❌ Slot ${slotIndex + 1}/${sortedSlots.length} (${slot.length} letters${constraintInfo}): No candidates found - impossible state`);
+        const remainingCount = remainingSlots.length;
+        console.log(`  ❌ Selected slot (${remainingCount} remaining): ${slot.length} letters${constraintInfo}: No placeable candidates - impossible state`);
       }
       return null;
     }
     
-    if (candidates.length > maxCandidatesToTry && depth === 0 && attempts % 50 === 0) {
-      console.log(`  📊 Slot ${slotIndex + 1}/${sortedSlots.length}: ${candidates.length} candidates, trying first ${maxCandidatesToTry}`);
-    }
-    
-    // CRITICAL: Pre-filter candidates that can actually be placed
-    // This prevents trying thousands of words that will all fail
-    const placeableCandidates: string[] = [];
-    let checkedCount = 0;
-    const maxPreCheck = Math.min(candidatesToTry.length, 1000); // Check up to 1000 candidates
-    
-    for (let i = 0; i < candidatesToTry.length && placeableCandidates.length < 200 && checkedCount < maxPreCheck; i++) {
-      checkedCount++;
-      const word = candidatesToTry[i];
-      if (canPlaceWord(state, word, cells)) {
-        placeableCandidates.push(word);
-      }
-    }
-    
-    // If we checked many candidates but found none that can be placed, this is likely impossible
-    if (checkedCount >= 50 && placeableCandidates.length === 0 && depth === 0) {
-      const constraintInfo = constraints.size > 0 
-        ? ` with ${constraints.size} constraints: ${Array.from(constraints.entries()).map(([pos, letter]) => `pos${pos}='${letter}'`).join(', ')}`
-        : ' (no constraints)';
-      console.log(`  ❌ Slot ${slotIndex + 1}/${sortedSlots.length} (${slot.length} letters${constraintInfo}): Checked ${checkedCount} candidates, none can be placed`);
-      console.log(`     This suggests the slot is in an impossible state - likely a constraint conflict`);
-      // Show grid state around this slot
-      const minRow = Math.min(...cells.map(c => c.row));
-      const maxRow = Math.max(...cells.map(c => c.row));
-      const minCol = Math.min(...cells.map(c => c.col));
-      const maxCol = Math.max(...cells.map(c => c.col));
-      console.log(`     Grid area around slot (rows ${minRow}-${maxRow}, cols ${minCol}-${maxCol}):`);
-      for (let r = Math.max(0, minRow - 1); r <= Math.min(state.rows - 1, maxRow + 1); r++) {
-        const row: string[] = [];
-        for (let c = Math.max(0, minCol - 1); c <= Math.min(state.cols - 1, maxCol + 1); c++) {
-          const letter = getLetterAt(state, r, c);
-          const isClue = state.clueCells.has(`${r},${c}`);
-          if (isClue) {
-            row.push('?');
-          } else {
-            row.push(letter || '.');
-          }
-        }
-        console.log(`       Row ${r}: ${row.join(' ')}`);
-      }
-      return null; // Early exit - this branch is impossible
-    }
-    
-    // Use pre-filtered candidates if we found any, otherwise try original list (might find one)
-    const finalCandidates = placeableCandidates.length > 0 ? placeableCandidates : candidatesToTry;
-    
-    // Try each candidate
-    for (let i = 0; i < finalCandidates.length; i++) {
-      const word = finalCandidates[i];
+    // Try each candidate (already pre-filtered by placeability and limited to 100)
+    for (let i = 0; i < candidates.length; i++) {
+      const word = candidates[i];
       
       // Check if we've exceeded max attempts before trying this word
       if (attempts > config.maxAttempts) {
         return null;
       }
       
-      // Debug: Log why first few words fail on first slot
-      if (slotIndex === 0 && i < 3 && depth === 0) {
+      // Debug: Log why first few words fail (only on first few attempts)
+      if (i < 3 && depth === 0 && attempts <= 5) {
         const canPlace = canPlaceWord(state, word, cells);
         if (!canPlace) {
           // Check why it failed
@@ -781,51 +716,41 @@ export function solveGrid(
       }
       
       const newState = placeWord(state, slot.id, word, cells);
-      const result = backtrack(newState, slotIndex + 1, depth + 1);
+      const newRemaining = remainingSlots.filter(s => s.id !== slot.id);
+      const result = backtrack(newState, newRemaining, depth + 1);
       
       if (result !== null) {
         if (depth === 0) {
-          console.log(`  ✅ Slot ${slotIndex + 1}/${sortedSlots.length}: Placed "${word}"`);
+          const remainingCount = newRemaining.length;
+          const totalSlots = template.slots.length;
+          console.log(`  ✅ Placed "${word}" (${remainingCount}/${totalSlots} remaining)`);
         }
         return result;
       }
       
       // If we're near the failure point, log what's happening
-      if (depth === 0 && attempts >= 950 && attempts <= 960) {
+      if (depth === 0 && attempts >= 950 && attempts <= 960 && i < 3) {
         const placedWords = Array.from(state.placedWords.values());
-        if (i === 0 || i === Math.min(5, candidatesToTry.length - 1) || i === candidatesToTry.length - 1) {
-          console.log(`  🔍 Attempt ${attempts}: Slot ${slotIndex + 1}/${sortedSlots.length} trying "${word}" (${i + 1}/${candidatesToTry.length})`);
-          console.log(`     Placed so far: ${placedWords.length > 0 ? placedWords.join(', ') : 'none'}`);
-          // Check what the next slot would look like
-          if (sortedSlots.length > slotIndex + 1) {
-            const nextSlot = sortedSlots[slotIndex + 1];
+        const remainingCount = newRemaining.length;
+        const totalSlots = template.slots.length;
+        console.log(`  🔍 Attempt ${attempts}: Trying "${word}" (${i + 1}/${candidates.length})`);
+        console.log(`     Placed so far: ${placedWords.length > 0 ? placedWords.join(', ') : 'none'}`);
+        console.log(`     Remaining slots: ${remainingCount}/${totalSlots}`);
+        
+        // Check what the next slot would be (using MRV)
+        if (newRemaining.length > 0) {
+          const nextSlot = selectNextSlot(newState, newRemaining);
+          if (nextSlot) {
             const nextCells = getSlotCells(nextSlot);
             const nextConstraints = getCrossingConstraints(newState, nextCells);
             const nextConstraintInfo = nextConstraints.size > 0 
               ? ` with ${nextConstraints.size} constraints: ${Array.from(nextConstraints.entries()).map(([pos, letter]) => `pos${pos}='${letter}'`).join(', ')}`
               : ' (no constraints)';
             const nextCandidates = findMatchingWords(wordIndex, nextSlot.length, nextConstraints, excludeWords);
-            console.log(`     Next slot ${slotIndex + 2}/${sortedSlots.length} (${nextSlot.length} letters${nextConstraintInfo}): ${nextCandidates.length} candidates`);
-            if (nextCandidates.length === 0) {
-              console.log(`     ❌ Next slot has NO candidates - dead end!`);
-            } else if (nextCandidates.length <= 10) {
-              console.log(`     Next slot candidates: ${nextCandidates.join(', ')}`);
-            }
-            // Also check slot 3 if we're placing slot 2
-            if (slotIndex === 1 && sortedSlots.length > 2) {
-              const slot3 = sortedSlots[2];
-              const slot3Cells = getSlotCells(slot3);
-              const slot3Constraints = getCrossingConstraints(newState, slot3Cells);
-              const slot3ConstraintInfo = slot3Constraints.size > 0 
-                ? ` with ${slot3Constraints.size} constraints: ${Array.from(slot3Constraints.entries()).map(([pos, letter]) => `pos${pos}='${letter}'`).join(', ')}`
-                : ' (no constraints)';
-              const slot3Candidates = findMatchingWords(wordIndex, slot3.length, slot3Constraints, excludeWords);
-              console.log(`     Slot 3/${sortedSlots.length} (${slot3.length} letters${slot3ConstraintInfo}): ${slot3Candidates.length} candidates`);
-              if (slot3Candidates.length === 0) {
-                console.log(`     ❌ Slot 3 has NO candidates - this is the real dead end!`);
-              } else if (slot3Candidates.length <= 10) {
-                console.log(`     Slot 3 candidates: ${slot3Candidates.join(', ')}`);
-              }
+            const nextPlaceable = nextCandidates.filter(w => canPlaceWord(newState, w, nextCells));
+            console.log(`     Next slot would be: ${nextSlot.length} letters${nextConstraintInfo}: ${nextPlaceable.length} placeable candidates`);
+            if (nextPlaceable.length === 0) {
+              console.log(`     ❌ Next slot has NO placeable candidates - dead end!`);
             }
           }
         }
@@ -843,8 +768,8 @@ export function solveGrid(
   if (!hasAnyCrossings) {
     console.log(`  ⚡ Template has no crossings - using fast greedy solver`);
     let currentState = initialState;
-    for (let i = 0; i < sortedSlots.length; i++) {
-      const slot = sortedSlots[i];
+    for (let i = 0; i < template.slots.length; i++) {
+      const slot = template.slots[i];
       const cells = getSlotCells(slot);
       const candidates = findMatchingWords(wordIndex, slot.length, new Map(), undefined);
       if (candidates.length === 0) {
@@ -858,20 +783,18 @@ export function solveGrid(
         return null;
       }
       currentState = placeWord(currentState, slot.id, word, cells);
-      console.log(`  ✅ Slot ${i + 1}/${sortedSlots.length}: Placed "${word}"`);
+      console.log(`  ✅ Slot ${i + 1}/${template.slots.length}: Placed "${word}"`);
     }
     console.log(`  ✅ Solved template in ${attempts} attempts (greedy mode)`);
     return currentState;
   }
   
   const startTime = Date.now();
-  const result = backtrack(initialState, 0);
+  const result = backtrack(initialState, [...template.slots]);
   const elapsed = Date.now() - startTime;
   if (!result) {
     console.log(`  ❌ Failed to solve template after ${attempts} attempts (${elapsed}ms)`);
-    // Show which slots were successfully filled
-    const filledSlots = sortedSlots.slice(0, Math.min(5, sortedSlots.length));
-    console.log(`     First ${filledSlots.length} slots: ${filledSlots.map(s => `${s.length} letters, ${s.crossings.length} crossings`).join(', ')}`);
+    // Show which slots were successfully filled (result is null, so we can't show placed words)
   } else {
     console.log(`  ✅ Solved template in ${attempts} attempts (${elapsed}ms)`);
   }
@@ -1889,20 +1812,20 @@ export function generateTemplate(
     
     // Second check: make sure answer cells don't overlap with clue cells
     if (canPlace) {
-      for (const cell of answerCellsForSlot) {
-        const cellKey = `${cell.row},${cell.col}`;
-        
-        // CRITICAL: Answer cells cannot be in clue cells
-        if (gapFilledOccupiedCells.has(cellKey)) {
-          canPlace = false;
-          break;
-        }
-        
-        // Count crossings with other slots
-        if (gapFilledAnswerCells.has(cellKey)) {
-          const existingSlot = gapFilledAnswerCells.get(cellKey);
-          if (existingSlot) {
-            crossingSlots.add(existingSlot.slotId);
+    for (const cell of answerCellsForSlot) {
+      const cellKey = `${cell.row},${cell.col}`;
+      
+      // CRITICAL: Answer cells cannot be in clue cells
+      if (gapFilledOccupiedCells.has(cellKey)) {
+        canPlace = false;
+        break;
+      }
+      
+      // Count crossings with other slots
+      if (gapFilledAnswerCells.has(cellKey)) {
+        const existingSlot = gapFilledAnswerCells.get(cellKey);
+        if (existingSlot) {
+          crossingSlots.add(existingSlot.slotId);
           }
         }
       }
@@ -2169,7 +2092,7 @@ export function generateTemplate(
       if (finalGapFilledSlots.length >= config.minSlots) break;
       // CRITICAL: Never keep slots with more than 10 crossings - they're unsolvable
       if (slot.crossings.length <= 10) {
-        finalGapFilledSlots.push(slot);
+      finalGapFilledSlots.push(slot);
       }
     }
   }
