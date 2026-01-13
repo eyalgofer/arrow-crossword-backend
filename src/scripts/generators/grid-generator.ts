@@ -1052,12 +1052,15 @@ export function generatePuzzleFromGrid(
   }
   
   // Validate minimum clue count based on grid size
-  const minClues = template.rows === 11 && template.cols === 11 ? 20 : 
+  const minClues = template.rows === 11 && template.cols === 11 ? 18 : 
                    template.rows === 14 && template.cols === 14 ? 35 :
                    template.rows === 15 && template.cols === 15 ? 65 :
                    template.rows === 16 && template.cols === 16 ? 55 : 20;
   
   if (clues.length < minClues) {
+    // Instead of throwing, return null to allow retry
+    // This prevents crashes and allows the generator to try again
+    console.error(`❌ Puzzle has only ${clues.length} clues, but minimum is ${minClues} for ${template.rows}x${template.cols} grid`);
     throw new Error(`Puzzle has only ${clues.length} clues, but minimum is ${minClues} for ${template.rows}x${template.cols} grid`);
   }
   
@@ -1093,7 +1096,7 @@ export function generateTemplate(
   // Lower max crossings = more solvable, but we need MORE slots to compensate
   const sizeConfig = {
     small: { rows: 14, cols: 14, minSlots: 50, maxSlots: 70, maxCrossingsPerSlot: 6, density: 0.97 },
-    medium: { rows: 11, cols: 11, minSlots: 20, maxSlots: 80, maxCrossingsPerSlot: 6, density: 0.98 },
+    medium: { rows: 11, cols: 11, minSlots: 18, maxSlots: 80, maxCrossingsPerSlot: 6, density: 0.98 },
     large: { rows: 15, cols: 15, minSlots: 65, maxSlots: 90, maxCrossingsPerSlot: 7, density: 0.98 },
     xlarge: { rows: 16, cols: 16, minSlots: 55, maxSlots: 110, maxCrossingsPerSlot: 7, density: 0.98 }
   };
@@ -1430,16 +1433,14 @@ export function generateTemplate(
     const slot = slots[i];
     const crossings = slot.crossings.length;
     
-    // SOLVABILITY: Keep slots with up to 12 crossings initially
-    // We'll filter more aggressively in the second pass
-    const hardCap = 12; // Allow up to 12 crossings initially
+    // SOLVABILITY: Keep slots with up to 15 crossings initially
+    // We'll filter more aggressively in the second pass, but keep more initially
+    // to ensure we have enough slots to meet the minimum
+    const hardCap = 15; // Allow up to 15 crossings initially (increased from 12)
     if (crossings <= hardCap) {
       filteredSlots.push(slot);
     } else {
-      // Only log very high crossings
-      if (crossings > 15) {
-        console.log(`  ⚠️  Filtered out slot ${slot.id}: ${crossings} crossings (too many)`);
-      }
+      console.log(`  ⚠️  Filtered out slot ${slot.id}: ${crossings} crossings (too many)`);
     }
   }
   
@@ -1520,22 +1521,99 @@ export function generateTemplate(
     }
   }
   
+  // CRITICAL: Validate that answer cells only overlap at crossing points
+  // If two slots' answer cells overlap but it's not a crossing, that's invalid
+  const slotsWithInvalidOverlaps: typeof validatedSlots = [];
+  for (let i = 0; i < validatedSlots.length; i++) {
+    const slot = validatedSlots[i];
+    const slotCells = getSlotCells(slot);
+    const slotCellSet = new Set(slotCells.map(c => `${c.row},${c.col}`));
+    
+    // Check all other slots
+    for (let j = 0; j < validatedSlots.length; j++) {
+      if (i === j) continue;
+      const otherSlot = validatedSlots[j];
+      const otherCells = getSlotCells(otherSlot);
+      
+      // Check if there's an overlap
+      for (const cell of otherCells) {
+        const cellKey = `${cell.row},${cell.col}`;
+        if (slotCellSet.has(cellKey)) {
+          // Found an overlap - verify it's a proper crossing
+          const isCrossing = slot.crossings.some(c => c.slotId === otherSlot.id);
+          if (!isCrossing) {
+            // Invalid overlap - answer cells share a cell but it's not a crossing!
+            if (!slotsWithInvalidOverlaps.includes(slot)) {
+              slotsWithInvalidOverlaps.push(slot);
+            }
+            if (!slotsWithInvalidOverlaps.includes(otherSlot)) {
+              slotsWithInvalidOverlaps.push(otherSlot);
+            }
+            console.log(`  ⚠️  Invalid overlap: ${slot.id} and ${otherSlot.id} share answer cell (${cell.row},${cell.col}) but it's not a crossing`);
+          }
+        }
+      }
+    }
+  }
+  
+  // Remove slots with invalid overlaps
+  if (slotsWithInvalidOverlaps.length > 0) {
+    console.log(`  ⚠️  Removing ${slotsWithInvalidOverlaps.length} slots with invalid answer cell overlaps`);
+    const validSlots = validatedSlots.filter(s => !slotsWithInvalidOverlaps.includes(s));
+    // Clear and recalculate crossings for remaining slots
+    for (const slot of validSlots) {
+      slot.crossings = [];
+    }
+    // Recalculate crossings for valid slots only
+    for (let i = 0; i < validSlots.length; i++) {
+      const slot = validSlots[i];
+      const slotCells = getSlotCells(slot);
+      for (let j = i + 1; j < validSlots.length; j++) {
+        const otherSlot = validSlots[j];
+        const otherCells = getSlotCells(otherSlot);
+        for (let pos = 0; pos < slotCells.length; pos++) {
+          const cell = slotCells[pos];
+          for (let otherPos = 0; otherPos < otherCells.length; otherPos++) {
+            const otherCell = otherCells[otherPos];
+            if (cell.row === otherCell.row && cell.col === otherCell.col) {
+              slot.crossings.push({
+                slotId: otherSlot.id,
+                thisPosition: pos,
+                otherPosition: otherPos
+              });
+              otherSlot.crossings.push({
+                slotId: slot.id,
+                thisPosition: otherPos,
+                otherPosition: pos
+              });
+              break;
+            }
+          }
+        }
+      }
+    }
+    // Replace validatedSlots with validSlots
+    validatedSlots.length = 0;
+    validatedSlots.push(...validSlots);
+  }
+  
   // Now filter again with recalculated crossings - be more selective for solvability
   const finalFilteredSlots: typeof validatedSlots = [];
   for (let i = 0; i < validatedSlots.length; i++) {
     const slot = validatedSlots[i];
     const crossings = slot.crossings.length;
     
-    // SOLVABILITY: Keep slots with up to 8 crossings for better solvability
+    // SOLVABILITY: Keep slots with up to 10 crossings for better solvability
     // Progressive limits: earlier slots can have fewer crossings
+    // Increased limits to keep more slots and meet minimum requirements
     const progressRatio = i / validatedSlots.length;
     let maxAllowed: number;
     if (progressRatio < 0.40) {
-      maxAllowed = 6; // First 40%: max 6 crossings
+      maxAllowed = 8; // First 40%: max 8 crossings (increased from 6)
     } else if (progressRatio < 0.80) {
-      maxAllowed = 7; // Next 40%: max 7 crossings
+      maxAllowed = 9; // Next 40%: max 9 crossings (increased from 7)
     } else {
-      maxAllowed = 8; // Last 20%: max 8 crossings
+      maxAllowed = 10; // Last 20%: max 10 crossings (increased from 8)
     }
     
     if (crossings <= maxAllowed) {
@@ -1621,8 +1699,9 @@ export function generateTemplate(
         }
         if (hasClueOverlap) continue; // Skip slots that overlap with clue cells
         
-        // Be VERY lenient when we're desperate - allow up to 20 crossings
-        const relaxedLimit = 20;
+        // Be lenient when we're desperate, but cap at 10 crossings for solvability
+        // Slots with more than 10 crossings are nearly impossible to solve
+        const relaxedLimit = 10;
         if (crossings <= relaxedLimit) {
           finalFilteredSlots.push(slot);
           clueCellSet.add(clueKey); // Add this slot's clue cell
@@ -1937,6 +2016,81 @@ export function generateTemplate(
     }
   }
   
+  // CRITICAL: Validate that gap-filled slots' answer cells only overlap at crossing points
+  const gapFilledSlotsWithInvalidOverlaps: typeof gapFilledSlots = [];
+  for (let i = 0; i < gapFilledSlots.length; i++) {
+    const slot = gapFilledSlots[i];
+    const slotCells = getSlotCells(slot);
+    const slotCellSet = new Set(slotCells.map(c => `${c.row},${c.col}`));
+    
+    // Check all other slots
+    for (let j = 0; j < gapFilledSlots.length; j++) {
+      if (i === j) continue;
+      const otherSlot = gapFilledSlots[j];
+      const otherCells = getSlotCells(otherSlot);
+      
+      // Check if there's an overlap
+      for (const cell of otherCells) {
+        const cellKey = `${cell.row},${cell.col}`;
+        if (slotCellSet.has(cellKey)) {
+          // Found an overlap - verify it's a proper crossing
+          const isCrossing = slot.crossings.some(c => c.slotId === otherSlot.id);
+          if (!isCrossing) {
+            // Invalid overlap - answer cells share a cell but it's not a crossing!
+            if (!gapFilledSlotsWithInvalidOverlaps.includes(slot)) {
+              gapFilledSlotsWithInvalidOverlaps.push(slot);
+            }
+            if (!gapFilledSlotsWithInvalidOverlaps.includes(otherSlot)) {
+              gapFilledSlotsWithInvalidOverlaps.push(otherSlot);
+            }
+            console.log(`  ⚠️  Invalid gap-filled overlap: ${slot.id} and ${otherSlot.id} share answer cell (${cell.row},${cell.col}) but it's not a crossing`);
+          }
+        }
+      }
+    }
+  }
+  
+  // Remove slots with invalid overlaps
+  if (gapFilledSlotsWithInvalidOverlaps.length > 0) {
+    console.log(`  ⚠️  Removing ${gapFilledSlotsWithInvalidOverlaps.length} gap-filled slots with invalid answer cell overlaps`);
+    const validGapFilledSlots = gapFilledSlots.filter(s => !gapFilledSlotsWithInvalidOverlaps.includes(s));
+    // Clear and recalculate crossings for remaining slots
+    for (const slot of validGapFilledSlots) {
+      slot.crossings = [];
+    }
+    // Recalculate crossings for valid slots only
+    for (let i = 0; i < validGapFilledSlots.length; i++) {
+      const slot = validGapFilledSlots[i];
+      const slotCells = getSlotCells(slot);
+      for (let j = i + 1; j < validGapFilledSlots.length; j++) {
+        const otherSlot = validGapFilledSlots[j];
+        const otherCells = getSlotCells(otherSlot);
+        for (let pos = 0; pos < slotCells.length; pos++) {
+          const cell = slotCells[pos];
+          for (let otherPos = 0; otherPos < otherCells.length; otherPos++) {
+            const otherCell = otherCells[otherPos];
+            if (cell.row === otherCell.row && cell.col === otherCell.col) {
+              slot.crossings.push({
+                slotId: otherSlot.id,
+                thisPosition: pos,
+                otherPosition: otherPos
+              });
+              otherSlot.crossings.push({
+                slotId: slot.id,
+                thisPosition: otherPos,
+                otherPosition: pos
+              });
+              break;
+            }
+          }
+        }
+      }
+    }
+    // Replace gapFilledSlots with valid slots
+    gapFilledSlots.length = 0;
+    gapFilledSlots.push(...validGapFilledSlots);
+  }
+  
   // Re-sort after gap filling
   gapFilledSlots.sort((a, b) => a.crossings.length - b.crossings.length);
   
@@ -1976,10 +2130,13 @@ export function generateTemplate(
   // If we're below minimum, be more lenient about overlaps
   if (validatedGapFilledSlots.length < config.minSlots && slotsWithOverlaps.length > 0) {
     console.log(`  ⚠️  Below minimum slots (${validatedGapFilledSlots.length}/${config.minSlots}), being lenient with overlaps...`);
-    // Keep slots with overlaps if they have reasonable crossings
+    // Sort by crossing count to prefer easier slots
+    slotsWithOverlaps.sort((a, b) => a.crossings.length - b.crossings.length);
+    // Keep slots with overlaps if they have reasonable crossings (max 8)
     for (const slot of slotsWithOverlaps) {
       if (validatedGapFilledSlots.length >= config.minSlots) break;
-      if (slot.crossings.length <= 6) {
+      // Cap at 8 crossings even when desperate - overlaps make it harder
+      if (slot.crossings.length <= 8) {
         validatedGapFilledSlots.push(slot);
       }
     }
@@ -2002,34 +2159,45 @@ export function generateTemplate(
     }
   }
   
-  // If we're below minimum, be more lenient about crossings
+  // If we're below minimum, be more lenient about crossings, but cap at reasonable limit
   if (finalGapFilledSlots.length < config.minSlots && slotsWithManyCrossings.length > 0) {
     console.log(`  ⚠️  Below minimum slots (${finalGapFilledSlots.length}/${config.minSlots}), being lenient with crossings...`);
-    // Keep slots with more crossings if we're desperate
+    // Sort by crossing count (ascending) to prefer easier slots
+    slotsWithManyCrossings.sort((a, b) => a.crossings.length - b.crossings.length);
+    // Keep slots with more crossings if we're desperate, but cap at 10 for solvability
     for (const slot of slotsWithManyCrossings) {
       if (finalGapFilledSlots.length >= config.minSlots) break;
-      if (slot.crossings.length <= 8) {
+      // CRITICAL: Never keep slots with more than 10 crossings - they're unsolvable
+      if (slot.crossings.length <= 10) {
         finalGapFilledSlots.push(slot);
       }
     }
   }
   
-  // Recalculate clue cells for final gap-filled slots
-  const filteredClueCells = finalGapFilledSlots.map(slot => ({
+  // CRITICAL: Final safety filter - remove any slots with excessive crossings (unsolvable)
+  // This prevents returning templates with impossible-to-solve slots
+  const safeSlots = finalGapFilledSlots.filter(slot => slot.crossings.length <= 10);
+  const removedExcessive = finalGapFilledSlots.length - safeSlots.length;
+  if (removedExcessive > 0) {
+    console.warn(`  ⚠️  Removed ${removedExcessive} slots with excessive crossings (>10) - unsolvable`);
+  }
+  
+  // Recalculate clue cells for safe slots
+  const filteredClueCells = safeSlots.map(slot => ({
     row: slot.startRow,
     col: slot.startCol,
     direction: slot.direction
   }));
   
   // Calculate average crossings for metadata
-  const avgCrossings = finalGapFilledSlots.length > 0 
-    ? finalGapFilledSlots.reduce((sum, s) => sum + s.crossings.length, 0) / finalGapFilledSlots.length 
+  const avgCrossings = safeSlots.length > 0 
+    ? safeSlots.reduce((sum, s) => sum + s.crossings.length, 0) / safeSlots.length 
     : 0;
   
   // Calculate grid density (percentage of cells used)
   const gridTotalCells = config.rows * config.cols;
   const usedCells = new Set<string>();
-  for (const slot of finalGapFilledSlots) {
+  for (const slot of safeSlots) {
     const answerCells = getSlotCells(slot);
     for (const cell of answerCells) {
       usedCells.add(`${cell.row},${cell.col}`);
@@ -2037,35 +2205,44 @@ export function generateTemplate(
   }
   const densityPercent = ((usedCells.size / gridTotalCells) * 100).toFixed(1);
   
-  console.log(`  📊 Final template: ${finalGapFilledSlots.length} slots, ${densityPercent}% cell coverage, ${avgCrossings.toFixed(2)} avg crossings`);
+  console.log(`  📊 Final template: ${safeSlots.length} slots, ${densityPercent}% cell coverage, ${avgCrossings.toFixed(2)} avg crossings`);
   
   // Ensure we have enough slots - if below minimum, be more lenient and keep more slots
-  if (finalGapFilledSlots.length < config.minSlots) {
-    console.warn(`⚠️  Warning: Only ${finalGapFilledSlots.length} slots generated, but minimum is ${config.minSlots} for ${size} size`);
+  if (safeSlots.length < config.minSlots) {
+    console.warn(`⚠️  Warning: Only ${safeSlots.length} slots generated, but minimum is ${config.minSlots} for ${size} size`);
     
     // If we're below minimum, be VERY lenient and re-add filtered slots
-    if (finalGapFilledSlots.length < config.minSlots) {
-      const needed = config.minSlots - finalGapFilledSlots.length;
+    if (safeSlots.length < config.minSlots) {
+      const needed = config.minSlots - safeSlots.length;
       let added = 0;
       
-      // Re-add slots that were filtered out, being very lenient
-      for (const slot of validatedGapFilledSlots) {
+      // Re-add slots that were filtered out, but only if they have reasonable crossings
+      // Sort by crossing count to prefer easier slots
+      const availableSlots = validatedGapFilledSlots
+        .filter(s => !safeSlots.includes(s))
+        .sort((a, b) => a.crossings.length - b.crossings.length);
+      
+      for (const slot of availableSlots) {
         if (added >= needed) break;
-        if (!finalGapFilledSlots.includes(slot)) {
-          // Re-add even if it has more crossings than we'd normally allow
-          finalGapFilledSlots.push(slot);
+        // CRITICAL: Never re-add slots with more than 10 crossings - they're unsolvable
+        if (slot.crossings.length <= 10) {
+          safeSlots.push(slot);
           added++;
         }
       }
       
       // If still not enough, re-add from gap-filled slots that were filtered for overlaps
-      if (finalGapFilledSlots.length < config.minSlots) {
-        const overlapFiltered = gapFilledSlots.filter(s => !validatedGapFilledSlots.includes(s));
+      // But only if they have reasonable crossings
+      if (safeSlots.length < config.minSlots) {
+        const overlapFiltered = gapFilledSlots
+          .filter(s => !validatedGapFilledSlots.includes(s))
+          .sort((a, b) => a.crossings.length - b.crossings.length);
+        
         for (const slot of overlapFiltered) {
-          if (finalGapFilledSlots.length >= config.minSlots) break;
-          // Be desperate - add even slots with overlaps if crossings are reasonable
-          if (slot.crossings.length <= 8) {
-            finalGapFilledSlots.push(slot);
+          if (safeSlots.length >= config.minSlots) break;
+          // Be desperate - add even slots with overlaps if crossings are reasonable (max 10)
+          if (slot.crossings.length <= 10) {
+            safeSlots.push(slot);
             added++;
           }
         }
@@ -2077,10 +2254,10 @@ export function generateTemplate(
     }
   }
   
-  if (finalGapFilledSlots.length >= config.minSlots) {
-    console.log(`  ✅ Generated ${finalGapFilledSlots.length} slots (target: ${config.minSlots}-${config.maxSlots})`);
+  if (safeSlots.length >= config.minSlots) {
+    console.log(`  ✅ Generated ${safeSlots.length} slots (target: ${config.minSlots}-${config.maxSlots})`);
   } else {
-    console.warn(`  ⚠️  Still only ${finalGapFilledSlots.length} slots (need ${config.minSlots}) - template may be invalid`);
+    console.warn(`  ⚠️  Still only ${safeSlots.length} slots (need ${config.minSlots}) - template may be invalid`);
   }
   
   return {
@@ -2088,7 +2265,7 @@ export function generateTemplate(
     name: `Generated ${size} template`,
     rows: config.rows,
     cols: config.cols,
-    slots: finalGapFilledSlots,
+    slots: safeSlots,
     clueCells: filteredClueCells,
     difficulty,
     categories: ['Generated'],

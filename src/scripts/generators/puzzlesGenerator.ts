@@ -115,6 +115,14 @@ export class PuzzleGenerator {
    */
   addGeneratedTemplate(size: 'small' | 'medium' | 'large' | 'xlarge', difficulty: Difficulty = Difficulty.EASY): void {
     const template = generateTemplate(size, difficulty);
+    
+    // Validate template has minimum required slots
+    const minSlots = size === 'medium' ? 18 : size === 'small' ? 35 : size === 'large' ? 65 : 55;
+    if (template.slots.length < minSlots) {
+      console.warn(`⚠️  Skipping template: Only ${template.slots.length} slots (need ${minSlots} for ${size})`);
+      return; // Don't add invalid templates
+    }
+    
     this.templates.push(template);
     console.log(`Generated template: ${template.name} (${template.rows}x${template.cols}, ${template.slots.length} slots)`);
   }
