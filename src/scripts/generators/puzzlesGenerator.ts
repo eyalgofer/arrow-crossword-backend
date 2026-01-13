@@ -4,15 +4,10 @@ import {
   GridTemplate,
 } from '../core/types';
 
-import {
-  createTemplateFromPuzzle,
-  solveGrid,
-  buildCrossingIndex,
-  CrossingIndex,
-  generatePuzzleFromGrid,
-  ClueDatabase,
-  generateTemplate,
-} from './grid-generator';
+import { createTemplateFromPuzzle, generatePuzzleFromGrid, ClueDatabase } from './puzzle-assembler';
+import { solveGrid } from './grid-solver';
+import { buildCrossingIndex, CrossingIndex } from './word-index';
+import { generateTemplate } from './template-generator';
 
 import { getClues } from '../core/cluesFromCSV';
 
@@ -236,7 +231,7 @@ export class PuzzleGenerator {
       title: string;
     }
   ): Puzzle | null {
-    console.log('🎯 Generating ULTRA-DENSE puzzle with 6M clues database...');
+    console.log('🎯 Generating puzzle...');
     let attempts = 0;
     const maxTemplateAttempts = 50; // More attempts to find perfect dense template
     const maxTotalTime = 30 * 60 * 1000; // 30 minutes max - take time to find perfect puzzle
@@ -395,46 +390,7 @@ export function generatePuzzle(
   return puzzle;
 }
 
-export function generatePuzzles(
-  count: number = 20,
-  config: {
-    difficulty?: Difficulty;
-    category?: string;
-    titlePrefix?: string;
-  } = {}
-): Puzzle[] {
-  console.log('='.repeat(60));
-  console.log('Swedish Arrow Crossword Puzzle Generator');
-  console.log('='.repeat(60));
-  
-  // Create generator
-  const generator = new PuzzleGenerator();
-
-  // Add simple validated templates (if they exist)
-  // Note: These templates may not exist, so we'll use programmatic generation instead
-  
-  // Add programmatically generated templates for bigger, more complex puzzles
-  generator.addGeneratedTemplates();
-  
-  const puzzles: Puzzle[] = [];
-  puzzles.push(...generator.generateBatch(count, {
-    difficulty: config.difficulty || Difficulty.EASY,
-    category: config.category || 'Daily Life',
-    titlePrefix: config.titlePrefix || 'Generated Puzzle'
-  }));
-  // Output results
-  console.log('\n' + '='.repeat(60));
-  console.log(`Generated ${puzzles.length} Puzzles:`);
-  console.log('='.repeat(60));
-  
-  for (const puzzle of puzzles) {
-    console.log(`  ✓ ${puzzle.title}: ${puzzle.grid.rows}x${puzzle.grid.cols}, ${puzzle.clues.length} clues`);
-  }
-  
-  return puzzles;
-}
-
-export { 
+export {
   GOOD_TEMPLATE,
   getClue 
 };
