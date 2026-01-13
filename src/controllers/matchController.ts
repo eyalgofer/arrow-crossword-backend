@@ -90,7 +90,7 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
           photoURL: opponent.photoURL || opponentPopulated?.photoURL,
           progress: opponent.progress
         } : null,
-        currentUserProgress: currentUserPlayer?.progress || 0,
+        currentUserPuzzleProgress: currentUserPlayer?.progress || 0,
         timeElapsed
       };
     });
@@ -154,7 +154,7 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
         photoURL: opponent.photoURL,
         progress: opponent.progress
       } : null,
-      currentUserProgress: currentUserPlayer?.progress || 0,
+      currentUserPuzzleProgress: currentUserPlayer?.progress || 0,
       timeElapsed
     };
 

@@ -103,29 +103,39 @@ export function getAnswerOrientation(direction: Direction): 'horizontal' | 'vert
 // ============================================================================
 
 export interface CrossingIndex {
-  // letter -> position -> list of words with that letter at that position
+  // letter -> position -> list of words with that letter at that position (normalized, no spaces)
   byLetterPosition: Map<string, Map<number, string[]>>;
-  // word length -> list of words
+  // word length -> list of words (normalized, no spaces)
   byLength: Map<number, string[]>;
+  // normalized word (no spaces) -> original word (with spaces if applicable)
+  originalWords: Map<string, string>;
 }
 
 /**
  * Build a crossing index from a word list for O(1) lookups
+ * Handles multi-word answers by normalizing (removing spaces) for grid placement
  */
 export function buildCrossingIndex(words: string[]): CrossingIndex {
   const byLetterPosition = new Map<string, Map<number, string[]>>();
   const byLength = new Map<number, string[]>();
+  const originalWords = new Map<string, string>();
   
-  for (const word of words) {
-    // Index by length
-    if (!byLength.has(word.length)) {
-      byLength.set(word.length, []);
-    }
-    byLength.get(word.length)!.push(word);
+  for (const originalWord of words) {
+    // Normalize: remove spaces for grid placement (e.g., "TONY HAWK" -> "TONYHAWK")
+    const normalized = originalWord.replace(/\s+/g, '').toUpperCase();
     
-    // Index by letter at each position
-    for (let pos = 0; pos < word.length; pos++) {
-      const letter = word[pos];
+    // Store mapping from normalized to original
+    originalWords.set(normalized, originalWord);
+    
+    // Index by normalized length (without spaces)
+    if (!byLength.has(normalized.length)) {
+      byLength.set(normalized.length, []);
+    }
+    byLength.get(normalized.length)!.push(normalized);
+    
+    // Index by letter at each position (using normalized word)
+    for (let pos = 0; pos < normalized.length; pos++) {
+      const letter = normalized[pos];
       
       if (!byLetterPosition.has(letter)) {
         byLetterPosition.set(letter, new Map());
@@ -135,15 +145,16 @@ export function buildCrossingIndex(words: string[]): CrossingIndex {
       if (!posMap.has(pos)) {
         posMap.set(pos, []);
       }
-      posMap.get(pos)!.push(word);
+      posMap.get(pos)!.push(normalized);
     }
   }
   
-  return { byLetterPosition, byLength };
+  return { byLetterPosition, byLength, originalWords };
 }
 
 /**
  * Find words that match given constraints
+ * Returns original words (with spaces if applicable) for use in answer field
  */
 export function findMatchingWords(
   index: CrossingIndex,
@@ -151,8 +162,8 @@ export function findMatchingWords(
   constraints: Map<number, string>, // position -> required letter
   excludeWords?: Set<string>
 ): string[] {
-  // Start with all words of the right length
-  let candidates = index.byLength.get(length) || [];
+  // Start with all normalized words of the right length
+  let normalizedCandidates = index.byLength.get(length) || [];
   
   // Filter by each constraint
   for (const [position, letter] of constraints.entries()) {
@@ -167,18 +178,24 @@ export function findMatchingWords(
     }
     
     // Intersect with current candidates
-    const candidateSet = new Set(candidates);
-    candidates = wordsWithLetter.filter(w => 
+    const candidateSet = new Set(normalizedCandidates);
+    normalizedCandidates = wordsWithLetter.filter(w => 
       candidateSet.has(w) && w.length === length
     );
   }
   
-  // Remove excluded words
+  // Remove excluded words (normalize excluded words for comparison)
   if (excludeWords) {
-    candidates = candidates.filter(w => !excludeWords.has(w));
+    const normalizedExcluded = new Set(
+      Array.from(excludeWords).map(w => w.replace(/\s+/g, '').toUpperCase())
+    );
+    normalizedCandidates = normalizedCandidates.filter(w => !normalizedExcluded.has(w));
   }
   
-  return candidates;
+  // Convert normalized candidates back to original words (with spaces if applicable)
+  return normalizedCandidates.map(normalized => 
+    index.originalWords.get(normalized) || normalized
+  );
 }
 
 // ============================================================================
@@ -223,6 +240,8 @@ export function getLetterAt(state: GridState, row: number, col: number): string 
 
 /**
  * Place a word in the grid and return a new state (immutable)
+ * Handles multi-word answers by removing spaces for grid placement
+ * Stores original word (with spaces) in placedWords for answer field
  */
 export function placeWord(
   state: GridState,
@@ -234,12 +253,16 @@ export function placeWord(
   const newCells = state.cells.map(row => [...row]);
   const newPlacedWords = new Map(state.placedWords);
   
-  // Place each letter
-  for (let i = 0; i < word.length; i++) {
+  // Normalize word: remove spaces for grid placement (e.g., "TONY HAWK" -> "TONYHAWK")
+  const normalized = word.replace(/\s+/g, '').toUpperCase();
+  
+  // Place each letter (using normalized word without spaces)
+  for (let i = 0; i < normalized.length; i++) {
     const { row, col } = cells[i];
-    newCells[row][col] = word[i];
+    newCells[row][col] = normalized[i];
   }
   
+  // Store original word (with spaces if applicable) for answer field
   newPlacedWords.set(slotId, word);
   
   return {
@@ -251,13 +274,22 @@ export function placeWord(
 
 /**
  * Check if a word can be placed without conflicts
+ * Handles multi-word answers by removing spaces for grid placement
  */
 export function canPlaceWord(
   state: GridState,
   word: string,
   cells: Array<{ row: number; col: number }>
 ): boolean {
-  for (let i = 0; i < word.length; i++) {
+  // Normalize word: remove spaces for grid placement (e.g., "TONY HAWK" -> "TONYHAWK")
+  const normalized = word.replace(/\s+/g, '').toUpperCase();
+  
+  // Ensure we have enough cells for the normalized word
+  if (normalized.length > cells.length) {
+    return false;
+  }
+  
+  for (let i = 0; i < normalized.length; i++) {
     const { row, col } = cells[i];
     
     // Check bounds
@@ -270,9 +302,9 @@ export function canPlaceWord(
       return false;
     }
     
-    // Check for letter conflicts
+    // Check for letter conflicts (using normalized word)
     const existing = state.cells[row][col];
-    if (existing !== null && existing !== word[i]) {
+    if (existing !== null && existing !== normalized[i]) {
       return false;
     }
   }
@@ -932,11 +964,12 @@ export function generateTemplate(
   // Minimum size is 14x14 as requested
   // CRITICAL: maxCrossingsPerSlot must be low enough to ensure solvability
   // Early slots (solved first) should have 0-2 crossings, later slots can have 3-4
+  // IMPROVED: Increased slot counts and density for more crossword-like puzzles
   const sizeConfig = {
-    small: { rows: 14, cols: 14, minSlots: 20, maxSlots: 28, maxCrossingsPerSlot: 4, density: 0.60 },
-    medium: { rows: 14, cols: 14, minSlots: 24, maxSlots: 35, maxCrossingsPerSlot: 4, density: 0.65 },
-    large: { rows: 15, cols: 15, minSlots: 30, maxSlots: 45, maxCrossingsPerSlot: 5, density: 0.70 },
-    xlarge: { rows: 16, cols: 16, minSlots: 35, maxSlots: 55, maxCrossingsPerSlot: 5, density: 0.75 }
+    small: { rows: 14, cols: 14, minSlots: 28, maxSlots: 38, maxCrossingsPerSlot: 4, density: 0.70 },
+    medium: { rows: 14, cols: 14, minSlots: 32, maxSlots: 45, maxCrossingsPerSlot: 5, density: 0.75 },
+    large: { rows: 15, cols: 15, minSlots: 40, maxSlots: 55, maxCrossingsPerSlot: 5, density: 0.80 },
+    xlarge: { rows: 16, cols: 16, minSlots: 48, maxSlots: 68, maxCrossingsPerSlot: 6, density: 0.85 }
   };
   
   const config = sizeConfig[size];
@@ -970,9 +1003,9 @@ export function generateTemplate(
     // Try to place a slot
     let placed = false;
     let attempts = 0;
-    // Increase attempts for larger grids to ensure we fill them
-    // Increased attempts for denser puzzles - need more tries to place more slots
-    const maxPlacementAttempts = size === 'xlarge' ? 600 : size === 'large' ? 450 : size === 'medium' ? 350 : 300;
+    // IMPROVED: Increased attempts for denser puzzles with more slots
+    // Need more tries to place more slots and create more crossings
+    const maxPlacementAttempts = size === 'xlarge' ? 800 : size === 'large' ? 600 : size === 'medium' ? 450 : 400;
     
     while (!placed && attempts < maxPlacementAttempts) {
       attempts++;
@@ -1004,18 +1037,19 @@ export function generateTemplate(
       let startRow: number;
       let startCol: number;
       
-      // Strategy: After 30% of slots, target existing answer cells for crossings
-      if (i > targetSlots * 0.3 && answerCells.size > 0) {
-        // 70% chance to place near existing answer cells for crossings (balanced for solvability)
-        if (Math.random() < 0.70) {
+      // IMPROVED STRATEGY: More aggressive crossing placement for denser puzzles
+      // Start targeting crossings earlier (after 15% instead of 30%)
+      if (i > targetSlots * 0.15 && answerCells.size > 0) {
+        // 85% chance to place near existing answer cells for crossings (increased from 70%)
+        if (Math.random() < 0.85) {
           const existingCells = Array.from(answerCells.keys());
           const randomCellKey = existingCells[Math.floor(Math.random() * existingCells.length)];
           const [cellRow, cellCol] = randomCellKey.split(',').map(Number);
           
           // Place clue cell strategically near this answer cell
-          // Use moderate range to create crossings while avoiding overlaps
-          const offsetRow = Math.floor(Math.random() * 5) - 2; // -2 to 2 (moderate range)
-          const offsetCol = Math.floor(Math.random() * 5) - 2;
+          // Use tighter range to create more crossings (reduced from -2 to 2, now -1 to 1)
+          const offsetRow = Math.floor(Math.random() * 3) - 1; // -1 to 1 (tighter range for more crossings)
+          const offsetCol = Math.floor(Math.random() * 3) - 1;
           startRow = Math.max(0, Math.min(config.rows - 1, cellRow + offsetRow));
           startCol = Math.max(0, Math.min(config.cols - 1, cellCol + offsetCol));
         } else {
@@ -1024,7 +1058,7 @@ export function generateTemplate(
           startCol = Math.floor(Math.random() * config.cols);
         }
       } else {
-        // First 20%: Random placement to establish initial grid structure
+        // First 15%: Random placement to establish initial grid structure
         startRow = Math.floor(Math.random() * config.rows);
         startCol = Math.floor(Math.random() * config.cols);
       }
@@ -1040,17 +1074,19 @@ export function generateTemplate(
       const maxLength = size === 'small' ? 9 : size === 'medium' ? 11 : size === 'large' ? 13 : 15;
       const minLength = size === 'small' ? 4 : size === 'medium' ? 5 : size === 'large' ? 5 : 6;
       
-      // Weighted distribution: 60% chance for medium words (6-9), 30% for short (4-5), 10% for long (10+)
+      // IMPROVED: Better distribution for crossword density
+      // 70% medium words (6-9), 20% short (4-5), 10% long (10+)
+      // Medium words provide best coverage-to-constraint ratio
       let wordLength: number;
       const rand = Math.random();
-      if (rand < 0.6) {
-        // Medium words: 6-9 letters (best for density)
+      if (rand < 0.7) {
+        // Medium words: 6-9 letters (best for density and crossings)
         wordLength = Math.floor(Math.random() * 4) + 6;
       } else if (rand < 0.9) {
-        // Short words: 4-5 letters
+        // Short words: 4-5 letters (good for tight spaces)
         wordLength = Math.floor(Math.random() * 2) + 4;
       } else {
-        // Long words: 10+ letters
+        // Long words: 10+ letters (provide structure but harder to place)
         wordLength = Math.floor(Math.random() * (maxLength - 9)) + 10;
       }
       
@@ -1103,18 +1139,21 @@ export function generateTemplate(
         }
       }
       
-      // PROGRESSIVE CROSSING LIMITS: Strict limits for solvability
+      // PROGRESSIVE CROSSING LIMITS: Balanced limits for solvability and density
+      // IMPROVED: Slightly increased limits to allow more crossings for denser puzzles
       // Early slots: fewer crossings (easier to solve)
       // Later slots: more crossings (but still solvable)
       const progressRatio = i / targetSlots;
       let maxAllowedCrossings: number;
       
-      if (progressRatio < 0.3) {
-        maxAllowedCrossings = 1; // First 30%: max 1 crossing (build foundation)
-      } else if (progressRatio < 0.7) {
-        maxAllowedCrossings = 2; // Next 40%: max 2 crossings (increase density)
+      if (progressRatio < 0.25) {
+        maxAllowedCrossings = 1; // First 25%: max 1 crossing (build foundation)
+      } else if (progressRatio < 0.6) {
+        maxAllowedCrossings = 2; // Next 35%: max 2 crossings (increase density)
+      } else if (progressRatio < 0.85) {
+        maxAllowedCrossings = 3; // Next 25%: max 3 crossings (fill gaps)
       } else {
-        maxAllowedCrossings = 3; // Last 30%: max 3 crossings (fill remaining gaps)
+        maxAllowedCrossings = 4; // Last 15%: max 4 crossings (final density push)
       }
       
       // Strictly enforce crossing limits during placement
@@ -1122,14 +1161,20 @@ export function generateTemplate(
         continue; // Too many crossings for this stage, try a different position
       }
       
-      // MODERATE DENSITY: Prefer slots with crossings, but not too aggressive
-      // Balance density with solvability
-      if (crossingCount === 0 && i > targetSlots * 0.3) {
-        // After 30% of slots, prefer crossings (but not too aggressively)
-        const skipChance = config.density * 0.5; // Reduce from full density to 50% of density
+      // IMPROVED DENSITY: More aggressive preference for crossings
+      // Start preferring crossings earlier and more strongly
+      if (crossingCount === 0 && i > targetSlots * 0.2) {
+        // After 20% of slots, strongly prefer crossings (increased from 30%)
+        const skipChance = config.density * 0.7; // Increased from 0.5 to 0.7 for more density
         if (Math.random() < skipChance) {
-          continue; // Skip some slots without crossings to increase density
+          continue; // Skip slots without crossings to increase density
         }
+      }
+      
+      // Bonus: Prefer slots with MORE crossings (within limits)
+      if (crossingCount > 0 && crossingCount < maxAllowedCrossings && i > targetSlots * 0.25) {
+        // If we have crossings but room for more, give this slot priority
+        // This is handled implicitly by the skip logic above, but we can be more explicit
       }
       
       // Also prefer slots with MORE crossings (within limits)
@@ -1220,19 +1265,23 @@ export function generateTemplate(
     const slot = slots[i];
     const crossings = slot.crossings.length;
     
+    // IMPROVED: Progressive filtering with slightly higher limits for density
     // Progressive filtering: earlier slots (easier) can have fewer crossings
     const progressRatio = i / slots.length;
     let maxAllowed: number;
-    if (progressRatio < 0.3) {
-      maxAllowed = 2; // First 30%: max 2 crossings (easier to solve first)
-    } else if (progressRatio < 0.7) {
-      maxAllowed = 3; // Next 40%: max 3 crossings
+    if (progressRatio < 0.25) {
+      maxAllowed = 2; // First 25%: max 2 crossings (easier to solve first)
+    } else if (progressRatio < 0.6) {
+      maxAllowed = 3; // Next 35%: max 3 crossings
+    } else if (progressRatio < 0.85) {
+      maxAllowed = 4; // Next 25%: max 4 crossings
     } else {
-      maxAllowed = config.maxCrossingsPerSlot; // Last 30%: up to configured max (4-5)
+      maxAllowed = config.maxCrossingsPerSlot; // Last 15%: up to configured max (4-6)
     }
     
-    // CRITICAL: Hard cap at 5 crossings - anything more is unsolvable
-    if (crossings <= Math.min(maxAllowed, 5)) {
+    // CRITICAL: Hard cap at 6 crossings for xlarge, 5 for others
+    const hardCap = size === 'xlarge' ? 6 : 5;
+    if (crossings <= Math.min(maxAllowed, hardCap)) {
       filteredSlots.push(slot);
     }
     // Slots with 6+ crossings are filtered out
@@ -1319,19 +1368,22 @@ export function generateTemplate(
     const slot = validatedSlots[i];
     const crossings = slot.crossings.length;
     
-    // Progressive filtering with recalculated crossings
+    // IMPROVED: Progressive filtering with recalculated crossings
     const progressRatio = i / validatedSlots.length;
     let maxAllowed: number;
-    if (progressRatio < 0.3) {
-      maxAllowed = 2; // First 30%: max 2 crossings
-    } else if (progressRatio < 0.7) {
-      maxAllowed = 3; // Next 40%: max 3 crossings
+    if (progressRatio < 0.25) {
+      maxAllowed = 2; // First 25%: max 2 crossings
+    } else if (progressRatio < 0.6) {
+      maxAllowed = 3; // Next 35%: max 3 crossings
+    } else if (progressRatio < 0.85) {
+      maxAllowed = 4; // Next 25%: max 4 crossings
     } else {
-      maxAllowed = config.maxCrossingsPerSlot; // Last 30%: up to configured max (4-5)
+      maxAllowed = config.maxCrossingsPerSlot; // Last 15%: up to configured max (4-6)
     }
     
-    // Hard cap at 5 crossings
-    if (crossings <= Math.min(maxAllowed, 5)) {
+    // Hard cap at 6 crossings for xlarge, 5 for others
+    const hardCap = size === 'xlarge' ? 6 : 5;
+    if (crossings <= Math.min(maxAllowed, hardCap)) {
       finalFilteredSlots.push(slot);
     }
   }
@@ -1359,11 +1411,12 @@ export function generateTemplate(
     }
   }
   
-  // Try to fill gaps: attempt to add 10-15% more slots (reduced for solvability)
-  const gapFillTarget = Math.floor(finalFilteredSlots.length * 0.15); // 15% more slots
+  // IMPROVED: Increased gap-filling for denser puzzles
+  // Try to fill gaps: attempt to add 20-25% more slots (increased from 15%)
+  const gapFillTarget = Math.floor(finalFilteredSlots.length * 0.22); // 22% more slots for better density
   let gapFilledCount = 0;
   let gapFillAttempts = 0;
-  const maxGapFillAttempts = gapFillTarget * 50; // Try many times to fill gaps
+  const maxGapFillAttempts = gapFillTarget * 60; // More attempts to fill gaps
   
   while (gapFilledCount < gapFillTarget && gapFillAttempts < maxGapFillAttempts) {
     gapFillAttempts++;
@@ -1454,8 +1507,9 @@ export function generateTemplate(
       }
     }
     
-    // For gap filling, allow up to 2 crossings (to connect with existing grid)
-    if (canPlace && crossingCount <= 2) {
+    // IMPROVED: Allow more crossings during gap filling for better connectivity
+    // For gap filling, allow up to 3 crossings (increased from 2) to connect with existing grid
+    if (canPlace && crossingCount <= 3) {
       const gapSlotId = `gap_slot_${slotNumber}`;
       const gapSlot: ClueSlot = {
         id: gapSlotId,
@@ -1523,19 +1577,22 @@ export function generateTemplate(
     const slot = gapFilledSlots[i];
     const crossings = slot.crossings.length;
     
-    // Progressive filtering
+    // IMPROVED: Progressive filtering for gap-filled slots
     const progressRatio = i / gapFilledSlots.length;
     let maxAllowed: number;
-    if (progressRatio < 0.3) {
+    if (progressRatio < 0.25) {
       maxAllowed = 2;
-    } else if (progressRatio < 0.7) {
+    } else if (progressRatio < 0.6) {
       maxAllowed = 3;
+    } else if (progressRatio < 0.85) {
+      maxAllowed = 4;
     } else {
       maxAllowed = config.maxCrossingsPerSlot;
     }
     
-    // Hard cap at 5 crossings
-    if (crossings <= Math.min(maxAllowed, 5)) {
+    // Hard cap at 6 crossings for xlarge, 5 for others
+    const hardCap = size === 'xlarge' ? 6 : 5;
+    if (crossings <= Math.min(maxAllowed, hardCap)) {
       finalGapFilledSlots.push(slot);
     }
   }

@@ -11,6 +11,7 @@ export interface IUser extends Document {
   preferences: {
     soundEnabled: boolean;
     vibrationEnabled: boolean;
+    narrationEnabled: boolean;
   };
   createdAt: Date;
   updatedAt: Date;
@@ -49,7 +50,8 @@ const userSchema = new Schema<IUser>({
   },
   preferences: {
     soundEnabled: { type: Boolean, default: true },
-    vibrationEnabled: { type: Boolean, default: true }
+    vibrationEnabled: { type: Boolean, default: true },
+    narrationEnabled: { type: Boolean, default: true }  
   }
 }, {
   timestamps: true
