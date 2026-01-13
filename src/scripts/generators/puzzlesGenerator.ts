@@ -112,7 +112,6 @@ export class PuzzleGenerator {
    */
   addGeneratedTemplates(): void {
     this.addGeneratedTemplate('xlarge', Difficulty.MEDIUM);
-    // this.addTemplateFromPuzzle(GOOD_TEMPLATE);
   }
   
   /**
@@ -132,11 +131,11 @@ export class PuzzleGenerator {
     
     const template = this.templates[templateIndex];
     
-    // Adjust maxAttempts based on template size and complexity
+    // MAXIMUM COMPUTE POWER: Use all available attempts for one perfect puzzle
     const slotCount = template.slots.length;
-    const baseAttempts = 50000;
-    const attemptsPerSlot = 2000;
-    const maxAttempts = Math.min(baseAttempts + (slotCount * attemptsPerSlot), 500000); // Cap at 500k
+    const baseAttempts = 200000; // Increased from 50k
+    const attemptsPerSlot = 10000; // Increased from 2k
+    const maxAttempts = baseAttempts + (slotCount * attemptsPerSlot); // No cap - use all compute power
     
     // Solve the grid with increased attempts and allow word reuse
     // Try with word reuse first (easier), then without if needed
@@ -147,14 +146,25 @@ export class PuzzleGenerator {
       allowWordReuse: true // Allow words to be reused if needed
     });
     
-    // If that fails, try without word reuse (more variety but harder)
+    // If that fails, try multiple strategies with maximum attempts
     if (!result) {
       console.log(`  🔄 Retrying without word reuse...`);
       result = solveGrid(template, this.wordIndex, {
-        maxAttempts: maxAttempts,
+        maxAttempts: maxAttempts * 2, // Double attempts for retry
         shuffleWords: true,
         preferCommonWords: true,
         allowWordReuse: false
+      });
+    }
+    
+    // If still failing, try with different strategies
+    if (!result) {
+      console.log(`  🔄 Retrying with different word ordering...`);
+      result = solveGrid(template, this.wordIndex, {
+        maxAttempts: maxAttempts * 2,
+        shuffleWords: false, // Try without shuffling
+        preferCommonWords: false, // Try without preference
+        allowWordReuse: true
       });
     }
     
@@ -187,6 +197,62 @@ export class PuzzleGenerator {
     return puzzle;
   }
   
+  /**
+   * Generate ONE perfect puzzle with maximum compute power
+   * Generates a NEW template for each attempt until we get a solvable puzzle
+   */
+  generateOnePerfect(
+    config: {
+      difficulty: Difficulty;
+      category: string;
+      title: string;
+    }
+  ): Puzzle | null {
+    console.log('🎯 Generating ONE perfect puzzle with maximum compute power...');
+    let attempts = 0;
+    const maxTemplateAttempts = 30; // Generate up to 30 fresh templates
+    
+    while (attempts < maxTemplateAttempts) {
+      attempts++;
+      
+      // Generate a FRESH template for each attempt
+      console.log(`\n🔄 Attempt ${attempts}/${maxTemplateAttempts} - Generating fresh template...`);
+      
+      // Clear old templates and generate a new one
+      this.templates = [];
+      this.addGeneratedTemplate('xlarge', config.difficulty);
+      
+      if (this.templates.length === 0) {
+        console.log(`   ⚠️  Failed to generate template, skipping...`);
+        continue;
+      }
+      
+      const template = this.templates[0];
+      console.log(`   📋 Template: ${template.slots.length} slots, ${template.rows}x${template.cols} grid`);
+      
+      const puzzle = this.generateFromTemplate(0, {
+        title: `${config.title} (Attempt ${attempts})`,
+        difficulty: config.difficulty,
+        category: config.category
+      });
+      
+      if (puzzle) {
+        console.log(`\n✅ SUCCESS! Generated perfect puzzle: "${puzzle.title}"`);
+        console.log(`   Grid: ${puzzle.grid.rows}x${puzzle.grid.cols}`);
+        console.log(`   Clues: ${puzzle.clues.length}`);
+        console.log(`   Difficulty: ${puzzle.difficulty}`);
+        return puzzle;
+      }
+      
+      if (attempts % 3 === 0) {
+        console.log(`   Still trying... (${attempts}/${maxTemplateAttempts} attempts)`);
+      }
+    }
+    
+    console.log(`\n❌ Failed to generate puzzle after ${attempts} attempts`);
+    return null;
+  }
+
   /**
    * Generate multiple puzzle variants
    */
@@ -233,6 +299,50 @@ export class PuzzleGenerator {
  * Generate puzzles using the generator
  * This function can be called from seedPuzzles.ts
  */
+/**
+ * Generate ONE perfect puzzle with maximum compute power
+ */
+export function generateOnePerfectPuzzle(
+  config: {
+    difficulty?: Difficulty;
+    category?: string;
+    title?: string;
+  } = {}
+): Puzzle | null {
+  console.log('='.repeat(60));
+  console.log('🎯 PERFECT PUZZLE GENERATOR - Maximum Compute Power');
+  console.log('='.repeat(60));
+  
+  // Create generator
+  const generator = new PuzzleGenerator();
+
+  // Add programmatically generated templates for bigger, more complex puzzles
+  generator.addGeneratedTemplates();
+  
+  const puzzle = generator.generateOnePerfect({
+    difficulty: config.difficulty || Difficulty.MEDIUM,
+    category: config.category || 'Daily Life',
+    title: config.title || 'Perfect Puzzle'
+  });
+  
+  if (puzzle) {
+    console.log('\n' + '='.repeat(60));
+    console.log('✅ PERFECT PUZZLE GENERATED:');
+    console.log('='.repeat(60));
+    console.log(`  Title: ${puzzle.title}`);
+    console.log(`  Grid: ${puzzle.grid.rows}x${puzzle.grid.cols}`);
+    console.log(`  Clues: ${puzzle.clues.length}`);
+    console.log(`  Difficulty: ${puzzle.difficulty}`);
+    console.log(`  Category: ${puzzle.category}`);
+    console.log(`  Estimated Time: ${puzzle.estimatedTime} minutes`);
+    console.log(`  Coin Reward: ${puzzle.coinReward}`);
+  } else {
+    console.log('\n❌ Failed to generate perfect puzzle');
+  }
+  
+  return puzzle;
+}
+
 export function generatePuzzles(
   count: number = 20,
   config: {

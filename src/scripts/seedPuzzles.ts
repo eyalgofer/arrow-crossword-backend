@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { Puzzle } from '../models/Puzzle';
 import { Difficulty } from '../types';
-import { generatePuzzles } from './generators/puzzlesGenerator';
+import { generatePuzzles, generateOnePerfectPuzzle } from './generators/puzzlesGenerator';
 import { samplePuzzles } from './core/samplePuzzles';
 
 dotenv.config();
@@ -478,20 +478,21 @@ const seedDatabase = async () => {
     
     // Generate additional puzzles using the generator
     console.log('\n' + '='.repeat(60));
-    console.log('Generating additional puzzles...');
+    console.log('Generating ONE good puzzle with maximum compute power...');
     console.log('='.repeat(60));
-    const generatedPuzzles = generatePuzzles(20, {
-      difficulty: Difficulty.EASY,
-      category: 'Daily Life',
-      titlePrefix: 'Generated Puzzle'
+    const perfectPuzzle = generateOnePerfectPuzzle({
+      difficulty: Difficulty.MEDIUM,
+      category: 'All',
+      title: 'Generated Puzzle'
     });
     
-    // Combine sample puzzles and generated puzzles
+    // Combine sample puzzles and generated puzzle
+    const generatedPuzzles = perfectPuzzle ? [perfectPuzzle] : [];
     const allPuzzles = [...validPuzzles, ...generatedPuzzles];
     
     console.log(`\n📦 Puzzles to seed:`);
     console.log(`   Validated sample puzzles: ${validPuzzles.length}`);
-    console.log(`   Generated puzzles: ${generatedPuzzles.length}`);
+    console.log(`   Generated perfect puzzle: ${generatedPuzzles.length}`);
     console.log(`   Total: ${allPuzzles.length}`);
     
     if (allPuzzles.length === 0) {

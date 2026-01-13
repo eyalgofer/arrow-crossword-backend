@@ -3316,7 +3316,7 @@ const CLUES: Record<string, string[]> = {
   'ZOOM': ['Magnify', 'Video app', 'Speed'],
   'ZUCKERBERG': ['Facebook creator'],
   'ZURICH': ['Swiss finance', 'Banking center', 'Lake city'],
-  '航空': ['Aviation (Chinese)', 'Air travel'],
+
 };
 
 export default CLUES;
