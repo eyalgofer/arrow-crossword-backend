@@ -117,7 +117,7 @@ export class PuzzleGenerator {
     
     // Validate template has minimum required slots - more lenient with 6M clues
     // We can fill gaps later, so accept templates with fewer initial slots
-    const minSlots = size === 'medium' ? 18 : size === 'small' ? 30 : size === 'large' ? 50 : 45;
+    const minSlots = size === 'xlarge' ? 55 : size === 'large' ? 50 : size === 'medium' ? 18 : 12;
     if (template.slots.length < minSlots) {
       console.warn(`⚠️  Skipping template: Only ${template.slots.length} slots (need ${minSlots} for ${size})`);
       return; // Don't add invalid templates
@@ -251,10 +251,8 @@ export class PuzzleGenerator {
       console.log(`\n🔄 Attempt ${attempts}/${maxTemplateAttempts} - Generating fresh template... (${(elapsed / 1000).toFixed(1)}s elapsed)`);
       const templateStartTime = Date.now();
       
-      // Clear old templates and generate a new one
-      // Use 'large' for maximum density with 6M clues (bigger grid = more slots = denser puzzle)
       this.templates = [];
-      this.addGeneratedTemplate('large', config.difficulty);
+      this.addGeneratedTemplate('xlarge', config.difficulty);
       
       if (this.templates.length === 0) {
         console.log(`   ⚠️  Failed to generate template, skipping...`);
