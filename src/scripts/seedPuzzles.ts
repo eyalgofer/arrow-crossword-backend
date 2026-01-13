@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { Puzzle } from '../models/Puzzle';
 import { Difficulty } from '../types';
-import { generatePuzzles, generateOnePerfectPuzzle } from './generators/puzzlesGenerator';
+import { generatePuzzle } from './generators/puzzlesGenerator';
 import { samplePuzzles } from './core/samplePuzzles';
 
 dotenv.config();
@@ -484,23 +484,19 @@ const seedDatabase = async () => {
      
      const puzzles: any[] = [];
      
-     for (let i = 1; i <= 30; i++) {
-       console.log(`\n${'='.repeat(60)}`);
-       console.log(`Generating Puzzle ${i}/30`);
-       console.log('='.repeat(60));
+     
        
-       const puzzle = generateOnePerfectPuzzle({
-         difficulty: Difficulty.MEDIUM,
-         category: 'Daily Life',
-         title: `Generated Puzzle ${i}`
-       });
-       
-       if (puzzle) {
-         puzzles.push(puzzle);
-         console.log(`✅ Puzzle ${i} generated successfully!`);
-       } else {
-         console.log(`❌ Puzzle ${i} failed to generate`);
-       }
+     const puzzle = generatePuzzle({
+       difficulty: Difficulty.MEDIUM,
+       category: 'Daily Life',
+       title: `Generated Puzzle`
+     });
+     
+     if (puzzle) {
+       puzzles.push(puzzle);
+       console.log(`✅ Puzzle generated successfully!`);
+     } else {
+       console.log(`❌ Puzzle failed to generate`);
      }
      
     // Combine sample puzzles and generated puzzle

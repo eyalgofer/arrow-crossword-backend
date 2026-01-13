@@ -1,5 +1,4 @@
 import { Difficulty } from '../../types';
-import CLUES from '../core/clues';
 import {
   Puzzle,
   GridTemplate,
@@ -14,6 +13,11 @@ import {
   ClueDatabase,
   generateTemplate,
 } from './grid-generator';
+
+import { getClues } from '../core/cluesFromCSV';
+
+// Load clues from CSV file
+const CLUES = getClues();
 
 /**
  * Get a clue for a word
@@ -88,7 +92,7 @@ export class PuzzleGenerator {
   private templates: GridTemplate[] = [];
   
   constructor() {
-    // Build word index for fast lookups
+    // Build word index for fast lookups from CSV clues
     this.wordIndex = buildCrossingIndex(Object.keys(CLUES).map(key => key.toUpperCase()));
   }
   
@@ -116,8 +120,9 @@ export class PuzzleGenerator {
   addGeneratedTemplate(size: 'small' | 'medium' | 'large' | 'xlarge', difficulty: Difficulty = Difficulty.EASY): void {
     const template = generateTemplate(size, difficulty);
     
-    // Validate template has minimum required slots
-    const minSlots = size === 'medium' ? 18 : size === 'small' ? 35 : size === 'large' ? 65 : 55;
+    // Validate template has minimum required slots - more lenient with 6M clues
+    // We can fill gaps later, so accept templates with fewer initial slots
+    const minSlots = size === 'medium' ? 18 : size === 'small' ? 30 : size === 'large' ? 50 : 45;
     if (template.slots.length < minSlots) {
       console.warn(`⚠️  Skipping template: Only ${template.slots.length} slots (need ${minSlots} for ${size})`);
       return; // Don't add invalid templates
@@ -152,11 +157,12 @@ export class PuzzleGenerator {
     
     const template = this.templates[templateIndex];
     
-    // Reasonable compute limits with progress tracking
+    // MAXIMUM COMPUTE POWER: With 6M clues, we can try many more combinations
+    // Use massive attempts to find perfect dense solutions
     const slotCount = template.slots.length;
-    const baseAttempts = 30000; // Further reduced for faster iteration
-    const attemptsPerSlot = 1000; // Further reduced
-    const maxAttempts = Math.min(baseAttempts + (slotCount * attemptsPerSlot), 100000); // Cap at 100k
+    const baseAttempts = 500000; // Much higher with huge clue database
+    const attemptsPerSlot = 50000; // Much higher per slot
+    const maxAttempts = Math.min(baseAttempts + (slotCount * attemptsPerSlot), 10000000); // Cap at 10M - use all compute power
     
     // Solve the grid with increased attempts and allow word reuse
     // Try with word reuse first (easier), then without if needed
@@ -223,17 +229,17 @@ export class PuzzleGenerator {
    * Generate ONE perfect puzzle with maximum compute power
    * Generates a NEW template for each attempt until we get a solvable puzzle
    */
-  generateOnePerfect(
+  generatePuzzle(
     config: {
       difficulty: Difficulty;
       category: string;
       title: string;
     }
   ): Puzzle | null {
-    console.log('🎯 Generating ONE perfect puzzle with maximum compute power...');
+    console.log('🎯 Generating ULTRA-DENSE puzzle with 6M clues database...');
     let attempts = 0;
-    const maxTemplateAttempts = 10; // Reduced from 30 - faster iteration
-    const maxTotalTime = 5 * 60 * 1000; // 5 minutes max total time
+    const maxTemplateAttempts = 50; // More attempts to find perfect dense template
+    const maxTotalTime = 30 * 60 * 1000; // 30 minutes max - take time to find perfect puzzle
     const startTime = Date.now();
     
     while (attempts < maxTemplateAttempts) {
@@ -251,9 +257,9 @@ export class PuzzleGenerator {
       const templateStartTime = Date.now();
       
       // Clear old templates and generate a new one
-      // Use 'medium' for much better solvability (smaller grid = easier to solve)
+      // Use 'large' for maximum density with 6M clues (bigger grid = more slots = denser puzzle)
       this.templates = [];
-      this.addGeneratedTemplate('medium', config.difficulty);
+      this.addGeneratedTemplate('large', config.difficulty);
       
       if (this.templates.length === 0) {
         console.log(`   ⚠️  Failed to generate template, skipping...`);
@@ -262,9 +268,17 @@ export class PuzzleGenerator {
       
       const template = this.templates[0];
       const templateTime = Date.now() - templateStartTime;
-      console.log(`   📋 Template: ${template.slots.length} slots, ${template.rows}x${template.cols} grid (${templateTime}ms)`);
+      const density = ((template.slots.length * 4) / (template.rows * template.cols) * 100).toFixed(1);
+      console.log(`   📋 Template: ${template.slots.length} slots, ${template.rows}x${template.cols} grid, ~${density}% density (${templateTime}ms)`);
       
-      console.log(`   🧩 Attempting to solve template...`);
+      // Only proceed if template has reasonable density (at least 40+ slots)
+      // With 6M clues, we can fill gaps later, so accept templates with fewer initial slots
+      if (template.slots.length < 40) {
+        console.log(`   ⚠️  Template too sparse (${template.slots.length} slots), trying again...`);
+        continue;
+      }
+      
+      console.log(`   🧩 Attempting to solve ultra-dense template with 6M clues...`);
       const solveStartTime = Date.now();
       const puzzle = this.generateFromTemplate(0, {
         title: `${config.title}`,
@@ -340,7 +354,7 @@ export class PuzzleGenerator {
 /**
  * Generate ONE perfect puzzle with maximum compute power
  */
-export function generateOnePerfectPuzzle(
+export function generatePuzzle(
   config: {
     difficulty?: Difficulty;
     category?: string;
@@ -348,7 +362,7 @@ export function generateOnePerfectPuzzle(
   } = {}
 ): Puzzle | null {
   console.log('='.repeat(60));
-  console.log('🎯 PERFECT PUZZLE GENERATOR - Maximum Compute Power');
+  console.log('🎯 PUZZLE GENERATOR - Maximum Compute Power');
   console.log('='.repeat(60));
   
   // Create generator
@@ -357,15 +371,15 @@ export function generateOnePerfectPuzzle(
   // Add programmatically generated templates for bigger, more complex puzzles
   generator.addGeneratedTemplates();
   
-  const puzzle = generator.generateOnePerfect({
+  const puzzle = generator.generatePuzzle({
     difficulty: config.difficulty || Difficulty.MEDIUM,
     category: config.category || 'Daily Life',
-    title: config.title || 'Perfect Puzzle'
+    title: config.title || 'Generated Puzzle'
   });
   
   if (puzzle) {
     console.log('\n' + '='.repeat(60));
-    console.log('✅ PERFECT PUZZLE GENERATED:');
+    console.log('✅ PUZZLE GENERATED:');
     console.log('='.repeat(60));
     console.log(`  Title: ${puzzle.title}`);
     console.log(`  Grid: ${puzzle.grid.rows}x${puzzle.grid.cols}`);

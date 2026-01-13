@@ -975,10 +975,11 @@ export function generatePuzzleFromGrid(
   }
   
   // Validate minimum clue count based on grid size
+  // Updated minimums to match puzzlesGenerator.ts - more lenient with 6M clues
   const minClues = template.rows === 11 && template.cols === 11 ? 18 : 
-                   template.rows === 14 && template.cols === 14 ? 35 :
-                   template.rows === 15 && template.cols === 15 ? 65 :
-                   template.rows === 16 && template.cols === 16 ? 55 : 20;
+                   template.rows === 14 && template.cols === 14 ? 30 :
+                   template.rows === 15 && template.cols === 15 ? 50 :
+                   template.rows === 16 && template.cols === 16 ? 45 : 20;
   
   if (clues.length < minClues) {
     // Instead of throwing, return null to allow retry
@@ -1018,10 +1019,10 @@ export function generateTemplate(
   // Need many slots, but keep crossings reasonable for solvability
   // Lower max crossings = more solvable, but we need MORE slots to compensate
   const sizeConfig = {
-    small: { rows: 14, cols: 14, minSlots: 50, maxSlots: 70, maxCrossingsPerSlot: 6, density: 0.97 },
-    medium: { rows: 11, cols: 11, minSlots: 18, maxSlots: 80, maxCrossingsPerSlot: 6, density: 0.98 },
-    large: { rows: 15, cols: 15, minSlots: 65, maxSlots: 90, maxCrossingsPerSlot: 7, density: 0.98 },
-    xlarge: { rows: 16, cols: 16, minSlots: 55, maxSlots: 110, maxCrossingsPerSlot: 7, density: 0.98 }
+    small: { rows: 14, cols: 14, minSlots: 50, maxSlots: 100, maxCrossingsPerSlot: 10, density: 0.99 },
+    medium: { rows: 11, cols: 11, minSlots: 25, maxSlots: 120, maxCrossingsPerSlot: 10, density: 0.99 },
+    large: { rows: 15, cols: 15, minSlots: 80, maxSlots: 150, maxCrossingsPerSlot: 12, density: 0.99 },
+    xlarge: { rows: 16, cols: 16, minSlots: 90, maxSlots: 180, maxCrossingsPerSlot: 12, density: 0.99 }
   };
   
   const config = sizeConfig[size];
@@ -1031,8 +1032,11 @@ export function generateTemplate(
   const answerCells = new Map<string, { slotId: string; position: number }>(); // Track answer cells for crossings
   
   // Generate slots with strategic placement for dense puzzles
+  // With 6M clues, aim for maximum slots to achieve ultra-density
   let slotNumber = 1;
-  const targetSlots = Math.floor(Math.random() * (config.maxSlots - config.minSlots + 1)) + config.minSlots;
+  // Aim for 80-90% of max slots to ensure we get enough for dense puzzles
+  const targetRange = config.maxSlots - config.minSlots;
+  const targetSlots = Math.floor(config.minSlots + (targetRange * 0.8) + Math.random() * (targetRange * 0.2));
   
   // Use all 6 directions evenly for variety
   // Track which directions have been used to ensure all are used
@@ -1057,7 +1061,8 @@ export function generateTemplate(
     let attempts = 0;
     // MAXIMUM COMPUTE POWER: Use all available attempts for perfect placement
     // Significantly increased attempts to ensure we can place all slots
-    const maxPlacementAttempts = size === 'xlarge' ? 5000 : size === 'large' ? 4000 : size === 'medium' ? 3000 : 2000;
+    // With 6M clues, use many more attempts to place all slots
+    const maxPlacementAttempts = size === 'xlarge' ? 15000 : size === 'large' ? 12000 : size === 'medium' ? 8000 : 5000;
     
     while (!placed && attempts < maxPlacementAttempts) {
       attempts++;
@@ -1258,20 +1263,20 @@ export function generateTemplate(
       const crossingCount = crossingSlots.size; // Number of different slots we cross with (perpendicular only)
       const canPlace = true; // Already validated in optimal length selection
       
-      // PROGRESSIVE CROSSING LIMITS: Match filtering limits exactly
-      // We need many slots for maximum density - match limits so slots survive
+      // PROGRESSIVE CROSSING LIMITS: With 6M clues, be much more lenient
+      // We need many slots for ultra-density - allow more crossings during placement
       const progressRatio = i / targetSlots;
       let maxAllowedCrossings: number;
       
-      // Match filtering limits exactly - this ensures slots survive (more lenient now)
+      // Much more lenient limits to ensure we place enough slots
       if (progressRatio < 0.20) {
-        maxAllowedCrossings = 5; // First 20%: max 5 crossings (matches filtering)
+        maxAllowedCrossings = 8; // First 20%: max 8 crossings
       } else if (progressRatio < 0.50) {
-        maxAllowedCrossings = 6; // Next 30%: max 6 crossings (matches filtering)
+        maxAllowedCrossings = 10; // Next 30%: max 10 crossings
       } else if (progressRatio < 0.80) {
-        maxAllowedCrossings = 7; // Next 30%: max 7 crossings (matches filtering)
+        maxAllowedCrossings = 12; // Next 30%: max 12 crossings
       } else {
-        maxAllowedCrossings = config.maxCrossingsPerSlot; // Last 20%: up to config max (7)
+        maxAllowedCrossings = config.maxCrossingsPerSlot; // Last 20%: up to config max (12)
       }
       
       // CRITICAL: Strictly enforce crossing limits during placement
@@ -1283,16 +1288,16 @@ export function generateTemplate(
       // Don't reject at-limit crossings - we need all the slots we can get for density
       // The filtering will handle any that are truly too constrained
       
-      // SWEDISH ARROW DENSITY: Aggressive preference for crossings, but don't be too strict
-      // Start preferring crossings early, but allow some non-crossing slots to ensure we place enough
-      if (crossingCount === 0 && i > targetSlots * 0.10) {
-        // After 10% of slots, strongly prefer crossings (Swedish arrow style)
-        // But be less strict if we're behind on slot count
+      // With 6M clues: Be less strict about requiring crossings
+      // Focus on placing as many slots as possible - crossings will come naturally
+      if (crossingCount === 0 && i > targetSlots * 0.30) {
+        // After 30% of slots, prefer crossings but don't be too strict
+        // With huge clue database, we can fill gaps later
         const progressRatio = i / targetSlots;
-        const slotsBehind = (i + 1) < (targetSlots * progressRatio * 0.8);
-        const skipChance = slotsBehind ? 0.85 : 0.92; // Less strict if behind, stricter if ahead
+        const slotsBehind = (i + 1) < (targetSlots * progressRatio * 0.7);
+        const skipChance = slotsBehind ? 0.60 : 0.75; // Much less strict - prioritize slot count
         if (Math.random() < skipChance) {
-          continue; // Skip slots without crossings to maximize density
+          continue; // Skip some slots without crossings
         }
       }
       
@@ -1566,17 +1571,17 @@ export function generateTemplate(
     const slot = validatedSlots[i];
     const crossings = slot.crossings.length;
     
-    // SOLVABILITY: Keep slots with up to 10 crossings for better solvability
+    // With 6M clues: Keep slots with up to 12 crossings for ultra-dense puzzles
     // Progressive limits: earlier slots can have fewer crossings
-    // Increased limits to keep more slots and meet minimum requirements
+    // Much more lenient to keep as many slots as possible
     const progressRatio = i / validatedSlots.length;
     let maxAllowed: number;
     if (progressRatio < 0.40) {
-      maxAllowed = 8; // First 40%: max 8 crossings (increased from 6)
+      maxAllowed = 10; // First 40%: max 10 crossings
     } else if (progressRatio < 0.80) {
-      maxAllowed = 9; // Next 40%: max 9 crossings (increased from 7)
+      maxAllowed = 11; // Next 40%: max 11 crossings
     } else {
-      maxAllowed = 10; // Last 20%: max 10 crossings (increased from 8)
+      maxAllowed = 12; // Last 20%: max 12 crossings (config max)
     }
     
     if (crossings <= maxAllowed) {
@@ -1614,28 +1619,15 @@ export function generateTemplate(
         clueCellSet.add(`${slot.startRow},${slot.startCol}`);
       }
       
-      // Get all slots that were filtered out (from original slots array)
-      // Recalculate crossings for each filtered-out slot against finalFilteredSlots
-      const filteredOutSlots = slots.filter(slot => !finalFilteredSlots.includes(slot));
+      // Get all slots that were filtered out (from validatedSlots, not original slots)
+      // Use validatedSlots because those have recalculated crossings
+      const filteredOutSlots = validatedSlots.filter(slot => !finalFilteredSlots.includes(slot));
       
-      // Calculate crossings for each filtered-out slot
+      // Use the original crossing counts from validatedSlots (already recalculated)
+      // This is more accurate than recalculating against a smaller set
       const slotsWithCrossings = filteredOutSlots.map(slot => {
-        const slotCells = getSlotCells(slot);
-        const crossingSlots = new Set<string>();
-        
-        for (const otherSlot of finalFilteredSlots) {
-          const otherCells = getSlotCells(otherSlot);
-          for (const cell of slotCells) {
-            for (const otherCell of otherCells) {
-              if (cell.row === otherCell.row && cell.col === otherCell.col) {
-                crossingSlots.add(otherSlot.id);
-                break;
-              }
-            }
-          }
-        }
-        
-        return { slot, crossings: crossingSlots.size };
+        // Use the crossings that were already calculated during validation
+        return { slot, crossings: slot.crossings.length };
       });
       
       // Sort by crossing count (ascending) to prefer easier slots
@@ -1662,9 +1654,9 @@ export function generateTemplate(
         }
         if (hasClueOverlap) continue; // Skip slots that overlap with clue cells
         
-        // Be lenient when we're desperate, but cap at 10 crossings for solvability
-        // Slots with more than 10 crossings are nearly impossible to solve
-        const relaxedLimit = 10;
+        // With 6M clues, we can handle more crossings - be more aggressive
+        // Cap at 15 crossings for ultra-dense puzzles
+        const relaxedLimit = 15;
         if (crossings <= relaxedLimit) {
           finalFilteredSlots.push(slot);
           clueCellSet.add(clueKey); // Add this slot's clue cell
@@ -1693,21 +1685,22 @@ export function generateTemplate(
     }
   }
   
-  // MAXIMUM DENSITY: Fill until we have only 5 empty cells (98%+ coverage)
+  // ULTRA-DENSE: With 6M clues, aim for 99%+ coverage (almost no empty cells)
   // Calculate current coverage
   const totalCells = config.rows * config.cols;
   const currentCoverage = (gapFilledAnswerCells.size + gapFilledOccupiedCells.size) / totalCells;
   
-  // For xlarge: target 5 empty cells max (98% coverage)
-  // For others: target similar high density
-  const maxEmptyCells = size === 'xlarge' ? 5 : size === 'large' ? 4 : size === 'medium' ? 3 : 2;
+  // Target 99%+ coverage - only 1-2% empty cells max
+  // With huge clue database, we can fill almost everything
+  const targetCoverage = 0.99; // 99% coverage
+  const maxEmptyCells = Math.max(1, Math.floor(totalCells * (1 - targetCoverage))); // At least 1 empty, but aim for 99%
   const targetFilledCells = totalCells - maxEmptyCells;
   const currentFilledCells = gapFilledAnswerCells.size + gapFilledOccupiedCells.size;
   const cellsNeeded = Math.max(0, targetFilledCells - currentFilledCells);
   
-  // MAXIMUM DENSITY: Keep adding slots until we reach target (5 empty cells)
-  // Don't limit by slot count - keep going until we fill the grid
-  console.log(`  🎯 Density target: ${totalCells - maxEmptyCells}/${totalCells} cells (${((totalCells - maxEmptyCells) / totalCells * 100).toFixed(1)}%)`);
+  // ULTRA-DENSE: Keep adding slots until we reach 99%+ coverage
+  // With 6M clues, we have many word options to fill every possible cell
+  console.log(`  🎯 ULTRA-DENSITY target: ${targetFilledCells}/${totalCells} cells (${(targetCoverage * 100).toFixed(1)}% - almost no empty cells!)`);
   console.log(`  📊 Current: ${currentFilledCells}/${totalCells} cells (${(currentCoverage * 100).toFixed(1)}%)`);
   console.log(`  📊 Need to fill: ${cellsNeeded} more cells`);
   
@@ -1715,9 +1708,9 @@ export function generateTemplate(
   let gapFillAttempts = 0;
   let lastProgressCount = 0;
   let noProgressCount = 0;
-  // Reduced limit with early exit for no progress
-  const maxGapFillAttempts = 10000; // Reduced from 100k - more reasonable limit
-  const maxNoProgressAttempts = 2000; // Exit if no progress for 2000 attempts
+  // Much higher limits with 6M clues - we can try many more combinations
+  const maxGapFillAttempts = 50000; // Much higher - use the power of 6M clues
+  const maxNoProgressAttempts = 5000; // More patience before giving up
   
   // Keep going until we reach target empty cells
   while (gapFillAttempts < maxGapFillAttempts) {
@@ -1731,16 +1724,35 @@ export function generateTemplate(
       console.log(`  🔄 Gap-filling progress: ${gapFillAttempts}/${maxGapFillAttempts} attempts, ${currentEmpty} empty cells (${(currentCoverageCheck * 100).toFixed(1)}%), ${gapFilledCount} slots added`);
     }
     
-    // Check current coverage - stop when we have only maxEmptyCells left
+    // Check current coverage - stop when we reach 99%+ or within 5 cells of target
     const currentFilled = gapFilledAnswerCells.size + gapFilledOccupiedCells.size;
     const currentEmpty = totalCells - currentFilled;
     const currentCoverageCheck = currentFilled / totalCells;
     
-    // Early exit if no progress for too long
+    // Early exit if we've reached target coverage (99%+)
+    if (currentCoverageCheck >= targetCoverage || currentEmpty <= maxEmptyCells) {
+      console.log(`  ✅ Gap-filling complete: ${currentEmpty} empty cells (${(currentCoverageCheck * 100).toFixed(1)}% coverage) with ${gapFilledCount} additional slots`);
+      break;
+    }
+    
+    // Early exit if we're very close (within 5 cells)
+    if (currentEmpty <= maxEmptyCells + 5) {
+      console.log(`  ✅ Gap-filling: Very close to target (${currentEmpty} empty cells, ${(currentCoverageCheck * 100).toFixed(1)}% coverage) with ${gapFilledCount} additional slots`);
+      break;
+    }
+    
+    // Early exit if no progress for too long - but be more patient with 6M clues
     if (gapFilledCount === lastProgressCount) {
       noProgressCount++;
-      if (noProgressCount >= maxNoProgressAttempts) {
-        console.log(`  ⚠️  Gap-filling: No progress for ${maxNoProgressAttempts} attempts, stopping early`);
+      // Only exit if we're very close to target (within 10 cells) OR no progress for very long
+      const closeToTarget = currentEmpty <= maxEmptyCells + 10;
+      if (noProgressCount >= maxNoProgressAttempts && !closeToTarget) {
+        console.log(`  ⚠️  Gap-filling: No progress for ${maxNoProgressAttempts} attempts, but continuing...`);
+        // Reset counter and keep trying - with 6M clues we should find solutions
+        noProgressCount = 0;
+      } else if (noProgressCount >= maxNoProgressAttempts * 3) {
+        // After 3x the normal limit, give up
+        console.log(`  ⚠️  Gap-filling: No progress for ${maxNoProgressAttempts * 3} attempts, stopping`);
         console.log(`  📊 Final: ${currentEmpty} empty cells (${(currentCoverageCheck * 100).toFixed(1)}% coverage) with ${gapFilledCount} additional slots`);
         break;
       }
@@ -1754,17 +1766,8 @@ export function generateTemplate(
       break;
     }
     
-    // Also stop if we're very close (within 5 cells) and have made reasonable progress
-    if (currentEmpty <= maxEmptyCells + 5 && gapFilledCount >= 5) {
-      console.log(`  ✅ Close enough: ${currentEmpty} empty cells (${(currentCoverageCheck * 100).toFixed(1)}% coverage)`);
-      break;
-    }
-    
-    // Early exit if we're at good coverage (95%+) and have added some slots
-    if (currentCoverageCheck >= 0.95 && gapFilledCount >= 5) {
-      console.log(`  ✅ Good coverage achieved: ${currentEmpty} empty cells (${(currentCoverageCheck * 100).toFixed(1)}% coverage)`);
-      break;
-    }
+    // With 6M clues, keep going until we reach 99%+ coverage
+    // Don't exit early - we have the word database to fill almost everything
     
     // Find ALL empty cells - prioritize those that will fill the most empty cells
     const emptyCells: Array<{ row: number; col: number; emptyNeighbors: number }> = [];
@@ -1883,10 +1886,10 @@ export function generateTemplate(
       }
     }
     
-    // For gap-filling, be VERY lenient with crossings - allow up to 15
+    // For gap-filling with 6M clues, be ULTRA-lenient - allow up to 20 crossings
     // Priority is filling empty cells - crossings don't matter as much here
     // These slots are added AFTER initial solve, so they can have more constraints
-    if (canPlace && crossingCount <= 15) {
+    if (canPlace && crossingCount <= 20) {
       // STRONGLY prefer slots that fill empty cells
       // If we have many empty cells, only accept slots that fill at least 2
       // If we're close to target, accept ANY slot that fills at least 1
@@ -2113,8 +2116,8 @@ export function generateTemplate(
     const slot = validatedGapFilledSlots[i];
     const crossings = slot.crossings.length;
     
-    // SOLVABILITY: Keep gap-filled slots with up to 6 crossings for solvability
-    const maxAllowed = 6;
+    // With 6M clues: Keep gap-filled slots with up to 12 crossings for ultra-dense puzzles
+    const maxAllowed = 12;
     if (crossings <= maxAllowed) {
       finalGapFilledSlots.push(slot);
     } else {
@@ -2130,19 +2133,19 @@ export function generateTemplate(
     // Keep slots with more crossings if we're desperate, but cap at 10 for solvability
     for (const slot of slotsWithManyCrossings) {
       if (finalGapFilledSlots.length >= config.minSlots) break;
-      // CRITICAL: Never keep slots with more than 10 crossings - they're unsolvable
-      if (slot.crossings.length <= 10) {
+      // With 6M clues: Allow up to 15 crossings for ultra-dense puzzles
+      if (slot.crossings.length <= 15) {
       finalGapFilledSlots.push(slot);
       }
     }
   }
   
-  // CRITICAL: Final safety filter - remove any slots with excessive crossings (unsolvable)
-  // This prevents returning templates with impossible-to-solve slots
-  const safeSlots = finalGapFilledSlots.filter(slot => slot.crossings.length <= 10);
+  // Final safety filter - with 6M clues, allow up to 15 crossings for ultra-dense puzzles
+  // This is much higher than before because we have many more word options
+  const safeSlots = finalGapFilledSlots.filter(slot => slot.crossings.length <= 15);
   const removedExcessive = finalGapFilledSlots.length - safeSlots.length;
   if (removedExcessive > 0) {
-    console.warn(`  ⚠️  Removed ${removedExcessive} slots with excessive crossings (>10) - unsolvable`);
+    console.warn(`  ⚠️  Removed ${removedExcessive} slots with excessive crossings (>15)`);
   }
   
   // Recalculate clue cells for safe slots
