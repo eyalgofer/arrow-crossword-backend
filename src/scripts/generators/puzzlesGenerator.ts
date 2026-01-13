@@ -112,7 +112,7 @@ export class PuzzleGenerator {
    */
   addGeneratedTemplates(): void {
     this.addGeneratedTemplate('xlarge', Difficulty.MEDIUM);
-    this.addTemplateFromPuzzle(GOOD_TEMPLATE);
+    // this.addTemplateFromPuzzle(GOOD_TEMPLATE);
   }
   
   /**
