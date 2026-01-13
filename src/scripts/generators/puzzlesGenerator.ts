@@ -111,7 +111,8 @@ export class PuzzleGenerator {
    * Add multiple generated templates of different sizes
    */
   addGeneratedTemplates(): void {
-    this.addGeneratedTemplate('xlarge', Difficulty.MEDIUM);
+    // Use 'large' instead of 'xlarge' for better solvability
+    this.addGeneratedTemplate('large', Difficulty.MEDIUM);
   }
   
   /**
@@ -131,11 +132,11 @@ export class PuzzleGenerator {
     
     const template = this.templates[templateIndex];
     
-    // MAXIMUM COMPUTE POWER: Use all available attempts for one perfect puzzle
+    // Reasonable compute limits with progress tracking
     const slotCount = template.slots.length;
-    const baseAttempts = 200000; // Increased from 50k
-    const attemptsPerSlot = 10000; // Increased from 2k
-    const maxAttempts = baseAttempts + (slotCount * attemptsPerSlot); // No cap - use all compute power
+    const baseAttempts = 30000; // Further reduced for faster iteration
+    const attemptsPerSlot = 1000; // Further reduced
+    const maxAttempts = Math.min(baseAttempts + (slotCount * attemptsPerSlot), 100000); // Cap at 100k
     
     // Solve the grid with increased attempts and allow word reuse
     // Try with word reuse first (easier), then without if needed
@@ -210,17 +211,28 @@ export class PuzzleGenerator {
   ): Puzzle | null {
     console.log('🎯 Generating ONE perfect puzzle with maximum compute power...');
     let attempts = 0;
-    const maxTemplateAttempts = 30; // Generate up to 30 fresh templates
+    const maxTemplateAttempts = 10; // Reduced from 30 - faster iteration
+    const maxTotalTime = 5 * 60 * 1000; // 5 minutes max total time
+    const startTime = Date.now();
     
     while (attempts < maxTemplateAttempts) {
       attempts++;
       
+      // Check timeout
+      const elapsed = Date.now() - startTime;
+      if (elapsed > maxTotalTime) {
+        console.log(`\n⏱️  Timeout: Exceeded ${maxTotalTime / 1000}s total time limit`);
+        break;
+      }
+      
       // Generate a FRESH template for each attempt
-      console.log(`\n🔄 Attempt ${attempts}/${maxTemplateAttempts} - Generating fresh template...`);
+      console.log(`\n🔄 Attempt ${attempts}/${maxTemplateAttempts} - Generating fresh template... (${(elapsed / 1000).toFixed(1)}s elapsed)`);
+      const templateStartTime = Date.now();
       
       // Clear old templates and generate a new one
+      // Use 'large' for better solvability (smaller grid = easier to solve)
       this.templates = [];
-      this.addGeneratedTemplate('xlarge', config.difficulty);
+      this.addGeneratedTemplate('large', config.difficulty);
       
       if (this.templates.length === 0) {
         console.log(`   ⚠️  Failed to generate template, skipping...`);
@@ -228,13 +240,18 @@ export class PuzzleGenerator {
       }
       
       const template = this.templates[0];
-      console.log(`   📋 Template: ${template.slots.length} slots, ${template.rows}x${template.cols} grid`);
+      const templateTime = Date.now() - templateStartTime;
+      console.log(`   📋 Template: ${template.slots.length} slots, ${template.rows}x${template.cols} grid (${templateTime}ms)`);
       
+      console.log(`   🧩 Attempting to solve template...`);
+      const solveStartTime = Date.now();
       const puzzle = this.generateFromTemplate(0, {
         title: `${config.title} (Attempt ${attempts})`,
         difficulty: config.difficulty,
         category: config.category
       });
+      const solveTime = Date.now() - solveStartTime;
+      console.log(`   ⏱️  Solve attempt took ${solveTime}ms`);
       
       if (puzzle) {
         console.log(`\n✅ SUCCESS! Generated perfect puzzle: "${puzzle.title}"`);

@@ -44,7 +44,6 @@ const CLUES: Record<string, string[]> = {
   'AIRPLANE': ['Flying machine', 'Sky traveler', 'Jet vehicle', 'Aircraft', 'Jet, for one', 'Wright invention', 'Terminal sight', 'Boeing product'],
   'AIRPORT': ['Terminal location', 'Flight hub', 'Where planes land', 'Travel starting point'],
   'AISLE': ['Walkway'],
-  'AK': ['Two letters', 'Letter combination'],
   'AL PACINO': ['Scarface star', 'Godfather actor', 'Hoo-ah speaker'],
   'ALAN TURING': ['Computer pioneer', 'Enigma breaker', 'AI father'],
   'ALAS': ['Expression of sorrow', 'Oh no', 'Regret'],
