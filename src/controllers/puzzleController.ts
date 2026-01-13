@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { Puzzle } from '../models/Puzzle';
-import { UserProgress } from '../models/UserProgress';
+import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { User } from '../models/User';
 import { AuthRequest } from '../types';
 
@@ -79,7 +79,7 @@ export const saveProgress = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    let progress = await UserProgress.findOne({
+    let progress = await UserPuzzleProgress.findOne({
       userId: user._id,
       puzzleId
     });
@@ -111,7 +111,7 @@ export const saveProgress = async (req: AuthRequest, res: Response) => {
 
       await progress.save();
     } else {
-      progress = new UserProgress({
+      progress = new UserPuzzleProgress({
         userId: user._id,
         puzzleId,
         state,
@@ -140,7 +140,7 @@ export const getProgress = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const progress = await UserProgress.findOne({
+    const progress = await UserPuzzleProgress.findOne({
       userId: user._id,
       puzzleId
     });

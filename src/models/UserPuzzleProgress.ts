@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export interface IUserProgress extends Document {
+export interface IUserPuzzleProgress extends Document {
   userId: mongoose.Types.ObjectId;
   puzzleId: mongoose.Types.ObjectId;
   state: string[][];
@@ -13,8 +13,8 @@ export interface IUserProgress extends Document {
   completedAt?: Date;
   lastPlayedAt: Date;
 }
-// TODO: this is currently being handled in the client will pass it here soon
-const userProgressSchema = new Schema<IUserProgress>({
+
+const userPuzzleProgressSchema = new Schema<IUserPuzzleProgress>({
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'User',
@@ -64,7 +64,7 @@ const userProgressSchema = new Schema<IUserProgress>({
   timestamps: true
 });
 
-userProgressSchema.index({ userId: 1, puzzleId: 1 }, { unique: true });
-userProgressSchema.index({ userId: 1, completed: 1 });
+userPuzzleProgressSchema.index({ userId: 1, puzzleId: 1 }, { unique: true });
+userPuzzleProgressSchema.index({ userId: 1, completed: 1 });
 
-export const UserProgress = mongoose.model<IUserProgress>('UserProgress', userProgressSchema);
+export const UserPuzzleProgress = mongoose.model<IUserPuzzleProgress>('UserPuzzleProgress', userPuzzleProgressSchema);
