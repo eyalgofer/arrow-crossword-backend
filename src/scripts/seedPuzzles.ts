@@ -480,21 +480,36 @@ const seedDatabase = async () => {
     console.log('\n' + '='.repeat(60));
     console.log('Generating ONE good puzzle with maximum compute power...');
     console.log('='.repeat(60));
-    const perfectPuzzle = generateOnePerfectPuzzle({
-      difficulty: Difficulty.MEDIUM,
-      category: 'All',
-      title: 'Generated Puzzle'
-    });
-    
+     // Check current puzzle count
+     
+     const puzzles: any[] = [];
+     
+     for (let i = 1; i <= 30; i++) {
+       console.log(`\n${'='.repeat(60)}`);
+       console.log(`Generating Puzzle ${i}/30`);
+       console.log('='.repeat(60));
+       
+       const puzzle = generateOnePerfectPuzzle({
+         difficulty: Difficulty.MEDIUM,
+         category: 'Daily Life',
+         title: `Generated Puzzle ${i}`
+       });
+       
+       if (puzzle) {
+         puzzles.push(puzzle);
+         console.log(`✅ Puzzle ${i} generated successfully!`);
+       } else {
+         console.log(`❌ Puzzle ${i} failed to generate`);
+       }
+     }
+     
     // Combine sample puzzles and generated puzzle
-    const generatedPuzzles = perfectPuzzle ? [perfectPuzzle] : [];
-    const allPuzzles = [...validPuzzles, ...generatedPuzzles];
+    const allPuzzles = [...validPuzzles, ...puzzles];
     
     console.log(`\n📦 Puzzles to seed:`);
     console.log(`   Validated sample puzzles: ${validPuzzles.length}`);
-    console.log(`   Generated perfect puzzle: ${generatedPuzzles.length}`);
+    console.log(`   Generated puzzles: ${puzzles.length}`);
     console.log(`   Total: ${allPuzzles.length}`);
-    
 
     if (allPuzzles.length === 0) {
       console.error('\n❌ No valid puzzles to seed! Please fix validation errors.');
@@ -503,7 +518,7 @@ const seedDatabase = async () => {
     }
     
     await Puzzle.insertMany(allPuzzles);
-    console.log(`\n📥 Inserted ${validPuzzles.length} sample puzzles and ${generatedPuzzles.length} generated puzzles (${allPuzzles.length} total)`);
+    console.log(`\n📥 Inserted ${validPuzzles.length} sample puzzles and ${puzzles.length} generated puzzles (${allPuzzles.length} total)`);
 
     // Verify final count
     const finalCount = await Puzzle.countDocuments({});

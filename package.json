@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "seed": "ts-node src/scripts/seedPuzzles.ts",
     "check:apple": "node scripts/check-apple-config.js",
-    "test:improved": "ts-node src/scripts/generators/improvedPuzzlesGenerator.ts"
+    "test:improved": "ts-node src/scripts/generators/improvedPuzzlesGenerator.ts",
+    "generate:30": "ts-node src/scripts/generate30Puzzles.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",

@@ -1141,82 +1141,122 @@ export function generateTemplate(
       if (direction === 'right-down' && startCol >= config.cols - 1) startCol = Math.max(0, config.cols - 2);
       if (direction === 'down-across' && startRow >= config.rows - 1) startRow = Math.max(0, config.rows - 2);
       
-      // Word length range - optimized for Swedish arrow: prefer longer words to fill more cells
-      // Longer words create more answer cells and better coverage with fewer clue cells
-      const maxLength = size === 'small' ? 12 : size === 'medium' ? 14 : size === 'large' ? 16 : 18;
-      const minLength = size === 'small' ? 5 : size === 'medium' ? 6 : size === 'large' ? 6 : 7;
+      // IMPROVED: Better word length selection - use 3-5 letters for better solvability
+      // The improved generator uses 3-5 letters which matches word lists better
+      const maxLength = size === 'small' ? 5 : size === 'medium' ? 5 : size === 'large' ? 6 : 7;
+      const minLength = 3; // Start from 3 letters (improved generator approach)
       
-      // SWEDISH ARROW DISTRIBUTION: Mix of lengths for better coverage and crossings
-      // 30% medium (5-7), 50% long (8-10), 20% very long (11+)
-      // Mix allows for better grid coverage and more crossing opportunities
-      let wordLength: number;
-      const rand = Math.random();
-      if (rand < 0.30) {
-        // Medium words: 5-7 letters (good for tight spaces and crossings)
-        wordLength = Math.floor(Math.random() * 3) + 5;
-      } else if (rand < 0.80) {
-        // Long words: 8-10 letters (best balance for coverage and crossings)
-        wordLength = Math.floor(Math.random() * 3) + 8;
-      } else {
-        // Very long words: 11+ letters (maximum coverage)
-        wordLength = Math.floor(Math.random() * (maxLength - 10)) + 11;
+      // IMPROVED: Optimal length selection - try different lengths and pick the one with most crossings
+      // This is smarter than random selection
+      let bestLength = 0;
+      let bestCrossings = -1;
+      let bestAnswerCells: Array<{ row: number; col: number }> = [];
+      
+      for (let testLength = minLength; testLength <= maxLength; testLength++) {
+        // Create a temporary slot to calculate answer cells
+        const tempSlot: ClueSlot = {
+          id: 'temp',
+          direction,
+          startRow,
+          startCol,
+          length: testLength,
+          crossings: []
+        };
+        
+        const testAnswerCells = getSlotCells(tempSlot);
+        
+        // Check if answer fits in bounds
+        const lastCell = testAnswerCells[testAnswerCells.length - 1];
+        const endRow = lastCell.row;
+        const endCol = lastCell.col;
+        
+        if (endRow < 0 || endRow >= config.rows || endCol < 0 || endCol >= config.cols) {
+          continue; // This length doesn't fit
+        }
+        
+        // Check if clue cell is available
+        const testClueKey = `${startRow},${startCol}`;
+        if (occupiedCells.has(testClueKey)) {
+          continue; // Clue cell already taken
+        }
+        
+        // Check for conflicts and count perpendicular crossings
+        let hasConflict = false;
+        let crossingCount = 0;
+        const testCrossingSlots = new Set<string>();
+        const testOrientation = getAnswerOrientation(direction);
+        
+        // Check clue cell doesn't overlap with answer cells
+        if (answerCells.has(testClueKey)) {
+          hasConflict = true;
+        }
+        
+        for (const cell of testAnswerCells) {
+          const cellKey = `${cell.row},${cell.col}`;
+          
+          // Can't place answer in a clue cell
+          if (occupiedCells.has(cellKey)) {
+            hasConflict = true;
+            break;
+          }
+          
+          // Count perpendicular crossings only
+          if (answerCells.has(cellKey)) {
+            const existingSlotInfo = answerCells.get(cellKey);
+            if (existingSlotInfo) {
+              const existingSlot = slots.find(s => s.id === existingSlotInfo.slotId);
+              if (existingSlot) {
+                const existingOrientation = getAnswerOrientation(existingSlot.direction);
+                if (existingOrientation !== testOrientation) {
+                  testCrossingSlots.add(existingSlotInfo.slotId);
+                } else {
+                  hasConflict = true; // Parallel overlap = conflict
+                  break;
+                }
+              }
+            }
+          }
+        }
+        
+        if (!hasConflict && testCrossingSlots.size >= bestCrossings) {
+          bestCrossings = testCrossingSlots.size;
+          bestLength = testLength;
+          bestAnswerCells = testAnswerCells;
+        }
       }
       
-      // Ensure within bounds
-      wordLength = Math.max(minLength, Math.min(maxLength, wordLength));
-      
-      // Create a temporary slot to calculate answer cells
-      const tempSlot: ClueSlot = {
-        id: 'temp',
-        direction,
-        startRow,
-        startCol,
-        length: wordLength,
-        crossings: []
-      };
-      
-      const answerCellsForSlot = getSlotCells(tempSlot);
-      
-      // Check if answer fits in bounds
-      const lastCell = answerCellsForSlot[answerCellsForSlot.length - 1];
-      const endRow = lastCell.row;
-      const endCol = lastCell.col;
-      
-      if (endRow < 0 || endRow >= config.rows || endCol < 0 || endCol >= config.cols) {
-        continue; // Try again
+      // If no valid length found, skip this position
+      if (bestLength < minLength) {
+        continue; // Try again with different position
       }
       
-      // Check if clue cell is available
+      const wordLength = bestLength;
+      const answerCellsForSlot = bestAnswerCells;
       const clueKey = `${startRow},${startCol}`;
-      if (occupiedCells.has(clueKey)) {
-        continue; // Clue cell already taken
-      }
       
-      // Check if answer cells conflict with clue cells (but allow crossings with other answers)
-      let canPlace = true;
-      // Count crossings with OTHER SLOTS (not just overlapping cells)
-      // This matches how we count crossings later during filtering
+      // Recalculate crossing count for the selected length (already validated in optimal selection)
       const crossingSlots = new Set<string>();
+      const currentOrientation = getAnswerOrientation(direction);
       
       for (const cell of answerCellsForSlot) {
         const cellKey = `${cell.row},${cell.col}`;
-        
-        // Can't place answer in a clue cell
-        if (occupiedCells.has(cellKey)) {
-          canPlace = false;
-          break;
-        }
-        
-        // Count crossings with other slots (track which slots we cross with)
         if (answerCells.has(cellKey)) {
-          const existingSlot = answerCells.get(cellKey);
-          if (existingSlot) {
-            crossingSlots.add(existingSlot.slotId);
+          const existingSlotInfo = answerCells.get(cellKey);
+          if (existingSlotInfo) {
+            const existingSlot = slots.find(s => s.id === existingSlotInfo.slotId);
+            if (existingSlot) {
+              const existingOrientation = getAnswerOrientation(existingSlot.direction);
+              // Only count perpendicular crossings
+              if (existingOrientation !== currentOrientation) {
+                crossingSlots.add(existingSlotInfo.slotId);
+              }
+            }
           }
         }
       }
       
-      const crossingCount = crossingSlots.size; // Number of different slots we cross with
+      const crossingCount = crossingSlots.size; // Number of different slots we cross with (perpendicular only)
+      const canPlace = true; // Already validated in optimal length selection
       
       // PROGRESSIVE CROSSING LIMITS: Match filtering limits exactly
       // We need many slots for maximum density - match limits so slots survive
