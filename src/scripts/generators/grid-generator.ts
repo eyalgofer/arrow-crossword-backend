@@ -975,6 +975,7 @@ export function createTemplateFromPuzzle(puzzle: Puzzle): GridTemplate {
 
 export interface ClueDatabase {
   getClue(word: string, difficulty: Difficulty): string;
+  getAllClues?(word: string, difficulty: Difficulty): string[]; // Optional: get all available clues
 }
 
 /**
@@ -993,6 +994,7 @@ export function generatePuzzleFromGrid(
   }
 ): Puzzle {
   const clues: Clue[] = [];
+  const usedClues = new Set<string>(); // Track used clue texts to prevent duplicates
   
   let clueNumber = 1;
   for (const slot of template.slots) {
@@ -1001,7 +1003,38 @@ export function generatePuzzleFromGrid(
       throw new Error(`No word placed for slot ${slot.id}`);
     }
     
-    const clueText = clueDb.getClue(word, config.difficulty);
+    // Get clue, ensuring it's not a duplicate
+    let clueText: string;
+    
+    // Try to get all available clues if the database supports it
+    if (clueDb.getAllClues) {
+      const allClues = clueDb.getAllClues(word, config.difficulty);
+      // Find the first clue that hasn't been used
+      const unusedClue = allClues.find(clue => !usedClues.has(clue));
+      if (unusedClue) {
+        clueText = unusedClue;
+      } else {
+        // All clues for this word are used, use the first one with a suffix
+        clueText = `${allClues[0]} (${word})`;
+      }
+    } else {
+      // Fallback: try random clues up to 10 times
+      clueText = clueDb.getClue(word, config.difficulty);
+      let attempts = 0;
+      const maxClueAttempts = 10;
+      
+      while (usedClues.has(clueText) && attempts < maxClueAttempts) {
+        attempts++;
+        clueText = clueDb.getClue(word, config.difficulty);
+      }
+      
+      // If we still have a duplicate after max attempts, use a fallback
+      if (usedClues.has(clueText)) {
+        clueText = `${clueText} (${word})`; // Add word to make it unique
+      }
+    }
+    
+    usedClues.add(clueText);
     
     // Handle multi-word answers (e.g., "STAR WARS" -> [4, 4])
     const words = word.split(' ');
@@ -1050,7 +1083,7 @@ export function generateTemplate(
   // Lower max crossings = more solvable, but we need MORE slots to compensate
   const sizeConfig = {
     small: { rows: 14, cols: 14, minSlots: 50, maxSlots: 70, maxCrossingsPerSlot: 6, density: 0.97 },
-    medium: { rows: 14, cols: 14, minSlots: 55, maxSlots: 80, maxCrossingsPerSlot: 6, density: 0.98 },
+    medium: { rows: 14, cols: 14, minSlots: 35, maxSlots: 80, maxCrossingsPerSlot: 6, density: 0.98 },
     large: { rows: 15, cols: 15, minSlots: 65, maxSlots: 90, maxCrossingsPerSlot: 7, density: 0.98 },
     xlarge: { rows: 16, cols: 16, minSlots: 55, maxSlots: 110, maxCrossingsPerSlot: 7, density: 0.98 }
   };
@@ -1379,17 +1412,17 @@ export function generateTemplate(
   // So we'll sort by crossing count ASCENDING, then filter
   slots.sort((a, b) => a.crossings.length - b.crossings.length);
   
-  // FILTERING: Very lenient limits to keep most slots
-  // We'll be more selective later if needed, but first pass should keep most slots
+  // FILTERING: Keep slots with reasonable crossing counts
+  // Be more selective to ensure solvability
   const filteredSlots: typeof slots = [];
   
   for (let i = 0; i < slots.length; i++) {
     const slot = slots[i];
     const crossings = slot.crossings.length;
     
-    // SOLVABILITY: Very lenient limits - keep slots with up to 10 crossings initially
-    // We'll filter more aggressively later if we have too many
-    const hardCap = Math.max(config.maxCrossingsPerSlot, 10); // Allow up to 10 crossings initially
+    // SOLVABILITY: Keep slots with up to 8 crossings initially
+    // This ensures templates are solvable
+    const hardCap = 8; // Allow up to 8 crossings initially
     if (crossings <= hardCap) {
       filteredSlots.push(slot);
     } else {
@@ -1477,16 +1510,24 @@ export function generateTemplate(
     }
   }
   
-  // Now filter again with recalculated crossings - but be lenient
-  // Only filter out slots with extremely high crossings
+  // Now filter again with recalculated crossings - be more selective for solvability
   const finalFilteredSlots: typeof validatedSlots = [];
   for (let i = 0; i < validatedSlots.length; i++) {
     const slot = validatedSlots[i];
     const crossings = slot.crossings.length;
     
-    // SOLVABILITY: Very lenient - only filter out slots with excessive crossings
-    // Keep slots with up to 8 crossings, filter only if more than that
-    const maxAllowed = 8; // Allow up to 8 crossings
+    // SOLVABILITY: Keep slots with up to 6 crossings for better solvability
+    // Progressive limits: earlier slots can have fewer crossings
+    const progressRatio = i / validatedSlots.length;
+    let maxAllowed: number;
+    if (progressRatio < 0.40) {
+      maxAllowed = 5; // First 40%: max 5 crossings
+    } else if (progressRatio < 0.80) {
+      maxAllowed = 6; // Next 40%: max 6 crossings
+    } else {
+      maxAllowed = 7; // Last 20%: max 7 crossings
+    }
+    
     if (crossings <= maxAllowed) {
       finalFilteredSlots.push(slot);
     } else {
@@ -1522,12 +1563,33 @@ export function generateTemplate(
       }
       
       // Get all slots that were filtered out (from original slots array)
-      // Sort by crossing count (ascending) to prefer easier slots
+      // Recalculate crossings for each filtered-out slot against finalFilteredSlots
       const filteredOutSlots = slots.filter(slot => !finalFilteredSlots.includes(slot));
-      const sortedFilteredOut = [...filteredOutSlots]
-        .sort((a, b) => a.crossings.length - b.crossings.length);
       
-      for (const slot of sortedFilteredOut) {
+      // Calculate crossings for each filtered-out slot
+      const slotsWithCrossings = filteredOutSlots.map(slot => {
+        const slotCells = getSlotCells(slot);
+        const crossingSlots = new Set<string>();
+        
+        for (const otherSlot of finalFilteredSlots) {
+          const otherCells = getSlotCells(otherSlot);
+          for (const cell of slotCells) {
+            for (const otherCell of otherCells) {
+              if (cell.row === otherCell.row && cell.col === otherCell.col) {
+                crossingSlots.add(otherSlot.id);
+                break;
+              }
+            }
+          }
+        }
+        
+        return { slot, crossings: crossingSlots.size };
+      });
+      
+      // Sort by crossing count (ascending) to prefer easier slots
+      slotsWithCrossings.sort((a, b) => a.crossings - b.crossings);
+      
+      for (const { slot, crossings } of slotsWithCrossings) {
         if (added >= needed) break;
         
         // Check if clue cell is already taken
@@ -1547,9 +1609,6 @@ export function generateTemplate(
           }
         }
         if (hasClueOverlap) continue; // Skip slots that overlap with clue cells
-        
-        // Use the slot's existing crossing count (from before filtering)
-        const crossings = slot.crossings.length;
         
         // Be VERY lenient when we're desperate - allow up to 20 crossings
         const relaxedLimit = 20;
@@ -1903,8 +1962,8 @@ export function generateTemplate(
     const slot = validatedGapFilledSlots[i];
     const crossings = slot.crossings.length;
     
-    // SOLVABILITY: Very lenient for gap-filled slots - allow up to 8 crossings
-    const maxAllowed = 8;
+    // SOLVABILITY: Keep gap-filled slots with up to 6 crossings for solvability
+    const maxAllowed = 6;
     if (crossings <= maxAllowed) {
       finalGapFilledSlots.push(slot);
     }

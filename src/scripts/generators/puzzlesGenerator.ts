@@ -28,6 +28,18 @@ function getClue(word: string, difficulty: Difficulty = Difficulty.EASY): string
   return `[${word}]`;
 }
 
+/**
+ * Get all available clues for a word
+ */
+function getAllClues(word: string, difficulty: Difficulty = Difficulty.EASY): string[] {
+  const clues = CLUES[word.toUpperCase()];
+  if (clues && clues.length > 0) {
+    return clues;
+  }
+  // Fallback
+  return [`[${word}]`];
+}
+
 const GOOD_TEMPLATE: Puzzle = {
   title: "Good Example",
   difficulty: Difficulty.EASY,
@@ -111,8 +123,8 @@ export class PuzzleGenerator {
    * Add multiple generated templates of different sizes
    */
   addGeneratedTemplates(): void {
-    // Use 'large' instead of 'xlarge' for better solvability
-    this.addGeneratedTemplate('large', Difficulty.MEDIUM);
+    // Use 'medium' for much better solvability (smaller = easier)
+    this.addGeneratedTemplate('medium', Difficulty.MEDIUM);
   }
   
   /**
@@ -176,7 +188,8 @@ export class PuzzleGenerator {
     
     // Create clue database
     const clueDb: ClueDatabase = {
-      getClue: (word: string, difficulty: Difficulty) => getClue(word, difficulty)
+      getClue: (word: string, difficulty: Difficulty) => getClue(word, difficulty),
+      getAllClues: (word: string, difficulty: Difficulty) => getAllClues(word, difficulty)
     };
     
     // Build the puzzle
@@ -230,9 +243,9 @@ export class PuzzleGenerator {
       const templateStartTime = Date.now();
       
       // Clear old templates and generate a new one
-      // Use 'large' for better solvability (smaller grid = easier to solve)
+      // Use 'medium' for much better solvability (smaller grid = easier to solve)
       this.templates = [];
-      this.addGeneratedTemplate('large', config.difficulty);
+      this.addGeneratedTemplate('medium', config.difficulty);
       
       if (this.templates.length === 0) {
         console.log(`   ⚠️  Failed to generate template, skipping...`);
