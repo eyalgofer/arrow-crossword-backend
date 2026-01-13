@@ -267,7 +267,7 @@ export class PuzzleGenerator {
       console.log(`   🧩 Attempting to solve template...`);
       const solveStartTime = Date.now();
       const puzzle = this.generateFromTemplate(0, {
-        title: `${config.title} (Attempt ${attempts})`,
+        title: `${config.title}`,
         difficulty: config.difficulty,
         category: config.category
       });
