@@ -111,13 +111,10 @@ export class PuzzleGenerator {
    * Add multiple generated templates of different sizes
    */
   addGeneratedTemplates(): void {
-    // Generate large templates (14x14 minimum)
-    // this.addGeneratedTemplate('large', Difficulty.EASY);
-    // this.addGeneratedTemplate('large', Difficulty.MEDIUM);
+    this.addGeneratedTemplate('large', Difficulty.MEDIUM);
     this.addGeneratedTemplate('xlarge', Difficulty.EASY);
     this.addGeneratedTemplate('xlarge', Difficulty.MEDIUM);
-    // Also add the good template as a fallback
-    // this.addTemplateFromPuzzle(GOOD_TEMPLATE);
+    this.addTemplateFromPuzzle(GOOD_TEMPLATE);
   }
   
   /**
