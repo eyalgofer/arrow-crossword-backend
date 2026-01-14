@@ -252,7 +252,7 @@ export class PuzzleGenerator {
       const templateStartTime = Date.now();
       
       this.templates = [];
-      this.addGeneratedTemplate('xlarge', config.difficulty);
+      this.addGeneratedTemplate('large', config.difficulty);
       
       if (this.templates.length === 0) {
         console.log(`   ⚠️  Failed to generate template, skipping...`);
@@ -389,6 +389,5 @@ export function generatePuzzle(
 }
 
 export {
-  GOOD_TEMPLATE,
   getClue 
 };

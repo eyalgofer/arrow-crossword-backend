@@ -478,18 +478,16 @@ const seedDatabase = async () => {
     
     // Generate additional puzzles using the generator
     console.log('\n' + '='.repeat(60));
-    console.log('Generating ONE good puzzle with maximum compute power...');
+    console.log('Generating puzzle...');
     console.log('='.repeat(60));
      // Check current puzzle count
      
      const puzzles: any[] = [];
-     
-     
        
      const puzzle = generatePuzzle({
        difficulty: Difficulty.MEDIUM,
        category: 'Daily Life',
-       title: `Generated Puzzle`
+       title: `AI Generated Puzzle`
      });
      
      if (puzzle) {
