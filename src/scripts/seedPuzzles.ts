@@ -487,7 +487,7 @@ const seedDatabase = async () => {
      const puzzle = generatePuzzle({
        difficulty: Difficulty.MEDIUM,
        category: 'Daily Life',
-       title: `AI Generated Puzzle`
+       title: `Generated Puzzle`
      });
      
      if (puzzle) {
