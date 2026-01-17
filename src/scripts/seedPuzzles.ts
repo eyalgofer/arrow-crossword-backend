@@ -454,16 +454,16 @@ const seedDatabase = async () => {
     const countBefore = await Puzzle.countDocuments({});
     console.log(`📊 Current puzzles in database: ${countBefore}`);
 
-    await Puzzle.deleteMany({});
-    console.log('🗑️  Cleared existing puzzles');
+    // await Puzzle.deleteMany({});
+    // console.log('🗑️  Cleared existing puzzles');
 
-    // Verify deletion
-    const countAfter = await Puzzle.countDocuments({});
-    console.log(`📊 Puzzles remaining after deletion: ${countAfter}`);
+    // // Verify deletion
+    // const countAfter = await Puzzle.countDocuments({});
+    // console.log(`📊 Puzzles remaining after deletion: ${countAfter}`);
     
-    if (countAfter > 0) {
-      console.warn(`⚠️  WARNING: ${countAfter} puzzle(s) still exist!`);
-    }
+    // if (countAfter > 0) {
+    //   console.warn(`⚠️  WARNING: ${countAfter} puzzle(s) still exist!`);
+    // }
 
     // Filter to only valid puzzles (no validation errors)
     const validPuzzles = samplePuzzles.filter(puzzle => {
@@ -482,27 +482,27 @@ const seedDatabase = async () => {
     console.log('='.repeat(60));
      // Check current puzzle count
      
-     const puzzles: any[] = [];
+     const generatedPuzzles: any[] = [];
        
      const puzzle = generatePuzzle({
-       difficulty: Difficulty.MEDIUM,
-       category: 'Daily Life',
-       title: `Generated Puzzle`
+       difficulty: Difficulty.HARD,
+       category: 'Misc',
+       title: `Puzzle #${validPuzzles.length + 1}`
      });
      
      if (puzzle) {
-       puzzles.push(puzzle);
+      generatedPuzzles.push(puzzle);
        console.log(`✅ Puzzle generated successfully!`);
      } else {
        console.log(`❌ Puzzle failed to generate`);
      }
      
     // Combine sample puzzles and generated puzzle
-    const allPuzzles = [...validPuzzles, ...puzzles];
+    const allPuzzles = [...validPuzzles, ...generatedPuzzles];
     
     console.log(`\n📦 Puzzles to seed:`);
     console.log(`   Validated sample puzzles: ${validPuzzles.length}`);
-    console.log(`   Generated puzzles: ${puzzles.length}`);
+    console.log(`   Generated puzzles: ${generatedPuzzles.length}`);
     console.log(`   Total: ${allPuzzles.length}`);
 
     if (allPuzzles.length === 0) {
@@ -510,9 +510,9 @@ const seedDatabase = async () => {
       await mongoose.connection.close();
       process.exit(1);
     }
-    
-    await Puzzle.insertMany(allPuzzles);
-    console.log(`\n📥 Inserted ${validPuzzles.length} sample puzzles and ${puzzles.length} generated puzzles (${allPuzzles.length} total)`);
+    // TODO: i changed the script to keep current puzzles and only add newly generated one
+    await Puzzle.insertMany(generatedPuzzles);
+    console.log(`\n📥 Inserted ${validPuzzles.length} sample puzzles and ${generatedPuzzles.length} generated puzzles (${allPuzzles.length} total)`);
 
     // Verify final count
     const finalCount = await Puzzle.countDocuments({});
