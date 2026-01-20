@@ -9,14 +9,18 @@ import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
 import { generateTemplate } from './template-generator';
 
-import { getCluesDatabase, getClueForWord, getCluesFiltered, getWordsForDifficulty } from '../core/cluesFromCSV';
+import { getCluesDatabase, getClueForWord, getCluesFiltered, getWordsForDifficulty, getWordsWithMaxDifficulty } from '../core/cluesFromCSV';
 import { ClueDifficulty } from '../core/wordFrequency';
+
+// Maximum clue difficulty allowed for puzzle packages (no hard/expert)
+const MAX_CLUE_DIFFICULTY: ClueDifficulty = 'challenging';
 
 // Load clues database (with difficulty classification)
 const CLUES_DB = getCluesDatabase();
 
 /**
  * Map puzzle Difficulty to clue ClueDifficulty
+ * Note: We cap at 'challenging' for puzzle packages (no hard/expert clues)
  */
 function mapDifficulty(difficulty: Difficulty): ClueDifficulty {
   switch (difficulty) {
@@ -24,18 +28,23 @@ function mapDifficulty(difficulty: Difficulty): ClueDifficulty {
       return 'easy';
     case Difficulty.MEDIUM:
       return 'medium';
+    case Difficulty.CHALLENGING:
+      return 'challenging';
     case Difficulty.HARD:
+    case Difficulty.EXPERT:
     default:
-      return 'hard';
+      // Cap at challenging for puzzle generation
+      return 'challenging';
   }
 }
 
 /**
  * Get a clue for a word, filtered by difficulty
+ * Uses max difficulty of 'challenging' (no hard/expert clues)
  */
 function getClue(word: string, difficulty: Difficulty = Difficulty.EASY): string {
   const clueDifficulty = mapDifficulty(difficulty);
-  const clue = getClueForWord(word, clueDifficulty);
+  const clue = getClueForWord(word, clueDifficulty, MAX_CLUE_DIFFICULTY);
   if (clue) {
     return clue;
   }
@@ -45,6 +54,7 @@ function getClue(word: string, difficulty: Difficulty = Difficulty.EASY): string
 
 /**
  * Get all available clues for a word, filtered by difficulty
+ * Uses max difficulty of 'challenging' (no hard/expert clues)
  */
 function getAllClues(word: string, difficulty: Difficulty = Difficulty.EASY): string[] {
   const clueDifficulty = mapDifficulty(difficulty);
@@ -55,14 +65,10 @@ function getAllClues(word: string, difficulty: Difficulty = Difficulty.EASY): st
     return [`[${word}]`];
   }
   
-  // Filter by difficulty - for easy, prefer easy clues; for medium, include easy+medium
-  const allowedDifficulties: Set<ClueDifficulty> = new Set(['easy']);
-  if (clueDifficulty === 'medium' || clueDifficulty === 'hard') {
-    allowedDifficulties.add('medium');
-  }
-  if (clueDifficulty === 'hard') {
-    allowedDifficulties.add('hard');
-  }
+  // Build allowed difficulties up to max (challenging)
+  const difficultyOrder: ClueDifficulty[] = ['easy', 'medium', 'challenging'];
+  const preferredIndex = difficultyOrder.indexOf(clueDifficulty);
+  const allowedDifficulties = new Set(difficultyOrder.slice(0, Math.max(preferredIndex + 1, 1)));
   
   const filteredClues = entries
     .filter(e => allowedDifficulties.has(e.difficulty))
@@ -72,8 +78,18 @@ function getAllClues(word: string, difficulty: Difficulty = Difficulty.EASY): st
     return filteredClues;
   }
   
-  // Fallback to any available clue
-  return entries.map(e => e.clue);
+  // Fallback: try all clues up to challenging (but not hard/expert)
+  const allAllowed = new Set<ClueDifficulty>(['easy', 'medium', 'challenging']);
+  const fallbackClues = entries
+    .filter(e => allAllowed.has(e.difficulty))
+    .map(e => e.clue);
+  
+  if (fallbackClues.length > 0) {
+    return fallbackClues;
+  }
+  
+  // Last resort fallback
+  return [`[${word}]`];
 }
 
 // ============================================================================
@@ -89,10 +105,10 @@ export class PuzzleGenerator {
     this.difficulty = difficulty;
     
     // Build word index for fast lookups, filtered by difficulty
-    const clueDifficulty = mapDifficulty(difficulty);
-    const words = getWordsForDifficulty(clueDifficulty);
+    // Use words that have clues at or below 'challenging' (no hard/expert)
+    const words = getWordsWithMaxDifficulty(MAX_CLUE_DIFFICULTY);
     
-    console.log(`📚 Building word index for ${clueDifficulty.toUpperCase()} difficulty: ${words.length.toLocaleString()} words available`);
+    console.log(`📚 Building word index with max difficulty '${MAX_CLUE_DIFFICULTY}': ${words.length.toLocaleString()} words available`);
     this.wordIndex = buildCrossingIndex(words.map(key => key.toUpperCase()));
   }
   
@@ -135,15 +151,16 @@ export class PuzzleGenerator {
   /**
    * Add multiple generated templates of different sizes
    * Template size is based on difficulty and available word count
+   * All grids are now 11x11 or larger (no tiny 7x7)
    */
   addGeneratedTemplates(): void {
-    // Choose template size based on difficulty
-    // EASY has only ~1,700 words, needs tiny 7x7 templates
-    // MEDIUM has ~200k words, can handle medium 11x11 templates  
-    // HARD has ~400k words, can handle large 15x15 templates
+    // All puzzles now use at least 11x11 grids (medium size)
+    // With 124k+ words available at max 'challenging' difficulty, we can handle larger grids
     const size: 'tiny' | 'small' | 'medium' | 'large' | 'xlarge' = 
-      this.difficulty === Difficulty.EASY ? 'tiny' : 
-      this.difficulty === Difficulty.MEDIUM ? 'medium' : 'large';
+      this.difficulty === Difficulty.EASY ? 'medium' :      // 11x11 (was 7x7)
+      this.difficulty === Difficulty.MEDIUM ? 'medium' :    // 11x11
+      this.difficulty === Difficulty.CHALLENGING ? 'small' : // 14x14
+      'large';                                               // 15x15
     this.addGeneratedTemplate(size, this.difficulty);
   }
   
@@ -260,10 +277,12 @@ export class PuzzleGenerator {
       }
       
       // Generate a FRESH template for each attempt
-      // Template size is based on difficulty (EASY = tiny 7x7, MEDIUM = medium 11x11, HARD = large 15x15)
+      // All grids are now 11x11 or larger (no tiny 7x7)
       const templateSize: 'tiny' | 'small' | 'medium' | 'large' | 'xlarge' = 
-        config.difficulty === Difficulty.EASY ? 'tiny' : 
-        config.difficulty === Difficulty.MEDIUM ? 'medium' : 'large';
+        config.difficulty === Difficulty.EASY ? 'medium' :      // 11x11 (was 7x7)
+        config.difficulty === Difficulty.MEDIUM ? 'medium' :    // 11x11
+        config.difficulty === Difficulty.CHALLENGING ? 'small' : // 14x14
+        'large';                                                 // 15x15
       console.log(`\n🔄 Attempt ${attempts}/${maxTemplateAttempts} - Generating fresh ${templateSize} template... (${(elapsed / 1000).toFixed(1)}s elapsed)`);
       const templateStartTime = Date.now();
       
@@ -281,9 +300,11 @@ export class PuzzleGenerator {
       console.log(`   📋 Template: ${template.slots.length} slots, ${template.rows}x${template.cols} grid, ~${density}% density (${templateTime}ms)`);
       
       // Only proceed if template has reasonable density
-      // Minimum slots scale with difficulty: EASY=6 (tiny grid), MEDIUM=20, HARD=40
-      const minSlots = config.difficulty === Difficulty.EASY ? 6 : 
-                       config.difficulty === Difficulty.MEDIUM ? 20 : 40;
+      // Minimum slots scale with grid size (all 11x11 or larger now)
+      const minSlots = config.difficulty === Difficulty.EASY ? 20 :      // 11x11 medium
+                       config.difficulty === Difficulty.MEDIUM ? 20 :    // 11x11 medium
+                       config.difficulty === Difficulty.CHALLENGING ? 50 : // 14x14 small
+                       80;                                                // 15x15 large
       if (template.slots.length < minSlots) {
         console.log(`   ⚠️  Template too sparse (${template.slots.length} slots, need ${minSlots}), trying again...`);
         continue;

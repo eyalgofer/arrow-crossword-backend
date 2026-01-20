@@ -20,19 +20,38 @@ export interface CluesDatabase {
   easyWords: Set<string>;
   // Words that have medium clues available
   mediumWords: Set<string>;
+  // Words that have challenging clues available
+  challengingWords: Set<string>;
   // Statistics
   stats: {
     totalWords: number;
     totalClues: number;
     easyClues: number;
     mediumClues: number;
+    challengingClues: number;
     hardClues: number;
+    expertClues: number;
   };
 }
 
 /**
- * Load clues from train.csv file with difficulty classification
- * CSV format: id,clue,answer,difficulty (difficulty column may be empty)
+ * Map CSV difficulty number to ClueDifficulty
+ * 1=easy, 2=medium, 3=challenging, 4=hard, 5=expert
+ */
+function mapCsvDifficulty(difficultyNum: number): ClueDifficulty {
+  switch (difficultyNum) {
+    case 1: return 'easy';
+    case 2: return 'medium';
+    case 3: return 'challenging';
+    case 4: return 'hard';
+    case 5: return 'expert';
+    default: return 'medium'; // Default to medium if unknown
+  }
+}
+
+/**
+ * Load clues from train.csv file with difficulty from CSV column
+ * CSV format: id,clue,answer,empty,difficulty (difficulty is 1-5)
  * Groups clues by answer (word) in uppercase, removing spaces for matching
  */
 export function loadCluesFromCSV(): CluesDatabase {
@@ -41,16 +60,19 @@ export function loadCluesFromCSV(): CluesDatabase {
     byAnswer: {},
     easyWords: new Set(),
     mediumWords: new Set(),
+    challengingWords: new Set(),
     stats: {
       totalWords: 0,
       totalClues: 0,
       easyClues: 0,
       mediumClues: 0,
+      challengingClues: 0,
       hardClues: 0,
+      expertClues: 0,
     }
   };
   
-  console.log(`📖 Loading clues from ${csvPath} with difficulty classification...`);
+  console.log(`📖 Loading clues from ${csvPath} with CSV difficulty column...`);
   const startTime = Date.now();
   
   try {
@@ -60,7 +82,7 @@ export function loadCluesFromCSV(): CluesDatabase {
     let processed = 0;
     const batchSize = 100000;
     
-    // Skip header line (id,clue,answer,difficulty)
+    // Skip header line (id,clue,answer,empty,difficulty)
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
@@ -95,9 +117,15 @@ export function loadCluesFromCSV(): CluesDatabase {
         // Normalize answer: uppercase, remove spaces for matching
         const answer = answerRaw.toUpperCase().replace(/\s+/g, '');
         
+        // Get difficulty from CSV column (index 4, the last column with value)
+        // CSV has: id,clue,answer,empty,difficulty
+        const difficultyNum = parts.length >= 5 ? parseInt(parts[4].trim(), 10) : 0;
+        
         if (answer && clueText) {
-          // Classify the clue difficulty
-          const difficulty = classifyClue(clueText, answerRaw);
+          // Use CSV difficulty if available, otherwise fall back to algorithm
+          const difficulty: ClueDifficulty = difficultyNum >= 1 && difficultyNum <= 5
+            ? mapCsvDifficulty(difficultyNum)
+            : classifyClue(clueText, answerRaw);
           
           if (!database.byAnswer[answer]) {
             database.byAnswer[answer] = [];
@@ -108,15 +136,26 @@ export function loadCluesFromCSV(): CluesDatabase {
             difficulty
           });
           
-          // Track which words have easy/medium clues
-          if (difficulty === 'easy') {
-            database.easyWords.add(answer);
-            database.stats.easyClues++;
-          } else if (difficulty === 'medium') {
-            database.mediumWords.add(answer);
-            database.stats.mediumClues++;
-          } else {
-            database.stats.hardClues++;
+          // Track which words have clues at each difficulty
+          switch (difficulty) {
+            case 'easy':
+              database.easyWords.add(answer);
+              database.stats.easyClues++;
+              break;
+            case 'medium':
+              database.mediumWords.add(answer);
+              database.stats.mediumClues++;
+              break;
+            case 'challenging':
+              database.challengingWords.add(answer);
+              database.stats.challengingClues++;
+              break;
+            case 'hard':
+              database.stats.hardClues++;
+              break;
+            case 'expert':
+              database.stats.expertClues++;
+              break;
           }
           
           database.stats.totalClues++;
@@ -134,10 +173,12 @@ export function loadCluesFromCSV(): CluesDatabase {
     
     const elapsed = Date.now() - startTime;
     console.log(`✅ Loaded ${database.stats.totalWords.toLocaleString()} words with ${database.stats.totalClues.toLocaleString()} total clues (${(elapsed / 1000).toFixed(1)}s)`);
-    console.log(`   📊 Difficulty breakdown:`);
-    console.log(`      Easy: ${database.stats.easyClues.toLocaleString()} clues (${database.easyWords.size.toLocaleString()} words)`);
-    console.log(`      Medium: ${database.stats.mediumClues.toLocaleString()} clues (${database.mediumWords.size.toLocaleString()} words)`);
-    console.log(`      Hard: ${database.stats.hardClues.toLocaleString()} clues`);
+    console.log(`   📊 Difficulty breakdown (from CSV):`);
+    console.log(`      Easy (1): ${database.stats.easyClues.toLocaleString()} clues (${database.easyWords.size.toLocaleString()} words)`);
+    console.log(`      Medium (2): ${database.stats.mediumClues.toLocaleString()} clues (${database.mediumWords.size.toLocaleString()} words)`);
+    console.log(`      Challenging (3): ${database.stats.challengingClues.toLocaleString()} clues (${database.challengingWords.size.toLocaleString()} words)`);
+    console.log(`      Hard (4): ${database.stats.hardClues.toLocaleString()} clues`);
+    console.log(`      Expert (5): ${database.stats.expertClues.toLocaleString()} clues`);
     
     return database;
   } catch (error) {
@@ -176,19 +217,17 @@ export function getClues(): Record<string, string[]> {
 
 /**
  * Get clues filtered by maximum difficulty
- * @param maxDifficulty - 'easy' returns only easy, 'medium' returns easy+medium, 'hard' returns all
+ * @param maxDifficulty - filters up to and including the specified difficulty
+ * For puzzle generation, we typically want 'challenging' max (easy + medium + challenging)
  */
 export function getCluesFiltered(maxDifficulty: ClueDifficulty): Record<string, string[]> {
   const db = getCluesDatabase();
   const result: Record<string, string[]> = {};
   
-  const allowedDifficulties: Set<ClueDifficulty> = new Set(['easy']);
-  if (maxDifficulty === 'medium' || maxDifficulty === 'hard') {
-    allowedDifficulties.add('medium');
-  }
-  if (maxDifficulty === 'hard') {
-    allowedDifficulties.add('hard');
-  }
+  // Build allowed difficulties based on max
+  const difficultyOrder: ClueDifficulty[] = ['easy', 'medium', 'challenging', 'hard', 'expert'];
+  const maxIndex = difficultyOrder.indexOf(maxDifficulty);
+  const allowedDifficulties = new Set(difficultyOrder.slice(0, maxIndex + 1));
   
   for (const [answer, entries] of Object.entries(db.byAnswer)) {
     const filteredClues = entries
@@ -205,10 +244,12 @@ export function getCluesFiltered(maxDifficulty: ClueDifficulty): Record<string, 
 
 /**
  * Get a single clue for a word, preferring easier clues based on difficulty setting
+ * For puzzle packages, we only want easy/medium/challenging (no hard/expert)
  */
 export function getClueForWord(
   word: string, 
-  preferDifficulty: ClueDifficulty = 'medium'
+  preferDifficulty: ClueDifficulty = 'medium',
+  maxDifficulty: ClueDifficulty = 'challenging' // Default max is challenging (no hard/expert)
 ): string | null {
   const db = getCluesDatabase();
   const normalizedWord = word.toUpperCase().replace(/\s+/g, '');
@@ -218,38 +259,45 @@ export function getClueForWord(
     return null;
   }
   
-  // Sort entries by difficulty preference
-  const difficultyOrder: Record<ClueDifficulty, number> = {
-    easy: preferDifficulty === 'easy' ? 0 : (preferDifficulty === 'medium' ? 1 : 2),
-    medium: preferDifficulty === 'medium' ? 0 : 1,
-    hard: preferDifficulty === 'hard' ? 0 : 2,
-  };
+  // Build allowed difficulties based on max
+  const difficultyOrder: ClueDifficulty[] = ['easy', 'medium', 'challenging', 'hard', 'expert'];
+  const maxIndex = difficultyOrder.indexOf(maxDifficulty);
+  const allowedDifficulties = new Set(difficultyOrder.slice(0, maxIndex + 1));
   
-  // Group by difficulty
-  const byDiff: Record<ClueDifficulty, string[]> = { easy: [], medium: [], hard: [] };
+  // Group by difficulty (only allowed ones)
+  const byDiff: Record<ClueDifficulty, string[]> = { 
+    easy: [], medium: [], challenging: [], hard: [], expert: [] 
+  };
   for (const entry of entries) {
-    byDiff[entry.difficulty].push(entry.clue);
+    if (allowedDifficulties.has(entry.difficulty)) {
+      byDiff[entry.difficulty].push(entry.clue);
+    }
   }
   
-  // Pick from preferred difficulty first, then fall back
+  // Pick from preferred difficulty first, then fall back to easier ones
   const order: ClueDifficulty[] = preferDifficulty === 'easy' 
-    ? ['easy', 'medium', 'hard']
+    ? ['easy', 'medium', 'challenging']
     : preferDifficulty === 'medium'
-    ? ['medium', 'easy', 'hard']
-    : ['hard', 'medium', 'easy'];
+    ? ['medium', 'easy', 'challenging']
+    : ['challenging', 'medium', 'easy'];
   
-  for (const diff of order) {
+  // Filter order to only allowed difficulties
+  const filteredOrder = order.filter(d => allowedDifficulties.has(d));
+  
+  for (const diff of filteredOrder) {
     if (byDiff[diff].length > 0) {
       // Pick a random clue from this difficulty
       return byDiff[diff][Math.floor(Math.random() * byDiff[diff].length)];
     }
   }
   
-  return entries[0].clue;
+  // If no clue found in allowed difficulties, return null
+  return null;
 }
 
 /**
  * Get words that are suitable for a given difficulty level
+ * For puzzle packages, max difficulty is 'challenging' (easy + medium + challenging)
  */
 export function getWordsForDifficulty(difficulty: ClueDifficulty): string[] {
   const db = getCluesDatabase();
@@ -259,9 +307,37 @@ export function getWordsForDifficulty(difficulty: ClueDifficulty): string[] {
     return Array.from(db.easyWords).filter(word => isCommonWord(word));
   } else if (difficulty === 'medium') {
     // Words that have easy or medium clues
-    return [...db.easyWords, ...db.mediumWords];
+    const words = new Set([...db.easyWords, ...db.mediumWords]);
+    return Array.from(words);
+  } else if (difficulty === 'challenging') {
+    // Words that have easy, medium, or challenging clues (NO hard/expert)
+    const words = new Set([...db.easyWords, ...db.mediumWords, ...db.challengingWords]);
+    return Array.from(words);
   } else {
-    // All words
+    // For hard/expert - all words (but we generally don't use these for packages)
     return Object.keys(db.byAnswer);
   }
+}
+
+/**
+ * Get words that have clues at or below the specified max difficulty
+ * This is used for puzzle generation to ensure all words have valid clues
+ */
+export function getWordsWithMaxDifficulty(maxDifficulty: ClueDifficulty): string[] {
+  const db = getCluesDatabase();
+  const difficultyOrder: ClueDifficulty[] = ['easy', 'medium', 'challenging', 'hard', 'expert'];
+  const maxIndex = difficultyOrder.indexOf(maxDifficulty);
+  const allowedDifficulties = new Set(difficultyOrder.slice(0, maxIndex + 1));
+  
+  const validWords: string[] = [];
+  
+  for (const [word, entries] of Object.entries(db.byAnswer)) {
+    // Check if this word has at least one clue at an allowed difficulty
+    const hasValidClue = entries.some(e => allowedDifficulties.has(e.difficulty));
+    if (hasValidClue) {
+      validWords.push(word);
+    }
+  }
+  
+  return validWords;
 }

@@ -1,113 +1,51 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { Puzzle } from '../models/Puzzle';
+import { Puzzle, IPuzzle } from '../models/Puzzle';
 import { PuzzlePackage } from '../models/PuzzlePackage';
+import { generatePuzzle } from './generators/puzzlesGenerator';
+import { Difficulty } from '../types';
 
 dotenv.config();
 
-// Package definitions - 12 packages with pattern: 10, 10, 20, 10, 10, 20...
-const packageDefinitions = [
-  // Group 1: 10, 10, 20
-  {
-    name: 'Getting Started',
-    description: 'Perfect for beginners - learn the ropes!',
-    theme: 'Basics',
-    puzzleCount: 10,
-    iconName: 'leaf',
-    gradientColors: ['#10B981', '#059669'] // Green
-  },
-  {
-    name: 'Word Play',
-    description: 'Fun with words and language',
-    theme: 'Language',
-    puzzleCount: 10,
-    iconName: 'text.book.closed',
-    gradientColors: ['#8B5CF6', '#7C3AED'] // Purple
-  },
-  {
-    name: 'Big Challenge',
-    description: 'Ready for something bigger? 20 puzzles await!',
-    theme: 'Mixed',
-    puzzleCount: 20,
-    iconName: 'star',
-    gradientColors: ['#F59E0B', '#D97706'] // Amber
-  },
-  // Group 2: 10, 10, 20
-  {
-    name: 'Animal Kingdom',
-    description: 'Explore the wild world of animals',
-    theme: 'Animals',
-    puzzleCount: 10,
-    iconName: 'pawprint',
-    gradientColors: ['#EC4899', '#DB2777'] // Pink
-  },
-  {
-    name: 'World Explorer',
-    description: 'Travel the globe with geography puzzles',
-    theme: 'Geography',
-    puzzleCount: 10,
-    iconName: 'globe',
-    gradientColors: ['#14B8A6', '#0D9488'] // Teal
-  },
-  {
-    name: 'Science Lab',
-    description: 'Discover the wonders of science',
-    theme: 'Science',
-    puzzleCount: 20,
-    iconName: 'flask',
-    gradientColors: ['#3B82F6', '#2563EB'] // Blue
-  },
-  // Group 3: 10, 10, 20
-  {
-    name: 'Sports Fan',
-    description: 'For the love of the game',
-    theme: 'Sports',
-    puzzleCount: 10,
-    iconName: 'sportscourt',
-    gradientColors: ['#EF4444', '#DC2626'] // Red
-  },
-  {
-    name: 'Music Maestro',
-    description: 'Feel the rhythm and melody',
-    theme: 'Music',
-    puzzleCount: 10,
-    iconName: 'music.note',
-    gradientColors: ['#F97316', '#EA580C'] // Orange
-  },
-  {
-    name: 'History Buff',
-    description: 'Journey through time and history',
-    theme: 'History',
-    puzzleCount: 20,
-    iconName: 'clock',
-    gradientColors: ['#A78BFA', '#8B5CF6'] // Violet
-  },
-  // Group 4: 10, 10, 20
-  {
-    name: 'Pop Culture',
-    description: 'Movies, TV, and entertainment',
-    theme: 'Entertainment',
-    puzzleCount: 10,
-    iconName: 'film',
-    gradientColors: ['#06B6D4', '#0891B2'] // Cyan
-  },
-  {
-    name: 'Food & Drink',
-    description: 'A feast for puzzle lovers',
-    theme: 'Food',
-    puzzleCount: 10,
-    iconName: 'fork.knife',
-    gradientColors: ['#84CC16', '#65A30D'] // Lime
-  },
-  {
-    name: 'Master Collection',
-    description: 'The ultimate challenge for puzzle masters',
-    theme: 'Expert',
-    puzzleCount: 20,
-    iconName: 'crown',
-    gradientColors: ['#FBBF24', '#F59E0B'] // Yellow/Gold
-  }
+// Gradient colors for packages
+const gradientPalette = [
+  ['#10B981', '#059669'], // Green
+  ['#8B5CF6', '#7C3AED'], // Purple
+  ['#F59E0B', '#D97706'], // Amber
+  ['#EC4899', '#DB2777'], // Pink
+  ['#14B8A6', '#0D9488'], // Teal
+  ['#3B82F6', '#2563EB'], // Blue
+  ['#EF4444', '#DC2626'], // Red
+  ['#F97316', '#EA580C'], // Orange
+  ['#A78BFA', '#8B5CF6'], // Violet
+  ['#06B6D4', '#0891B2'], // Cyan
 ];
+
+// Icon names for packages
+const iconNames = [
+  'leaf', 'text.book.closed', 'star', 'pawprint', 'globe',
+  'flask', 'sportscourt', 'music.note', 'clock', 'film'
+];
+
+// Package definitions - 10 packages with pattern: 10, 10, 20, 10, 10, 20...
+// Total puzzles needed: 10 + 10 + 20 + 10 + 10 + 20 + 10 + 10 + 20 + 10 = 130
+const packageDefinitions = Array.from({ length: 10 }, (_, i) => {
+  // Pattern: 10, 10, 20, 10, 10, 20...
+  const posInGroup = i % 3;
+  const puzzleCount = posInGroup === 2 ? 20 : 10;
+  
+  return {
+    name: `Package #${i + 1}`,
+    description: puzzleCount === 20 ? '20 puzzles - a bigger challenge!' : '10 puzzles to solve',
+    theme: 'Mixed',
+    puzzleCount,
+    iconName: iconNames[i],
+    gradientColors: gradientPalette[i]
+  };
+});
+
+// Calculate total puzzles needed
+const TOTAL_PUZZLES_NEEDED = packageDefinitions.reduce((sum, pkg) => sum + pkg.puzzleCount, 0);
 
 const seedPackages = async () => {
   try {
@@ -146,38 +84,95 @@ const seedPackages = async () => {
     console.log(`   Database: ${dbName}`);
     console.log('');
 
-    // Get all available puzzles
+    // Check existing puzzles
+    const existingPuzzles = await Puzzle.find({ isActive: { $ne: false } })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    console.log(`📊 Found ${existingPuzzles.length} existing puzzles in database`);
+    console.log(`📊 Need ${TOTAL_PUZZLES_NEEDED} puzzles for ${packageDefinitions.length} packages`);
+
+    // Check if existing puzzles have small grids (7x7) - if so, regenerate all
+    const smallGridPuzzles = existingPuzzles.filter(p => p.grid.rows < 10 || p.grid.cols < 10);
+    const forceRegenerate = smallGridPuzzles.length > 0;
+    
+    if (forceRegenerate) {
+      console.log(`\n⚠️  Found ${smallGridPuzzles.length} puzzles with grids smaller than 10x10`);
+      console.log(`🗑️  Clearing all puzzles to regenerate with larger grids (11x11+)...`);
+      await Puzzle.deleteMany({});
+    }
+
+    // Generate puzzles if we don't have enough (or if we cleared them)
+    const currentCount = forceRegenerate ? 0 : existingPuzzles.length;
+    const puzzlesToGenerate = Math.max(0, TOTAL_PUZZLES_NEEDED - currentCount);
+    
+    if (puzzlesToGenerate > 0) {
+      console.log(`\n🎯 Generating ${puzzlesToGenerate} new puzzles with 11x11+ grids (using only easy/medium/challenging clues)...`);
+      console.log('='.repeat(60));
+      
+      const generatedPuzzles: any[] = [];
+      const startTime = Date.now();
+      
+      for (let i = 0; i < puzzlesToGenerate; i++) {
+        const puzzleNumber = existingPuzzles.length + generatedPuzzles.length + 1;
+        console.log(`\n📝 Generating puzzle ${i + 1}/${puzzlesToGenerate} (Puzzle #${puzzleNumber})...`);
+        
+        const puzzle = generatePuzzle({
+          difficulty: Difficulty.EASY, // Uses easy/medium/challenging clues only
+          category: 'Mixed',
+          title: `Puzzle #${puzzleNumber}`
+        });
+        
+        if (puzzle) {
+          generatedPuzzles.push(puzzle);
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          console.log(`✅ Generated! (${generatedPuzzles.length}/${puzzlesToGenerate}, ${elapsed}s elapsed)`);
+        } else {
+          console.log(`❌ Failed to generate, retrying...`);
+          i--; // Retry
+        }
+      }
+      
+      // Save generated puzzles to database
+      if (generatedPuzzles.length > 0) {
+        await Puzzle.insertMany(generatedPuzzles);
+        console.log(`\n📥 Saved ${generatedPuzzles.length} new puzzles to database`);
+      }
+    }
+
+    // Reload all puzzles after generation
     const allPuzzles = await Puzzle.find({ isActive: { $ne: false } })
       .sort({ createdAt: 1 })
       .lean();
 
-    console.log(`📊 Found ${allPuzzles.length} total puzzles in database`);
+    console.log(`\n📊 Total puzzles available: ${allPuzzles.length}`);
 
-    if (allPuzzles.length === 0) {
-      console.error('❌ No puzzles found in database. Please seed puzzles first.');
+    if (allPuzzles.length < TOTAL_PUZZLES_NEEDED) {
+      console.error(`❌ Not enough puzzles. Have ${allPuzzles.length}, need ${TOTAL_PUZZLES_NEEDED}`);
       await mongoose.connection.close();
       process.exit(1);
     }
 
     // Clear existing packages
     await PuzzlePackage.deleteMany({});
-    console.log('🗑️  Cleared existing packages');
+    console.log('\n🗑️  Cleared existing packages');
 
     // Clear packageId from all puzzles
     await Puzzle.updateMany({}, { $unset: { packageId: 1 } });
     console.log('🗑️  Cleared packageId from all puzzles\n');
 
     // Create all packages
-    console.log('📦 Creating 12 packages...\n');
+    console.log(`📦 Creating ${packageDefinitions.length} packages...\n`);
 
+    let puzzleIndex = 0;
     for (let i = 0; i < packageDefinitions.length; i++) {
       const def = packageDefinitions[i];
       
-      // Select puzzles for this package (cycling through available puzzles)
+      // Select sequential puzzles for this package (no overlap)
       const puzzleIds: mongoose.Types.ObjectId[] = [];
       for (let j = 0; j < def.puzzleCount; j++) {
-        const puzzleIndex = (i * 10 + j) % allPuzzles.length;
         puzzleIds.push(allPuzzles[puzzleIndex]._id as mongoose.Types.ObjectId);
+        puzzleIndex++;
       }
 
       const newPackage = new PuzzlePackage({
@@ -192,6 +187,13 @@ const seedPackages = async () => {
       });
 
       await newPackage.save();
+      
+      // Update puzzles with packageId
+      await Puzzle.updateMany(
+        { _id: { $in: puzzleIds } },
+        { $set: { packageId: newPackage._id } }
+      );
+      
       console.log(`   ✅ ${i + 1}. ${def.name} (${def.puzzleCount} puzzles) - ${def.theme}`);
     }
 
@@ -205,13 +207,14 @@ const seedPackages = async () => {
     let totalPuzzleSlots = 0;
     for (const pkg of allPackages) {
       totalPuzzleSlots += pkg.puzzleCount;
-      console.log(`   ${pkg.order}. ${pkg.name.padEnd(20)} | ${pkg.puzzleCount} puzzles | ${pkg.theme}`);
+      console.log(`   ${pkg.order}. ${pkg.name.padEnd(20)} | ${String(pkg.puzzleCount).padStart(2)} puzzles | ${pkg.theme}`);
     }
     
     console.log('='.repeat(60));
     console.log(`   Total packages: ${allPackages.length}`);
-    console.log(`   Total puzzle slots: ${totalPuzzleSlots}`);
-    console.log(`   Unique puzzles used: ${allPuzzles.length}`);
+    console.log(`   Total puzzles in packages: ${totalPuzzleSlots}`);
+    console.log(`   Pattern: 10, 10, 20, 10, 10, 20, 10, 10, 20, 10`);
+    console.log(`   All clues: easy/medium/challenging only (no hard/expert)`);
     console.log('='.repeat(60));
 
     console.log('\n✅ Package seeding completed successfully!');

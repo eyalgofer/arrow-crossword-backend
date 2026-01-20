@@ -276,7 +276,8 @@ const CRYPTIC_PATTERNS = [
   /\bsay\b/i,          // "Say" as in "for example"
 ];
 
-export type ClueDifficulty = 'easy' | 'medium' | 'hard';
+// Difficulty levels: 1=easy, 2=medium, 3=challenging, 4=hard, 5=expert
+export type ClueDifficulty = 'easy' | 'medium' | 'challenging' | 'hard' | 'expert';
 
 export interface ClueWithDifficulty {
   clue: string;
