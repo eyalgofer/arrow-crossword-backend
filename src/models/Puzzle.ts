@@ -10,6 +10,7 @@ export interface IPuzzle extends Document {
   estimatedTime: number;
   coinReward: number;
   isActive: boolean;
+  packageId?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -57,6 +58,11 @@ const puzzleSchema = new Schema<IPuzzle>({
   isActive: {
     type: Boolean,
     default: true
+  },
+  packageId: {
+    type: Schema.Types.ObjectId,
+    ref: 'PuzzlePackage',
+    required: false
   }
 }, {
   timestamps: true
@@ -64,5 +70,6 @@ const puzzleSchema = new Schema<IPuzzle>({
 
 puzzleSchema.index({ difficulty: 1, isActive: 1 });
 puzzleSchema.index({ category: 1, isActive: 1 });
+puzzleSchema.index({ packageId: 1 });
 
 export const Puzzle = mongoose.model<IPuzzle>('Puzzle', puzzleSchema);

@@ -9,6 +9,7 @@ import { errorHandler } from './middleware/errorHandler';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import puzzleRoutes from './routes/puzzles';
+import packageRoutes from './routes/packages';
 import matchRoutes from './routes/matches';
 import inviteRoutes from './routes/invites';
 import { setupSocketHandlers } from './sockets/gameHandler';
@@ -139,6 +140,7 @@ app.get('/api/diagnostic', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/puzzles', puzzleRoutes);
+app.use('/api/packages', packageRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/invites', inviteRoutes);
 

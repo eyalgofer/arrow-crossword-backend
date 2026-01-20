@@ -1,17 +1,48 @@
 import { Response } from 'express';
 import { Puzzle } from '../models/Puzzle';
+import { PuzzlePackage } from '../models/PuzzlePackage';
 import { UserPuzzleProgress, IProgressCell } from '../models/UserPuzzleProgress';
 import { User } from '../models/User';
 import { AuthRequest, ProgressSummary } from '../types';
 
 export const getPuzzles = async (req: AuthRequest, res: Response) => {
   try {
-    const { difficulty, category, limit = 30 } = req.query;
+    const { difficulty, category, packageId, limit = 30 } = req.query;
 
     // Query for puzzles where isActive is not false (handles true, undefined, and null)
     const query: any = { isActive: { $ne: false } };
     if (difficulty) query.difficulty = difficulty;
     if (category) query.category = category;
+
+    // If packageId is provided, fetch puzzles in the order defined by the package
+    if (packageId) {
+      const puzzlePackage = await PuzzlePackage.findById(packageId).lean();
+      
+      if (!puzzlePackage) {
+        return res.status(404).json({ error: 'Package not found' });
+      }
+
+      // Filter to puzzles in this package
+      query._id = { $in: puzzlePackage.puzzleIds };
+
+      const puzzles = await Puzzle.find(query)
+        .select('-clues.across.answer -clues.down.answer')
+        .limit(parseInt(limit as string))
+        .lean();
+
+      // Sort puzzles to match the order in puzzleIds array
+      const puzzleIdOrder = new Map(
+        puzzlePackage.puzzleIds.map((id, index) => [id.toString(), index])
+      );
+      
+      puzzles.sort((a, b) => {
+        const orderA = puzzleIdOrder.get(a._id.toString()) ?? Number.MAX_SAFE_INTEGER;
+        const orderB = puzzleIdOrder.get(b._id.toString()) ?? Number.MAX_SAFE_INTEGER;
+        return orderA - orderB;
+      });
+
+      return res.json({ puzzles });
+    }
 
     const puzzles = await Puzzle.find(query)
       .select('-clues.across.answer -clues.down.answer')
