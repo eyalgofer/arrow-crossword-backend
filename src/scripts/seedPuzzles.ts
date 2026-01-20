@@ -398,7 +398,7 @@ const seedDatabase = async () => {
   try {
     // Run validation before seeding
     validateAllPuzzles();
-    let mongoUri = 'mongodb://localhost:27017/arrow-crossword';
+    let mongoUri = process.env.MONGODB_URI ||'mongodb://localhost:27017/arrow-crossword';
 
     console.log('\n🔍 Connection Details:');
     console.log(`   MONGODB_URI from env: ${process.env.MONGODB_URI ? 'SET' : 'NOT SET'}`);
