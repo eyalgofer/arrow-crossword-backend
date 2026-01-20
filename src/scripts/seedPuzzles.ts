@@ -477,25 +477,39 @@ const seedDatabase = async () => {
     console.log(`   Invalid puzzles: ${samplePuzzles.length - validPuzzles.length}`);
     
     // Generate additional puzzles using the generator
+    // Configuration: Generate 20 MEDIUM (11x11) puzzles
+    const PUZZLES_TO_GENERATE = 20;
+    const PUZZLE_DIFFICULTY = Difficulty.EASY; // MEDIUM = 11x11 grid with ~200k words
+    
     console.log('\n' + '='.repeat(60));
-    console.log('Generating puzzle...');
+    console.log(`Generating ${PUZZLES_TO_GENERATE} puzzles (${PUZZLE_DIFFICULTY} difficulty, 11x11 grid)...`);
     console.log('='.repeat(60));
-     // Check current puzzle count
      
-     const generatedPuzzles: any[] = [];
-       
-     const puzzle = generatePuzzle({
-       difficulty: Difficulty.HARD,
-       category: 'Misc',
-       title: `Puzzle #${validPuzzles.length + 1}`
-     });
-     
-     if (puzzle) {
-      generatedPuzzles.push(puzzle);
-       console.log(`✅ Puzzle generated successfully!`);
-     } else {
-       console.log(`❌ Puzzle failed to generate`);
-     }
+    const generatedPuzzles: any[] = [];
+    const startTime = Date.now();
+    
+    for (let i = 0; i < PUZZLES_TO_GENERATE; i++) {
+      const puzzleNumber = validPuzzles.length + generatedPuzzles.length + 1;
+      console.log(`\n📝 Generating puzzle ${i + 1}/${PUZZLES_TO_GENERATE}...`);
+      
+      const puzzle = generatePuzzle({
+        difficulty: PUZZLE_DIFFICULTY,
+        category: 'Misc',
+        title: `Puzzle #${puzzleNumber}`
+      });
+      
+      if (puzzle) {
+        generatedPuzzles.push(puzzle);
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        console.log(`✅ Puzzle ${i + 1}/${PUZZLES_TO_GENERATE} generated! (${generatedPuzzles.length} total, ${elapsed}s elapsed)`);
+      } else {
+        console.log(`❌ Puzzle ${i + 1} failed to generate, continuing...`);
+      }
+    }
+    
+    const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`\n⏱️  Generation complete in ${totalTime}s`);
+    console.log(`   Success rate: ${generatedPuzzles.length}/${PUZZLES_TO_GENERATE}`);
      
     // Combine sample puzzles and generated puzzle
     const allPuzzles = [...validPuzzles, ...generatedPuzzles];

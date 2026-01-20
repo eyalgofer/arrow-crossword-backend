@@ -3,9 +3,9 @@ import { Difficulty } from '../../types';
 export const samplePuzzles = [
   // working examples
   {
-    title: "Good Example",
+    title: "Puzzle #1 - Intro",
     difficulty: Difficulty.EASY,
-    category: "Daily Life",
+    category: "Misc",
     grid: { rows: 11, cols: 9 },
     clues: [
       { number: 1, direction: 'right-down', clue: 'Ensure', answer: 'SEE', enumeration: [3], startRow: 0, startCol: 0 },
@@ -36,7 +36,7 @@ export const samplePuzzles = [
       { number: 26, direction: 'across', clue: 'Sufficient', answer: 'ENOUGH', enumeration: [6], startRow: 9, startCol: 2 },
       { number: 27, direction: 'across', clue: 'Woody plant', answer: 'TREE', enumeration: [4], startRow: 10, startCol: 4 }
     ],
-    estimatedTime: 90,
+    estimatedTime: 15,
     coinReward: 10
   }
 ];

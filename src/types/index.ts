@@ -65,3 +65,19 @@ export enum Difficulty {
   HARD = 'hard',
   EXPERT = 'expert'
 }
+
+export interface ProgressCell {
+  row: number;
+  col: number;
+  value: string;
+  locked: boolean;
+}
+
+export interface ProgressSummary {
+  puzzleId: string;
+  progress: number;
+  isCompleted: boolean;
+  isInProgress: boolean;
+  bestTime: number | null;
+  lastPlayedAt: Date;
+}

@@ -12,10 +12,12 @@ import { getSlotCells, getAnswerOrientation } from './direction-utils';
  * Creates a grid with strategic slot placement and crossings
  */
 export function generateTemplate(
-  size: 'small' | 'medium' | 'large' | 'xlarge',
+  size: 'tiny' | 'small' | 'medium' | 'large' | 'xlarge',
   difficulty: Difficulty = Difficulty.EASY
 ): GridTemplate {
   const sizeConfig = {
+    // TINY: For EASY difficulty with ~1,700 words - small 7x7 grid
+    tiny: { rows: 7, cols: 7, minSlots: 8, maxSlots: 15, maxCrossingsPerSlot: 4, density: 0.85 },
     small: { rows: 14, cols: 14, minSlots: 50, maxSlots: 100, maxCrossingsPerSlot: 10, density: 0.99 },
     medium: { rows: 11, cols: 11, minSlots: 25, maxSlots: 120, maxCrossingsPerSlot: 10, density: 0.99 },
     large: { rows: 15, cols: 15, minSlots: 80, maxSlots: 150, maxCrossingsPerSlot: 12, density: 0.99 },
@@ -145,7 +147,8 @@ export function generateTemplate(
       
       // IMPROVED: Better word length selection - use 3-5 letters for better solvability
       // The improved generator uses 3-5 letters which matches word lists better
-      const maxLength = size === 'small' ? 5 : size === 'medium' ? 5 : size === 'large' ? 6 : 7;
+      // Max word length based on grid size (tiny grids can't fit long words)
+      const maxLength = size === 'tiny' ? 4 : size === 'small' ? 5 : size === 'medium' ? 5 : size === 'large' ? 6 : 7;
       const minLength = 3; // Start from 3 letters (improved generator approach)
       
       // IMPROVED: Optimal length selection - try different lengths and pick the one with most crossings

@@ -206,11 +206,13 @@ export function generatePuzzleFromGrid(
   }
   
   // Validate minimum clue count based on grid size
-  // Updated minimums to match puzzlesGenerator.ts - more lenient with 6M clues
-  const minClues = template.rows === 11 && template.cols === 11 ? 18 : 
-                   template.rows === 14 && template.cols === 14 ? 30 :
-                   template.rows === 15 && template.cols === 15 ? 50 :
-                   template.rows === 16 && template.cols === 16 ? 45 : 20;
+  // Scale minimums based on grid size - smaller grids have fewer clues
+  const gridArea = template.rows * template.cols;
+  const minClues = gridArea <= 49 ? 6 :   // 7x7 tiny grid (EASY)
+                   gridArea <= 121 ? 18 : // 11x11 medium grid (MEDIUM)
+                   gridArea <= 196 ? 30 : // 14x14 grid
+                   gridArea <= 225 ? 40 : // 15x15 large grid (HARD)
+                   45;                    // 16x16+ xlarge grid
   
   if (clues.length < minClues) {
     // Instead of throwing, return null to allow retry

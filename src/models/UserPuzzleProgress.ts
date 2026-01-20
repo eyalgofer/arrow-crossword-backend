@@ -1,18 +1,32 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface IProgressCell {
+  row: number;
+  col: number;
+  value: string;
+  locked: boolean;
+}
+
 export interface IUserPuzzleProgress extends Document {
   userId: mongoose.Types.ObjectId;
   puzzleId: mongoose.Types.ObjectId;
-  state: string[][];
-  completed: boolean;
-  timeSpent: number;
-  hintsUsed: number;
-  correctCells: number;
-  totalCells: number;
-  startedAt: Date;
-  completedAt?: Date;
+  cells: IProgressCell[];
+  completedCluesCount: number;
+  totalClues: number;
+  isCompleted: boolean;
+  elapsedTime: number;
+  bestTime: number | null;
   lastPlayedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
+
+const progressCellSchema = new Schema({
+  row: { type: Number, required: true },
+  col: { type: Number, required: true },
+  value: { type: String, required: true },
+  locked: { type: Boolean, default: false }
+}, { _id: false });
 
 const userPuzzleProgressSchema = new Schema<IUserPuzzleProgress>({
   userId: {
@@ -25,36 +39,29 @@ const userPuzzleProgressSchema = new Schema<IUserPuzzleProgress>({
     ref: 'Puzzle',
     required: true
   },
-  state: {
-    type: [[String]],
+  cells: {
+    type: [progressCellSchema],
+    default: []
+  },
+  completedCluesCount: {
+    type: Number,
+    default: 0
+  },
+  totalClues: {
+    type: Number,
     required: true
   },
-  completed: {
+  isCompleted: {
     type: Boolean,
     default: false
   },
-  timeSpent: {
+  elapsedTime: {
     type: Number,
     default: 0
   },
-  hintsUsed: {
+  bestTime: {
     type: Number,
-    default: 0
-  },
-  correctCells: {
-    type: Number,
-    default: 0
-  },
-  totalCells: {
-    type: Number,
-    required: true
-  },
-  startedAt: {
-    type: Date,
-    default: Date.now
-  },
-  completedAt: {
-    type: Date
+    default: null
   },
   lastPlayedAt: {
     type: Date,
@@ -65,6 +72,6 @@ const userPuzzleProgressSchema = new Schema<IUserPuzzleProgress>({
 });
 
 userPuzzleProgressSchema.index({ userId: 1, puzzleId: 1 }, { unique: true });
-userPuzzleProgressSchema.index({ userId: 1, completed: 1 });
+userPuzzleProgressSchema.index({ userId: 1 });
 
 export const UserPuzzleProgress = mongoose.model<IUserPuzzleProgress>('UserPuzzleProgress', userPuzzleProgressSchema);
