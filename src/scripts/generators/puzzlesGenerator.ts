@@ -139,7 +139,7 @@ export class PuzzleGenerator {
       this.difficulty === Difficulty.EASY ? 'medium' :
       this.difficulty === Difficulty.MEDIUM ? 'medium' :
       this.difficulty === Difficulty.CHALLENGING ? 'medium' :
-      'large';      
+      'large';
     const template = generateTemplate(size, difficulty);
     
     // Validate template has minimum required slots

@@ -25,7 +25,7 @@ export function generateTemplate(
           preferFewerCrossings: true,   // Prefer slots with fewer crossings
           useSimpleDirections: false,    // Use fewer diagonal directions
           enableGapFilling: false,      // Disable aggressive gap-filling
-          maxWordLength: 7
+          maxWordLength: 9
         };
       case Difficulty.MEDIUM:
         return {
@@ -35,7 +35,7 @@ export function generateTemplate(
           preferFewerCrossings: true,
           useSimpleDirections: false,
           enableGapFilling: true,
-          maxWordLength: 5
+          maxWordLength: 10
         };
       case Difficulty.CHALLENGING:
         return {
