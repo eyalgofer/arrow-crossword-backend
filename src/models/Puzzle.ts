@@ -1,12 +1,12 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { PuzzleGrid, PuzzleClue, Difficulty } from '../types';
+import { PuzzleGrid, Difficulty, PuzzleItem } from '../types';
 
 export interface IPuzzle extends Document {
   title: string;
   difficulty: Difficulty;
   category: string;
   grid: PuzzleGrid;
-  clues: PuzzleClue[];
+  puzzleItems: PuzzleItem[];
   estimatedTime: number;
   coinReward: number;
   isActive: boolean;
@@ -15,7 +15,7 @@ export interface IPuzzle extends Document {
   updatedAt: Date;
 }
 
-const puzzleClueSchema = new Schema({
+const puzzleItemSchema = new Schema({
   number: { type: Number, required: true },
   direction: { type: String, enum: ['across', 'down', 'right-down', 'left-down', 'down-across', 'up-across'], required: true },
   clue: { type: String, required: true },
@@ -43,8 +43,8 @@ const puzzleSchema = new Schema<IPuzzle>({
     rows: { type: Number, required: true },
     cols: { type: Number, required: true }
   },
-  clues: {
-    type: [puzzleClueSchema],
+  puzzleItems: {
+    type: [puzzleItemSchema],
     required: true
   },
   estimatedTime: {
