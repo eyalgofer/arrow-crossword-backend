@@ -125,8 +125,8 @@ const iconNames = [
 
 // Package definitions - 2 packages with 10 puzzles each
 // Total puzzles needed: 10 + 10 = 20
-const packageDefinitions = Array.from({ length: 2 }, (_, i) => {
-  const puzzleCount = 5;
+const packageDefinitions = Array.from({ length: 8 }, (_, i) => {
+  const puzzleCount = 10;
   
   return {
     name: `Package #${i + 1}`,
@@ -186,22 +186,10 @@ const seedPackages = async () => {
     console.log(`📊 Found ${existingPuzzles.length} existing puzzles in database`);
     console.log(`📊 Need ${TOTAL_PUZZLES_NEEDED} puzzles for ${packageDefinitions.length} packages`);
 
-    // Check if existing puzzles have small grids (7x7) - if so, regenerate all
-    const smallGridPuzzles = existingPuzzles.filter(p => p.grid.rows < 10 || p.grid.cols < 10);
-    
-    // FORCE REGENERATION: Clear all puzzles to regenerate with new fixes
-    // This ensures all puzzles are regenerated with the latest fixes for word endings and clue cells
-    let clearedPuzzles = false;
-    if (existingPuzzles.length > 0) {
-      await Puzzle.deleteMany({});
-      await PuzzlePackage.deleteMany({});
-      console.log(`✅ Cleared ${existingPuzzles.length} puzzles and all packages`);
-      clearedPuzzles = true;
-    }
 
     // Generate puzzles if we don't have enough (or if we cleared them)
     // If we cleared puzzles, currentCount is 0. Otherwise, use existing count.
-    const currentCount = clearedPuzzles ? 0 : existingPuzzles.length;
+    const currentCount = existingPuzzles.length;
     const puzzlesToGenerate = Math.max(0, TOTAL_PUZZLES_NEEDED - currentCount);
     
     if (puzzlesToGenerate > 0) {
