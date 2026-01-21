@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { classifyClue, ClueDifficulty, ClueWithDifficulty, isCommonWord } from './wordFrequency';
+
+export type ClueDifficulty = 'easy' | 'medium' | 'challenging' | 'hard' | 'expert';
 
 /**
  * Clue entry with difficulty classification
@@ -127,10 +128,10 @@ export function loadCluesFromCSV(): CluesDatabase {
             continue; // Skip filtered clues
           }
           
-          // Use CSV difficulty if available, otherwise fall back to algorithm
+
           const difficulty: ClueDifficulty = difficultyNum >= 1 && difficultyNum <= 5
             ? mapCsvDifficulty(difficultyNum)
-            : classifyClue(clueText, answerRaw);
+            : 'medium';
           
           if (!database.byAnswer[answer]) {
             database.byAnswer[answer] = [];
@@ -298,30 +299,6 @@ export function getClueForWord(
   
   // If no clue found in allowed difficulties, return null
   return null;
-}
-
-/**
- * Get words that are suitable for a given difficulty level
- * For puzzle packages, max difficulty is 'challenging' (easy + medium + challenging)
- */
-export function getWordsForDifficulty(difficulty: ClueDifficulty): string[] {
-  const db = getCluesDatabase();
-  
-  if (difficulty === 'easy') {
-    // Only words that have easy clues AND are common words
-    return Array.from(db.easyWords).filter(word => isCommonWord(word));
-  } else if (difficulty === 'medium') {
-    // Words that have easy or medium clues
-    const words = new Set([...db.easyWords, ...db.mediumWords]);
-    return Array.from(words);
-  } else if (difficulty === 'challenging') {
-    // Words that have easy, medium, or challenging clues (NO hard/expert)
-    const words = new Set([...db.easyWords, ...db.mediumWords, ...db.challengingWords]);
-    return Array.from(words);
-  } else {
-    // For hard/expert - all words (but we generally don't use these for packages)
-    return Object.keys(db.byAnswer);
-  }
 }
 
 /**

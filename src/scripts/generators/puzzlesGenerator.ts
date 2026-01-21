@@ -9,8 +9,9 @@ import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
 import { generateTemplate } from './template-generator';
 
-import { getCluesDatabase, getClueForWord, getCluesFiltered, getWordsForDifficulty, getWordsWithMaxDifficulty } from '../core/cluesFromCSV';
-import { ClueDifficulty } from '../core/wordFrequency';
+import { getCluesDatabase, getClueForWord, getWordsWithMaxDifficulty } from '../core/cluesFromCSV';
+
+export type ClueDifficulty = 'easy' | 'medium' | 'challenging' | 'hard' | 'expert';
 
 // Maximum clue difficulty allowed for puzzle packages (no hard/expert)
 const MAX_CLUE_DIFFICULTY: ClueDifficulty = 'challenging';
