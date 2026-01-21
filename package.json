@@ -7,7 +7,6 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "seed:puzzles": "ts-node src/scripts/seedPuzzles.ts",
     "seed:packages": "ts-node src/scripts/seedPackages.ts",
     "assign:daily": "ts-node src/scripts/assignDailyPuzzles.ts",
     "check:apple": "node scripts/check-apple-config.js",
