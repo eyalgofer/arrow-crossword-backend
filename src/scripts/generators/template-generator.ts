@@ -1,20 +1,125 @@
-/**
- * Template Generator for Swedish Arrow Crossword Puzzles
- * 
- * Generates grid templates with strategic slot placement and crossings
- */
-
 import { Direction, GridTemplate, ClueSlot, Difficulty } from '../core/types';
 import { getSlotCells, getAnswerOrientation, getNextCellAfterAnswer, getCellBeforeAnswer } from './direction-utils';
 
 /**
- * Creates a grid with strategic slot placement and crossings
+ * Validates that a word can be placed with proper boundaries.
+ * Words can only start/end at: grid bounds, clue cells, or blocked cells.
+ * Words CANNOT start after answer cells or end before answer cells (would cause merging).
+ * 
+ * Also checks if any of the new word's answer cells would be in boundary positions
+ * (before/after) of existing words, which would cause word merging.
  */
+function validateWordBoundaries(
+  direction: Direction,
+  firstAnswerCell: { row: number; col: number },
+  lastAnswerCell: { row: number; col: number },
+  gridRows: number,
+  gridCols: number,
+  answerCells: Map<string, { slotId: string; position: number }>,
+  occupiedCells: Set<string>,
+  blockedCells: Set<string>,
+  existingSlots?: ClueSlot[],
+  newAnswerCells?: Array<{ row: number; col: number }>
+): { valid: boolean; reason?: string } {
+  // Get boundary cells for the new word
+  const cellBeforeAnswer = getCellBeforeAnswer(direction, firstAnswerCell, gridRows, gridCols);
+  const nextCellAfterAnswer = getNextCellAfterAnswer(direction, lastAnswerCell, gridRows, gridCols);
+  const newWordOrientation = getAnswerOrientation(direction);
+  
+  // CRITICAL: Check the answerCells map FIRST - this is the authoritative source
+  // No answer cells (regardless of orientation) should be in boundary positions
+  if (cellBeforeAnswer !== null) {
+    const prevCellKey = `${cellBeforeAnswer.row},${cellBeforeAnswer.col}`;
+    if (answerCells.has(prevCellKey)) {
+      // There's an answer cell in the boundary position - invalid!
+      return { valid: false, reason: `Answer cell exists at (${cellBeforeAnswer.row},${cellBeforeAnswer.col}) which is before new word's first answer cell - no answer cells allowed in boundary positions` };
+    }
+  }
+  
+  if (nextCellAfterAnswer !== null) {
+    const nextCellKey = `${nextCellAfterAnswer.row},${nextCellAfterAnswer.col}`;
+    if (answerCells.has(nextCellKey)) {
+      // There's an answer cell in the boundary position - invalid!
+      return { valid: false, reason: `Answer cell exists at (${nextCellAfterAnswer.row},${nextCellAfterAnswer.col}) which is after new word's last answer cell - no answer cells allowed in boundary positions` };
+    }
+  }
+  
+  // CRITICAL: Also check if any of the new word's answer cells would be in boundary positions
+  // of existing words (before/after their answer cells).
+  // AND check if any existing word's answer cells are in boundary positions of the new word.
+  // IMPORTANT: No answer cells should be in boundary positions regardless of orientation.
+  // Perpendicular crossings at answer cell positions are allowed, but not in boundary positions.
+  if (existingSlots && newAnswerCells) {
+    const newAnswerCellSet = new Set(newAnswerCells.map(c => `${c.row},${c.col}`));
+    
+    // Check 1: If any new word's answer cells are in boundary positions of existing words
+    // Check ALL orientations - no answer cells allowed in boundary positions
+    for (const existingSlot of existingSlots) {
+      const existingAnswerCells = getSlotCells(existingSlot);
+      if (existingAnswerCells.length === 0) continue;
+      
+      const existingFirst = existingAnswerCells[0];
+      const existingLast = existingAnswerCells[existingAnswerCells.length - 1];
+      
+      // Check if any new answer cell is in the boundary position before existing word
+      const cellBeforeExisting = getCellBeforeAnswer(existingSlot.direction, existingFirst, gridRows, gridCols);
+      if (cellBeforeExisting !== null) {
+        const beforeKey = `${cellBeforeExisting.row},${cellBeforeExisting.col}`;
+        if (newAnswerCellSet.has(beforeKey)) {
+          const existingOrientation = getAnswerOrientation(existingSlot.direction);
+          return { valid: false, reason: `New word's answer cell at (${cellBeforeExisting.row},${cellBeforeExisting.col}) would be before existing word ${existingSlot.id} (${existingOrientation}) - no answer cells allowed in boundary positions` };
+        }
+      }
+      
+      // Check if any new answer cell is in the boundary position after existing word
+      const cellAfterExisting = getNextCellAfterAnswer(existingSlot.direction, existingLast, gridRows, gridCols);
+      if (cellAfterExisting !== null) {
+        const afterKey = `${cellAfterExisting.row},${cellAfterExisting.col}`;
+        if (newAnswerCellSet.has(afterKey)) {
+          const existingOrientation = getAnswerOrientation(existingSlot.direction);
+          return { valid: false, reason: `New word's answer cell at (${cellAfterExisting.row},${cellAfterExisting.col}) would be after existing word ${existingSlot.id} (${existingOrientation}) - no answer cells allowed in boundary positions` };
+        }
+      }
+    }
+    
+    // Check 2: CRITICAL - If any existing word's answer cells are in boundary positions of the new word
+    // This is the key check that prevents words from starting after or ending before other words
+    // IMPORTANT: Check ALL orientations - no answer cells should be in boundary positions regardless of orientation
+    if (cellBeforeAnswer !== null) {
+      // Check if any existing word (ANY orientation) has an answer cell in the position before the new word
+      for (const existingSlot of existingSlots) {
+        const existingAnswerCells = getSlotCells(existingSlot);
+        for (const existingCell of existingAnswerCells) {
+          if (existingCell.row === cellBeforeAnswer.row && existingCell.col === cellBeforeAnswer.col) {
+            const existingOrientation = getAnswerOrientation(existingSlot.direction);
+            return { valid: false, reason: `Existing word ${existingSlot.id} (${existingOrientation}) has answer cell at (${cellBeforeAnswer.row},${cellBeforeAnswer.col}) which is before new word's first answer cell - no answer cells allowed in boundary positions` };
+          }
+        }
+      }
+    }
+    
+    if (nextCellAfterAnswer !== null) {
+      // Check if any existing word (ANY orientation) has an answer cell in the position after the new word
+      for (const existingSlot of existingSlots) {
+        const existingAnswerCells = getSlotCells(existingSlot);
+        for (const existingCell of existingAnswerCells) {
+          if (existingCell.row === nextCellAfterAnswer.row && existingCell.col === nextCellAfterAnswer.col) {
+            const existingOrientation = getAnswerOrientation(existingSlot.direction);
+            return { valid: false, reason: `Existing word ${existingSlot.id} (${existingOrientation}) has answer cell at (${nextCellAfterAnswer.row},${nextCellAfterAnswer.col}) which is after new word's last answer cell - no answer cells allowed in boundary positions` };
+          }
+        }
+      }
+    }
+  }
+  
+  return { valid: true };
+}
+
 export function generateTemplate(
   size: 'tiny' | 'small' | 'medium' | 'large' | 'xlarge',
   difficulty: Difficulty = Difficulty.EASY
 ): GridTemplate {
-  // Difficulty-based configuration for simpler puzzles
+
   const getDifficultyMultipliers = (difficulty: Difficulty) => {
     switch (difficulty) {
       case Difficulty.EASY:
@@ -85,10 +190,9 @@ export function generateTemplate(
   const answerCells = new Map<string, { slotId: string; position: number }>(); // Track answer cells for crossings
   const blockedCells = new Set<string>(); // Track cells that must remain empty (after answer ends) to prevent word merging
   
-  // Generate slots with strategic placement
-  // For easier puzzles, use fewer slots and simpler directions
+  
   let slotNumber = 1;
-  // For easier puzzles, aim for lower slot count (closer to minimum)
+
   const targetRange = config.maxSlots - config.minSlots;
   const slotCountFactor = difficulty === Difficulty.EASY ? 0.3 : difficulty === Difficulty.MEDIUM ? 0.5 : 0.8;
   const targetSlots = Math.floor(config.minSlots + (targetRange * slotCountFactor) + Math.random() * (targetRange * 0.2));
@@ -147,14 +251,10 @@ export function generateTemplate(
         }
       }
       
-      // AGGRESSIVE DENSITY: Smart placement to maximize crossings and fill gaps
       let startRow: number;
       let startCol: number;
       
-      // SWEDISH ARROW STRATEGY: Balance crossings with coverage
-      // After initial slots, prioritize both crossings AND filling empty areas
       if (i > targetSlots * 0.10 && answerCells.size > 0) {
-        // Find empty cells that could be filled
         const emptyCellsList: Array<{ row: number; col: number }> = [];
         for (let r = 0; r < config.rows; r++) {
           for (let c = 0; c < config.cols; c++) {
@@ -239,34 +339,24 @@ export function generateTemplate(
           continue; // This length doesn't fit
         }
         
-        // CRITICAL: Validate that words can only start/end at grid bounds, clue cells, or blocked cells
-        // Words CANNOT start/end at answer cells (would cause word merging)
-        // Check the cell BEFORE the first answer cell
+        // CRITICAL: Validate that words can only start/end after grid bounds, clue cells, or blocked cells
+        // Words CANNOT start/end before answer cells (would cause word merging)
         const firstCell = testAnswerCells[0];
-        const cellBeforeAnswer = getCellBeforeAnswer(direction, firstCell, config.rows, config.cols);
-        if (cellBeforeAnswer !== null) {
-          // Previous cell is in bounds - must NOT be an answer cell
-          const prevCellKey = `${cellBeforeAnswer.row},${cellBeforeAnswer.col}`;
-          if (answerCells.has(prevCellKey)) {
-            // This cell is already an answer cell - words would merge, invalid!
-            continue; // Skip this length
-          }
-          // Valid: cell is either a clue cell, blocked cell, or empty (will become clue cell or remain empty)
+        const boundaryValidation = validateWordBoundaries(
+          direction,
+          firstCell,
+          lastCell,
+          config.rows,
+          config.cols,
+          answerCells,
+          occupiedCells,
+          blockedCells,
+          slots, // existing slots
+          testAnswerCells // new answer cells to check
+        );
+        if (!boundaryValidation.valid) {
+          continue; // Skip this length - invalid boundary
         }
-        // If cellBeforeAnswer is null, the word starts at grid boundary - valid!
-        
-        // Check the cell AFTER the last answer cell
-        const nextCellAfterAnswer = getNextCellAfterAnswer(direction, lastCell, config.rows, config.cols);
-        if (nextCellAfterAnswer !== null) {
-          // Next cell is in bounds - must NOT be an answer cell
-          const nextCellKey = `${nextCellAfterAnswer.row},${nextCellAfterAnswer.col}`;
-          if (answerCells.has(nextCellKey)) {
-            // This cell is already an answer cell - words would merge, invalid!
-            continue; // Skip this length
-          }
-          // Valid: cell is either a clue cell, blocked cell, or empty (will become clue cell or remain empty)
-        }
-        // If nextCellAfterAnswer is null, the word ends at grid boundary - valid!
         
         // CRITICAL FIX: Check if clue cell is available AND doesn't overlap with answer cells
         const testClueKey = `${startRow},${startCol}`;
@@ -281,7 +371,6 @@ export function generateTemplate(
         
         // Check for conflicts and count perpendicular crossings
         let hasConflict = false;
-        let crossingCount = 0;
         const testCrossingSlots = new Set<string>();
         const testOrientation = getAnswerOrientation(direction);
         
@@ -394,27 +483,23 @@ export function generateTemplate(
         continue; // Clue cell overlaps with answer cell - invalid!
       }
       
-      // CRITICAL FIX: Final validation - ensure answer cells don't start immediately after another answer cell
-      // Re-validate the cell before the first answer cell
+      // CRITICAL FIX: Final validation - ensure word boundaries are valid
       const firstAnswerCellForValidation = answerCellsForSlot[0];
-      const cellBeforeAnswerForValidation = getCellBeforeAnswer(direction, firstAnswerCellForValidation, config.rows, config.cols);
-      if (cellBeforeAnswerForValidation !== null) {
-        const prevCellKey = `${cellBeforeAnswerForValidation.row},${cellBeforeAnswerForValidation.col}`;
-        if (answerCells.has(prevCellKey)) {
-          // This would cause word merging - invalid!
-          continue;
-        }
-      }
-      
-      // CRITICAL FIX: Final validation - ensure answer cells don't end immediately before another answer cell
       const lastAnswerCellForValidation = answerCellsForSlot[answerCellsForSlot.length - 1];
-      const nextCellAfterAnswerForValidation = getNextCellAfterAnswer(direction, lastAnswerCellForValidation, config.rows, config.cols);
-      if (nextCellAfterAnswerForValidation !== null) {
-        const nextCellKey = `${nextCellAfterAnswerForValidation.row},${nextCellAfterAnswerForValidation.col}`;
-        if (answerCells.has(nextCellKey)) {
-          // This would cause word merging - invalid!
-          continue;
-        }
+      const finalBoundaryValidation = validateWordBoundaries(
+        direction,
+        firstAnswerCellForValidation,
+        lastAnswerCellForValidation,
+        config.rows,
+        config.cols,
+        answerCells,
+        occupiedCells,
+        blockedCells,
+        slots, // existing slots
+        answerCellsForSlot // new answer cells to check
+      );
+      if (!finalBoundaryValidation.valid) {
+        continue; // Invalid boundary - would cause word merging
       }
       
       // Place the slot
@@ -1022,32 +1107,22 @@ export function generateTemplate(
     
     // CRITICAL: Validate that words can only start/end at grid bounds, clue cells, or blocked cells
     // Words CANNOT start/end at answer cells (would cause word merging)
-    // Check the cell BEFORE the first answer cell
     const firstCell = answerCellsForSlot[0];
-    const cellBeforeAnswer = getCellBeforeAnswer(direction, firstCell, config.rows, config.cols);
-    if (cellBeforeAnswer !== null) {
-      // Previous cell is in bounds - must NOT be an answer cell
-      const prevCellKey = `${cellBeforeAnswer.row},${cellBeforeAnswer.col}`;
-      if (gapFilledAnswerCells.has(prevCellKey)) {
-        // This cell is already an answer cell - words would merge, invalid!
-        continue; // Skip this slot
-      }
-      // Valid: cell is either a clue cell, blocked cell, or empty (will become clue cell or remain empty)
+    const gapBoundaryValidation = validateWordBoundaries(
+      direction,
+      firstCell,
+      lastCell,
+      config.rows,
+      config.cols,
+      gapFilledAnswerCells,
+      gapFilledOccupiedCells,
+      gapFilledBlockedCells,
+      gapFilledSlots, // existing slots
+      answerCellsForSlot // new answer cells to check
+    );
+    if (!gapBoundaryValidation.valid) {
+      continue; // Skip this slot - invalid boundary
     }
-    // If cellBeforeAnswer is null, the word starts at grid boundary - valid!
-    
-    // Check the cell AFTER the last answer cell
-    const nextCellAfterAnswer = getNextCellAfterAnswer(direction, lastCell, config.rows, config.cols);
-    if (nextCellAfterAnswer !== null) {
-      // Next cell is in bounds - must NOT be an answer cell
-      const nextCellKey = `${nextCellAfterAnswer.row},${nextCellAfterAnswer.col}`;
-      if (gapFilledAnswerCells.has(nextCellKey)) {
-        // This cell is already an answer cell - words would merge, invalid!
-        continue; // Skip this slot
-      }
-      // Valid: cell is either a clue cell, blocked cell, or empty (will become clue cell or remain empty)
-    }
-    // If nextCellAfterAnswer is null, the word ends at grid boundary - valid!
     
     // CRITICAL FIX: Check if clue cell is available AND doesn't overlap with answer cells
     const clueKey = `${startRow},${startCol}`;
@@ -1145,26 +1220,21 @@ export function generateTemplate(
         continue; // Clue cell overlaps with answer cell - invalid!
       }
       
-      // CRITICAL FIX: Final validation - ensure answer cells don't start immediately after another answer cell
-      // Re-validate the cell before the first answer cell (reuse firstCell from earlier)
-      const cellBeforeAnswerFinal = getCellBeforeAnswer(direction, firstCell, config.rows, config.cols);
-      if (cellBeforeAnswerFinal !== null) {
-        const prevCellKey = `${cellBeforeAnswerFinal.row},${cellBeforeAnswerFinal.col}`;
-        if (gapFilledAnswerCells.has(prevCellKey)) {
-          // This would cause word merging - invalid!
-          continue;
-        }
-      }
-      
-      // CRITICAL FIX: Final validation - ensure answer cells don't end immediately before another answer cell
-      // Reuse lastCell from earlier
-      const nextCellAfterAnswerFinal = getNextCellAfterAnswer(direction, lastCell, config.rows, config.cols);
-      if (nextCellAfterAnswerFinal !== null) {
-        const nextCellKey = `${nextCellAfterAnswerFinal.row},${nextCellAfterAnswerFinal.col}`;
-        if (gapFilledAnswerCells.has(nextCellKey)) {
-          // This would cause word merging - invalid!
-          continue;
-        }
+      // CRITICAL FIX: Final validation - ensure word boundaries are valid
+      const finalGapBoundaryValidation = validateWordBoundaries(
+        direction,
+        firstCell,
+        lastCell,
+        config.rows,
+        config.cols,
+        gapFilledAnswerCells,
+        gapFilledOccupiedCells,
+        gapFilledBlockedCells,
+        gapFilledSlots, // existing slots
+        answerCellsForSlot // new answer cells to check
+      );
+      if (!finalGapBoundaryValidation.valid) {
+        continue; // Invalid boundary - would cause word merging
       }
       
       const gapSlotId = `gap_slot_${slotNumber}`;
@@ -1188,9 +1258,9 @@ export function generateTemplate(
       
       // CRITICAL: Mark the cell BEFORE the first answer cell as blocked
       // This prevents words from merging - the cell must remain empty or become a clue cell
-      // Reuse cellBeforeAnswer from earlier validation (line 1009)
-      if (cellBeforeAnswer !== null) {
-        const prevCellKey = `${cellBeforeAnswer.row},${cellBeforeAnswer.col}`;
+      const cellBeforeAnswerForBlocking = getCellBeforeAnswer(direction, firstCell, config.rows, config.cols);
+      if (cellBeforeAnswerForBlocking !== null) {
+        const prevCellKey = `${cellBeforeAnswerForBlocking.row},${cellBeforeAnswerForBlocking.col}`;
         // Only mark as blocked if it's not already a clue cell
         if (!gapFilledOccupiedCells.has(prevCellKey)) {
           gapFilledBlockedCells.add(prevCellKey);
@@ -1199,9 +1269,9 @@ export function generateTemplate(
       
       // CRITICAL: Mark the cell after the last answer cell as blocked
       // This prevents words from merging - the cell must remain empty or become a clue cell
-      // Reuse nextCellAfterAnswer from earlier validation (line 1022)
-      if (nextCellAfterAnswer !== null) {
-        const nextCellKey = `${nextCellAfterAnswer.row},${nextCellAfterAnswer.col}`;
+      const nextCellAfterAnswerForBlocking = getNextCellAfterAnswer(direction, lastCell, config.rows, config.cols);
+      if (nextCellAfterAnswerForBlocking !== null) {
+        const nextCellKey = `${nextCellAfterAnswerForBlocking.row},${nextCellAfterAnswerForBlocking.col}`;
         // Only mark as blocked if it's not already a clue cell
         if (!gapFilledOccupiedCells.has(nextCellKey)) {
           gapFilledBlockedCells.add(nextCellKey);
