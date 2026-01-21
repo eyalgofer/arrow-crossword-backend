@@ -6,7 +6,7 @@
 
 import { Puzzle, Clue, Direction, GridTemplate, ClueSlot, Difficulty } from '../core/types';
 import { GridState } from './grid-state';
-import { getAnswerCells } from './direction-utils';
+import { getAnswerCells, getNextCellAfterAnswer } from './direction-utils';
 
 export interface ClueDatabase {
   getClue(word: string, difficulty: Difficulty): string;
@@ -233,6 +233,90 @@ export function generatePuzzleFromGrid(
     // This prevents crashes and allows the generator to try again
     console.error(`❌ Puzzle has only ${clues.length} clues, but minimum is ${minClues} for ${template.rows}x${template.cols} grid`);
     throw new Error(`Puzzle has only ${clues.length} clues, but minimum is ${minClues} for ${template.rows}x${template.cols} grid`);
+  }
+  
+  // --------------------------------------------------------------------------
+  // FINAL VALIDATION: Ensure every clue's answer follows the boundary rule
+  // For each clue, the cell after the last answer letter must be:
+  // - Out of bounds (grid boundary), OR
+  // - A clue cell, OR
+  // - A blocked cell (neither clue nor answer)
+  // --------------------------------------------------------------------------
+  const clueCellPositions = new Set<string>();
+  for (const clue of clues) {
+    clueCellPositions.add(`${clue.startRow},${clue.startCol}`);
+  }
+  
+  const answerCellPositions = new Set<string>();
+  for (const clue of clues) {
+    const cells = getAnswerCells(clue);
+    for (const cell of cells) {
+      answerCellPositions.add(`${cell.row},${cell.col}`);
+    }
+  }
+  
+  // Compute blocked cells: cells that are neither clue nor answer
+  const blockedCellPositions = new Set<string>();
+  for (let r = 0; r < template.rows; r++) {
+    for (let c = 0; c < template.cols; c++) {
+      const key = `${r},${c}`;
+      if (!clueCellPositions.has(key) && !answerCellPositions.has(key)) {
+        blockedCellPositions.add(key);
+      }
+    }
+  }
+  
+  // Validate each clue
+  const validationErrors: string[] = [];
+  for (const clue of clues) {
+    const answerCells = getAnswerCells(clue);
+    if (answerCells.length === 0) continue;
+    
+    const lastCell = answerCells[answerCells.length - 1];
+    const nextCellAfter = getNextCellAfterAnswer(clue.direction, lastCell, template.rows, template.cols);
+    
+    if (nextCellAfter === null) {
+      // Out of bounds - valid!
+      continue;
+    }
+    
+    const nextCellKey = `${nextCellAfter.row},${nextCellAfter.col}`;
+    
+    // CRITICAL: The cell after the last answer letter must NOT be an answer cell
+    // (Answer cells can only be at crossings, not as boundaries)
+    if (answerCellPositions.has(nextCellKey)) {
+      // Find which clue(s) use this cell to provide better error message
+      const conflictingClues: number[] = [];
+      for (const otherClue of clues) {
+        if (otherClue.number === clue.number) continue;
+        const otherCells = getAnswerCells(otherClue);
+        for (const cell of otherCells) {
+          if (cell.row === nextCellAfter.row && cell.col === nextCellAfter.col) {
+            conflictingClues.push(otherClue.number);
+            break;
+          }
+        }
+      }
+      validationErrors.push(
+        `Clue #${clue.number} "${clue.clue}" (${clue.direction}, answer="${clue.answer}"): cell after last answer letter (${nextCellAfter.row},${nextCellAfter.col}) is an answer cell from clue(s) ${conflictingClues.join(', ')}. Last answer cell: (${lastCell.row},${lastCell.col})`
+      );
+      continue;
+    }
+    
+    // Must be either a clue cell or blocked cell
+    if (!clueCellPositions.has(nextCellKey) && !blockedCellPositions.has(nextCellKey)) {
+      validationErrors.push(
+        `Clue #${clue.number} "${clue.clue}" (${clue.direction}, answer="${clue.answer}"): cell after last answer letter (${nextCellAfter.row},${nextCellAfter.col}) is not clue/block/boundary. Last answer cell: (${lastCell.row},${lastCell.col})`
+      );
+    }
+  }
+  
+  if (validationErrors.length > 0) {
+    console.error(`❌ Puzzle validation failed: ${validationErrors.length} clues violate boundary rule:`);
+    for (const error of validationErrors.slice(0, 10)) {
+      console.error(`   └─ ${error}`);
+    }
+    throw new Error(`Puzzle validation failed: ${validationErrors.length} clues violate boundary rule`);
   }
   
   return {

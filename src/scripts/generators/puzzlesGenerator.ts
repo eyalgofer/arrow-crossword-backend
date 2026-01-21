@@ -233,22 +233,32 @@ export class PuzzleGenerator {
     };
     
     // Build the puzzle
-    const puzzle = generatePuzzleFromGrid(
-      template,
-      result,
-      clueDb,
-      {
-      title: config.title,
-      difficulty: config.difficulty,
-      category: config.category,
-      estimatedTime: config.difficulty === Difficulty.EASY ? 5 : 
-                     config.difficulty === Difficulty.MEDIUM ? 15 : 25,
-      coinReward: config.difficulty === Difficulty.EASY ? 2 :
-                    config.difficulty === Difficulty.MEDIUM ? 5 :10
-      }
-    );
+    try {
+      const puzzle = generatePuzzleFromGrid(
+        template,
+        result,
+        clueDb,
+        {
+        title: config.title,
+        difficulty: config.difficulty,
+        category: config.category,
+        estimatedTime: config.difficulty === Difficulty.EASY ? 5 : 
+                       config.difficulty === Difficulty.MEDIUM ? 15 : 25,
+        coinReward: config.difficulty === Difficulty.EASY ? 2 :
+                      config.difficulty === Difficulty.MEDIUM ? 5 :10
+        }
+      );
 
-    return puzzle;
+      return puzzle;
+    } catch (error) {
+      // Validation errors should be caught and logged
+      if (error instanceof Error && error.message.includes('validation failed')) {
+        console.error(`  ❌ Puzzle validation error: ${error.message}`);
+        return null; // Return null to trigger retry
+      }
+      // Re-throw other errors
+      throw error;
+    }
   }
   
   /**

@@ -4,8 +4,104 @@ import { Puzzle } from '../models/Puzzle';
 import { PuzzlePackage } from '../models/PuzzlePackage';
 import { generatePuzzle } from './generators/puzzlesGenerator';
 import { Difficulty } from '../types';
+import { getAnswerCells, getNextCellAfterAnswer } from './generators/direction-utils';
 
 dotenv.config();
+
+// ---------------------------------------------------------------------------
+// Validation: ensure every answer run terminates correctly
+//
+// Rule: For each clue, the cell immediately AFTER the final answer letter
+// must be either:
+//   - outside the grid (boundary), OR
+//   - a clue cell, OR
+//   - an explicit blocked cell (if provided by puzzle.grid.blockedCells).
+//
+// This prevents "dangling" answer cells where a word visually continues into
+// an empty/playable cell.
+// ---------------------------------------------------------------------------
+function validatePuzzleBoundaries(puzzle: any): string[] {
+  const rows: number = puzzle.grid?.rows;
+  const cols: number = puzzle.grid?.cols;
+  const clues: any[] = puzzle.clues || [];
+  const blockedCellsInput: Array<{ row: number; col: number }> = puzzle.grid?.blockedCells || [];
+
+  const clueCellPositions = new Set<string>();
+  for (const clue of clues) {
+    clueCellPositions.add(`${clue.startRow},${clue.startCol}`);
+  }
+
+  const blockedCellPositions = new Set<string>();
+  for (const bc of blockedCellsInput) {
+    blockedCellPositions.add(`${bc.row},${bc.col}`);
+  }
+
+  const answerCellPositions = new Set<string>();
+  for (const clue of clues) {
+    const cells = getAnswerCells(clue);
+    for (const cell of cells) {
+      answerCellPositions.add(`${cell.row},${cell.col}`);
+    }
+  }
+
+  // Compute blocked cells: cells that are neither clue nor answer
+  const computedBlockedCells = new Set<string>();
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const key = `${r},${c}`;
+      if (!clueCellPositions.has(key) && !answerCellPositions.has(key)) {
+        computedBlockedCells.add(key);
+      }
+    }
+  }
+
+  const errors: string[] = [];
+  const inBounds = (r: number, c: number) => r >= 0 && r < rows && c >= 0 && c < cols;
+
+  for (const clue of clues) {
+    const answerCells = getAnswerCells(clue);
+    if (answerCells.length === 0) continue;
+
+    const lastCell = answerCells[answerCells.length - 1];
+    const nextCellAfter = getNextCellAfterAnswer(clue.direction, lastCell, rows, cols);
+
+    if (nextCellAfter === null) {
+      // Out of bounds - valid!
+      continue;
+    }
+
+    const nextCellKey = `${nextCellAfter.row},${nextCellAfter.col}`;
+
+    // CRITICAL: The cell after the last answer letter must NOT be an answer cell
+    if (answerCellPositions.has(nextCellKey)) {
+      // Find which clue(s) use this cell
+      const conflictingClues: number[] = [];
+      for (const otherClue of clues) {
+        if (otherClue.number === clue.number) continue;
+        const otherCells = getAnswerCells(otherClue);
+        for (const cell of otherCells) {
+          if (cell.row === nextCellAfter.row && cell.col === nextCellAfter.col) {
+            conflictingClues.push(otherClue.number);
+            break;
+          }
+        }
+      }
+      errors.push(
+        `Clue #${clue.number} "${clue.clue}" (${clue.direction}, answer="${clue.answer}"): cell after last answer letter (${nextCellAfter.row},${nextCellAfter.col}) is an answer cell from clue(s) ${conflictingClues.join(', ')}. Last answer cell: (${lastCell.row},${lastCell.col})`
+      );
+      continue;
+    }
+
+    // Must be either a clue cell or blocked cell
+    if (!clueCellPositions.has(nextCellKey) && !blockedCellPositions.has(nextCellKey) && !computedBlockedCells.has(nextCellKey)) {
+      errors.push(
+        `Clue #${clue.number} "${clue.clue}" (${clue.direction}, answer="${clue.answer}"): cell after last answer letter (${nextCellAfter.row},${nextCellAfter.col}) is not clue/block/boundary. Last answer cell: (${lastCell.row},${lastCell.col})`
+      );
+    }
+  }
+
+  return errors;
+}
 
 // Gradient colors for packages
 const gradientPalette = [
@@ -127,9 +223,20 @@ const seedPackages = async () => {
         });
         
         if (puzzle) {
+          // Validate the generated puzzle
+          const boundaryErrors = validatePuzzleBoundaries(puzzle);
+          if (boundaryErrors.length > 0) {
+            console.log(`❌ Generated puzzle failed boundary validation (${boundaryErrors.length} errors). Retrying...`);
+            for (const err of boundaryErrors.slice(0, 5)) {
+              console.log(`   └─ ${err}`);
+            }
+            i--; // Retry this index
+            continue;
+          }
+
           generatedPuzzles.push(puzzle);
           const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-          console.log(`✅ Generated! (${generatedPuzzles.length}/${puzzlesToGenerate}, ${elapsed}s elapsed)`);
+          console.log(`✅ Generated + validated! (${generatedPuzzles.length}/${puzzlesToGenerate}, ${elapsed}s elapsed)`);
         } else {
           console.log(`❌ Failed to generate, retrying...`);
           i--; // Retry

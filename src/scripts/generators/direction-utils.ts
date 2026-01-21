@@ -40,9 +40,9 @@ export function getAnswerCells(
       break;
     case 'left-down':
       // Clue in cell, arrow points diagonally left-down
-      // Answer starts at previous column, next row, goes DOWN
+      // Answer starts at previous column, same row, goes DOWN
       answerStartCol = startCol - 1;
-      answerStartRow = startRow + 1;
+      answerStartRow = startRow; // Same row as clue, not next row
       rowDelta = 1;
       break;
     case 'down-across':
@@ -60,7 +60,9 @@ export function getAnswerCells(
   }
   
   // Generate all cells the answer occupies
-  for (let i = 0; i < answer.length; i++) {
+  // Remove spaces from answer for cell placement (spaces are not placed in grid)
+  const answerWithoutSpaces = answer.replace(/\s+/g, '');
+  for (let i = 0; i < answerWithoutSpaces.length; i++) {
     cells.push({
       row: answerStartRow + i * rowDelta,
       col: answerStartCol + i * colDelta
@@ -113,7 +115,7 @@ export function getSlotCells(slot: ClueSlot): Array<{ row: number; col: number }
       break;
     case 'left-down':
       startCol -= 1;
-      startRow += 1;
+      // startRow stays the same (answer starts at same row as clue)
       rowDelta = 1;
       break;
     case 'down-across':
