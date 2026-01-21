@@ -136,3 +136,41 @@ export function getSlotCells(slot: ClueSlot): Array<{ row: number; col: number }
   
   return cells;
 }
+
+/**
+ * Get the next cell in the same direction after the last answer cell
+ * Returns null if the next cell would be out of bounds
+ */
+export function getNextCellAfterAnswer(
+  direction: Direction,
+  lastAnswerCell: { row: number; col: number },
+  gridRows: number,
+  gridCols: number
+): { row: number; col: number } | null {
+  let rowDelta = 0;
+  let colDelta = 0;
+  
+  // Determine the direction delta based on the answer orientation
+  switch (direction) {
+    case 'across':
+    case 'down-across':
+    case 'up-across':
+      colDelta = 1; // Horizontal answers continue to the right
+      break;
+    case 'down':
+    case 'right-down':
+    case 'left-down':
+      rowDelta = 1; // Vertical answers continue downward
+      break;
+  }
+  
+  const nextRow = lastAnswerCell.row + rowDelta;
+  const nextCol = lastAnswerCell.col + colDelta;
+  
+  // Check if next cell is out of bounds
+  if (nextRow < 0 || nextRow >= gridRows || nextCol < 0 || nextCol >= gridCols) {
+    return null; // Out of bounds - valid end point
+  }
+  
+  return { row: nextRow, col: nextCol };
+}

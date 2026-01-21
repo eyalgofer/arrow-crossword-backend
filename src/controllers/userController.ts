@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { User } from '../models/User';
+import { Invite, InviteStatus } from '../models/Invite';
 import { AuthRequest } from '../types';
 
 export const updateProfile = async (req: AuthRequest, res: Response) => {
@@ -151,5 +152,52 @@ export const searchByEmail = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Search by email error:', error);
     res.status(500).json({ error: 'Failed to search users' });
+  }
+};
+
+export const getReferralInfo = async (req: AuthRequest, res: Response) => {
+  try {
+    console.log('[REFERRAL] Getting referral info for user:', req.user!.uid);
+    const user = await User.findOne({ firebaseUid: req.user!.uid });
+
+    if (!user) {
+      console.log('[REFERRAL] User not found:', req.user!.uid);
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Generate invite code from user's MongoDB _id (base64 encoded, URL-safe)
+    // Convert ObjectId hex string to buffer, then to base64, and make URL-safe
+    const inviteCode = Buffer.from(user._id.toHexString(), 'hex')
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+
+    // Count referrals: users who were referred by this user
+    // For now, we'll count accepted invites where this user is the inviter
+    // In the future, this could be tracked via a separate referral system
+    const referralCount = await Invite.countDocuments({
+      from: user._id,
+      status: InviteStatus.ACCEPTED
+    });
+
+    // Coins per referral - can be made configurable via environment variable
+    const coinsPerReferral = parseInt(process.env.COINS_PER_REFERRAL || '10', 10);
+    
+    // Calculate total coins earned from referrals
+    const totalCoinsEarned = referralCount * coinsPerReferral;
+
+    const response = {
+      inviteCode,
+      referralCount,
+      coinsPerReferral,
+      totalCoinsEarned
+    };
+    
+    console.log('[REFERRAL] Returning referral info:', response);
+    res.json(response);
+  } catch (error) {
+    console.error('[REFERRAL] Get referral info error:', error);
+    res.status(500).json({ error: 'Failed to get referral info' });
   }
 };

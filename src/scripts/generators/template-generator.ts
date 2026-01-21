@@ -5,7 +5,7 @@
  */
 
 import { Direction, GridTemplate, ClueSlot, Difficulty } from '../core/types';
-import { getSlotCells, getAnswerOrientation } from './direction-utils';
+import { getSlotCells, getAnswerOrientation, getNextCellAfterAnswer } from './direction-utils';
 
 /**
  * Generate a template programmatically for larger, more complex puzzles
@@ -29,6 +29,7 @@ export function generateTemplate(
   const clueCells: Array<{ row: number; col: number; direction: Direction }> = [];
   const occupiedCells = new Set<string>(); // Track which cells have clues
   const answerCells = new Map<string, { slotId: string; position: number }>(); // Track answer cells for crossings
+  const blockedCells = new Set<string>(); // Track cells that must remain empty (after answer ends) to prevent word merging
   
   // Generate slots with strategic placement for dense puzzles
   // With 6M clues, aim for maximum slots to achieve ultra-density
@@ -179,6 +180,26 @@ export function generateTemplate(
           continue; // This length doesn't fit
         }
         
+        // CRITICAL: Validate that the cell after the last answer cell is valid
+        // In arrow puzzles, words can only end at clue cells, blocked cells, or grid boundaries
+        const nextCellAfterAnswer = getNextCellAfterAnswer(direction, lastCell, config.rows, config.cols);
+        if (nextCellAfterAnswer !== null) {
+          // Next cell is in bounds - must be either a clue cell or a blocked cell
+          const nextCellKey = `${nextCellAfterAnswer.row},${nextCellAfterAnswer.col}`;
+          if (!occupiedCells.has(nextCellKey) && !blockedCells.has(nextCellKey)) {
+            // Next cell is empty and not blocked - this would allow word merging, which is invalid
+            // Check if it's already an answer cell (which would be a conflict)
+            if (answerCells.has(nextCellKey)) {
+              // This cell is already an answer cell - words would merge, invalid!
+              continue; // Skip this length
+            }
+            // If it's empty, we could mark it as blocked, but we need to check if that conflicts
+            // with existing slots. For now, we'll be strict and require it to be a clue cell or blocked.
+            // We'll mark it as blocked later if we choose this slot.
+          }
+        }
+        // If nextCellAfterAnswer is null, the word ends at grid boundary - valid!
+        
         // Check if clue cell is available
         const testClueKey = `${startRow},${startCol}`;
         if (occupiedCells.has(testClueKey)) {
@@ -201,6 +222,12 @@ export function generateTemplate(
           
           // Can't place answer in a clue cell
           if (occupiedCells.has(cellKey)) {
+            hasConflict = true;
+            break;
+          }
+          
+          // Can't place answer in a blocked cell (these must remain empty or become clue cells)
+          if (blockedCells.has(cellKey)) {
             hasConflict = true;
             break;
           }
@@ -323,6 +350,12 @@ export function generateTemplate(
         continue;
       }
       
+      // CRITICAL: Double-check that clue cell is still available (prevent duplicates)
+      if (occupiedCells.has(clueKey)) {
+        // This should not happen due to earlier checks, but add safety check
+        continue; // Clue cell already taken, skip this slot
+      }
+      
       // Place the slot
       const slotId = `slot_${slotNumber}`;
       const slot: ClueSlot = {
@@ -346,6 +379,18 @@ export function generateTemplate(
         const cell = answerCellsForSlot[j];
         const cellKey = `${cell.row},${cell.col}`;
         answerCells.set(cellKey, { slotId, position: j });
+      }
+      
+      // CRITICAL: Mark the cell after the last answer cell as blocked
+      // This prevents words from merging - the cell must remain empty or become a clue cell
+      const lastAnswerCell = answerCellsForSlot[answerCellsForSlot.length - 1];
+      const nextCellAfterAnswer = getNextCellAfterAnswer(direction, lastAnswerCell, config.rows, config.cols);
+      if (nextCellAfterAnswer !== null) {
+        const nextCellKey = `${nextCellAfterAnswer.row},${nextCellAfterAnswer.col}`;
+        // Only mark as blocked if it's not already a clue cell
+        if (!occupiedCells.has(nextCellKey)) {
+          blockedCells.add(nextCellKey);
+        }
       }
       
       placed = true;
@@ -701,10 +746,15 @@ export function generateTemplate(
         // Cap at 15 crossings for ultra-dense puzzles
         const relaxedLimit = 15;
         if (crossings <= relaxedLimit) {
-          finalFilteredSlots.push(slot);
-          clueCellSet.add(clueKey); // Add this slot's clue cell
-          added++;
-          console.log(`  ✅ Re-added slot ${slot.id} with ${crossings} crossings (relaxed limit: ${relaxedLimit})`);
+          // CRITICAL: Double-check clue cell is still available before adding
+          if (!clueCellSet.has(clueKey)) {
+            finalFilteredSlots.push(slot);
+            clueCellSet.add(clueKey); // Add this slot's clue cell
+            added++;
+            console.log(`  ✅ Re-added slot ${slot.id} with ${crossings} crossings (relaxed limit: ${relaxedLimit})`);
+          } else {
+            console.log(`  ⚠️  Skipped re-adding slot ${slot.id}: clue cell (${slot.startRow},${slot.startCol}) already taken`);
+          }
         }
       }
       console.log(`  ✅ Relaxed filtering: Added ${added} more slots. Total: ${finalFilteredSlots.length}`);
@@ -716,6 +766,7 @@ export function generateTemplate(
   const gapFilledSlots = [...finalFilteredSlots];
   const gapFilledAnswerCells = new Map<string, { slotId: string; position: number }>();
   const gapFilledOccupiedCells = new Set<string>();
+  const gapFilledBlockedCells = new Set<string>(blockedCells); // Copy blocked cells from initial placement
   
   // Rebuild answer cells and occupied cells from final filtered slots
   for (const slot of finalFilteredSlots) {
@@ -725,6 +776,15 @@ export function generateTemplate(
       const cell = answerCells[j];
       const cellKey = `${cell.row},${cell.col}`;
       gapFilledAnswerCells.set(cellKey, { slotId: slot.id, position: j });
+    }
+    // Also mark the cell after the last answer cell as blocked
+    const lastAnswerCell = answerCells[answerCells.length - 1];
+    const nextCellAfterAnswer = getNextCellAfterAnswer(slot.direction, lastAnswerCell, config.rows, config.cols);
+    if (nextCellAfterAnswer !== null) {
+      const nextCellKey = `${nextCellAfterAnswer.row},${nextCellAfterAnswer.col}`;
+      if (!gapFilledOccupiedCells.has(nextCellKey)) {
+        gapFilledBlockedCells.add(nextCellKey);
+      }
     }
   }
   
@@ -880,6 +940,25 @@ export function generateTemplate(
       continue;
     }
     
+    // CRITICAL: Validate that the cell after the last answer cell is valid
+    // In arrow puzzles, words can only end at clue cells, blocked cells, or grid boundaries
+    const nextCellAfterAnswer = getNextCellAfterAnswer(direction, lastCell, config.rows, config.cols);
+    if (nextCellAfterAnswer !== null) {
+      // Next cell is in bounds - must be either a clue cell or a blocked cell
+      const nextCellKey = `${nextCellAfterAnswer.row},${nextCellAfterAnswer.col}`;
+      if (!gapFilledOccupiedCells.has(nextCellKey) && !gapFilledBlockedCells.has(nextCellKey)) {
+        // Next cell is empty and not blocked - this would allow word merging, which is invalid
+        // Check if it's already an answer cell (which would be a conflict)
+        if (gapFilledAnswerCells.has(nextCellKey)) {
+          // This cell is already an answer cell - words would merge, invalid!
+          continue; // Skip this slot
+        }
+        // If it's empty, we could mark it as blocked, but we need to check if that conflicts
+        // with existing slots. For now, we'll be strict and require it to be a clue cell or blocked.
+      }
+    }
+    // If nextCellAfterAnswer is null, the word ends at grid boundary - valid!
+    
     // Check if clue cell is available
     const clueKey = `${startRow},${startCol}`;
     if (gapFilledOccupiedCells.has(clueKey)) {
@@ -906,6 +985,12 @@ export function generateTemplate(
         
         // CRITICAL: Answer cells cannot be in clue cells
         if (gapFilledOccupiedCells.has(cellKey)) {
+          canPlace = false;
+          break;
+        }
+        
+        // CRITICAL: Answer cells cannot be in blocked cells (these must remain empty or become clue cells)
+        if (gapFilledBlockedCells.has(cellKey)) {
           canPlace = false;
           break;
         }
@@ -976,6 +1061,18 @@ export function generateTemplate(
         const cell = answerCellsForSlot[j];
         const cellKey = `${cell.row},${cell.col}`;
         gapFilledAnswerCells.set(cellKey, { slotId: gapSlotId, position: j });
+      }
+      
+      // CRITICAL: Mark the cell after the last answer cell as blocked
+      // This prevents words from merging - the cell must remain empty or become a clue cell
+      const lastAnswerCell = answerCellsForSlot[answerCellsForSlot.length - 1];
+      const nextCellAfterAnswer = getNextCellAfterAnswer(direction, lastAnswerCell, config.rows, config.cols);
+      if (nextCellAfterAnswer !== null) {
+        const nextCellKey = `${nextCellAfterAnswer.row},${nextCellAfterAnswer.col}`;
+        // Only mark as blocked if it's not already a clue cell
+        if (!gapFilledOccupiedCells.has(nextCellKey)) {
+          gapFilledBlockedCells.add(nextCellKey);
+        }
       }
       
       gapFilledCount++;
@@ -1242,12 +1339,54 @@ export function generateTemplate(
     console.warn(`  ⚠️  Removed ${removedExcessive} slots with excessive crossings (>15)`);
   }
   
-  // Recalculate clue cells for safe slots
-  const filteredClueCells = safeSlots.map(slot => ({
-    row: slot.startRow,
-    col: slot.startCol,
-    direction: slot.direction
-  }));
+  // CRITICAL: Recalculate clue cells for safe slots and ensure uniqueness
+  // Each clue cell position must be unique - no two slots can share the same clue cell
+  const clueCellPositions = new Map<string, { row: number; col: number; direction: Direction; slotId: string }>();
+  const filteredClueCells: Array<{ row: number; col: number; direction: Direction }> = [];
+  
+  // First pass: collect all clue cells and detect duplicates
+  const duplicateSlots: string[] = [];
+  for (const slot of safeSlots) {
+    const clueKey = `${slot.startRow},${slot.startCol}`;
+    if (clueCellPositions.has(clueKey)) {
+      // Duplicate detected - this slot shares a clue cell with another slot
+      const existing = clueCellPositions.get(clueKey)!;
+      console.warn(`  ⚠️  Duplicate clue cell detected at (${slot.startRow},${slot.startCol}): slot ${slot.id} conflicts with slot ${existing.slotId}`);
+      duplicateSlots.push(slot.id);
+    } else {
+      clueCellPositions.set(clueKey, {
+        row: slot.startRow,
+        col: slot.startCol,
+        direction: slot.direction,
+        slotId: slot.id
+      });
+    }
+  }
+  
+  // Remove duplicate slots (keep the first one encountered)
+  const uniqueSlots = safeSlots.filter(slot => !duplicateSlots.includes(slot.id));
+  
+  if (duplicateSlots.length > 0) {
+    console.warn(`  ⚠️  Removed ${duplicateSlots.length} slots with duplicate clue cells. Remaining: ${uniqueSlots.length} slots`);
+  }
+  
+  // Build clue cells array from unique slots
+  for (const slot of uniqueSlots) {
+    filteredClueCells.push({
+      row: slot.startRow,
+      col: slot.startCol,
+      direction: slot.direction
+    });
+  }
+  
+  // Ensure we have exactly one clue cell per slot
+  if (filteredClueCells.length !== uniqueSlots.length) {
+    console.error(`  ❌ CRITICAL: Clue cells count (${filteredClueCells.length}) doesn't match unique slots count (${uniqueSlots.length})`);
+  }
+  
+  // Update safeSlots to use unique slots
+  safeSlots.length = 0;
+  safeSlots.push(...uniqueSlots);
   
   // Calculate average crossings for metadata
   const avgCrossings = safeSlots.length > 0 
@@ -1282,11 +1421,19 @@ export function generateTemplate(
         .filter(s => !safeSlots.includes(s))
         .sort((a, b) => a.crossings.length - b.crossings.length);
       
-      for (const slot of availableSlots) {
+        // Build a set of clue cell positions from current safe slots to prevent duplicates
+        const currentClueCellSet = new Set<string>();
+        for (const slot of safeSlots) {
+          currentClueCellSet.add(`${slot.startRow},${slot.startCol}`);
+        }
+        
+        for (const slot of availableSlots) {
         if (added >= needed) break;
         // CRITICAL: Never re-add slots with more than 10 crossings - they're unsolvable
-        if (slot.crossings.length <= 10) {
+        const slotClueKey = `${slot.startRow},${slot.startCol}`;
+        if (slot.crossings.length <= 10 && !currentClueCellSet.has(slotClueKey)) {
           safeSlots.push(slot);
+          currentClueCellSet.add(slotClueKey);
           added++;
         }
       }
@@ -1301,8 +1448,10 @@ export function generateTemplate(
         for (const slot of overlapFiltered) {
           if (safeSlots.length >= config.minSlots) break;
           // Be desperate - add even slots with overlaps if crossings are reasonable (max 10)
-          if (slot.crossings.length <= 10) {
+          const slotClueKey = `${slot.startRow},${slot.startCol}`;
+          if (slot.crossings.length <= 10 && !currentClueCellSet.has(slotClueKey)) {
             safeSlots.push(slot);
+            currentClueCellSet.add(slotClueKey);
             added++;
           }
         }
@@ -1314,8 +1463,32 @@ export function generateTemplate(
     }
   }
   
+  // FINAL VALIDATION: Ensure clue cells exactly match slots (one-to-one relationship)
+  if (filteredClueCells.length !== safeSlots.length) {
+    console.error(`  ❌ CRITICAL ERROR: Clue cells (${filteredClueCells.length}) don't match slots (${safeSlots.length})`);
+    // Rebuild clue cells from slots to fix the mismatch
+    const rebuiltClueCells = safeSlots.map(slot => ({
+      row: slot.startRow,
+      col: slot.startCol,
+      direction: slot.direction
+    }));
+    console.log(`  🔧 Rebuilt clue cells array: ${rebuiltClueCells.length} clue cells`);
+    filteredClueCells.length = 0;
+    filteredClueCells.push(...rebuiltClueCells);
+  }
+  
+  // Verify uniqueness one more time
+  const finalClueCellSet = new Set<string>();
+  for (const clueCell of filteredClueCells) {
+    const key = `${clueCell.row},${clueCell.col}`;
+    if (finalClueCellSet.has(key)) {
+      console.error(`  ❌ CRITICAL: Duplicate clue cell in final array at (${clueCell.row},${clueCell.col})`);
+    }
+    finalClueCellSet.add(key);
+  }
+  
   if (safeSlots.length >= config.minSlots) {
-    console.log(`  ✅ Generated ${safeSlots.length} slots (target: ${config.minSlots}-${config.maxSlots})`);
+    console.log(`  ✅ Generated ${safeSlots.length} slots with ${filteredClueCells.length} unique clue cells (target: ${config.minSlots}-${config.maxSlots})`);
   } else {
     console.warn(`  ⚠️  Still only ${safeSlots.length} slots (need ${config.minSlots}) - template may be invalid`);
   }

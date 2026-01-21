@@ -77,6 +77,7 @@ export function placeWord(
 /**
  * Check if a word can be placed without conflicts
  * Handles multi-word answers by removing spaces for grid placement
+ * Also validates that words don't merge (end when another letter follows)
  */
 export function canPlaceWord(
   state: GridState,
@@ -110,6 +111,40 @@ export function canPlaceWord(
       return false;
     }
   }
+  
+  // CRITICAL: Validate that the word ends at a valid position
+  // In arrow puzzles, words can only end at clue cells or grid boundaries
+  // Check the cell after the last answer cell
+  if (cells.length >= 2) {
+    const lastCell = cells[cells.length - 1];
+    const firstCell = cells[0];
+    const secondCell = cells[1];
+    const rowDelta = secondCell.row - firstCell.row;
+    const colDelta = secondCell.col - firstCell.col;
+    
+    // Calculate next cell in the same direction
+    const nextRow = lastCell.row + rowDelta;
+    const nextCol = lastCell.col + colDelta;
+    
+    // Check if next cell is out of bounds (valid end point)
+    if (nextRow >= 0 && nextRow < state.rows && nextCol >= 0 && nextCol < state.cols) {
+      // Next cell is in bounds - must be either a clue cell or empty
+      // If it has a letter, that means another word continues there, which would merge words (invalid!)
+      const nextCellKey = `${nextRow},${nextCol}`;
+      if (state.clueCells.has(nextCellKey)) {
+        // Next cell is a clue cell - valid end point
+      } else {
+        const nextCellLetter = state.cells[nextRow][nextCol];
+        if (nextCellLetter !== null) {
+          // Next cell has a letter - words would merge, invalid!
+          return false;
+        }
+        // Next cell is empty - valid (will remain empty or become a clue cell)
+      }
+    }
+    // If next cell is out of bounds, that's a valid end point (grid boundary)
+  }
+  // For single-cell words (rare), skip this validation
   
   return true;
 }

@@ -144,6 +144,11 @@ app.use('/api/packages', packageRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/invites', inviteRoutes);
 
+// 404 handler for API routes - must be before errorHandler
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'API endpoint not found' });
+});
+
 app.use(errorHandler);
 
 const startServer = async () => {

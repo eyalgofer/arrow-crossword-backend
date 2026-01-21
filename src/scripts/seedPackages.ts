@@ -96,10 +96,16 @@ const seedPackages = async () => {
     const smallGridPuzzles = existingPuzzles.filter(p => p.grid.rows < 10 || p.grid.cols < 10);
     const forceRegenerate = smallGridPuzzles.length > 0;
     
-    if (forceRegenerate) {
-      console.log(`\n⚠️  Found ${smallGridPuzzles.length} puzzles with grids smaller than 10x10`);
-      console.log(`🗑️  Clearing all puzzles to regenerate with larger grids (11x11+)...`);
+    // FORCE REGENERATION: Clear all puzzles to regenerate with new fixes
+    // This ensures all puzzles are regenerated with the latest fixes for word endings and clue cells
+    if (existingPuzzles.length > 0) {
+      console.log(`\n🔄 Regenerating all puzzles with latest fixes...`);
+      console.log(`   - Fixed: Words can only end at clue cells, blocked cells, or grid boundaries`);
+      console.log(`   - Fixed: Clue cells are unique (no overlapping question arrows)`);
+      console.log(`🗑️  Clearing all existing puzzles...`);
       await Puzzle.deleteMany({});
+      await PuzzlePackage.deleteMany({});
+      console.log(`✅ Cleared ${existingPuzzles.length} puzzles and all packages`);
     }
 
     // Generate puzzles if we don't have enough (or if we cleared them)
@@ -114,13 +120,14 @@ const seedPackages = async () => {
       const startTime = Date.now();
       
       for (let i = 0; i < puzzlesToGenerate; i++) {
-        const puzzleNumber = existingPuzzles.length + generatedPuzzles.length + 1;
-        console.log(`\n📝 Generating puzzle ${i + 1}/${puzzlesToGenerate} (Puzzle #${puzzleNumber})...`);
+        const puzzleIndex = generatedPuzzles.length + 1;
+        console.log(`\n📝 Generating puzzle ${i + 1}/${puzzlesToGenerate} (Index ${puzzleIndex})...`);
         
+        // Generate puzzle with temporary title - will be updated per package later
         const puzzle = generatePuzzle({
           difficulty: Difficulty.EASY, // Uses easy/medium/challenging clues only
           category: 'Mixed',
-          title: `Puzzle #${puzzleNumber}`
+          title: `Puzzle ${puzzleIndex}` // Temporary title, will be updated per package
         });
         
         if (puzzle) {
@@ -170,8 +177,10 @@ const seedPackages = async () => {
       
       // Select sequential puzzles for this package (no overlap)
       const puzzleIds: mongoose.Types.ObjectId[] = [];
+      const puzzlesForPackage: any[] = [];
       for (let j = 0; j < def.puzzleCount; j++) {
         puzzleIds.push(allPuzzles[puzzleIndex]._id as mongoose.Types.ObjectId);
+        puzzlesForPackage.push(allPuzzles[puzzleIndex]);
         puzzleIndex++;
       }
 
@@ -188,11 +197,18 @@ const seedPackages = async () => {
 
       await newPackage.save();
       
-      // Update puzzles with packageId
-      await Puzzle.updateMany(
-        { _id: { $in: puzzleIds } },
-        { $set: { packageId: newPackage._id } }
-      );
+      // Update puzzles with packageId and renumber titles within package (starting from #1)
+      for (let j = 0; j < puzzleIds.length; j++) {
+        await Puzzle.updateOne(
+          { _id: puzzleIds[j] },
+          { 
+            $set: { 
+              packageId: newPackage._id,
+              title: `Puzzle #${j + 1}` // Number within package: #1, #2, #3...
+            } 
+          }
+        );
+      }
       
       console.log(`   ✅ ${i + 1}. ${def.name} (${def.puzzleCount} puzzles) - ${def.theme}`);
     }

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { updateProfile, getLeaderboard, getUserStats, getCoins, addCoins, spendCoins, searchByEmail } from '../controllers/userController';
+import { updateProfile, getLeaderboard, getUserStats, getCoins, addCoins, spendCoins, searchByEmail, getReferralInfo } from '../controllers/userController';
 import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
@@ -11,5 +11,6 @@ router.get('/stats', authenticateToken, getUserStats);
 router.get('/coins', authenticateToken, getCoins);
 router.post('/coins/add', authenticateToken, addCoins);
 router.post('/coins/spend', authenticateToken, spendCoins);
+router.get('/referral', authenticateToken, getReferralInfo);
 
 export default router;
