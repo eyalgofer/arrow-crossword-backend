@@ -31,8 +31,8 @@ const puzzlePackageSchema = new Schema<IPuzzlePackage>({
     type: Number,
     required: true,
     validate: {
-      validator: (v: number) => v === 2 || v === 20,
-      message: 'puzzleCount must be 2 or 20'
+      validator: (v: number) => v === 5 || v === 20,
+      message: 'puzzleCount must be 5 or 20'
     }
   },
   puzzleIds: [{

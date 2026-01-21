@@ -22,17 +22,17 @@ export function generateTemplate(
           maxCrossingsMultiplier: 0.3,  // 30% of normal (much fewer crossings)
           slotCountMultiplier: 0.5,     // 50% of normal (fewer slots)
           densityTarget: 0.70,          // 70% coverage (more empty space)
-          preferFewerCrossings: true,   // Prefer slots with fewer crossings
+          preferFewerCrossings: false,   // Prefer slots with fewer crossings
           useSimpleDirections: false,    // Use fewer diagonal directions
           enableGapFilling: false,      // Disable aggressive gap-filling
           maxWordLength: 9
         };
       case Difficulty.MEDIUM:
         return {
-          maxCrossingsMultiplier: 0.5,  // 50% of normal
-          slotCountMultiplier: 0.65,    // 65% of normal
-          densityTarget: 0.80,          // 80% coverage
-          preferFewerCrossings: true,
+          maxCrossingsMultiplier: 0.7,  // 50% of normal
+          slotCountMultiplier: 0.75,    // 65% of normal
+          densityTarget: 0.9,          // 80% coverage
+          preferFewerCrossings: false,
           useSimpleDirections: false,
           enableGapFilling: true,
           maxWordLength: 10
@@ -45,7 +45,7 @@ export function generateTemplate(
           preferFewerCrossings: false,
           useSimpleDirections: false,
           enableGapFilling: true,
-          maxWordLength: 6
+          maxWordLength: 12  // Increased from 6 - challenging puzzles should have longer words
         };
       default:
         return {
@@ -55,7 +55,7 @@ export function generateTemplate(
           preferFewerCrossings: false,
           useSimpleDirections: false,
           enableGapFilling: true,
-          maxWordLength: 7
+          maxWordLength: 12  // Increased from 7 for better variety
         };
     }
   };
@@ -207,7 +207,7 @@ export function generateTemplate(
       // Allow longer words for better variety
       const maxLength = Math.min(
         difficultyMultipliers.maxWordLength,
-        size === 'tiny' ? 6 : size === 'small' ? 7 : size === 'medium' ? 8 : size === 'large' ? 9 : 10
+        size === 'tiny' ? 7 : size === 'small' ? 10 : size === 'medium' ? 12 : size === 'large' ? 14 : 15
       );
       const minLength = 3; // Start from 3 letters
       
@@ -1010,9 +1010,14 @@ export function generateTemplate(
     if (direction === 'right-down' && startCol >= config.cols - 1) startCol = Math.max(0, config.cols - 2);
     if (direction === 'down-across' && startRow >= config.rows - 1) startRow = Math.max(0, config.rows - 2);
     
-    // Prefer shorter words for gap filling (3-6 letters) to pack tighter and fill more gaps
-    // Very short words can fill tiny gaps and create more crossings
-    const wordLength = Math.floor(Math.random() * 4) + 3;
+    // Use word length based on difficulty - allow longer words for better variety
+    // Range: 3-8 for easy, 4-10 for medium, 5-12 for challenging
+    const minGapLength = difficulty === Difficulty.EASY ? 3 : difficulty === Difficulty.MEDIUM ? 4 : 5;
+    const maxGapLength = Math.min(
+      difficultyMultipliers.maxWordLength,
+      size === 'tiny' ? 6 : size === 'small' ? 8 : size === 'medium' ? 10 : size === 'large' ? 12 : 12
+    );
+    const wordLength = Math.floor(Math.random() * (maxGapLength - minGapLength + 1)) + minGapLength;
     
     const tempSlot: ClueSlot = {
       id: 'gap_fill',

@@ -126,7 +126,7 @@ const iconNames = [
 // Package definitions - 2 packages with 10 puzzles each
 // Total puzzles needed: 10 + 10 = 20
 const packageDefinitions = Array.from({ length: 2 }, (_, i) => {
-  const puzzleCount = 2;
+  const puzzleCount = 5;
   
   return {
     name: `Package #${i + 1}`,
@@ -188,7 +188,6 @@ const seedPackages = async () => {
 
     // Check if existing puzzles have small grids (7x7) - if so, regenerate all
     const smallGridPuzzles = existingPuzzles.filter(p => p.grid.rows < 10 || p.grid.cols < 10);
-    const forceRegenerate = smallGridPuzzles.length > 0;
     
     // FORCE REGENERATION: Clear all puzzles to regenerate with new fixes
     // This ensures all puzzles are regenerated with the latest fixes for word endings and clue cells
