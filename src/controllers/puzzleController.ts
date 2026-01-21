@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { Puzzle } from '../models/Puzzle';
 import { PuzzlePackage } from '../models/PuzzlePackage';
 import { UserPuzzleProgress, IProgressCell } from '../models/UserPuzzleProgress';
+import { DailyPuzzle } from '../models/DailyPuzzle';
 import { User } from '../models/User';
 import { AuthRequest, ProgressSummary } from '../types';
 
@@ -57,19 +58,45 @@ export const getPuzzles = async (req: AuthRequest, res: Response) => {
 
 export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
   try {
-    // For now, return the same puzzle every day
-    // Later this will be changed to return different puzzles per day
-    const puzzle = await Puzzle.findOne({ isActive: { $ne: false } })
-      .select('-clues.across.answer -clues.down.answer')
-      .sort({ createdAt: 1 });
+    const now = new Date();
+    const year = now.getFullYear();
+    const startOfYear = new Date(year, 0, 1);
+    const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
+    // Try to find the daily puzzle for today
+    let dailyPuzzle = await DailyPuzzle.findOne({ dayOfYear, year })
+      .populate('puzzleId');
+
+    // If no puzzle assigned for today, fallback to first available puzzle
+    // (This handles cases where daily puzzles haven't been set up yet)
+    if (!dailyPuzzle) {
+      const fallbackPuzzle = await Puzzle.findOne({ isActive: { $ne: false } })
+        .select('-clues.across.answer -clues.down.answer')
+        .sort({ createdAt: 1 });
+
+      if (!fallbackPuzzle) {
+        return res.status(404).json({ error: 'No daily puzzle available' });
+      }
+
+      const puzzleData = {
+        ...fallbackPuzzle.toObject(),
+        clues: fallbackPuzzle.clues,
+      };
+
+      return res.json({ puzzle: puzzleData });
+    }
+
+    const puzzle = dailyPuzzle.puzzleId as any;
     if (!puzzle) {
-      return res.status(404).json({ error: 'No daily puzzle available' });
+      return res.status(404).json({ error: 'Daily puzzle reference is invalid' });
     }
 
     const puzzleData = {
       ...puzzle.toObject(),
       clues: puzzle.clues,
+      // Optionally include daily puzzle metadata
+      dailyPuzzleDate: dailyPuzzle.date,
+      dayOfYear: dailyPuzzle.dayOfYear
     };
 
     res.json({ puzzle: puzzleData });
