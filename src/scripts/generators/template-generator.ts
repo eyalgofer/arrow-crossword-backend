@@ -5,7 +5,7 @@
  */
 
 import { Direction, GridTemplate, ClueSlot, Difficulty } from '../core/types';
-import { getSlotCells, getAnswerOrientation, getNextCellAfterAnswer } from './direction-utils';
+import { getSlotCells, getAnswerOrientation, getNextCellAfterAnswer, getCellBeforeAnswer } from './direction-utils';
 
 /**
  * Generate a template programmatically for larger, more complex puzzles
@@ -180,23 +180,31 @@ export function generateTemplate(
           continue; // This length doesn't fit
         }
         
-        // CRITICAL: Validate that the cell after the last answer cell is valid
-        // In arrow puzzles, words can only end at clue cells, blocked cells, or grid boundaries
+        // CRITICAL: Validate that words can only start/end after clue cells, blocked cells, or grid boundaries
+        // Check the cell BEFORE the first answer cell
+        const firstCell = testAnswerCells[0];
+        const cellBeforeAnswer = getCellBeforeAnswer(direction, firstCell, config.rows, config.cols);
+        if (cellBeforeAnswer !== null) {
+          // Previous cell is in bounds - check if it's an answer cell (which would cause merging)
+          const prevCellKey = `${cellBeforeAnswer.row},${cellBeforeAnswer.col}`;
+          if (answerCells.has(prevCellKey)) {
+            // This cell is already an answer cell - words would merge, invalid!
+            continue; // Skip this length
+          }
+          // If it's empty, a clue cell, or blocked, that's fine - word starts at valid position
+        }
+        // If cellBeforeAnswer is null, the word starts at grid boundary - valid!
+        
+        // Check the cell AFTER the last answer cell
         const nextCellAfterAnswer = getNextCellAfterAnswer(direction, lastCell, config.rows, config.cols);
         if (nextCellAfterAnswer !== null) {
-          // Next cell is in bounds - must be either a clue cell or a blocked cell
+          // Next cell is in bounds - check if it's an answer cell (which would cause merging)
           const nextCellKey = `${nextCellAfterAnswer.row},${nextCellAfterAnswer.col}`;
-          if (!occupiedCells.has(nextCellKey) && !blockedCells.has(nextCellKey)) {
-            // Next cell is empty and not blocked - this would allow word merging, which is invalid
-            // Check if it's already an answer cell (which would be a conflict)
-            if (answerCells.has(nextCellKey)) {
-              // This cell is already an answer cell - words would merge, invalid!
-              continue; // Skip this length
-            }
-            // If it's empty, we could mark it as blocked, but we need to check if that conflicts
-            // with existing slots. For now, we'll be strict and require it to be a clue cell or blocked.
-            // We'll mark it as blocked later if we choose this slot.
+          if (answerCells.has(nextCellKey)) {
+            // This cell is already an answer cell - words would merge, invalid!
+            continue; // Skip this length
           }
+          // If it's empty, a clue cell, or blocked, that's fine - word ends at valid position
         }
         // If nextCellAfterAnswer is null, the word ends at grid boundary - valid!
         
@@ -379,6 +387,18 @@ export function generateTemplate(
         const cell = answerCellsForSlot[j];
         const cellKey = `${cell.row},${cell.col}`;
         answerCells.set(cellKey, { slotId, position: j });
+      }
+      
+      // CRITICAL: Mark the cell BEFORE the first answer cell as blocked
+      // This prevents words from merging - the cell must remain empty or become a clue cell
+      const firstAnswerCell = answerCellsForSlot[0];
+      const cellBeforeAnswer = getCellBeforeAnswer(direction, firstAnswerCell, config.rows, config.cols);
+      if (cellBeforeAnswer !== null) {
+        const prevCellKey = `${cellBeforeAnswer.row},${cellBeforeAnswer.col}`;
+        // Only mark as blocked if it's not already a clue cell
+        if (!occupiedCells.has(prevCellKey)) {
+          blockedCells.add(prevCellKey);
+        }
       }
       
       // CRITICAL: Mark the cell after the last answer cell as blocked
@@ -777,6 +797,16 @@ export function generateTemplate(
       const cellKey = `${cell.row},${cell.col}`;
       gapFilledAnswerCells.set(cellKey, { slotId: slot.id, position: j });
     }
+    // Also mark the cell BEFORE the first answer cell as blocked
+    const firstAnswerCell = answerCells[0];
+    const cellBeforeAnswer = getCellBeforeAnswer(slot.direction, firstAnswerCell, config.rows, config.cols);
+    if (cellBeforeAnswer !== null) {
+      const prevCellKey = `${cellBeforeAnswer.row},${cellBeforeAnswer.col}`;
+      if (!gapFilledOccupiedCells.has(prevCellKey)) {
+        gapFilledBlockedCells.add(prevCellKey);
+      }
+    }
+    
     // Also mark the cell after the last answer cell as blocked
     const lastAnswerCell = answerCells[answerCells.length - 1];
     const nextCellAfterAnswer = getNextCellAfterAnswer(slot.direction, lastAnswerCell, config.rows, config.cols);
@@ -940,22 +970,31 @@ export function generateTemplate(
       continue;
     }
     
-    // CRITICAL: Validate that the cell after the last answer cell is valid
-    // In arrow puzzles, words can only end at clue cells, blocked cells, or grid boundaries
+    // CRITICAL: Validate that words can only start/end after clue cells, blocked cells, or grid boundaries
+    // Check the cell BEFORE the first answer cell
+    const firstCell = answerCellsForSlot[0];
+    const cellBeforeAnswer = getCellBeforeAnswer(direction, firstCell, config.rows, config.cols);
+    if (cellBeforeAnswer !== null) {
+      // Previous cell is in bounds - check if it's an answer cell (which would cause merging)
+      const prevCellKey = `${cellBeforeAnswer.row},${cellBeforeAnswer.col}`;
+      if (gapFilledAnswerCells.has(prevCellKey)) {
+        // This cell is already an answer cell - words would merge, invalid!
+        continue; // Skip this slot
+      }
+      // If it's empty, a clue cell, or blocked, that's fine - word starts at valid position
+    }
+    // If cellBeforeAnswer is null, the word starts at grid boundary - valid!
+    
+    // Check the cell AFTER the last answer cell
     const nextCellAfterAnswer = getNextCellAfterAnswer(direction, lastCell, config.rows, config.cols);
     if (nextCellAfterAnswer !== null) {
-      // Next cell is in bounds - must be either a clue cell or a blocked cell
+      // Next cell is in bounds - check if it's an answer cell (which would cause merging)
       const nextCellKey = `${nextCellAfterAnswer.row},${nextCellAfterAnswer.col}`;
-      if (!gapFilledOccupiedCells.has(nextCellKey) && !gapFilledBlockedCells.has(nextCellKey)) {
-        // Next cell is empty and not blocked - this would allow word merging, which is invalid
-        // Check if it's already an answer cell (which would be a conflict)
-        if (gapFilledAnswerCells.has(nextCellKey)) {
-          // This cell is already an answer cell - words would merge, invalid!
-          continue; // Skip this slot
-        }
-        // If it's empty, we could mark it as blocked, but we need to check if that conflicts
-        // with existing slots. For now, we'll be strict and require it to be a clue cell or blocked.
+      if (gapFilledAnswerCells.has(nextCellKey)) {
+        // This cell is already an answer cell - words would merge, invalid!
+        continue; // Skip this slot
       }
+      // If it's empty, a clue cell, or blocked, that's fine - word ends at valid position
     }
     // If nextCellAfterAnswer is null, the word ends at grid boundary - valid!
     
@@ -1061,6 +1100,18 @@ export function generateTemplate(
         const cell = answerCellsForSlot[j];
         const cellKey = `${cell.row},${cell.col}`;
         gapFilledAnswerCells.set(cellKey, { slotId: gapSlotId, position: j });
+      }
+      
+      // CRITICAL: Mark the cell BEFORE the first answer cell as blocked
+      // This prevents words from merging - the cell must remain empty or become a clue cell
+      const firstAnswerCell = answerCellsForSlot[0];
+      const cellBeforeAnswer = getCellBeforeAnswer(direction, firstAnswerCell, config.rows, config.cols);
+      if (cellBeforeAnswer !== null) {
+        const prevCellKey = `${cellBeforeAnswer.row},${cellBeforeAnswer.col}`;
+        // Only mark as blocked if it's not already a clue cell
+        if (!gapFilledOccupiedCells.has(prevCellKey)) {
+          gapFilledBlockedCells.add(prevCellKey);
+        }
       }
       
       // CRITICAL: Mark the cell after the last answer cell as blocked

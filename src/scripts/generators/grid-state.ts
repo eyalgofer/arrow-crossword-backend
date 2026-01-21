@@ -78,6 +78,7 @@ export function placeWord(
  * Check if a word can be placed without conflicts
  * Handles multi-word answers by removing spaces for grid placement
  * Also validates that words don't merge (end when another letter follows)
+ * CRITICAL: Words can only start/end after clue cells, locked cells, or grid boundaries
  */
 export function canPlaceWord(
   state: GridState,
@@ -112,29 +113,55 @@ export function canPlaceWord(
     }
   }
   
-  // CRITICAL: Validate that the word ends at a valid position
-  // In arrow puzzles, words can only end at clue cells or grid boundaries
-  // Check the cell after the last answer cell
+  // CRITICAL: Validate that words can only start/end after clue cells, locked cells, or grid boundaries
+  // Check the cell BEFORE the first answer cell
   if (cells.length >= 2) {
-    const lastCell = cells[cells.length - 1];
     const firstCell = cells[0];
     const secondCell = cells[1];
     const rowDelta = secondCell.row - firstCell.row;
     const colDelta = secondCell.col - firstCell.col;
     
-    // Calculate next cell in the same direction
+    // Calculate previous cell in the opposite direction
+    const prevRow = firstCell.row - rowDelta;
+    const prevCol = firstCell.col - colDelta;
+    
+    // Check if previous cell is out of bounds (valid start point)
+    if (prevRow >= 0 && prevRow < state.rows && prevCol >= 0 && prevCol < state.cols) {
+      // Previous cell is in bounds - must be either a clue cell or have a locked letter
+      const prevCellKey = `${prevRow},${prevCol}`;
+      if (state.clueCells.has(prevCellKey)) {
+        // Previous cell is a clue cell - valid start point
+      } else {
+        const prevCellLetter = state.cells[prevRow][prevCol];
+        // If previous cell has a letter, it must be locked (otherwise words would merge)
+        // For now, we check if it's empty or a clue cell - locked cells are handled during solving
+        // Empty is valid (will become a clue cell or remain empty)
+        if (prevCellLetter !== null) {
+          // Previous cell has a letter - this would merge words unless it's locked
+          // During template generation, we can't check locked state, so we require it to be empty or clue cell
+          // This validation is more strict during solving
+          return false;
+        }
+      }
+    }
+    // If previous cell is out of bounds, that's a valid start point (grid boundary)
+    
+    // Check the cell AFTER the last answer cell
+    const lastCell = cells[cells.length - 1];
     const nextRow = lastCell.row + rowDelta;
     const nextCol = lastCell.col + colDelta;
     
     // Check if next cell is out of bounds (valid end point)
     if (nextRow >= 0 && nextRow < state.rows && nextCol >= 0 && nextCol < state.cols) {
-      // Next cell is in bounds - must be either a clue cell or empty
-      // If it has a letter, that means another word continues there, which would merge words (invalid!)
+      // Next cell is in bounds - must be either a clue cell or have a locked letter
       const nextCellKey = `${nextRow},${nextCol}`;
       if (state.clueCells.has(nextCellKey)) {
         // Next cell is a clue cell - valid end point
       } else {
         const nextCellLetter = state.cells[nextRow][nextCol];
+        // If next cell has a letter, it must be locked (otherwise words would merge)
+        // For now, we check if it's empty or a clue cell - locked cells are handled during solving
+        // Empty is valid (will become a clue cell or remain empty)
         if (nextCellLetter !== null) {
           // Next cell has a letter - words would merge, invalid!
           return false;

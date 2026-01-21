@@ -27,16 +27,14 @@ const iconNames = [
   'flask', 'sportscourt', 'music.note', 'clock', 'film'
 ];
 
-// Package definitions - 10 packages with pattern: 10, 10, 20, 10, 10, 20...
-// Total puzzles needed: 10 + 10 + 20 + 10 + 10 + 20 + 10 + 10 + 20 + 10 = 130
-const packageDefinitions = Array.from({ length: 10 }, (_, i) => {
-  // Pattern: 10, 10, 20, 10, 10, 20...
-  const posInGroup = i % 3;
-  const puzzleCount = posInGroup === 2 ? 20 : 10;
+// Package definitions - 2 packages with 10 puzzles each
+// Total puzzles needed: 10 + 10 = 20
+const packageDefinitions = Array.from({ length: 2 }, (_, i) => {
+  const puzzleCount = 10;
   
   return {
     name: `Package #${i + 1}`,
-    description: puzzleCount === 20 ? '20 puzzles - a bigger challenge!' : '10 puzzles to solve',
+    description: '10 puzzles to solve',
     theme: 'Mixed',
     puzzleCount,
     iconName: iconNames[i],
@@ -229,7 +227,7 @@ const seedPackages = async () => {
     console.log('='.repeat(60));
     console.log(`   Total packages: ${allPackages.length}`);
     console.log(`   Total puzzles in packages: ${totalPuzzleSlots}`);
-    console.log(`   Pattern: 10, 10, 20, 10, 10, 20, 10, 10, 20, 10`);
+    console.log(`   Pattern: 10, 10`);
     console.log(`   All clues: easy/medium/challenging only (no hard/expert)`);
     console.log('='.repeat(60));
 

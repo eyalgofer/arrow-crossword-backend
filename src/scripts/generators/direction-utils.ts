@@ -174,3 +174,41 @@ export function getNextCellAfterAnswer(
   
   return { row: nextRow, col: nextCol };
 }
+
+/**
+ * Get the cell before the first answer cell (in the opposite direction)
+ * Returns null if the previous cell would be out of bounds
+ */
+export function getCellBeforeAnswer(
+  direction: Direction,
+  firstAnswerCell: { row: number; col: number },
+  gridRows: number,
+  gridCols: number
+): { row: number; col: number } | null {
+  let rowDelta = 0;
+  let colDelta = 0;
+  
+  // Determine the direction delta in the opposite direction
+  switch (direction) {
+    case 'across':
+    case 'down-across':
+    case 'up-across':
+      colDelta = -1; // Horizontal answers come from the left
+      break;
+    case 'down':
+    case 'right-down':
+    case 'left-down':
+      rowDelta = -1; // Vertical answers come from above
+      break;
+  }
+  
+  const prevRow = firstAnswerCell.row + rowDelta;
+  const prevCol = firstAnswerCell.col + colDelta;
+  
+  // Check if previous cell is out of bounds
+  if (prevRow < 0 || prevRow >= gridRows || prevCol < 0 || prevCol >= gridCols) {
+    return null; // Out of bounds - valid start point
+  }
+  
+  return { row: prevRow, col: prevCol };
+}
