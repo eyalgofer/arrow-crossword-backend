@@ -98,10 +98,6 @@ const seedPackages = async () => {
     // This ensures all puzzles are regenerated with the latest fixes for word endings and clue cells
     let clearedPuzzles = false;
     if (existingPuzzles.length > 0) {
-      console.log(`\n🔄 Regenerating all puzzles with latest fixes...`);
-      console.log(`   - Fixed: Words can only end at clue cells, blocked cells, or grid boundaries`);
-      console.log(`   - Fixed: Clue cells are unique (no overlapping question arrows)`);
-      console.log(`🗑️  Clearing all existing puzzles...`);
       await Puzzle.deleteMany({});
       await PuzzlePackage.deleteMany({});
       console.log(`✅ Cleared ${existingPuzzles.length} puzzles and all packages`);
@@ -124,11 +120,10 @@ const seedPackages = async () => {
         const puzzleIndex = generatedPuzzles.length + 1;
         console.log(`\n📝 Generating puzzle ${i + 1}/${puzzlesToGenerate} (Index ${puzzleIndex})...`);
         
-        // Generate puzzle with temporary title - will be updated per package later
         const puzzle = generatePuzzle({
-          difficulty: Difficulty.EASY, // Uses easy/medium/challenging clues only
-          category: 'Mixed',
-          title: `Puzzle ${puzzleIndex}` // Temporary title, will be updated per package
+          difficulty: Difficulty.EASY,
+          category: 'Misc',
+          title: `Puzzle ${puzzleIndex}`
         });
         
         if (puzzle) {

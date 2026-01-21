@@ -72,13 +72,30 @@ export function solveGrid(
       const constraints = getCrossingConstraints(state, cells);
       
       // Find matching words
+      // Always exclude duplicate answers (normalized: uppercase, no spaces)
+      const placedAnswers = Array.from(state.placedWords.values());
+      const normalizedPlacedAnswers = new Set(
+        placedAnswers.map(w => w.replace(/\s+/g, '').toUpperCase())
+      );
+      
+      // If allowWordReuse is false, also exclude exact word matches
       const excludeWords = config.allowWordReuse === false 
-        ? new Set(state.placedWords.values())
+        ? new Set(placedAnswers)
         : undefined;
-      const candidates = findMatchingWords(wordIndex, slot.length, constraints, excludeWords);
+      let candidates = findMatchingWords(wordIndex, slot.length, constraints, excludeWords);
+      
+      // CRITICAL: Filter out duplicate answers (normalized comparison)
+      candidates = candidates.filter(w => {
+        const normalized = w.replace(/\s+/g, '').toUpperCase();
+        return !normalizedPlacedAnswers.has(normalized);
+      });
+      
+      // Calculate direction deltas for validation
+      const rowDelta = cells.length >= 2 ? cells[1].row - cells[0].row : 0;
+      const colDelta = cells.length >= 2 ? cells[1].col - cells[0].col : 0;
       
       // CRITICAL: Pre-filter by placeability (key improvement from improved generator)
-      const validCandidates = candidates.filter(w => canPlaceWord(state, w, cells));
+      const validCandidates = candidates.filter(w => canPlaceWord(state, w, cells, rowDelta, colDelta));
       
       // Fail fast - if a slot has no valid candidates, return it immediately
       if (validCandidates.length === 0) {
@@ -169,8 +186,15 @@ export function solveGrid(
     const constraints = getCrossingConstraints(state, cells);
     
     // Find candidate words
+    // Always exclude duplicate answers (normalized: uppercase, no spaces)
+    const placedAnswers = Array.from(state.placedWords.values());
+    const normalizedPlacedAnswers = new Set(
+      placedAnswers.map(w => w.replace(/\s+/g, '').toUpperCase())
+    );
+    
+    // If allowWordReuse is false, also exclude exact word matches
     const excludeWords = config.allowWordReuse === false 
-      ? new Set(state.placedWords.values())
+      ? new Set(placedAnswers)
       : undefined;
     
     let candidates = findMatchingWords(
@@ -180,9 +204,20 @@ export function solveGrid(
       excludeWords
     );
     
+    // CRITICAL: Filter out duplicate answers (normalized comparison)
+    // This prevents the same answer from appearing twice in the puzzle
+    candidates = candidates.filter(w => {
+      const normalized = w.replace(/\s+/g, '').toUpperCase();
+      return !normalizedPlacedAnswers.has(normalized);
+    });
+    
+    // Calculate direction deltas for validation
+    const rowDelta = cells.length >= 2 ? cells[1].row - cells[0].row : 0;
+    const colDelta = cells.length >= 2 ? cells[1].col - cells[0].col : 0;
+    
     // CRITICAL IMPROVEMENT: Pre-filter candidates by placeability
     // This avoids wasting time trying words that can't be placed
-    const placeableCandidates = candidates.filter(w => canPlaceWord(state, w, cells));
+    const placeableCandidates = candidates.filter(w => canPlaceWord(state, w, cells, rowDelta, colDelta));
     
     // IMPROVEMENT: Limit candidates to avoid trying too many (from improved generator)
     candidates = placeableCandidates.slice(0, 100);
@@ -312,7 +347,7 @@ export function solveGrid(
       
       // Debug: Log why first few words fail (only on first few attempts)
       if (i < 3 && depth === 0 && attempts <= 5) {
-        const canPlace = canPlaceWord(state, word, cells);
+        const canPlace = canPlaceWord(state, word, cells, rowDelta, colDelta);
         if (!canPlace) {
           // Check why it failed
           for (let j = 0; j < word.length; j++) {
@@ -335,11 +370,11 @@ export function solveGrid(
         }
       }
       
-      if (!canPlaceWord(state, word, cells)) {
+      if (!canPlaceWord(state, word, cells, rowDelta, colDelta)) {
         continue;
       }
       
-      const newState = placeWord(state, slot.id, word, cells);
+      const newState = placeWord(state, slot.id, word, cells, rowDelta, colDelta);
       const newRemaining = remainingSlots.filter(s => s.id !== slot.id);
       const result = backtrack(newState, newRemaining, depth + 1);
       
@@ -371,7 +406,9 @@ export function solveGrid(
               ? ` with ${nextConstraints.size} constraints: ${Array.from(nextConstraints.entries()).map(([pos, letter]) => `pos${pos}='${letter}'`).join(', ')}`
               : ' (no constraints)';
             const nextCandidates = findMatchingWords(wordIndex, nextSlot.length, nextConstraints, excludeWords);
-            const nextPlaceable = nextCandidates.filter(w => canPlaceWord(newState, w, nextCells));
+            const nextRowDelta = nextCells.length >= 2 ? nextCells[1].row - nextCells[0].row : 0;
+            const nextColDelta = nextCells.length >= 2 ? nextCells[1].col - nextCells[0].col : 0;
+            const nextPlaceable = nextCandidates.filter(w => canPlaceWord(newState, w, nextCells, nextRowDelta, nextColDelta));
             console.log(`     Next slot would be: ${nextSlot.length} letters${nextConstraintInfo}: ${nextPlaceable.length} placeable candidates`);
             if (nextPlaceable.length === 0) {
               console.log(`     ❌ Next slot has NO placeable candidates - dead end!`);
@@ -402,11 +439,15 @@ export function solveGrid(
       }
       // Just pick the first candidate
       const word = candidates[0];
-      if (!canPlaceWord(currentState, word, cells)) {
+      // Calculate direction deltas from cells
+      const rowDelta = cells.length >= 2 ? cells[1].row - cells[0].row : 0;
+      const colDelta = cells.length >= 2 ? cells[1].col - cells[0].col : 0;
+      
+      if (!canPlaceWord(currentState, word, cells, rowDelta, colDelta)) {
         console.log(`  ❌ Cannot place word "${word}" in slot ${i + 1}`);
         return null;
       }
-      currentState = placeWord(currentState, slot.id, word, cells);
+      currentState = placeWord(currentState, slot.id, word, cells, rowDelta, colDelta);
       console.log(`  ✅ Slot ${i + 1}/${template.slots.length}: Placed "${word}"`);
     }
     console.log(`  ✅ Solved template in ${attempts} attempts (greedy mode)`);

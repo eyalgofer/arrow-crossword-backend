@@ -122,6 +122,11 @@ export function loadCluesFromCSV(): CluesDatabase {
         const difficultyNum = parts.length >= 5 ? parseInt(parts[4].trim(), 10) : 0;
         
         if (answer && clueText) {
+          const filters = ['___', '...'];
+          if (filters.some(filter => clueText.includes(filter))) {
+            continue; // Skip filtered clues
+          }
+          
           // Use CSV difficulty if available, otherwise fall back to algorithm
           const difficulty: ClueDifficulty = difficultyNum >= 1 && difficultyNum <= 5
             ? mapCsvDifficulty(difficultyNum)

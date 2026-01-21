@@ -133,15 +133,20 @@ export class PuzzleGenerator {
   /**
    * Generate and add a programmatic template of specified size
    */
-  addGeneratedTemplate(size: 'tiny' | 'small' | 'medium' | 'large' | 'xlarge', difficulty: Difficulty = Difficulty.EASY): void {
+  addGeneratedTemplate(difficulty: Difficulty = Difficulty.EASY): void {
+    const size: 'tiny' | 'small' | 'medium' | 'large' | 'xlarge' = 
+      this.difficulty === Difficulty.EASY ? 'medium' :
+      this.difficulty === Difficulty.MEDIUM ? 'medium' :
+      this.difficulty === Difficulty.CHALLENGING ? 'medium' :
+      'large';      
     const template = generateTemplate(size, difficulty);
     
     // Validate template has minimum required slots
     // Scale minimums based on template size
-    const minSlots = size === 'tiny' ? 6 : size === 'small' ? 12 : size === 'medium' ? 18 : size === 'large' ? 50 : 55;
+    const minSlots = size === 'medium' ? 11 : size === 'large' ? 50 : 55;
     if (template.slots.length < minSlots) {
       console.warn(`⚠️  Skipping template: Only ${template.slots.length} slots (need ${minSlots} for ${size})`);
-      return; // Don't add invalid templates
+      return;
     }
     
     this.templates.push(template);
@@ -156,12 +161,8 @@ export class PuzzleGenerator {
   addGeneratedTemplates(): void {
     // All puzzles now use at least 11x11 grids (medium size)
     // With 124k+ words available at max 'challenging' difficulty, we can handle larger grids
-    const size: 'tiny' | 'small' | 'medium' | 'large' | 'xlarge' = 
-      this.difficulty === Difficulty.EASY ? 'medium' :      // 11x11 (was 7x7)
-      this.difficulty === Difficulty.MEDIUM ? 'medium' :    // 11x11
-      this.difficulty === Difficulty.CHALLENGING ? 'small' : // 14x14
-      'large';                                               // 15x15
-    this.addGeneratedTemplate(size, this.difficulty);
+    // 15x15
+    this.addGeneratedTemplate(this.difficulty);
   }
   
   /**
@@ -287,7 +288,7 @@ export class PuzzleGenerator {
       const templateStartTime = Date.now();
       
       this.templates = [];
-      this.addGeneratedTemplate(templateSize, config.difficulty);
+      this.addGeneratedTemplate(config.difficulty);
       
       if (this.templates.length === 0) {
         console.log(`   ⚠️  Failed to generate template, skipping...`);
@@ -384,8 +385,7 @@ export class PuzzleGenerator {
  * This function can be called from seedPuzzles.ts
  */
 /**
- * Generate ONE perfect puzzle with maximum compute power
- * Now respects difficulty setting for word and clue selection!
+ * Now respects difficulty setting for word and clue selection
  */
 export function generatePuzzle(
   config: {
@@ -405,7 +405,7 @@ export function generatePuzzle(
   // Create generator with appropriate difficulty - this filters the word pool!
   const generator = new PuzzleGenerator(difficulty);
 
-  // Add programmatically generated templates for bigger, more complex puzzles
+
   generator.addGeneratedTemplates();
   
   const puzzle = generator.generatePuzzle({

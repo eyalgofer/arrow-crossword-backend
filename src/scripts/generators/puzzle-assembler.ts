@@ -117,12 +117,25 @@ export function generatePuzzleFromGrid(
 ): Puzzle {
   const clues: Clue[] = [];
   const usedClues = new Set<string>(); // Track used clue texts to prevent duplicates
+  const usedAnswers = new Set<string>(); // Track used answers to prevent duplicates
   
   let clueNumber = 1;
   for (const slot of template.slots) {
     const word = gridState.placedWords.get(slot.id);
     if (!word) {
       throw new Error(`No word placed for slot ${slot.id}`);
+    }
+    
+    // Normalize answer for duplicate checking (uppercase, no spaces)
+    const normalizedAnswer = word.toUpperCase().replace(/\s+/g, '');
+    
+    // Check if this answer is already used
+    // Note: Duplicate answers should be prevented during solving, but if one slips through,
+    // we'll skip it and continue (this should be extremely rare)
+    if (usedAnswers.has(normalizedAnswer)) {
+      console.warn(`⚠️  Duplicate answer "${word}" detected - skipping this clue (should have been prevented during solving)`);
+      clueNumber++; // Increment clue number to keep numbering sequential
+      continue; // Skip this slot and continue with the next one
     }
     
     // Get clue, ensuring it's not a duplicate
@@ -189,6 +202,7 @@ export function generatePuzzleFromGrid(
     }
     
     usedClues.add(clueText);
+    usedAnswers.add(normalizedAnswer);
     
     // Handle multi-word answers (e.g., "STAR WARS" -> [4, 4])
     const words = word.split(' ');
