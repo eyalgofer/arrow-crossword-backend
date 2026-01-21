@@ -6,7 +6,7 @@
 
 import { Puzzle, Clue, Direction, GridTemplate, ClueSlot, Difficulty } from '../core/types';
 import { GridState } from './grid-state';
-import { getAnswerCells, getAnswerOrientation } from './direction-utils';
+import { getAnswerCells } from './direction-utils';
 
 export interface ClueDatabase {
   getClue(word: string, difficulty: Difficulty): string;

@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { Puzzle, IPuzzle } from '../models/Puzzle';
+import { Puzzle } from '../models/Puzzle';
 import { PuzzlePackage } from '../models/PuzzlePackage';
 import { generatePuzzle } from './generators/puzzlesGenerator';
 import { Difficulty } from '../types';
@@ -96,6 +96,7 @@ const seedPackages = async () => {
     
     // FORCE REGENERATION: Clear all puzzles to regenerate with new fixes
     // This ensures all puzzles are regenerated with the latest fixes for word endings and clue cells
+    let clearedPuzzles = false;
     if (existingPuzzles.length > 0) {
       console.log(`\n🔄 Regenerating all puzzles with latest fixes...`);
       console.log(`   - Fixed: Words can only end at clue cells, blocked cells, or grid boundaries`);
@@ -104,10 +105,12 @@ const seedPackages = async () => {
       await Puzzle.deleteMany({});
       await PuzzlePackage.deleteMany({});
       console.log(`✅ Cleared ${existingPuzzles.length} puzzles and all packages`);
+      clearedPuzzles = true;
     }
 
     // Generate puzzles if we don't have enough (or if we cleared them)
-    const currentCount = forceRegenerate ? 0 : existingPuzzles.length;
+    // If we cleared puzzles, currentCount is 0. Otherwise, use existing count.
+    const currentCount = clearedPuzzles ? 0 : existingPuzzles.length;
     const puzzlesToGenerate = Math.max(0, TOTAL_PUZZLES_NEEDED - currentCount);
     
     if (puzzlesToGenerate > 0) {
