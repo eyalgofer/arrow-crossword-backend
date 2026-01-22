@@ -293,8 +293,8 @@ export function getWordsWithMaxDifficulty(maxDifficulty: ClueDifficulty): string
   // For easy/medium/challenging, include all three to have enough words.
   // For other difficulties, include up to and including the requested difficulty.
   let allowedDifficulties: Set<ClueDifficulty>;
-  if (maxDifficulty === 'easy' || maxDifficulty === 'medium' || maxDifficulty === 'challenging') {
-    allowedDifficulties = new Set(['easy', 'medium', 'challenging']);
+  if (maxDifficulty === 'easy') {
+    allowedDifficulties = new Set(['easy', 'medium']);
   } else {
     allowedDifficulties = new Set(difficultyOrder.slice(0, maxIndex + 1));
   }

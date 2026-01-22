@@ -283,10 +283,6 @@ export class PuzzleGenerator {
       console.log(`   ⏱️  Solve attempt took ${solveTime}ms`);
       
       if (puzzle) {
-        console.log(`\n✅ SUCCESS! Generated puzzle: "${puzzle.title}"`);
-        console.log(`   Grid: ${puzzle.grid.rows}x${puzzle.grid.cols}`);
-        console.log(`   Puzzle Items: ${puzzle.puzzleItems.length}`);
-        console.log(`   Difficulty: ${puzzle.difficulty}`);
         return puzzle;
       }
       
