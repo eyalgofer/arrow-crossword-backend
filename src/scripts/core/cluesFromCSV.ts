@@ -17,6 +17,8 @@ export interface ClueEntry {
 export interface CluesDatabase {
   // All clues grouped by answer
   byAnswer: Record<string, ClueEntry[]>;
+  // Mapping from normalized answer (no spaces) to original answer (with spaces)
+  originalAnswers: Map<string, string>;
   // Words that have easy clues available
   easyWords: Set<string>;
   // Words that have medium clues available
@@ -59,6 +61,7 @@ export function loadCluesFromCSV(): CluesDatabase {
   const csvPath = path.join(__dirname, 'train.csv');
   const database: CluesDatabase = {
     byAnswer: {},
+    originalAnswers: new Map(),
     easyWords: new Set(),
     mediumWords: new Set(),
     challengingWords: new Set(),
@@ -117,6 +120,8 @@ export function loadCluesFromCSV(): CluesDatabase {
         const answerRaw = parts[2].trim();
         // Normalize answer: uppercase, remove spaces for matching
         const answer = answerRaw.toUpperCase().replace(/\s+/g, '');
+        // Preserve original answer format (uppercase but with spaces)
+        const originalAnswer = answerRaw.toUpperCase();
         
         // Get difficulty from CSV column (index 4, the last column with value)
         // CSV has: id,clue,answer,empty,difficulty
@@ -136,6 +141,9 @@ export function loadCluesFromCSV(): CluesDatabase {
           if (!database.byAnswer[answer]) {
             database.byAnswer[answer] = [];
           }
+          
+          // Store mapping from normalized to original answer format
+          database.originalAnswers.set(answer, originalAnswer);
           
           database.byAnswer[answer].push({
             clue: clueText,
@@ -305,7 +313,9 @@ export function getWordsWithMaxDifficulty(maxDifficulty: ClueDifficulty): string
     // Check if this word has at least one clue at an allowed difficulty
     const hasValidClue = entries.some(e => allowedDifficulties.has(e.difficulty));
     if (hasValidClue) {
-      validWords.push(word);
+      // Return original answer format (with spaces) instead of normalized
+      const originalAnswer = db.originalAnswers.get(word) || word;
+      validWords.push(originalAnswer);
     }
   }
   

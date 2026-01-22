@@ -101,6 +101,86 @@ export function validateWordBoundaries(
 }
 
 /**
+ * Simple boundary check: verify that cells before/after answer cells are not answer cells
+ * This is a lightweight check used during placement to prevent word merging
+ * Returns true if boundaries are valid (not merging with other answer cells)
+ */
+export function checkAnswerBoundaries(
+  direction: Direction,
+  answerCells: Array<{ row: number; col: number }>,
+  gridRows: number,
+  gridCols: number,
+  answerCellPositions: Set<string>
+): boolean {
+  if (answerCells.length === 0) {
+    return true;
+  }
+
+  // Check cell BEFORE first answer cell
+  const firstCell = answerCells[0];
+  const cellBefore = getCellBeforeAnswer(direction, firstCell, gridRows, gridCols);
+  if (cellBefore !== null) {
+    const beforeCellKey = `${cellBefore.row},${cellBefore.col}`;
+    if (answerCellPositions.has(beforeCellKey)) {
+      return false; // Would merge with another answer cell
+    }
+  }
+
+  // Check cell AFTER last answer cell
+  const lastCell = answerCells[answerCells.length - 1];
+  const nextCellAfter = getNextCellAfterAnswer(direction, lastCell, gridRows, gridCols);
+  if (nextCellAfter !== null) {
+    const nextCellKey = `${nextCellAfter.row},${nextCellAfter.col}`;
+    if (answerCellPositions.has(nextCellKey)) {
+      return false; // Would merge with another answer cell
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Simple boundary check using deltas (for contexts where Direction is not available)
+ * Verifies that cells before/after answer cells are not answer cells
+ */
+export function checkAnswerBoundariesWithDeltas(
+  answerCells: Array<{ row: number; col: number }>,
+  rowDelta: number,
+  colDelta: number,
+  gridRows: number,
+  gridCols: number,
+  answerCellPositions: Set<string>
+): boolean {
+  if (answerCells.length === 0) {
+    return true;
+  }
+
+  // Check cell BEFORE first answer cell
+  const firstCell = answerCells[0];
+  const prevRow = firstCell.row - rowDelta;
+  const prevCol = firstCell.col - colDelta;
+  if (prevRow >= 0 && prevRow < gridRows && prevCol >= 0 && prevCol < gridCols) {
+    const prevCellKey = `${prevRow},${prevCol}`;
+    if (answerCellPositions.has(prevCellKey)) {
+      return false; // Would merge with another answer cell
+    }
+  }
+
+  // Check cell AFTER last answer cell
+  const lastCell = answerCells[answerCells.length - 1];
+  const nextRow = lastCell.row + rowDelta;
+  const nextCol = lastCell.col + colDelta;
+  if (nextRow >= 0 && nextRow < gridRows && nextCol >= 0 && nextCol < gridCols) {
+    const nextCellKey = `${nextRow},${nextCol}`;
+    if (answerCellPositions.has(nextCellKey)) {
+      return false; // Would merge with another answer cell
+    }
+  }
+
+  return true;
+}
+
+/**
  * Check if a clue cell position is valid (not overlapping with answer cells or blocked cells)
  */
 export function isValidClueCellPosition(

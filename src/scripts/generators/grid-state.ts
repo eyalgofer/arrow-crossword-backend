@@ -3,7 +3,7 @@
  * 
  * Handles grid state representation and manipulation
  */
-import { normalizeWord } from './validation-utils';
+import { normalizeWord, checkAnswerBoundariesWithDeltas } from './validation-utils';
 
 export interface GridState {
   rows: number;
@@ -70,8 +70,14 @@ export function placeWord(
   // Normalize word: remove spaces for grid placement (e.g., "TONY HAWK" -> "TONYHAWK")
   const normalized = normalizeWord(word);
   
+  // Ensure we have enough cells for the normalized word (without spaces)
+  if (normalized.length > cells.length) {
+    throw new Error(`Cannot place word "${word}" (normalized: "${normalized}", length ${normalized.length}) in ${cells.length} cells`);
+  }
+  
   // Place each letter (using normalized word without spaces) and mark as answer cell
-  for (let i = 0; i < normalized.length; i++) {
+  // Only use exactly normalized.length cells to avoid leaving empty cells
+  for (let i = 0; i < normalized.length && i < cells.length; i++) {
     const { row, col } = cells[i];
     newCells[row][col] = normalized[i];
     const cellKey = `${row},${col}`;
@@ -149,37 +155,14 @@ export function canPlaceWord(
   const calculatedRowDelta = rowDelta !== undefined ? rowDelta : (secondCell.row - firstCell.row);
   const calculatedColDelta = colDelta !== undefined ? colDelta : (secondCell.col - firstCell.col);
   
-  // Determine direction from deltas (for validation)
-  // We need to infer direction for validateWordBoundaries
-  // Since we don't have direction here, we'll use the simplified check below
-  // But first, let's check boundaries using the utility function where possible
-  
-  // For now, keep the existing logic but simplified
-  // Check the cell BEFORE the first answer cell
-  const prevRow = firstCell.row - calculatedRowDelta;
-  const prevCol = firstCell.col - calculatedColDelta;
-  
-  if (prevRow >= 0 && prevRow < state.rows && prevCol >= 0 && prevCol < state.cols) {
-    const prevCellKey = `${prevRow},${prevCol}`;
-    if (state.answerCells.has(prevCellKey)) {
-      return false; // Previous cell is an answer cell - invalid
-    }
-  }
-  
-  // Check the cell AFTER the last answer cell
-  const lastCell = cells[cells.length - 1];
-  const nextRow = lastCell.row + calculatedRowDelta;
-  const nextCol = lastCell.col + calculatedColDelta;
-  
-  if (nextRow >= 0 && nextRow < state.rows && nextCol >= 0 && nextCol < state.cols) {
-    const nextCellKey = `${nextRow},${nextCol}`;
-    if (state.answerCells.has(nextCellKey)) {
-      return false; // Next cell is an answer cell - invalid
-    }
+  // Check boundaries to prevent word merging
+  if (!checkAnswerBoundariesWithDeltas(cells, calculatedRowDelta, calculatedColDelta, state.rows, state.cols, state.answerCells)) {
+    return false; // Would merge with another answer cell
   }
   
   // ADDITIONAL CHECK: Also check if any answer cell is adjacent to our word's start/end in the same row/column
   // This catches cases where words are adjacent horizontally or vertically but in different directions
+  const lastCell = cells[cells.length - 1];
   if (calculatedRowDelta === 0 && calculatedColDelta !== 0) {
     // Horizontal word - check same row for adjacent answer cells
     for (const cellKey of state.answerCells) {

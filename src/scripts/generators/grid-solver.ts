@@ -269,6 +269,7 @@ export function solveGrid(
             const firstPosMap = wordIndex.byLetterPosition.get(firstLetter);
             const candidatesFromFirst = firstPosMap?.get(firstPos) || [];
             for (const word of candidatesFromFirst) {
+              // word here is already normalized (from byLetterPosition index)
               if (word.length === slot.length) {
                 let matchesAll = true;
                 for (const [pos, letter] of constraints.entries()) {
@@ -342,13 +343,14 @@ export function solveGrid(
       if (i < 3 && depth === 0 && attempts <= 5) {
         const canPlace = canPlaceWord(state, word, cells, rowDelta, colDelta);
         if (!canPlace) {
-          // Check why it failed
-          for (let j = 0; j < word.length; j++) {
+          // Check why it failed - use normalized word for comparison
+          const normalized = normalizeWord(word);
+          for (let j = 0; j < normalized.length && j < cells.length; j++) {
             const { row, col } = cells[j];
             const boundsOk = row >= 0 && row < state.rows && col >= 0 && col < state.cols;
             const isClueCell = state.clueCells.has(`${row},${col}`);
             const existing = boundsOk ? state.cells[row][col] : null;
-            const conflicts = existing !== null && existing !== word[j];
+            const conflicts = existing !== null && existing !== normalized[j];
             if (!boundsOk) {
               console.log(`     ❌ Word "${word}" fails: cell ${j} (${row},${col}) out of bounds (grid: ${state.rows}x${state.cols})`);
               break;
@@ -356,7 +358,7 @@ export function solveGrid(
               console.log(`     ❌ Word "${word}" fails: cell ${j} (${row},${col}) is a clue cell`);
               break;
             } else if (conflicts) {
-              console.log(`     ❌ Word "${word}" fails: cell ${j} (${row},${col}) has '${existing}' but needs '${word[j]}'`);
+              console.log(`     ❌ Word "${word}" fails: cell ${j} (${row},${col}) has '${existing}' but needs '${normalized[j]}'`);
               break;
             }
           }
