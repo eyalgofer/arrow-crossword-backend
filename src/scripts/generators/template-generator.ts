@@ -24,7 +24,7 @@ export function generateTemplate(
         return {
           maxCrossingsMultiplier: 0.8,
           slotCountMultiplier: 0.8,
-          densityTarget: 0.90,  
+          densityTarget: 0.70,  
           preferFewerCrossings: false,
           useSimpleDirections: false,
           enableGapFilling: true,
@@ -35,10 +35,10 @@ export function generateTemplate(
         return {
           maxCrossingsMultiplier: 0.8,  
           slotCountMultiplier: 0.8,     
-          densityTarget: 0.90,
+          densityTarget: 0.70,
           preferFewerCrossings: false,
           useSimpleDirections: false,  
-          enableGapFilling: false,   
+          enableGapFilling: true,   
           maxWordLength: 16
         };
     }
@@ -136,7 +136,10 @@ export function generateTemplate(
     [directions[i], directions[j]] = [directions[j], directions[i]];
   }
 
-  for (let i = 0; i < targetSlots && slotNumber <= targetSlots; i++) {
+  // Try to place targetSlots slots, but ensure we place at least minSlots
+  // If we can't place enough slots, we'll throw an error after the loop
+  const slotsToPlace = Math.max(config.minSlots, targetSlots);
+  for (let i = 0; i < slotsToPlace && slotNumber <= slotsToPlace; i++) {
     // Try to place a slot
     let placed = false;
     let attempts = 0;
@@ -177,7 +180,8 @@ export function generateTemplate(
       
       // SWEDISH ARROW STRATEGY: Balance crossings with coverage
       // After initial slots, prioritize both crossings AND filling empty areas
-      if (i > targetSlots * 0.10 && answerCells.size > 0) {
+      const progressRatio = slots.length / Math.max(config.minSlots, targetSlots);
+      if (progressRatio > 0.10 && answerCells.size > 0) {
         // Find empty cells that could be filled
         const emptyCellsList: Array<{ row: number; col: number }> = [];
         for (let r = 0; r < config.rows; r++) {
@@ -352,16 +356,16 @@ export function generateTemplate(
       
       // PROGRESSIVE CROSSING LIMITS: Based on difficulty
       // Easier puzzles have much stricter limits (2-4 crossings max)
-      const progressRatio = i / targetSlots;
+      const progressRatioForCrossings = slots.length / Math.max(config.minSlots, targetSlots);
       let maxAllowedCrossings: number;
       
       // Difficulty-based limits (much stricter for easy puzzles)
       const baseMax = config.maxCrossingsPerSlot;
-      if (progressRatio < 0.20) {
+      if (progressRatioForCrossings < 0.20) {
         maxAllowedCrossings = Math.max(2, Math.floor(baseMax * 0.5)); // First 20%: very few crossings
-      } else if (progressRatio < 0.50) {
+      } else if (progressRatioForCrossings < 0.50) {
         maxAllowedCrossings = Math.max(2, Math.floor(baseMax * 0.7)); // Next 30%: slightly more
-      } else if (progressRatio < 0.80) {
+      } else if (progressRatioForCrossings < 0.80) {
         maxAllowedCrossings = Math.max(3, Math.floor(baseMax * 0.85)); // Next 30%: more allowed
       } else {
         maxAllowedCrossings = config.maxCrossingsPerSlot; // Last 20%: up to config max
@@ -375,8 +379,8 @@ export function generateTemplate(
       
       // For easier puzzles, prefer slots WITH crossings (but not too many)
       // For harder puzzles, be less strict about requiring crossings
-      if (crossingCount === 0 && i > targetSlots * 0.30) {
-        const slotsBehind = (i + 1) < (targetSlots * progressRatio * 0.7);
+      if (crossingCount === 0 && slots.length > Math.max(config.minSlots, targetSlots) * 0.30) {
+        const slotsBehind = slots.length < (Math.max(config.minSlots, targetSlots) * progressRatioForCrossings * 0.7);
         // Easier puzzles: be more strict about requiring at least some crossings
         // Harder puzzles: be more lenient
         const skipChance = difficulty === Difficulty.EASY 
@@ -481,6 +485,11 @@ export function generateTemplate(
       placed = true;
       slotNumber++;
     }
+  }
+  
+  // Check if we placed enough slots before filtering
+  if (slots.length < config.minSlots) {
+    console.warn(`⚠️  Warning: Only placed ${slots.length} slots in initial placement (need ${config.minSlots}). This may cause issues.`);
   }
   
   // Calculate crossings between slots using consolidated function
@@ -1427,7 +1436,9 @@ export function generateTemplate(
   if (safeSlots.length >= config.minSlots) {
     console.log(`  ✅ Generated ${safeSlots.length} slots with ${filteredClueCells.length} unique clue cells`);
   } else {
-    console.warn(`  ⚠️  Still only ${safeSlots.length} slots (need ${config.minSlots}) - template may be invalid`);
+    console.error(`  ❌ CRITICAL: Only ${safeSlots.length} slots (need ${config.minSlots}) - template is invalid`);
+    // Throw error to trigger retry instead of returning invalid template
+    throw new Error(`Template generation failed: only ${safeSlots.length} slots generated (need ${config.minSlots} for ${selectedSize} size)`);
   }
   
   return {

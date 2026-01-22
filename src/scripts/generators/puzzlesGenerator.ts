@@ -128,9 +128,21 @@ export class PuzzleGenerator {
     }
   }
 
-  buildGeneratedTemplate(difficulty: Difficulty = Difficulty.MEDIUM): void {
-    const template = generateTemplate(difficulty);
-    this.templates.push(template);
+  buildGeneratedTemplate(difficulty: Difficulty = Difficulty.MEDIUM): boolean {
+    try {
+      const template = generateTemplate(difficulty);
+      this.templates.push(template);
+      return true;
+    } catch (error) {
+      // Template generation failed (e.g., couldn't place enough slots)
+      // Log the error but don't throw - let the retry loop try again
+      if (error instanceof Error) {
+        console.log(`   ⚠️  Template generation failed: ${error.message}`);
+      } else {
+        console.log(`   ⚠️  Template generation failed: ${error}`);
+      }
+      return false;
+    }
   }
 
   
@@ -220,10 +232,10 @@ export class PuzzleGenerator {
       }
 
       this.templates = [];
-      this.buildGeneratedTemplate(this.difficulty);
+      const templateGenerated = this.buildGeneratedTemplate(this.difficulty);
       
-      if (this.templates.length === 0) {
-        console.log(`   ⚠️  Failed to generate template, skipping...`);
+      if (!templateGenerated || this.templates.length === 0) {
+        console.log(`   ⚠️  Failed to generate template, trying again...`);
         continue;
       }
 
