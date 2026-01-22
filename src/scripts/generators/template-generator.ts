@@ -355,12 +355,12 @@ export function generateTemplate(
         continue; // Clue cell already taken, skip this slot
       }
       
-      // Final validation - clue cell cannot be in an answer cell
+      // clue cell cannot be in an answer cell
       if (answerCells.has(clueKey)) {
         continue; // Clue cell overlaps with answer cell - invalid!
       }
       
-      // Final validation - ensure answer cells don't start immediately after another answer cell
+      // ensure answer cells don't start immediately after another answer cell
       // Re-validate the cell before the first answer cell
       const firstAnswerCellForValidation = answerCellsForSlot[0];
       const cellBeforeAnswerForValidation = getCellBeforeAnswer(direction, firstAnswerCellForValidation, config.rows, config.cols);
@@ -374,7 +374,7 @@ export function generateTemplate(
         // Empty is OK here because we'll mark it as blocked immediately after validation
       }
       
-      // CRITICAL FIX: Final validation - ensure answer cells don't end immediately before another answer cell
+      // ensure answer cells don't end immediately before another answer cell
       // This is the KEY validation: cell after last answer letter must be boundary/clue/block
       const lastAnswerCellForValidation = answerCellsForSlot[answerCellsForSlot.length - 1];
       const nextCellAfterAnswerForValidation = getNextCellAfterAnswer(direction, lastAnswerCellForValidation, config.rows, config.cols);
@@ -905,12 +905,12 @@ export function generateTemplate(
       continue; // 85% chance to skip slots that don't fill enough empty cells
     }
     
-    // Final validation - clue cell cannot be in an answer cell
+    // clue cell cannot be in an answer cell
     if (gapFilledAnswerCells.has(clueKey)) {
       continue; // Clue cell overlaps with answer cell - invalid!
     }
     
-    // Final validation - ensure answer cells don't start immediately after another answer cell
+    // ensure answer cells don't start immediately after another answer cell
     // Re-validate the cell before the first answer cell
     const firstCell = answerCellsForSlot[0];
     const cellBeforeAnswerFinal = getCellBeforeAnswer(direction, firstCell, config.rows, config.cols);
@@ -924,7 +924,7 @@ export function generateTemplate(
       // Empty is OK here because we'll mark it as blocked immediately after validation
     }
     
-    // Final validation - ensure answer cells don't end immediately before another answer cell
+    // ensure answer cells don't end immediately before another answer cell
     // This is the KEY validation: cell after last answer letter must be boundary/clue/block
     // Reuse lastCell from earlier
     const nextCellAfterAnswerFinal = getNextCellAfterAnswer(direction, lastCell, config.rows, config.cols);
@@ -1038,7 +1038,7 @@ export function generateTemplate(
   // Re-sort after gap filling
   gapFilledSlots.sort((a, b) => a.crossings.length - b.crossings.length);
   
-  // Final validation - remove slots where answer cells overlap with clue cells
+  // remove slots where answer cells overlap with clue cells
   // Build set of all clue cell positions
   const gapFilledClueCellPositions = new Set<string>();
   for (const slot of gapFilledSlots) {
@@ -1238,7 +1238,7 @@ export function generateTemplate(
     }
   }
   
-  // FINAL VALIDATION: Ensure clue cells exactly match slots (one-to-one relationship)
+  // Ensure clue cells exactly match slots (one-to-one relationship)
   // Note: filteredClueCells and safeSlots are defined earlier in the function
   if (filteredClueCells.length !== safeSlots.length) {
     console.error(`  ❌ CRITICAL ERROR: Clue cells (${filteredClueCells.length}) don't match slots (${safeSlots.length})`);
@@ -1264,7 +1264,7 @@ export function generateTemplate(
   }
   
   // --------------------------------------------------------------------------
-  // FINAL VALIDATION: Ensure every slot follows the boundary rule
+  // xEnsure every slot follows the boundary rule
   // For each slot, the cell after the last answer letter must be:
   // - Out of bounds (grid boundary), OR
   // - A clue cell, OR  
