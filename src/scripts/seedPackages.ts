@@ -123,23 +123,81 @@ const iconNames = [
   'flask', 'sportscourt', 'music.note', 'clock', 'film'
 ];
 
-// Package definitions - 2 packages with 10 puzzles each
-// Total puzzles needed: 10 + 10 = 20
-const packageDefinitions = Array.from({ length: 8 }, (_, i) => {
-  const puzzleCount = 3;
+// Package definitions - Pattern: 2 packages of 10 puzzles, then 1 package of 20 puzzles, repeated 3 times
+// Total: 6 packages of 10 puzzles + 3 packages of 20 puzzles = 9 packages, 120 puzzles total
+const packageDefinitions: Array<{
+  name: string;
+  description: string;
+  theme: string;
+  puzzleCount: number;
+  iconName: string;
+  gradientColors: string[];
+}> = [];
+
+for (let iteration = 0; iteration < 3; iteration++) {
+  const baseIndex = iteration * 3;
   
-  return {
-    name: `Package #${i + 1}`,
+  // First package of 10 puzzles
+  packageDefinitions.push({
+    name: `Package #${baseIndex + 1}`,
     description: '10 puzzles to solve',
     theme: 'Mixed',
-    puzzleCount,
-    iconName: iconNames[i],
-    gradientColors: gradientPalette[i]
-  };
-});
+    puzzleCount: 10,
+    iconName: iconNames[baseIndex % iconNames.length],
+    gradientColors: gradientPalette[baseIndex % gradientPalette.length]
+  });
+  
+  // Second package of 10 puzzles
+  packageDefinitions.push({
+    name: `Package #${baseIndex + 2}`,
+    description: '10 puzzles to solve',
+    theme: 'Mixed',
+    puzzleCount: 10,
+    iconName: iconNames[(baseIndex + 1) % iconNames.length],
+    gradientColors: gradientPalette[(baseIndex + 1) % gradientPalette.length]
+  });
+  
+  // Package of 20 puzzles
+  packageDefinitions.push({
+    name: `Package #${baseIndex + 3}`,
+    description: '20 puzzles to solve',
+    theme: 'Mixed',
+    puzzleCount: 20,
+    iconName: iconNames[(baseIndex + 2) % iconNames.length],
+    gradientColors: gradientPalette[(baseIndex + 2) % gradientPalette.length]
+  });
+}
 
 // Calculate total puzzles needed
 const TOTAL_PUZZLES_NEEDED = packageDefinitions.reduce((sum, pkg) => sum + pkg.puzzleCount, 0);
+
+// Difficulty distribution: 40% easy, 30% medium, 10% hard, 10% challenging, 10% expert
+function getDifficultyDistribution(puzzleCount: number): Array<{ difficulty: Difficulty; count: number }> {
+  const easy = Math.round(puzzleCount * 0.4);
+  const medium = Math.round(puzzleCount * 0.3);
+  const hard = Math.round(puzzleCount * 0.1);
+  const challenging = Math.round(puzzleCount * 0.1);
+  const expert = Math.round(puzzleCount * 0.1);
+  
+  // Adjust for rounding errors to ensure total equals puzzleCount
+  const total = easy + medium + hard + challenging + expert;
+  const diff = puzzleCount - total;
+  
+  const distribution = [
+    { difficulty: Difficulty.EASY, count: easy },
+    { difficulty: Difficulty.MEDIUM, count: medium },
+    { difficulty: Difficulty.HARD, count: hard },
+    { difficulty: Difficulty.CHALLENGING, count: challenging },
+    { difficulty: Difficulty.EXPERT, count: expert }
+  ];
+  
+  // Add any difference to easy puzzles
+  if (diff !== 0) {
+    distribution[0].count += diff;
+  }
+  
+  return distribution.filter(d => d.count > 0);
+}
 
 const seedPackages = async () => {
   try {
@@ -178,78 +236,6 @@ const seedPackages = async () => {
     console.log(`   Database: ${dbName}`);
     console.log('');
 
-    // Check existing puzzles
-    const existingPuzzles = await Puzzle.find({ isActive: { $ne: false } })
-      .sort({ createdAt: 1 })
-      .lean();
-
-    console.log(`📊 Found ${existingPuzzles.length} existing puzzles in database`);
-    console.log(`📊 Need ${TOTAL_PUZZLES_NEEDED} puzzles for ${packageDefinitions.length} packages`);
-
-
-    // Generate puzzles if we don't have enough (or if we cleared them)
-    // If we cleared puzzles, currentCount is 0. Otherwise, use existing count.
-    const currentCount = existingPuzzles.length;
-    const puzzlesToGenerate = Math.max(0, TOTAL_PUZZLES_NEEDED - currentCount);
-    
-    if (puzzlesToGenerate > 0) {
-      console.log(`\n🎯 Generating ${puzzlesToGenerate} new puzzles with 11x11+ grids (using only easy/medium/challenging clues)...`);
-      console.log('='.repeat(60));
-      
-      const generatedPuzzles: any[] = [];
-      const startTime = Date.now();
-      
-      for (let i = 0; i < puzzlesToGenerate; i++) {
-        const puzzleIndex = generatedPuzzles.length + 1;
-        console.log(`\n📝 Generating puzzle ${i + 1}/${puzzlesToGenerate} (Index ${puzzleIndex})...`);
-        
-        const puzzle = generatePuzzle({
-          difficulty: Difficulty.EASY,
-          category: 'Misc',
-          title: `Puzzle ${puzzleIndex}`
-        });
-        
-        if (puzzle) {
-          // Validate the generated puzzle
-          const boundaryErrors = validatePuzzleBoundaries(puzzle);
-          if (boundaryErrors.length > 0) {
-            console.log(`❌ Generated puzzle failed boundary validation (${boundaryErrors.length} errors). Retrying...`);
-            for (const err of boundaryErrors.slice(0, 5)) {
-              console.log(`   └─ ${err}`);
-            }
-            i--; // Retry this index
-            continue;
-          }
-
-          generatedPuzzles.push(puzzle);
-          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-          console.log(`✅ Generated + validated! (${generatedPuzzles.length}/${puzzlesToGenerate}, ${elapsed}s elapsed)`);
-        } else {
-          console.log(`❌ Failed to generate, retrying...`);
-          i--; // Retry
-        }
-      }
-      
-      // Save generated puzzles to database
-      if (generatedPuzzles.length > 0) {
-        await Puzzle.insertMany(generatedPuzzles);
-        console.log(`\n📥 Saved ${generatedPuzzles.length} new puzzles to database`);
-      }
-    }
-
-    // Reload all puzzles after generation
-    const allPuzzles = await Puzzle.find({ isActive: { $ne: false } })
-      .sort({ createdAt: 1 })
-      .lean();
-
-    console.log(`\n📊 Total puzzles available: ${allPuzzles.length}`);
-
-    if (allPuzzles.length < TOTAL_PUZZLES_NEEDED) {
-      console.error(`❌ Not enough puzzles. Have ${allPuzzles.length}, need ${TOTAL_PUZZLES_NEEDED}`);
-      await mongoose.connection.close();
-      process.exit(1);
-    }
-
     // Clear existing packages
     await PuzzlePackage.deleteMany({});
     console.log('\n🗑️  Cleared existing packages');
@@ -258,27 +244,77 @@ const seedPackages = async () => {
     await Puzzle.updateMany({}, { $unset: { packageId: 1 } });
     console.log('🗑️  Cleared packageId from all puzzles\n');
 
-    // Create all packages
-    console.log(`📦 Creating ${packageDefinitions.length} packages...\n`);
+    // Create all packages and generate puzzles with correct difficulty distribution
+    console.log(`📦 Creating ${packageDefinitions.length} packages with difficulty distribution...\n`);
+    console.log(`   Distribution: 40% easy, 30% medium, 10% hard, 10% challenging, 10% expert\n`);
 
-    let puzzleIndex = 0;
+    let globalPuzzleIndex = 1;
+    
     for (let i = 0; i < packageDefinitions.length; i++) {
       const def = packageDefinitions[i];
+      const difficultyDistribution = getDifficultyDistribution(def.puzzleCount);
       
-      // Select sequential puzzles for this package (no overlap)
+      console.log(`\n📦 Creating ${def.name} (${def.puzzleCount} puzzles)...`);
+      
       const puzzleIds: mongoose.Types.ObjectId[] = [];
-      const puzzlesForPackage: any[] = [];
-      for (let j = 0; j < def.puzzleCount; j++) {
-        puzzleIds.push(allPuzzles[puzzleIndex]._id as mongoose.Types.ObjectId);
-        puzzlesForPackage.push(allPuzzles[puzzleIndex]);
-        puzzleIndex++;
+      const generatedPuzzles: any[] = [];
+      
+      // Generate puzzles for this package with the correct difficulty distribution
+      for (const { difficulty, count } of difficultyDistribution) {
+        for (let j = 0; j < count; j++) {
+          let attempts = 0;
+          const maxAttempts = 10;
+          
+          while (attempts < maxAttempts) {
+            const puzzle = generatePuzzle({
+              difficulty: difficulty,
+              category: 'Misc',
+              title: `Puzzle ${globalPuzzleIndex}`
+            });
+            
+            if (puzzle) {
+              // Validate the generated puzzle
+              const boundaryErrors = validatePuzzleBoundaries(puzzle);
+              if (boundaryErrors.length === 0) {
+                generatedPuzzles.push(puzzle);
+                globalPuzzleIndex++;
+                break;
+              } else {
+                attempts++;
+                if (attempts >= maxAttempts) {
+                  console.log(`   ⚠️  Warning: Failed to generate valid ${difficulty} puzzle after ${maxAttempts} attempts`);
+                }
+              }
+            } else {
+              attempts++;
+            }
+          }
+        }
+      }
+      
+      // Save generated puzzles to database
+      if (generatedPuzzles.length > 0) {
+        const savedPuzzles = await Puzzle.insertMany(generatedPuzzles);
+        for (const savedPuzzle of savedPuzzles) {
+          puzzleIds.push(savedPuzzle._id as mongoose.Types.ObjectId);
+        }
+      }
+      
+      // Show difficulty breakdown for this package
+      const difficultyBreakdown = difficultyDistribution
+        .map(d => `${d.count} ${d.difficulty}`)
+        .join(', ');
+      console.log(`   ✅ Generated ${generatedPuzzles.length}/${def.puzzleCount} puzzles (${difficultyBreakdown})`);
+
+      if (generatedPuzzles.length < def.puzzleCount) {
+        console.log(`   ⚠️  Warning: Only generated ${generatedPuzzles.length} puzzles, expected ${def.puzzleCount}`);
       }
 
       const newPackage = new PuzzlePackage({
         name: def.name,
         description: def.description,
         theme: def.theme,
-        puzzleCount: def.puzzleCount,
+        puzzleCount: puzzleIds.length,
         puzzleIds: puzzleIds,
         order: i,
         iconName: def.iconName,
@@ -299,8 +335,6 @@ const seedPackages = async () => {
           }
         );
       }
-      
-      console.log(`   ✅ ${i + 1}. ${def.name} (${def.puzzleCount} puzzles) - ${def.theme}`);
     }
 
     // Summary
@@ -313,14 +347,28 @@ const seedPackages = async () => {
     let totalPuzzleSlots = 0;
     for (const pkg of allPackages) {
       totalPuzzleSlots += pkg.puzzleCount;
-      console.log(`   ${pkg.order}. ${pkg.name.padEnd(20)} | ${String(pkg.puzzleCount).padStart(2)} puzzles | ${pkg.theme}`);
+      
+      // Get difficulty breakdown for this package
+      const puzzles = await Puzzle.find({ packageId: pkg._id }).lean();
+      const difficultyCounts: Record<string, number> = {};
+      for (const puzzle of puzzles) {
+        const diff = puzzle.difficulty || 'unknown';
+        difficultyCounts[diff] = (difficultyCounts[diff] || 0) + 1;
+      }
+      
+      const difficultyStr = Object.entries(difficultyCounts)
+        .map(([diff, count]) => `${count} ${diff}`)
+        .join(', ');
+      
+      console.log(`   ${pkg.order}. ${pkg.name.padEnd(20)} | ${String(pkg.puzzleCount).padStart(2)} puzzles | ${difficultyStr}`);
     }
     
     console.log('='.repeat(60));
     console.log(`   Total packages: ${allPackages.length}`);
     console.log(`   Total puzzles in packages: ${totalPuzzleSlots}`);
-    console.log(`   Pattern: 10, 10`);
-    console.log(`   All clues: easy/medium/challenging only (no hard/expert)`);
+    console.log(`   Pattern: 10, 10, 20 (repeated 3 times)`);
+    console.log(`   Difficulty distribution per package:`);
+    console.log(`     40% easy, 30% medium, 10% hard, 10% challenging, 10% expert`);
     console.log('='.repeat(60));
 
     console.log('\n✅ Package seeding completed successfully!');

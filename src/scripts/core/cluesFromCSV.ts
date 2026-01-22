@@ -308,8 +308,23 @@ export function getClueForWord(
 export function getWordsWithMaxDifficulty(maxDifficulty: ClueDifficulty): string[] {
   const db = getCluesDatabase();
   const difficultyOrder: ClueDifficulty[] = ['easy', 'medium', 'challenging', 'hard', 'expert'];
-  const maxIndex = difficultyOrder.indexOf(maxDifficulty);
-  const allowedDifficulties = new Set(difficultyOrder.slice(0, maxIndex + 1));
+  let maxIndex = difficultyOrder.indexOf(maxDifficulty);
+  
+  if (maxIndex === -1) {
+    console.error(`❌ Invalid difficulty '${maxDifficulty}' passed to getWordsWithMaxDifficulty. Valid values: ${difficultyOrder.join(', ')}`);
+    console.warn(`   Falling back to 'medium' difficulty`);
+    maxIndex = difficultyOrder.indexOf('medium'); // Fallback to medium
+  }
+  
+  // For puzzle generation, we need enough words to work with. 
+  // For easy/medium/challenging, include all three to have enough words.
+  // For other difficulties, include up to and including the requested difficulty.
+  let allowedDifficulties: Set<ClueDifficulty>;
+  if (maxDifficulty === 'easy' || maxDifficulty === 'medium' || maxDifficulty === 'challenging') {
+    allowedDifficulties = new Set(['easy', 'medium', 'challenging']);
+  } else {
+    allowedDifficulties = new Set(difficultyOrder.slice(0, maxIndex + 1));
+  }
   
   const validWords: string[] = [];
   
@@ -318,6 +333,20 @@ export function getWordsWithMaxDifficulty(maxDifficulty: ClueDifficulty): string
     const hasValidClue = entries.some(e => allowedDifficulties.has(e.difficulty));
     if (hasValidClue) {
       validWords.push(word);
+    }
+  }
+  
+  if (validWords.length === 0) {
+    const totalWordsInDb = Object.keys(db.byAnswer).length;
+    console.error(`❌ No words found for difficulty '${maxDifficulty}'. This is a critical error!`);
+    console.error(`   Total words in database: ${totalWordsInDb}`);
+    console.error(`   Allowed difficulties: ${Array.from(allowedDifficulties).join(', ')}`);
+    // Show sample of what difficulties exist in the database
+    const sampleEntries = Object.entries(db.byAnswer).slice(0, 10);
+    console.error(`   Sample words and their difficulties:`);
+    for (const [word, entries] of sampleEntries) {
+      const difficulties = new Set(entries.map(e => e.difficulty));
+      console.error(`     '${word}': [${Array.from(difficulties).join(', ')}]`);
     }
   }
   
