@@ -261,17 +261,7 @@ export function getClueForWord(
     }
   }
   
-  // Pick from preferred difficulty first, then fall back to easier ones
-  const order: ClueDifficulty[] = preferDifficulty === 'easy' 
-    ? ['easy', 'medium', 'challenging']
-    : preferDifficulty === 'medium'
-    ? ['medium', 'easy', 'challenging']
-    : ['challenging', 'medium', 'easy'];
-  
-  // Filter order to only allowed difficulties
-  const filteredOrder = order.filter(d => allowedDifficulties.has(d));
-  
-  for (const diff of filteredOrder) {
+  for (const diff of allowedDifficulties) {
     if (byDiff[diff].length > 0) {
       // Pick a random clue from this difficulty
       return byDiff[diff][Math.floor(Math.random() * byDiff[diff].length)];
@@ -297,9 +287,6 @@ export function getWordsWithMaxDifficulty(maxDifficulty: ClueDifficulty): string
     maxIndex = difficultyOrder.indexOf('medium'); // Fallback to medium
   }
   
-  // For puzzle generation, we need enough words to work with. 
-  // For easy/medium/challenging, include all three to have enough words.
-  // For other difficulties, include up to and including the requested difficulty.
   let allowedDifficulties: Set<ClueDifficulty>;
   if (maxDifficulty === 'easy') {
     allowedDifficulties = new Set(['easy', 'medium']);
