@@ -4,7 +4,7 @@ import {
   GridTemplate,
 } from '../core/types';
 
-import { createTemplateFromPuzzle, generatePuzzleFromGrid, ClueDatabase } from './puzzle-assembler';
+import { generatePuzzleFromGrid, ClueDatabase } from './puzzle-assembler';
 import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
 import { generateTemplate } from './template-generator';
@@ -129,20 +129,6 @@ export class PuzzleGenerator {
     
     this.addGeneratedTemplates();
   }
-  
-  /**
-   * Add a template from an existing puzzle
-   */
-  addTemplateFromPuzzle(puzzle: Puzzle): void {
-    const template = createTemplateFromPuzzle(puzzle);
-    this.templates.push(template);
-    console.log(`Added template: ${template.name} (${template.slots.length} slots)`);
-  }
-  
-  addSimpleTemplate(): void {
-
-  }
-  
 
   addGeneratedTemplate(difficulty: Difficulty = Difficulty.MEDIUM): void {
     const size: 'medium' | 'large' | 'xlarge' = 
@@ -174,12 +160,11 @@ export class PuzzleGenerator {
     }
     
     const template = this.templates[templateIndex];
-    
 
     const slotCount = template.slots.length;
-    const baseAttempts = 500000; // Much higher with huge clue database
-    const attemptsPerSlot = 50000; // Much higher per slot
-    const maxAttempts = Math.min(baseAttempts + (slotCount * attemptsPerSlot), 10000000); // Cap at 10M - use all compute power
+    const baseAttempts = 500000; 
+    const attemptsPerSlot = 50000;
+    const maxAttempts = Math.min(baseAttempts + (slotCount * attemptsPerSlot), 10000000);
     
     let result = solveGrid(template, this.wordIndex, {
       maxAttempts: maxAttempts,
@@ -257,10 +242,7 @@ export class PuzzleGenerator {
       throw error;
     }
   }
-  
-  /**
-   * Internal method to generate a puzzle - use the standalone generatePuzzle() function instead
-   */
+
   generate(
     config: {      
       category: string;
