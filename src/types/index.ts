@@ -16,7 +16,7 @@ export interface UserStats {
   fastestTime: number;
 }
 
-export interface PuzzleClue {
+export interface PuzzleItem {
   number: number;
   direction: 'across' | 'down' | 'right-down' | 'left-down' | 'down-across' | 'up-across';
   clue: string;
