@@ -22,9 +22,9 @@ export function generateTemplate(
       case Difficulty.EASY:
       case Difficulty.MEDIUM:
         return {
-          maxCrossingsMultiplier: 0.3,  
-          slotCountMultiplier: 0.5,     
-          densityTarget: 0.70,          
+          maxCrossingsMultiplier: 0.8,  
+          slotCountMultiplier: 0.8,     
+          densityTarget: 0.90,          
           preferFewerCrossings: false,  
           useSimpleDirections: false,   
           enableGapFilling: true, 
@@ -33,9 +33,9 @@ export function generateTemplate(
 
       default:
         return {
-          maxCrossingsMultiplier: 0.3,  
-          slotCountMultiplier: 0.5,     
-          densityTarget: 0.70,          
+          maxCrossingsMultiplier: 0.8,  
+          slotCountMultiplier: 0.8,     
+          densityTarget: 0.90,          
           preferFewerCrossings: false,  
           useSimpleDirections: false,   
           enableGapFilling: false,      
