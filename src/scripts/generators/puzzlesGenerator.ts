@@ -217,7 +217,7 @@ export class PuzzleGenerator {
   ): Puzzle | null {
     console.log('🎯 Generating puzzle...');
     let attempts = 0;
-    const maxTemplateAttempts = 50;
+    const maxTemplateAttempts = 5000;
     const maxTotalTime = 2 * 60 * 1000; // 2 minutes
     const startTime = Date.now();
     
@@ -298,7 +298,7 @@ export function generatePuzzle(
   } else {
     console.log('\n❌ Failed to generate perfect puzzle');
   }
-  
+
   return puzzle;
 }
 

@@ -5,8 +5,7 @@
  */
 import { Direction, GridTemplate, ClueSlot, Difficulty } from '../core/types';
 import { getSlotCells, getAnswerOrientation, getNextCellAfterAnswer, getCellBeforeAnswer } from './direction-utils';
-import { 
-  validateWordBoundaries, 
+import {   
   hasAnswerClueOverlap,
   recalculateCrossings,
   validateOverlapsAreCrossings,
@@ -65,9 +64,9 @@ export function generateTemplate(
     xsmall: { rows: 9, cols: 9, minSlots: 20, maxCrossingsPerSlot: 10 },
     small: { rows: 10, cols: 10, minSlots: 22, maxCrossingsPerSlot: 10},
     medium: { rows: 11, cols: 11, minSlots: 23, maxCrossingsPerSlot: 10 },
-    large: { rows: 12, cols: 12, minSlots: 27, maxCrossingsPerSlot: 12 },
+    large: { rows: 12, cols: 12, minSlots: 28, maxCrossingsPerSlot: 12 },
     xlarge: { rows: 13, cols: 13, minSlots: 36, maxCrossingsPerSlot: 12 },
-    xxlarge: { rows: 14, cols: 14, minSlots: 28, maxCrossingsPerSlot: 12 }
+    xxlarge: { rows: 14, cols: 14, minSlots: 42, maxCrossingsPerSlot: 12 }
   };
   
   const baseConfig = sizeConfig[selectedSize];

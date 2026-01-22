@@ -3,6 +3,10 @@ import jwt from 'jsonwebtoken';
 import { verifyGoogleToken } from '../services/google';
 import { verifyAppleToken } from '../services/apple';
 import { User } from '../models/User';
+import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
+import { Match } from '../models/Match';
+import { Invite } from '../models/Invite';
 
 const router = Router();
 
@@ -234,6 +238,68 @@ router.post('/demo', async (req: Request, res: Response) => {
     console.error('   Full error:', JSON.stringify(error, null, 2));
     res.status(500).json({ 
       error: 'Demo authentication failed',
+      message: error?.message || 'Unknown error'
+    });
+  }
+});
+
+/**
+ * DELETE /api/auth/delete-account
+ * Permanently deletes the user account and all associated data
+ */
+router.delete('/delete-account', authenticateToken, async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    // Find the user by firebaseUid
+    const user = await User.findOne({ firebaseUid: userId });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const userObjectId = user._id;
+
+    // Delete all associated data in parallel for better performance
+    await Promise.all([
+      // Delete all puzzle progress for this user
+      UserPuzzleProgress.deleteMany({ userId: userObjectId }),
+      
+      // Delete all matches where user is a player or winner
+      Match.deleteMany({
+        $or: [
+          { 'players.userId': userObjectId },
+          { winnerId: userObjectId }
+        ]
+      }),
+      
+      // Delete all invites where user is sender or recipient
+      Invite.deleteMany({
+        $or: [
+          { from: userObjectId },
+          { to: userObjectId }
+        ]
+      })
+    ]);
+
+    // Finally, delete the user account itself
+    await User.deleteOne({ _id: userObjectId });
+
+    console.log(`✅ Account deleted for user: ${user.email} (${userId})`);
+
+    res.json({ 
+      success: true,
+      message: 'Account and all associated data have been permanently deleted'
+    });
+  } catch (error: any) {
+    console.error('❌ Delete account error:', error?.message || error);
+    console.error('   Full error:', JSON.stringify(error, null, 2));
+    res.status(500).json({ 
+      error: 'Failed to delete account',
       message: error?.message || 'Unknown error'
     });
   }
