@@ -108,22 +108,19 @@ export function generateTemplate(
   
   const selectedSize = getSizeForDifficulty(difficulty);
   
-  const sizeConfig: Record<Size, { rows: number; cols: number; minSlots: number; maxSlots: number; maxCrossingsPerSlot: number; density: number }> = {
-    xsmall: { rows: 9, cols: 9, minSlots: 18, maxSlots: 100, maxCrossingsPerSlot: 10, density: 0.99 },
-    small: { rows: 10, cols: 10, minSlots: 20, maxSlots: 110, maxCrossingsPerSlot: 10, density: 0.99 },
-    medium: { rows: 11, cols: 11, minSlots: 22, maxSlots: 120, maxCrossingsPerSlot: 10, density: 0.99 },
-    large: { rows: 12, cols: 12, minSlots: 24, maxSlots: 130, maxCrossingsPerSlot: 12, density: 0.99 },
-    xlarge: { rows: 13, cols: 13, minSlots: 26, maxSlots: 140, maxCrossingsPerSlot: 12, density: 0.99 },
-    xxlarge: { rows: 14, cols: 14, minSlots: 28, maxSlots: 150, maxCrossingsPerSlot: 12, density: 0.99 }
+  const sizeConfig: Record<Size, { rows: number; cols: number; minSlots: number; maxCrossingsPerSlot: number; }> = {
+    xsmall: { rows: 9, cols: 9, minSlots: 18, maxCrossingsPerSlot: 10 },
+    small: { rows: 10, cols: 10, minSlots: 20, maxCrossingsPerSlot: 10},
+    medium: { rows: 11, cols: 11, minSlots: 22, maxCrossingsPerSlot: 10 },
+    large: { rows: 12, cols: 12, minSlots: 24, maxCrossingsPerSlot: 12 },
+    xlarge: { rows: 13, cols: 13, minSlots: 26, maxCrossingsPerSlot: 12 },
+    xxlarge: { rows: 14, cols: 14, minSlots: 28, maxCrossingsPerSlot: 12 }
   };
   
   const baseConfig = sizeConfig[selectedSize];
   // Apply difficulty multipliers
   const config = {
     ...baseConfig,
-    maxCrossingsPerSlot: Math.max(2, Math.floor(baseConfig.maxCrossingsPerSlot * difficultyMultipliers.maxCrossingsMultiplier)),
-    minSlots: Math.floor(baseConfig.minSlots * difficultyMultipliers.slotCountMultiplier),
-    maxSlots: Math.floor(baseConfig.maxSlots * difficultyMultipliers.slotCountMultiplier)
   };
   const slots: ClueSlot[] = [];
   const clueCells: Array<{ row: number; col: number; direction: Direction }> = [];
@@ -135,7 +132,7 @@ export function generateTemplate(
   // For easier puzzles, use fewer slots and simpler directions
   let slotNumber = 1;
   // For easier puzzles, aim for lower slot count (closer to minimum)
-  const targetRange = config.maxSlots - config.minSlots;
+  const targetRange = baseConfig.maxCrossingsPerSlot - config.minSlots;
   const targetSlots = Math.floor(config.minSlots + (targetRange * 0.3) + Math.random() * (targetRange * 0.2));
   
   // Use directions based on difficulty
@@ -1416,7 +1413,7 @@ export function generateTemplate(
         : 0;
       
       if (validSlots.length >= config.minSlots) {
-        console.log(`  ✅ Generated ${validSlots.length} valid slots with ${validClueCells.length} clue cells (target: ${config.minSlots}-${config.maxSlots})`);
+        console.log(`  ✅ Generated ${validSlots.length} valid slots with ${validClueCells.length} clue cells`);
       } else {
         console.warn(`  ⚠️  Only ${validSlots.length} valid slots (need ${config.minSlots}) - template may be invalid`);
       }
@@ -1435,7 +1432,6 @@ export function generateTemplate(
           successRate: avgCrossings <= 2 ? 0.8 : avgCrossings <= 3 ? 0.7 : 0.6,
           generated: true,
           size: selectedSize,
-          density: config.density,
           avgCrossings: avgCrossings.toFixed(2)
         }
       };
@@ -1447,7 +1443,7 @@ export function generateTemplate(
   }
   
   if (safeSlots.length >= config.minSlots) {
-    console.log(`  ✅ Generated ${safeSlots.length} slots with ${filteredClueCells.length} unique clue cells (target: ${config.minSlots}-${config.maxSlots})`);
+    console.log(`  ✅ Generated ${safeSlots.length} slots with ${filteredClueCells.length} unique clue cells`);
   } else {
     console.warn(`  ⚠️  Still only ${safeSlots.length} slots (need ${config.minSlots}) - template may be invalid`);
   }
@@ -1466,7 +1462,6 @@ export function generateTemplate(
       successRate: avgCrossings <= 2 ? 0.8 : avgCrossings <= 3 ? 0.7 : 0.6,
       generated: true,
       size: selectedSize,
-      density: config.density,
       avgCrossings: avgCrossings.toFixed(2)
     }
   };

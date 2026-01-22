@@ -126,18 +126,13 @@ export class PuzzleGenerator {
     if (totalWordsInIndex === 0) {
       throw new Error(`Word index is empty after building. Expected ${words.length} words but got 0.`);
     }
-    
-    this.addGeneratedTemplates();
   }
 
-  addGeneratedTemplate(difficulty: Difficulty = Difficulty.MEDIUM): void {
+  buildGeneratedTemplate(difficulty: Difficulty = Difficulty.MEDIUM): void {
     const template = generateTemplate(difficulty);
     this.templates.push(template);
   }
-  
-  addGeneratedTemplates(): void {
-    this.addGeneratedTemplate(this.difficulty);
-  }
+
   
   solveTemplate(
     templateIndex: number = 0,
@@ -164,28 +159,6 @@ export class PuzzleGenerator {
       preferCommonWords: true,
       allowWordReuse: true
     });
-    
-    // If that fails, try multiple strategies with maximum attempts
-    if (!result) {
-      console.log(`  🔄 Retrying without word reuse...`);
-      result = solveGrid(template, this.wordIndex, {
-        maxAttempts: maxAttempts * 2, // Double attempts for retry
-        shuffleWords: true,
-        preferCommonWords: true,
-        allowWordReuse: false
-      });
-    }
-    
-    // If still failing, try with different strategies
-    if (!result) {
-      console.log(`  🔄 Retrying with different word ordering...`);
-      result = solveGrid(template, this.wordIndex, {
-        maxAttempts: maxAttempts * 2,
-        shuffleWords: false, // Try without shuffling
-        preferCommonWords: false, // Try without preference
-        allowWordReuse: true
-      });
-    }
     
     if (!result) {
       console.log(`Failed to generate puzzle variant (template: ${template.name}, slots: ${template.slots.length})`);
@@ -247,7 +220,7 @@ export class PuzzleGenerator {
       }
 
       this.templates = [];
-      this.addGeneratedTemplate(this.difficulty);
+      this.buildGeneratedTemplate(this.difficulty);
       
       if (this.templates.length === 0) {
         console.log(`   ⚠️  Failed to generate template, skipping...`);
