@@ -415,7 +415,7 @@ export function solveGrid(
     
     return null; // No valid word found
   }
-  
+
   console.log(`  🧩 Solving template "${template.name}" with ${template.slots.length} slots...`);
   
   // Special optimization: if template has NO crossings, solve it greedily

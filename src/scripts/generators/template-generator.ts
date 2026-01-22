@@ -16,35 +16,6 @@ import {
 export function generateTemplate(
   difficulty: Difficulty = Difficulty.EASY
 ): GridTemplate {
-  // Difficulty-based configuration for simpler puzzles
-  const getDifficultyMultipliers = (difficulty: Difficulty) => {
-    switch (difficulty) {
-      case Difficulty.EASY:
-      case Difficulty.MEDIUM:
-        return {
-          maxCrossingsMultiplier: 0.8,
-          slotCountMultiplier: 0.8,
-          densityTarget: 0.70,  
-          preferFewerCrossings: false,
-          useSimpleDirections: false,
-          enableGapFilling: true,
-          maxWordLength: 9
-        };
-
-      default:
-        return {
-          maxCrossingsMultiplier: 0.8,  
-          slotCountMultiplier: 0.8,     
-          densityTarget: 0.70,
-          preferFewerCrossings: false,
-          useSimpleDirections: false,  
-          enableGapFilling: true,   
-          maxWordLength: 16
-        };
-    }
-  };
-
-  const difficultyMultipliers = getDifficultyMultipliers(difficulty);
 
   // Map difficulty to size using randomness
   type Size = 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge' | 'xxlarge';
@@ -117,11 +88,7 @@ export function generateTemplate(
   const targetRange = baseConfig.maxCrossingsPerSlot - config.minSlots;
   const targetSlots = Math.floor(config.minSlots + (targetRange * 0.3) + Math.random() * (targetRange * 0.2));
   
-  // Use directions based on difficulty
-  // Easier puzzles use simpler directions (fewer diagonals)
-  const allDirections: Direction[] = difficultyMultipliers.useSimpleDirections
-    ? ['across', 'down'] // Only horizontal and vertical for easy puzzles
-    : ['across', 'down', 'right-down', 'left-down', 'down-across', 'up-across'];
+  const allDirections: Direction[] = ['across', 'down', 'right-down', 'left-down', 'down-across', 'up-across'];
   const directionUsage = new Map<Direction, number>();
   allDirections.forEach(dir => directionUsage.set(dir, 0));
   
@@ -233,18 +200,12 @@ export function generateTemplate(
       
       // Word length selection based on difficulty
       // Allow longer words for better variety
-      const maxLength = Math.min(
-        difficultyMultipliers.maxWordLength,
-        selectedSize === 'xsmall' ? 9 : selectedSize === 'small' ? 10 : selectedSize === 'medium' ? 12 : selectedSize === 'large' ? 14 : selectedSize === 'xlarge' ? 15 : 15
-      );
+      const maxLength = selectedSize === 'xsmall' ? 9 : selectedSize === 'small' ? 10 : selectedSize === 'medium' ? 12 : selectedSize === 'large' ? 14 : selectedSize === 'xlarge' ? 15 : 15;
       const minLength = 3; // Start from 3 letters
       
-        // Optimal length selection - for easier puzzles, prefer fewer crossings
-        // For harder puzzles, prefer more crossings (denser puzzles)
         let bestLength = 0;
-        let bestCrossings = difficultyMultipliers.preferFewerCrossings ? Infinity : -1;
+        let bestCrossings = Infinity;
         let bestAnswerCells: Array<{ row: number; col: number }> = [];
-        
         for (let testLength = minLength; testLength <= maxLength; testLength++) {
         // Create a temporary slot to calculate answer cells
         const tempSlot: ClueSlot = {
@@ -329,11 +290,7 @@ export function generateTemplate(
           }
         }
         
-        // For easier puzzles, prefer fewer crossings (lower is better)
-        // For harder puzzles, prefer more crossings (higher is better)
-        const isBetter = difficultyMultipliers.preferFewerCrossings
-          ? (!hasConflict && testCrossingSlots.size < bestCrossings)
-          : (!hasConflict && testCrossingSlots.size >= bestCrossings);
+        const isBetter = !hasConflict && testCrossingSlots.size < bestCrossings;
         
         if (isBetter) {
           bestCrossings = testCrossingSlots.size;
@@ -354,8 +311,6 @@ export function generateTemplate(
       // Use the crossing count from optimal selection (already calculated)
       const crossingCount = bestCrossings; // Number of different slots we cross with (perpendicular only)
       
-      // PROGRESSIVE CROSSING LIMITS: Based on difficulty
-      // Easier puzzles have much stricter limits (2-4 crossings max)
       const progressRatioForCrossings = slots.length / Math.max(config.minSlots, targetSlots);
       let maxAllowedCrossings: number;
       
@@ -713,138 +668,279 @@ export function generateTemplate(
       }
     }
   }
-  
+
   // Gap-filling: Only for harder puzzles, disabled for easy puzzles
   // Initialize gap-filled structures (will be populated during gap-filling if enabled)
   const totalCells = config.rows * config.cols;
   let gapFilledCount = 0;
+
+  // Calculate current coverage
+  const currentCoverage = (gapFilledAnswerCells.size + gapFilledOccupiedCells.size) / totalCells;
   
-  if (!difficultyMultipliers.enableGapFilling) {
-    console.log(`  ✅ Skipping gap-filling for ${difficulty} difficulty (simpler puzzles)`);
-  } else {
-    // Calculate current coverage
-    const currentCoverage = (gapFilledAnswerCells.size + gapFilledOccupiedCells.size) / totalCells;
-    
-    // Target coverage based on difficulty (easier = less dense)
-    const targetCoverage = difficultyMultipliers.densityTarget;
-    const maxEmptyCells = Math.max(1, Math.floor(totalCells * (1 - targetCoverage)));
-    const targetFilledCells = totalCells - maxEmptyCells;
-    const currentFilledCells = gapFilledAnswerCells.size + gapFilledOccupiedCells.size;
-    const cellsNeeded = Math.max(0, targetFilledCells - currentFilledCells);
-    
-    console.log(`  🎯 Density target: ${targetFilledCells}/${totalCells} cells (${(targetCoverage * 100).toFixed(1)}% coverage)`);
-    console.log(`  📊 Current: ${currentFilledCells}/${totalCells} cells (${(currentCoverage * 100).toFixed(1)}%)`);
-    console.log(`  📊 Need to fill: ${cellsNeeded} more cells`);
+  // Target coverage based on difficulty (easier = less dense)
+  const targetCoverage = 0.90;
+  const maxEmptyCells = Math.max(1, Math.floor(totalCells * (1 - targetCoverage)));
+  const targetFilledCells = totalCells - maxEmptyCells;
+  const currentFilledCells = gapFilledAnswerCells.size + gapFilledOccupiedCells.size;
+  const cellsNeeded = Math.max(0, targetFilledCells - currentFilledCells);
   
-    let gapFillAttempts = 0;
-    let lastProgressCount = 0;
-    let noProgressCount = 0;
-    // Limits based on difficulty
-    const maxGapFillAttempts = difficulty === Difficulty.EASY ? 5000 : difficulty === Difficulty.MEDIUM ? 20000 : 50000;
-    const maxNoProgressAttempts = difficulty === Difficulty.EASY ? 500 : difficulty === Difficulty.MEDIUM ? 2000 : 5000;
-    
-    // Keep going until we reach target empty cells
-    while (gapFillAttempts < maxGapFillAttempts) {
-      gapFillAttempts++;
-    
-    // Check current coverage - stop when we reach 99%+ or within 5 cells of target
-    const currentFilled = gapFilledAnswerCells.size + gapFilledOccupiedCells.size;
-    const currentEmpty = totalCells - currentFilled;
-    const currentCoverageCheck = currentFilled / totalCells;
-    
-    // Early exit if we've reached target coverage (99%+)
-    if (currentCoverageCheck >= targetCoverage || currentEmpty <= maxEmptyCells) {
-      console.log(`  ✅ Gap-filling complete: ${currentEmpty} empty cells (${(currentCoverageCheck * 100).toFixed(1)}% coverage) with ${gapFilledCount} additional slots`);
-      break;
-    }
-    
-    // Early exit if we're very close (within 5 cells)
-    if (currentEmpty <= maxEmptyCells + 5) {
-      console.log(`  ✅ Gap-filling: Very close to target (${currentEmpty} empty cells, ${(currentCoverageCheck * 100).toFixed(1)}% coverage) with ${gapFilledCount} additional slots`);
-      break;
-    }
-    
-    // Early exit if no progress for too long - but be more patient with 6M clues
-    if (gapFilledCount === lastProgressCount) {
-      noProgressCount++;
-      // Only exit if we're very close to target (within 10 cells) OR no progress for very long
-      const closeToTarget = currentEmpty <= maxEmptyCells + 10;
-      if (noProgressCount >= maxNoProgressAttempts && !closeToTarget) {
-        console.log(`  ⚠️  Gap-filling: No progress for ${maxNoProgressAttempts} attempts, but continuing...`);
-        // Reset counter and keep trying - with 6M clues we should find solutions
-        noProgressCount = 0;
-      } else if (noProgressCount >= maxNoProgressAttempts * 3) {
-        // After 3x the normal limit, give up
-        console.log(`  ⚠️  Gap-filling: No progress for ${maxNoProgressAttempts * 3} attempts, stopping`);
-        console.log(`  📊 Final: ${currentEmpty} empty cells (${(currentCoverageCheck * 100).toFixed(1)}% coverage) with ${gapFilledCount} additional slots`);
-        break;
-      }
-    } else {
-      lastProgressCount = gapFilledCount;
+  console.log(`  🎯 Density target: ${targetFilledCells}/${totalCells} cells (${(targetCoverage * 100).toFixed(1)}% coverage)`);
+  console.log(`  📊 Current: ${currentFilledCells}/${totalCells} cells (${(currentCoverage * 100).toFixed(1)}%)`);
+  console.log(`  📊 Need to fill: ${cellsNeeded} more cells`);
+
+  let gapFillAttempts = 0;
+  let lastProgressCount = 0;
+  let noProgressCount = 0;
+  // Limits based on difficulty
+  const maxGapFillAttempts = difficulty === Difficulty.EASY ? 5000 : difficulty === Difficulty.MEDIUM ? 20000 : 50000;
+  const maxNoProgressAttempts = difficulty === Difficulty.EASY ? 500 : difficulty === Difficulty.MEDIUM ? 2000 : 5000;
+  
+  // Keep going until we reach target empty cells
+  while (gapFillAttempts < maxGapFillAttempts) {
+    gapFillAttempts++;
+  
+  // Check current coverage - stop when we reach 99%+ or within 5 cells of target
+  const currentFilled = gapFilledAnswerCells.size + gapFilledOccupiedCells.size;
+  const currentEmpty = totalCells - currentFilled;
+  const currentCoverageCheck = currentFilled / totalCells;
+  
+  // Early exit if we've reached target coverage (99%+)
+  if (currentCoverageCheck >= targetCoverage || currentEmpty <= maxEmptyCells) {
+    console.log(`  ✅ Gap-filling complete: ${currentEmpty} empty cells (${(currentCoverageCheck * 100).toFixed(1)}% coverage) with ${gapFilledCount} additional slots`);
+    break;
+  }
+  
+  // Early exit if we're very close (within 5 cells)
+  if (currentEmpty <= maxEmptyCells + 5) {
+    console.log(`  ✅ Gap-filling: Very close to target (${currentEmpty} empty cells, ${(currentCoverageCheck * 100).toFixed(1)}% coverage) with ${gapFilledCount} additional slots`);
+    break;
+  }
+  
+  if (gapFilledCount === lastProgressCount) {
+    noProgressCount++;
+    // Only exit if we're very close to target (within 10 cells) OR no progress for very long
+    const closeToTarget = currentEmpty <= maxEmptyCells + 10;
+    if (noProgressCount >= maxNoProgressAttempts && !closeToTarget) {
       noProgressCount = 0;
+    } else if (noProgressCount >= maxNoProgressAttempts * 3) {
+      // After 3x the normal limit, give up
+      console.log(`  ⚠️  Gap-filling: No progress for ${maxNoProgressAttempts * 3} attempts, stopping`);
+      console.log(`  📊 Final: ${currentEmpty} empty cells (${(currentCoverageCheck * 100).toFixed(1)}% coverage) with ${gapFilledCount} additional slots`);
+      break;
     }
-    
-    // With 6M clues, keep going until we reach 99%+ coverage
-    // Don't exit early - we have the word database to fill almost everything
-    
-    // Find ALL empty cells - prioritize those that will fill the most empty cells
-    const emptyCells: Array<{ row: number; col: number; emptyNeighbors: number }> = [];
-    for (let r = 0; r < config.rows; r++) {
-      for (let c = 0; c < config.cols; c++) {
-        const cellKey = `${r},${c}`;
-        if (!gapFilledOccupiedCells.has(cellKey) && !gapFilledAnswerCells.has(cellKey)) {
-          // Count how many empty neighbors this cell has (potential for filling)
-          let emptyNeighbors = 0;
-          for (let dr = -1; dr <= 1; dr++) {
-            for (let dc = -1; dc <= 1; dc++) {
-              if (dr === 0 && dc === 0) continue;
-              const checkRow = r + dr;
-              const checkCol = c + dc;
-              if (checkRow >= 0 && checkRow < config.rows && checkCol >= 0 && checkCol < config.cols) {
-                const checkKey = `${checkRow},${checkCol}`;
-                if (!gapFilledOccupiedCells.has(checkKey) && !gapFilledAnswerCells.has(checkKey)) {
-                  emptyNeighbors++;
-                }
+  } else {
+    lastProgressCount = gapFilledCount;
+    noProgressCount = 0;
+  }
+  
+  // Find ALL empty cells - prioritize those that will fill the most empty cells
+  const emptyCells: Array<{ row: number; col: number; emptyNeighbors: number }> = [];
+  for (let r = 0; r < config.rows; r++) {
+    for (let c = 0; c < config.cols; c++) {
+      const cellKey = `${r},${c}`;
+      if (!gapFilledOccupiedCells.has(cellKey) && !gapFilledAnswerCells.has(cellKey)) {
+        // Count how many empty neighbors this cell has (potential for filling)
+        let emptyNeighbors = 0;
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const checkRow = r + dr;
+            const checkCol = c + dc;
+            if (checkRow >= 0 && checkRow < config.rows && checkCol >= 0 && checkCol < config.cols) {
+              const checkKey = `${checkRow},${checkCol}`;
+              if (!gapFilledOccupiedCells.has(checkKey) && !gapFilledAnswerCells.has(checkKey)) {
+                emptyNeighbors++;
               }
             }
           }
-          emptyCells.push({ row: r, col: c, emptyNeighbors });
+        }
+        emptyCells.push({ row: r, col: c, emptyNeighbors });
+      }
+    }
+  }
+  
+  if (emptyCells.length === 0) break; // No more empty cells
+  
+  // Prioritize cells with many empty neighbors (will fill more cells)
+  emptyCells.sort((a, b) => b.emptyNeighbors - a.emptyNeighbors);
+  // Pick from top 30% of cells with most empty neighbors
+  const topCells = emptyCells.slice(0, Math.max(1, Math.floor(emptyCells.length * 0.3)));
+  
+  // Pick a random cell from top candidates (those with most empty neighbors)
+  const targetCell = topCells[Math.floor(Math.random() * topCells.length)];
+  
+  // Try to place a slot starting near this cell
+  const direction = allDirections[Math.floor(Math.random() * allDirections.length)];
+  let startRow = targetCell.row;
+  let startCol = targetCell.col;
+  
+  // Adjust for direction constraints
+  if (direction === 'left-down' && startCol < 3) startCol = Math.max(3, startCol);
+  if (direction === 'up-across' && startRow < 2) startRow = Math.max(2, startRow);
+  if (direction === 'right-down' && startCol >= config.cols - 1) startCol = Math.max(0, config.cols - 2);
+  if (direction === 'down-across' && startRow >= config.rows - 1) startRow = Math.max(0, config.rows - 2);
+  
+  const minGapLength = difficulty === Difficulty.EASY ? 3 : difficulty === Difficulty.MEDIUM ? 4 : 5;
+  const maxGapLength = selectedSize === 'xsmall' ? 9 : selectedSize === 'small' ? 10 : selectedSize === 'medium' ? 12 : selectedSize === 'large' ? 14 : selectedSize === 'xlarge' ? 15 : 15;
+  const wordLength = Math.floor(Math.random() * (maxGapLength - minGapLength + 1)) + minGapLength;
+  
+  const tempSlot: ClueSlot = {
+    id: 'gap_fill',
+    direction,
+    startRow,
+    startCol,
+    length: wordLength,
+    crossings: []
+  };
+  
+  const answerCellsForSlot = getSlotCells(tempSlot);
+  
+  // Check bounds
+  const lastCell = answerCellsForSlot[answerCellsForSlot.length - 1];
+  if (lastCell.row < 0 || lastCell.row >= config.rows || lastCell.col < 0 || lastCell.col >= config.cols) {
+    continue;
+  }
+  
+  // Validate that words can only start/end at grid bounds, clue cells, or blocked cells
+  // Check boundaries to prevent word merging
+  // Convert Map keys to Set for checkAnswerBoundaries
+  const gapFilledAnswerCellPositions = new Set(gapFilledAnswerCells.keys());
+  if (!checkAnswerBoundaries(direction, answerCellsForSlot, config.rows, config.cols, gapFilledAnswerCellPositions)) {
+    continue; // Would merge with another answer cell - skip this slot
+  }
+  
+  // Check if clue cell is available AND doesn't overlap with answer cells
+  const clueKey = `${startRow},${startCol}`;
+  if (gapFilledOccupiedCells.has(clueKey)) {
+    continue; // Clue cell already taken by another clue
+  }
+  
+  // CRITICAL FIX: Clue cell cannot be in an answer cell position
+  if (gapFilledAnswerCells.has(clueKey)) {
+    continue; // Clue cell overlaps with an answer cell - invalid!
+  }
+  
+  // Clue cell cannot be in a blocked cell position
+  if (gapFilledBlockedCells.has(clueKey)) {
+    continue; // Clue cell overlaps with a blocked cell - invalid!
+  }
+  
+  // Check for conflicts - answer cells cannot overlap with clue cells
+  let canPlace = true;
+  let crossingCount = 0;
+  const crossingSlots = new Set<string>();
+  
+  // First check: make sure clue cell itself is available (already checked above, but double-check)
+  if (gapFilledOccupiedCells.has(clueKey)) {
+    canPlace = false;
+  }
+  
+  // Second check: make sure answer cells don't overlap with clue cells
+  // Also check for parallel overlaps (same direction sharing cells)
+  if (canPlace) {
+    const testOrientation = getAnswerOrientation(direction);
+    
+    for (const cell of answerCellsForSlot) {
+      const cellKey = `${cell.row},${cell.col}`;
+      
+      // Answer cells cannot be in clue cells
+      if (gapFilledOccupiedCells.has(cellKey)) {
+        canPlace = false;
+        break;
+      }
+      
+      // Answer cells cannot be in blocked cells (these must remain empty or become clue cells)
+      if (gapFilledBlockedCells.has(cellKey)) {
+        canPlace = false;
+        break;
+      }
+      
+      // Count crossings with other slots - ONLY if perpendicular
+      if (gapFilledAnswerCells.has(cellKey)) {
+        const existingSlotInfo = gapFilledAnswerCells.get(cellKey);
+        if (existingSlotInfo) {
+          // Find the existing slot to check its orientation
+          const existingSlot = gapFilledSlots.find(s => s.id === existingSlotInfo.slotId);
+          if (existingSlot) {
+            const existingOrientation = getAnswerOrientation(existingSlot.direction);
+            
+            // Parallel overlaps (same direction) are INVALID
+            if (testOrientation === existingOrientation) {
+              canPlace = false; // Cannot share cells with same direction
+              break;
+            }
+            
+            // Only count as crossing if perpendicular
+            if (existingOrientation !== testOrientation) {
+              crossingSlots.add(existingSlotInfo.slotId);
+            }
+          }
         }
       }
     }
+  }
+  
+  crossingCount = crossingSlots.size; // Number of different slots we cross with
+  
+  // MAXIMUM DENSITY: Allow many crossings during gap filling
+  // Count how many empty cells this slot would fill
+  let emptyCellsFilled = 0;
+  for (const cell of answerCellsForSlot) {
+    const cellKey = `${cell.row},${cell.col}`;
+    if (!gapFilledOccupiedCells.has(cellKey) && !gapFilledAnswerCells.has(cellKey)) {
+      emptyCellsFilled++;
+    }
+  }
+  
+  // For gap-filling with 6M clues, be ULTRA-lenient - allow up to 20 crossings
+  // Priority is filling empty cells - crossings don't matter as much here
+  // These slots are added AFTER initial solve, so they can have more constraints
+  if (canPlace && crossingCount <= 20) {
+    // STRONGLY prefer slots that fill empty cells
+    // If we have many empty cells, only accept slots that fill at least 2
+    // If we're close to target, accept ANY slot that fills at least 1
+    const currentEmpty = totalCells - (gapFilledAnswerCells.size + gapFilledOccupiedCells.size);
+    const minEmptyCellsToFill = currentEmpty > maxEmptyCells + 15 ? 2 : 1;
+    if (emptyCellsFilled < minEmptyCellsToFill && Math.random() < 0.85) {
+      continue; // 85% chance to skip slots that don't fill enough empty cells
+    }
     
-    if (emptyCells.length === 0) break; // No more empty cells
+    // Final validation - clue cell cannot be in an answer cell
+    if (gapFilledAnswerCells.has(clueKey)) {
+      continue; // Clue cell overlaps with answer cell - invalid!
+    }
     
-    // Prioritize cells with many empty neighbors (will fill more cells)
-    emptyCells.sort((a, b) => b.emptyNeighbors - a.emptyNeighbors);
-    // Pick from top 30% of cells with most empty neighbors
-    const topCells = emptyCells.slice(0, Math.max(1, Math.floor(emptyCells.length * 0.3)));
+    // Final validation - ensure answer cells don't start immediately after another answer cell
+    // Re-validate the cell before the first answer cell
+    const firstCell = answerCellsForSlot[0];
+    const cellBeforeAnswerFinal = getCellBeforeAnswer(direction, firstCell, config.rows, config.cols);
+    if (cellBeforeAnswerFinal !== null) {
+      const prevCellKey = `${cellBeforeAnswerFinal.row},${cellBeforeAnswerFinal.col}`;
+      if (gapFilledAnswerCells.has(prevCellKey)) {
+        // This would cause word merging - invalid!
+        continue;
+      }
+      // Must be clue cell, blocked cell, or empty (will be marked as blocked when slot is placed)
+      // Empty is OK here because we'll mark it as blocked immediately after validation
+    }
     
-    // Pick a random cell from top candidates (those with most empty neighbors)
-    const targetCell = topCells[Math.floor(Math.random() * topCells.length)];
+    // Final validation - ensure answer cells don't end immediately before another answer cell
+    // This is the KEY validation: cell after last answer letter must be boundary/clue/block
+    // Reuse lastCell from earlier
+    const nextCellAfterAnswerFinal = getNextCellAfterAnswer(direction, lastCell, config.rows, config.cols);
+    if (nextCellAfterAnswerFinal !== null) {
+      const nextCellKey = `${nextCellAfterAnswerFinal.row},${nextCellAfterAnswerFinal.col}`;
+      if (gapFilledAnswerCells.has(nextCellKey)) {
+        // This would cause word merging - invalid!
+        continue;
+      }
+      // Must be clue cell, blocked cell, or empty (will be marked as blocked when slot is placed)
+      // Empty is OK here because we'll mark it as blocked immediately after validation
+    }
     
-    // Try to place a slot starting near this cell
-    const direction = allDirections[Math.floor(Math.random() * allDirections.length)];
-    let startRow = targetCell.row;
-    let startCol = targetCell.col;
-    
-    // Adjust for direction constraints
-    if (direction === 'left-down' && startCol < 3) startCol = Math.max(3, startCol);
-    if (direction === 'up-across' && startRow < 2) startRow = Math.max(2, startRow);
-    if (direction === 'right-down' && startCol >= config.cols - 1) startCol = Math.max(0, config.cols - 2);
-    if (direction === 'down-across' && startRow >= config.rows - 1) startRow = Math.max(0, config.rows - 2);
-    
-    // Use word length based on difficulty - allow longer words for better variety
-    // Range: 3-8 for easy, 4-10 for medium, 5-12 for challenging
-    const minGapLength = difficulty === Difficulty.EASY ? 3 : difficulty === Difficulty.MEDIUM ? 4 : 5;
-    const maxGapLength = Math.min(
-      difficultyMultipliers.maxWordLength,
-      selectedSize === 'xsmall' ? 9 : selectedSize === 'small' ? 10 : selectedSize === 'medium' ? 12 : selectedSize === 'large' ? 14 : selectedSize === 'xlarge' ? 15 : 15
-    );
-    const wordLength = Math.floor(Math.random() * (maxGapLength - minGapLength + 1)) + minGapLength;
-    
-    const tempSlot: ClueSlot = {
-      id: 'gap_fill',
+    const gapSlotId = `gap_slot_${slotNumber}`;
+    const gapSlot: ClueSlot = {
+      id: gapSlotId,
       direction,
       startRow,
       startCol,
@@ -852,227 +948,71 @@ export function generateTemplate(
       crossings: []
     };
     
-    const answerCellsForSlot = getSlotCells(tempSlot);
+    gapFilledSlots.push(gapSlot);
+    gapFilledOccupiedCells.add(clueKey);
     
-    // Check bounds
-    const lastCell = answerCellsForSlot[answerCellsForSlot.length - 1];
-    if (lastCell.row < 0 || lastCell.row >= config.rows || lastCell.col < 0 || lastCell.col >= config.cols) {
-      continue;
-    }
-    
-    // Validate that words can only start/end at grid bounds, clue cells, or blocked cells
-    // Check boundaries to prevent word merging
-    // Convert Map keys to Set for checkAnswerBoundaries
-    const gapFilledAnswerCellPositions = new Set(gapFilledAnswerCells.keys());
-    if (!checkAnswerBoundaries(direction, answerCellsForSlot, config.rows, config.cols, gapFilledAnswerCellPositions)) {
-      continue; // Would merge with another answer cell - skip this slot
-    }
-    
-    // Check if clue cell is available AND doesn't overlap with answer cells
-    const clueKey = `${startRow},${startCol}`;
-    if (gapFilledOccupiedCells.has(clueKey)) {
-      continue; // Clue cell already taken by another clue
-    }
-    
-    // CRITICAL FIX: Clue cell cannot be in an answer cell position
-    if (gapFilledAnswerCells.has(clueKey)) {
-      continue; // Clue cell overlaps with an answer cell - invalid!
-    }
-    
-    // Clue cell cannot be in a blocked cell position
-    if (gapFilledBlockedCells.has(clueKey)) {
-      continue; // Clue cell overlaps with a blocked cell - invalid!
-    }
-    
-    // Check for conflicts - answer cells cannot overlap with clue cells
-    let canPlace = true;
-    let crossingCount = 0;
-    const crossingSlots = new Set<string>();
-    
-    // First check: make sure clue cell itself is available (already checked above, but double-check)
-    if (gapFilledOccupiedCells.has(clueKey)) {
-      canPlace = false;
-    }
-    
-    // Second check: make sure answer cells don't overlap with clue cells
-    // Also check for parallel overlaps (same direction sharing cells)
-    if (canPlace) {
-      const testOrientation = getAnswerOrientation(direction);
-      
-      for (const cell of answerCellsForSlot) {
-        const cellKey = `${cell.row},${cell.col}`;
-        
-        // Answer cells cannot be in clue cells
-        if (gapFilledOccupiedCells.has(cellKey)) {
-          canPlace = false;
-          break;
-        }
-        
-        // Answer cells cannot be in blocked cells (these must remain empty or become clue cells)
-        if (gapFilledBlockedCells.has(cellKey)) {
-          canPlace = false;
-          break;
-        }
-        
-        // Count crossings with other slots - ONLY if perpendicular
-        if (gapFilledAnswerCells.has(cellKey)) {
-          const existingSlotInfo = gapFilledAnswerCells.get(cellKey);
-          if (existingSlotInfo) {
-            // Find the existing slot to check its orientation
-            const existingSlot = gapFilledSlots.find(s => s.id === existingSlotInfo.slotId);
-            if (existingSlot) {
-              const existingOrientation = getAnswerOrientation(existingSlot.direction);
-              
-              // Parallel overlaps (same direction) are INVALID
-              if (testOrientation === existingOrientation) {
-                canPlace = false; // Cannot share cells with same direction
-                break;
-              }
-              
-              // Only count as crossing if perpendicular
-              if (existingOrientation !== testOrientation) {
-                crossingSlots.add(existingSlotInfo.slotId);
-              }
-            }
-          }
-        }
-      }
-    }
-    
-    crossingCount = crossingSlots.size; // Number of different slots we cross with
-    
-    // MAXIMUM DENSITY: Allow many crossings during gap filling
-    // Count how many empty cells this slot would fill
-    let emptyCellsFilled = 0;
-    for (const cell of answerCellsForSlot) {
+    for (let j = 0; j < answerCellsForSlot.length; j++) {
+      const cell = answerCellsForSlot[j];
       const cellKey = `${cell.row},${cell.col}`;
-      if (!gapFilledOccupiedCells.has(cellKey) && !gapFilledAnswerCells.has(cellKey)) {
-        emptyCellsFilled++;
+      gapFilledAnswerCells.set(cellKey, { slotId: gapSlotId, position: j });
+    }
+    
+    // Mark the cell BEFORE the first answer cell as blocked
+    // This prevents words from merging - the cell must remain empty or become a clue cell
+    // Reuse cellBeforeAnswerFinal from earlier validation
+    if (cellBeforeAnswerFinal !== null) {
+      const prevCellKey = `${cellBeforeAnswerFinal.row},${cellBeforeAnswerFinal.col}`;
+      // Only mark as blocked if it's not already a clue cell
+      if (!gapFilledOccupiedCells.has(prevCellKey)) {
+        gapFilledBlockedCells.add(prevCellKey);
       }
     }
     
-    // For gap-filling with 6M clues, be ULTRA-lenient - allow up to 20 crossings
-    // Priority is filling empty cells - crossings don't matter as much here
-    // These slots are added AFTER initial solve, so they can have more constraints
-    if (canPlace && crossingCount <= 20) {
-      // STRONGLY prefer slots that fill empty cells
-      // If we have many empty cells, only accept slots that fill at least 2
-      // If we're close to target, accept ANY slot that fills at least 1
-      const currentEmpty = totalCells - (gapFilledAnswerCells.size + gapFilledOccupiedCells.size);
-      const minEmptyCellsToFill = currentEmpty > maxEmptyCells + 15 ? 2 : 1;
-      if (emptyCellsFilled < minEmptyCellsToFill && Math.random() < 0.85) {
-        continue; // 85% chance to skip slots that don't fill enough empty cells
+    // Mark the cell after the last answer cell as blocked
+    // This prevents words from merging - the cell must remain empty or become a clue cell
+    // Reuse nextCellAfterAnswerFinal from earlier validation
+    if (nextCellAfterAnswerFinal !== null) {
+      const nextCellKey = `${nextCellAfterAnswerFinal.row},${nextCellAfterAnswerFinal.col}`;
+      // Only mark as blocked if it's not already a clue cell
+      if (!gapFilledOccupiedCells.has(nextCellKey)) {
+        gapFilledBlockedCells.add(nextCellKey);
       }
-      
-      // CRITICAL FIX: Final validation - clue cell cannot be in an answer cell
-      if (gapFilledAnswerCells.has(clueKey)) {
-        continue; // Clue cell overlaps with answer cell - invalid!
-      }
-      
-      // CRITICAL FIX: Final validation - ensure answer cells don't start immediately after another answer cell
-      // Re-validate the cell before the first answer cell
-      const firstCell = answerCellsForSlot[0];
-      const cellBeforeAnswerFinal = getCellBeforeAnswer(direction, firstCell, config.rows, config.cols);
-      if (cellBeforeAnswerFinal !== null) {
-        const prevCellKey = `${cellBeforeAnswerFinal.row},${cellBeforeAnswerFinal.col}`;
-        if (gapFilledAnswerCells.has(prevCellKey)) {
-          // This would cause word merging - invalid!
-          continue;
-        }
-        // Must be clue cell, blocked cell, or empty (will be marked as blocked when slot is placed)
-        // Empty is OK here because we'll mark it as blocked immediately after validation
-      }
-      
-      // CRITICAL FIX: Final validation - ensure answer cells don't end immediately before another answer cell
-      // This is the KEY validation: cell after last answer letter must be boundary/clue/block
-      // Reuse lastCell from earlier
-      const nextCellAfterAnswerFinal = getNextCellAfterAnswer(direction, lastCell, config.rows, config.cols);
-      if (nextCellAfterAnswerFinal !== null) {
-        const nextCellKey = `${nextCellAfterAnswerFinal.row},${nextCellAfterAnswerFinal.col}`;
-        if (gapFilledAnswerCells.has(nextCellKey)) {
-          // This would cause word merging - invalid!
-          continue;
-        }
-        // Must be clue cell, blocked cell, or empty (will be marked as blocked when slot is placed)
-        // Empty is OK here because we'll mark it as blocked immediately after validation
-      }
-      
-      const gapSlotId = `gap_slot_${slotNumber}`;
-      const gapSlot: ClueSlot = {
-        id: gapSlotId,
-        direction,
-        startRow,
-        startCol,
-        length: wordLength,
-        crossings: []
-      };
-      
-      gapFilledSlots.push(gapSlot);
-      gapFilledOccupiedCells.add(clueKey);
-      
-      for (let j = 0; j < answerCellsForSlot.length; j++) {
-        const cell = answerCellsForSlot[j];
-        const cellKey = `${cell.row},${cell.col}`;
-        gapFilledAnswerCells.set(cellKey, { slotId: gapSlotId, position: j });
-      }
-      
-      // Mark the cell BEFORE the first answer cell as blocked
-      // This prevents words from merging - the cell must remain empty or become a clue cell
-      // Reuse cellBeforeAnswerFinal from earlier validation
-      if (cellBeforeAnswerFinal !== null) {
-        const prevCellKey = `${cellBeforeAnswerFinal.row},${cellBeforeAnswerFinal.col}`;
-        // Only mark as blocked if it's not already a clue cell
-        if (!gapFilledOccupiedCells.has(prevCellKey)) {
-          gapFilledBlockedCells.add(prevCellKey);
-        }
-      }
-      
-      // Mark the cell after the last answer cell as blocked
-      // This prevents words from merging - the cell must remain empty or become a clue cell
-      // Reuse nextCellAfterAnswerFinal from earlier validation
-      if (nextCellAfterAnswerFinal !== null) {
-        const nextCellKey = `${nextCellAfterAnswerFinal.row},${nextCellAfterAnswerFinal.col}`;
-        // Only mark as blocked if it's not already a clue cell
-        if (!gapFilledOccupiedCells.has(nextCellKey)) {
-          gapFilledBlockedCells.add(nextCellKey);
-        }
-      }
-      
-      gapFilledCount++;
-      slotNumber++;
-      
-      // Update coverage tracking
-      const newFilled = gapFilledAnswerCells.size + gapFilledOccupiedCells.size;
-      const newEmpty = totalCells - newFilled;
-      const newCoverage = newFilled / totalCells;
-      
-      if (newEmpty <= maxEmptyCells) {
-        // We've reached target (5 empty cells max for xlarge)
-        console.log(`  ✅ Gap-filling complete: ${newEmpty} empty cells (${(newCoverage * 100).toFixed(1)}% coverage) with ${gapFilledCount} additional slots`);
-        break;
-      }
-      
-      // Also stop if we're very close (within 5 cells) and have added reasonable slots
-      if (newEmpty <= maxEmptyCells + 5 && gapFilledCount >= 5) {
-        console.log(`  ✅ Gap-filling: ${newEmpty} empty cells (${(newCoverage * 100).toFixed(1)}% coverage) with ${gapFilledCount} additional slots`);
-        break;
-      }
-      
-      // Early exit if we have good coverage
-      if (newCoverage >= 0.95 && gapFilledCount >= 5) {
-        console.log(`  ✅ Gap-filling: Good coverage achieved (${(newCoverage * 100).toFixed(1)}%) with ${gapFilledCount} additional slots`);
-        break;
-      }
-      
-      // If we're making progress but not there yet, continue
-      // Don't stop early - keep going until we're close
     }
-    } // End of while loop
     
-    if (gapFilledCount > 0) {
-      console.log(`  ✅ Gap-filling: Added ${gapFilledCount} additional slots to increase density`);
+    gapFilledCount++;
+    slotNumber++;
+    
+    // Update coverage tracking
+    const newFilled = gapFilledAnswerCells.size + gapFilledOccupiedCells.size;
+    const newEmpty = totalCells - newFilled;
+    const newCoverage = newFilled / totalCells;
+    
+    if (newEmpty <= maxEmptyCells) {
+      // We've reached target (5 empty cells max for xlarge)
+      console.log(`  ✅ Gap-filling complete: ${newEmpty} empty cells (${(newCoverage * 100).toFixed(1)}% coverage) with ${gapFilledCount} additional slots`);
+      break;
     }
-  } // End of gap-filling else block
+    
+    // Also stop if we're very close (within 5 cells) and have added reasonable slots
+    if (newEmpty <= maxEmptyCells + 5 && gapFilledCount >= 5) {
+      console.log(`  ✅ Gap-filling: ${newEmpty} empty cells (${(newCoverage * 100).toFixed(1)}% coverage) with ${gapFilledCount} additional slots`);
+      break;
+    }
+    
+    // Early exit if we have good coverage
+    if (newCoverage >= 0.95 && gapFilledCount >= 5) {
+      console.log(`  ✅ Gap-filling: Good coverage achieved (${(newCoverage * 100).toFixed(1)}%) with ${gapFilledCount} additional slots`);
+      break;
+    }
+    
+    // If we're making progress but not there yet, continue
+    // Don't stop early - keep going until we're close
+  }
+  } // End of while loop
+  
+  if (gapFilledCount > 0) {
+    console.log(`  ✅ Gap-filling: Added ${gapFilledCount} additional slots to increase density`);
+  }
   
   // Recalculate crossings for gap-filled slots
   recalculateCrossings(gapFilledSlots);

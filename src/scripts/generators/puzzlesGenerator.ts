@@ -217,8 +217,8 @@ export class PuzzleGenerator {
   ): Puzzle | null {
     console.log('🎯 Generating puzzle...');
     let attempts = 0;
-    const maxTemplateAttempts = 50; // More attempts to find perfect dense template
-    const maxTotalTime = 30 * 60 * 1000; // 30 minutes max - take time to find perfect puzzle
+    const maxTemplateAttempts = 50;
+    const maxTotalTime = 2 * 60 * 1000; // 2 minutes
     const startTime = Date.now();
     
     while (attempts < maxTemplateAttempts) {
@@ -246,7 +246,7 @@ export class PuzzleGenerator {
         category: config.category
       });
       const solveTime = Date.now() - solveStartTime;
-      console.log(`   ⏱️  Solve attempt took ${solveTime}ms`);
+      console.log(`   ⏱️  Solve attempt took ${solveTime / 1000} seconds`);
       
       if (puzzle) {
         return puzzle;
