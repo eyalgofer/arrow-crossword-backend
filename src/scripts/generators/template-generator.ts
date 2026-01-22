@@ -22,12 +22,12 @@ export function generateTemplate(
       case Difficulty.EASY:
       case Difficulty.MEDIUM:
         return {
-          maxCrossingsMultiplier: 0.8,  
-          slotCountMultiplier: 0.8,     
-          densityTarget: 0.90,          
-          preferFewerCrossings: false,  
-          useSimpleDirections: false,   
-          enableGapFilling: true, 
+          maxCrossingsMultiplier: 0.8,
+          slotCountMultiplier: 0.8,
+          densityTarget: 0.90,  
+          preferFewerCrossings: false,
+          useSimpleDirections: false,
+          enableGapFilling: true,
           maxWordLength: 9
         };
 
@@ -35,10 +35,10 @@ export function generateTemplate(
         return {
           maxCrossingsMultiplier: 0.8,  
           slotCountMultiplier: 0.8,     
-          densityTarget: 0.90,          
-          preferFewerCrossings: false,  
-          useSimpleDirections: false,   
-          enableGapFilling: false,      
+          densityTarget: 0.90,
+          preferFewerCrossings: false,
+          useSimpleDirections: false,  
+          enableGapFilling: false,   
           maxWordLength: 16
         };
     }
