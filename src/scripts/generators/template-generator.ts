@@ -20,44 +20,26 @@ export function generateTemplate(
   const getDifficultyMultipliers = (difficulty: Difficulty) => {
     switch (difficulty) {
       case Difficulty.EASY:
-        return {
-          maxCrossingsMultiplier: 0.3,  // 30% of normal (much fewer crossings)
-          slotCountMultiplier: 0.5,     // 50% of normal (fewer slots)
-          densityTarget: 0.70,          // 70% coverage (more empty space)
-          preferFewerCrossings: false,   // Prefer slots with fewer crossings
-          useSimpleDirections: false,    // Use fewer diagonal directions
-          enableGapFilling: false,      // Disable aggressive gap-filling
-          maxWordLength: 9
-        };
       case Difficulty.MEDIUM:
         return {
-          maxCrossingsMultiplier: 0.7,
-          slotCountMultiplier: 0.75,  
-          densityTarget: 0.9,         
-          preferFewerCrossings: false,
-          useSimpleDirections: false,
-          enableGapFilling: false,
-          maxWordLength: 10
+          maxCrossingsMultiplier: 0.3,  
+          slotCountMultiplier: 0.5,     
+          densityTarget: 0.70,          
+          preferFewerCrossings: false,  
+          useSimpleDirections: false,   
+          enableGapFilling: false,      
+          maxWordLength: 9
         };
-      case Difficulty.CHALLENGING:
-        return {
-          maxCrossingsMultiplier: 0.7,
-          slotCountMultiplier: 0.75,
-          densityTarget: 0.90,
-          preferFewerCrossings: false,
-          useSimpleDirections: false,
-          enableGapFilling: false,
-          maxWordLength: 12
-        };
+
       default:
         return {
-          maxCrossingsMultiplier: 1.0,
-          slotCountMultiplier: 0.8,
-          densityTarget: 0.99,
-          preferFewerCrossings: false,
-          useSimpleDirections: false,
-          enableGapFilling: false,
-          maxWordLength: 13
+          maxCrossingsMultiplier: 0.3,  
+          slotCountMultiplier: 0.5,     
+          densityTarget: 0.70,          
+          preferFewerCrossings: false,  
+          useSimpleDirections: false,   
+          enableGapFilling: false,      
+          maxWordLength: 16
         };
     }
   };
