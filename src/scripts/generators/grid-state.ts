@@ -3,7 +3,6 @@
  * 
  * Handles grid state representation and manipulation
  */
-
 import { normalizeWord } from './validation-utils';
 
 export interface GridState {

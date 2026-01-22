@@ -8,7 +8,6 @@ import { getAnswerCells, getNextCellAfterAnswer } from './generators/direction-u
 
 dotenv.config();
 
-
 function validatePuzzleBoundaries(puzzle: any): string[] {
   const rows: number = puzzle.grid?.rows;
   const cols: number = puzzle.grid?.cols;
@@ -230,7 +229,6 @@ const seedPackages = async () => {
 
     // Create all packages and generate puzzles with correct difficulty distribution
     console.log(`📦 Creating ${packageDefinitions.length} packages with difficulty distribution...\n`);
-    console.log(`   Distribution: 40% easy, 30% medium, 10% hard, 10% challenging, 10% expert\n`);
 
     let globalPuzzleIndex = 1;
     

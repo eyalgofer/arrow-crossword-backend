@@ -11,6 +11,7 @@ dotenv.config();
  * Script to assign existing puzzles to daily puzzle dates
  * Starting from today, assigns one puzzle per day
  */
+// TODO: will need another script like this to assign daily puzzles by day in year
 const assignDailyPuzzles = async () => {
   try {
     console.log('🚀 Starting daily puzzle assignment...\n');

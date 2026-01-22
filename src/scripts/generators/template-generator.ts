@@ -247,7 +247,7 @@ export function generateTemplate(
           continue; // This length doesn't fit
         }
         
-        // CRITICAL: Validate that words can only start/end at grid bounds, clue cells, or blocked cells
+        // Validate that words can only start/end at grid bounds, clue cells, or blocked cells
         // Words CANNOT start/end at answer cells (would cause word merging)
         // During length testing, empty cells are OK (they'll become blocked when slot is placed)
         // Check the cell BEFORE the first answer cell
@@ -374,7 +374,7 @@ export function generateTemplate(
         maxAllowedCrossings = config.maxCrossingsPerSlot; // Last 20%: up to config max
       }
       
-      // CRITICAL: Strictly enforce crossing limits during placement
+      // Strictly enforce crossing limits during placement
       // This prevents placing slots that will be filtered out later
       if (crossingCount > maxAllowedCrossings) {
         continue; // Too many crossings for this stage, try a different position
@@ -396,7 +396,7 @@ export function generateTemplate(
         }
       }
       
-      // CRITICAL: Double-check that clue cell is still available (prevent duplicates)
+      // Double-check that clue cell is still available (prevent duplicates)
       // Also check that clue cell doesn't overlap with answer cells
       if (occupiedCells.has(clueKey)) {
         // This should not happen due to earlier checks, but add safety check
@@ -461,7 +461,7 @@ export function generateTemplate(
         answerCells.set(cellKey, { slotId, position: j });
       }
       
-      // CRITICAL: Mark the cell BEFORE the first answer cell as blocked
+      // Mark the cell BEFORE the first answer cell as blocked
       // This prevents words from merging - the cell must remain empty or become a clue cell
       const firstAnswerCell = answerCellsForSlot[0];
       const cellBeforeAnswer = getCellBeforeAnswer(direction, firstAnswerCell, config.rows, config.cols);
@@ -473,7 +473,7 @@ export function generateTemplate(
         }
       }
       
-      // CRITICAL: Mark the cell after the last answer cell as blocked
+      // Mark the cell after the last answer cell as blocked
       // This prevents words from merging - the cell must remain empty or become a clue cell
       const lastAnswerCell = answerCellsForSlot[answerCellsForSlot.length - 1];
       const nextCellAfterAnswer = getNextCellAfterAnswer(direction, lastAnswerCell, config.rows, config.cols);
@@ -493,7 +493,7 @@ export function generateTemplate(
   // Calculate crossings between slots using consolidated function
   recalculateCrossings(slots);
   
-  // CRITICAL: Sort slots by crossing count (fewest first)
+  // Sort slots by crossing count (fewest first)
   // The solver will solve slots with most crossings first (MRV heuristic),
   // but we want the FIRST slots to have FEW crossings so they're solvable
   // So we'll sort by crossing count ASCENDING, then filter
@@ -526,7 +526,7 @@ export function generateTemplate(
     .join(', ');
   console.log(`  📊 Direction usage: ${directionCounts}`);
   
-  // CRITICAL: Validate that no answer cells overlap with clue cells
+  // Validate that no answer cells overlap with clue cells
   // Build a set of all clue cell positions
   const allClueCellPositions = new Set<string>();
   for (const slot of filteredSlots) {
@@ -544,11 +544,11 @@ export function generateTemplate(
     }
   }
   
-  // CRITICAL: Recalculate crossings after filtering
+  // Recalculate crossings after filtering
   // When we remove slots, other slots' crossing counts decrease
   recalculateCrossings(validatedSlots);
   
-  // CRITICAL: Validate that answer cells only overlap at registered crossing points
+  // Validate that answer cells only overlap at registered crossing points
   // If two slots share cells but have no crossing registered, that's invalid
   // This will catch any parallel overlaps that somehow got through placement logic
   const { invalidSlots: slotsWithInvalidOverlaps, errors: overlapErrors } = validateOverlapsAreCrossings(validatedSlots);
@@ -604,7 +604,7 @@ export function generateTemplate(
     console.warn(`⚠️  Warning: Filtered out too many slots (${slots.length} -> ${finalFilteredSlots.length}). Only ${finalFilteredSlots.length} slots remain, need at least ${config.minSlots}.`);
     // If we have too few slots, be MUCH less aggressive with filtering
     if (finalFilteredSlots.length < config.minSlots * 0.6) {
-      console.warn(`⚠️  Critical: Too few slots! Relaxing filtering constraints...`);
+      console.warn(`⚠️  Too few slots! Relaxing filtering constraints...`);
       // Re-add filtered slots to meet minimum - be VERY lenient
       // Target at least the minimum required slots
       const targetCount = Math.max(
@@ -660,7 +660,7 @@ export function generateTemplate(
         // Cap at 15 crossings for ultra-dense puzzles
         const relaxedLimit = 15;
         if (crossings <= relaxedLimit) {
-          // CRITICAL: Double-check clue cell is still available before adding
+          // Double-check clue cell is still available before adding
           if (!clueCellSet.has(clueKey)) {
             finalFilteredSlots.push(slot);
             clueCellSet.add(clueKey); // Add this slot's clue cell
@@ -858,7 +858,7 @@ export function generateTemplate(
       continue;
     }
     
-    // CRITICAL: Validate that words can only start/end at grid bounds, clue cells, or blocked cells
+    // Validate that words can only start/end at grid bounds, clue cells, or blocked cells
     // Words CANNOT start/end at answer cells (would cause word merging)
     // Empty cells are OK (will become blocked when slot is placed)
     // Check the cell BEFORE the first answer cell
@@ -899,12 +899,12 @@ export function generateTemplate(
       continue; // Clue cell overlaps with an answer cell - invalid!
     }
     
-    // CRITICAL FIX: Clue cell cannot be in a blocked cell position
+    // Clue cell cannot be in a blocked cell position
     if (gapFilledBlockedCells.has(clueKey)) {
       continue; // Clue cell overlaps with a blocked cell - invalid!
     }
     
-    // Check for conflicts - CRITICAL: answer cells cannot overlap with clue cells
+    // Check for conflicts - answer cells cannot overlap with clue cells
     let canPlace = true;
     let crossingCount = 0;
     const crossingSlots = new Set<string>();
@@ -915,20 +915,20 @@ export function generateTemplate(
     }
     
     // Second check: make sure answer cells don't overlap with clue cells
-    // CRITICAL: Also check for parallel overlaps (same direction sharing cells)
+    // Also check for parallel overlaps (same direction sharing cells)
     if (canPlace) {
       const testOrientation = getAnswerOrientation(direction);
       
       for (const cell of answerCellsForSlot) {
         const cellKey = `${cell.row},${cell.col}`;
         
-        // CRITICAL: Answer cells cannot be in clue cells
+        // Answer cells cannot be in clue cells
         if (gapFilledOccupiedCells.has(cellKey)) {
           canPlace = false;
           break;
         }
         
-        // CRITICAL: Answer cells cannot be in blocked cells (these must remain empty or become clue cells)
+        // Answer cells cannot be in blocked cells (these must remain empty or become clue cells)
         if (gapFilledBlockedCells.has(cellKey)) {
           canPlace = false;
           break;
@@ -943,7 +943,7 @@ export function generateTemplate(
             if (existingSlot) {
               const existingOrientation = getAnswerOrientation(existingSlot.direction);
               
-              // CRITICAL: Parallel overlaps (same direction) are INVALID
+              // Parallel overlaps (same direction) are INVALID
               if (testOrientation === existingOrientation) {
                 canPlace = false; // Cannot share cells with same direction
                 break;
@@ -1035,7 +1035,7 @@ export function generateTemplate(
         gapFilledAnswerCells.set(cellKey, { slotId: gapSlotId, position: j });
       }
       
-      // CRITICAL: Mark the cell BEFORE the first answer cell as blocked
+      // Mark the cell BEFORE the first answer cell as blocked
       // This prevents words from merging - the cell must remain empty or become a clue cell
       // Reuse cellBeforeAnswer from earlier validation (line 1009)
       if (cellBeforeAnswer !== null) {
@@ -1046,7 +1046,7 @@ export function generateTemplate(
         }
       }
       
-      // CRITICAL: Mark the cell after the last answer cell as blocked
+      // Mark the cell after the last answer cell as blocked
       // This prevents words from merging - the cell must remain empty or become a clue cell
       // Reuse nextCellAfterAnswer from earlier validation (line 1022)
       if (nextCellAfterAnswer !== null) {
@@ -1096,7 +1096,7 @@ export function generateTemplate(
   // Recalculate crossings for gap-filled slots
   recalculateCrossings(gapFilledSlots);
   
-  // CRITICAL: Validate that gap-filled slots' answer cells only overlap at registered crossing points
+  // Validate that gap-filled slots' answer cells only overlap at registered crossing points
   // If two slots share cells but have no crossing registered, that's invalid
   const { invalidSlots: gapFilledSlotsWithInvalidOverlaps, errors: gapFilledOverlapErrors } = validateOverlapsAreCrossings(gapFilledSlots);
   for (const error of gapFilledOverlapErrors) {
@@ -1117,7 +1117,7 @@ export function generateTemplate(
   // Re-sort after gap filling
   gapFilledSlots.sort((a, b) => a.crossings.length - b.crossings.length);
   
-  // CRITICAL: Final validation - remove slots where answer cells overlap with clue cells
+  // Final validation - remove slots where answer cells overlap with clue cells
   // Build set of all clue cell positions
   const gapFilledClueCellPositions = new Set<string>();
   for (const slot of gapFilledSlots) {
@@ -1196,7 +1196,7 @@ export function generateTemplate(
     console.warn(`  ⚠️  Removed ${removedExcessive} slots with excessive crossings (>15)`);
   }
   
-  // CRITICAL: Recalculate clue cells for safe slots and ensure uniqueness
+  // Recalculate clue cells for safe slots and ensure uniqueness
   // Each clue cell position must be unique - no two slots can share the same clue cell
   const clueCellPositions = new Map<string, { row: number; col: number; direction: Direction; slotId: string }>();
   const filteredClueCells: Array<{ row: number; col: number; direction: Direction }> = [];
@@ -1238,7 +1238,7 @@ export function generateTemplate(
   
   // Ensure we have exactly one clue cell per slot
   if (filteredClueCells.length !== uniqueSlots.length) {
-    console.error(`  ❌ CRITICAL: Clue cells count (${filteredClueCells.length}) doesn't match unique slots count (${uniqueSlots.length})`);
+    console.error(`  ❌ Clue cells count (${filteredClueCells.length}) doesn't match unique slots count (${uniqueSlots.length})`);
   }
   
   // Update safeSlots to use unique slots
@@ -1285,7 +1285,6 @@ export function generateTemplate(
     
     for (const slot of availableSlots) {
       if (added >= needed) break;
-      // CRITICAL: Never re-add slots with more than 10 crossings - they're unsolvable
       const slotClueKey = `${slot.startRow},${slot.startCol}`;
       if (slot.crossings.length <= 10 && !currentClueCellSet.has(slotClueKey)) {
         safeSlots.push(slot);
@@ -1338,7 +1337,7 @@ export function generateTemplate(
   for (const clueCell of filteredClueCells) {
     const key = `${clueCell.row},${clueCell.col}`;
     if (finalClueCellSet.has(key)) {
-      console.error(`  ❌ CRITICAL: Duplicate clue cell in final array at (${clueCell.row},${clueCell.col})`);
+      console.error(`  ❌ Duplicate clue cell in final array at (${clueCell.row},${clueCell.col})`);
     }
     finalClueCellSet.add(key);
   }

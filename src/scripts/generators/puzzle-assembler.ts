@@ -4,7 +4,7 @@
  * Converts solved grid states into complete puzzles and creates templates from existing puzzles
  */
 
-import { Puzzle, PuzzleItem, Direction, GridTemplate, ClueSlot, Difficulty } from '../core/types';
+import { Puzzle, PuzzleItem, GridTemplate, Difficulty } from '../core/types';
 import { GridState } from './grid-state';
 import { getAnswerCells, getNextCellAfterAnswer } from './direction-utils';
 import { normalizeWord, validateWordBoundaries } from './validation-utils';
