@@ -105,16 +105,28 @@ export class PuzzleGenerator {
     // Build word index for fast lookups, filtered by difficulty
     // Convert Difficulty enum to ClueDifficulty string type
     const clueDifficulty = mapDifficulty(difficulty);
-    const words = getWordsWithMaxDifficulty(clueDifficulty);
+    let words = getWordsWithMaxDifficulty(clueDifficulty);
     
     if (words.length === 0) {
       throw new Error(`No words available for difficulty '${clueDifficulty}'. This indicates a problem with the clues database or difficulty filtering.`);
     }
     
+    // For hard/expert puzzles, limit word pool to avoid stack overflow
+    // We don't need all 300k+ words - a subset is sufficient for generation
+    const MAX_WORDS_FOR_INDEX = 100000; // Limit to 100k words to prevent stack overflow
+    if (words.length > MAX_WORDS_FOR_INDEX) {
+      // Sample evenly across the array to get variety without shuffling
+      const step = Math.floor(words.length / MAX_WORDS_FOR_INDEX);
+      words = words.filter((_, index) => index % step === 0).slice(0, MAX_WORDS_FOR_INDEX);
+    }
+    
     this.wordIndex = buildCrossingIndex(words.map(key => key.toUpperCase()));
     
-    // Verify word index was built correctly
-    const totalWordsInIndex = Array.from(this.wordIndex.byLength.values()).reduce((sum, arr) => sum + arr.length, 0);
+    // Verify word index was built correctly (use iterative approach to avoid stack overflow)
+    let totalWordsInIndex = 0;
+    for (const arr of this.wordIndex.byLength.values()) {
+      totalWordsInIndex += arr.length;
+    }
     if (totalWordsInIndex === 0) {
       throw new Error(`Word index is empty after building. Expected ${words.length} words but got 0.`);
     }
@@ -311,8 +323,8 @@ export class PuzzleGenerator {
       const templateSize: 'tiny' | 'small' | 'medium' | 'large' | 'xlarge' = 
         this.difficulty === Difficulty.EASY ? 'medium' :      // 11x11 (was 7x7)
         this.difficulty === Difficulty.MEDIUM ? 'medium' :    // 11x11
-        this.difficulty === Difficulty.CHALLENGING ? 'small' : // 14x14
-        'large';                                                 // 15x15
+        this.difficulty === Difficulty.CHALLENGING ? 'medium' : // 14x14
+        'medium';                                                 // 15x15
       console.log(`\n🔄 Attempt ${attempts}/${maxTemplateAttempts} - Generating fresh ${templateSize} template... (${(elapsed / 1000).toFixed(1)}s elapsed)`);
       const templateStartTime = Date.now();
       
