@@ -131,16 +131,8 @@ export class PuzzleGenerator {
   }
 
   addGeneratedTemplate(difficulty: Difficulty = Difficulty.MEDIUM): void {
-    const size: 'medium' | 'large' | 'xlarge' = 
-      this.difficulty === Difficulty.EASY ? 'medium' :
-      this.difficulty === Difficulty.MEDIUM ? 'medium' :
-      this.difficulty === Difficulty.CHALLENGING ? 'medium' :
-      this.difficulty === Difficulty.HARD ? 'medium' :
-      this.difficulty === Difficulty.EXPERT ? 'medium' :
-      'medium';
     const template = generateTemplate(difficulty);
     this.templates.push(template);
-    console.log(`Generated template: ${template.name} (${template.rows}x${template.cols}, ${template.slots.length} slots)`);
   }
   
   addGeneratedTemplates(): void {
@@ -253,17 +245,7 @@ export class PuzzleGenerator {
         console.log(`\n⏱️  Timeout: Exceeded ${maxTotalTime / 1000}s total time limit`);
         break;
       }
-      
-      // TODO: change template size once we fix the generation of hard/expert puzzles
-      const templateSize: 'tiny' | 'small' | 'medium' | 'large' | 'xlarge' = 
-        this.difficulty === Difficulty.EASY ? 'medium' :      // 11x11
-        this.difficulty === Difficulty.MEDIUM ? 'medium' :    // 11x11
-        this.difficulty === Difficulty.CHALLENGING ? 'medium' : // 11x11
-        this.difficulty === Difficulty.HARD ? 'medium' : // 11x11
-        this.difficulty === Difficulty.EXPERT ? 'medium' : // 11x11
-        'medium'; // 11x11
-      console.log(`\n🔄 Attempt ${attempts}/${maxTemplateAttempts} - Generating fresh ${templateSize} template... (${(elapsed / 1000).toFixed(1)}s elapsed)`);
-      
+
       this.templates = [];
       this.addGeneratedTemplate(this.difficulty);
       
@@ -271,8 +253,7 @@ export class PuzzleGenerator {
         console.log(`   ⚠️  Failed to generate template, skipping...`);
         continue;
       }
-     
-      console.log(`   🧩 Attempting to solve template with ~6M clues based on difficulty...`);
+
       const solveStartTime = Date.now();
       const puzzle = this.solveTemplate(0, {
         title: `${config.title}`,

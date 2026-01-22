@@ -3,7 +3,6 @@
  * 
  * Generates grid templates with strategic slot placement and crossings
  */
-
 import { Direction, GridTemplate, ClueSlot, Difficulty } from '../core/types';
 import { getSlotCells, getAnswerOrientation, getNextCellAfterAnswer, getCellBeforeAnswer } from './direction-utils';
 import { 
@@ -94,12 +93,12 @@ export function generateTemplate(
         // hard: large - xxlarge
         if (random < 0.33) return 'large';
         if (random < 0.67) return 'xlarge';
-        return 'xxlarge';
+        return 'xlarge';
       
       case Difficulty.EXPERT:
         // expert: xlarge - xxlarge
         if (random < 0.5) return 'xlarge';
-        return 'xxlarge';
+        return 'xlarge';
       
       default:
         return 'medium';
