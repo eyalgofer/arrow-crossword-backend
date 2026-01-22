@@ -8,18 +8,7 @@ import { getAnswerCells, getNextCellAfterAnswer } from './generators/direction-u
 
 dotenv.config();
 
-// ---------------------------------------------------------------------------
-// Validation: ensure every answer run terminates correctly
-//
-// Rule: For each clue, the cell immediately AFTER the final answer letter
-// must be either:
-//   - outside the grid (boundary), OR
-//   - a clue cell, OR
-//   - an explicit blocked cell (if provided by puzzle.grid.blockedCells).
-//
-// This prevents "dangling" answer cells where a word visually continues into
-// an empty/playable cell.
-// ---------------------------------------------------------------------------
+
 function validatePuzzleBoundaries(puzzle: any): string[] {
   const rows: number = puzzle.grid?.rows;
   const cols: number = puzzle.grid?.cols;
@@ -71,7 +60,7 @@ function validatePuzzleBoundaries(puzzle: any): string[] {
 
     const nextCellKey = `${nextCellAfter.row},${nextCellAfter.col}`;
 
-    // CRITICAL: The cell after the last answer letter must NOT be an answer cell
+    // The cell after the last answer letter must NOT be an answer cell
     if (answerCellPositions.has(nextCellKey)) {
       // Find which clue(s) use this cell
       const conflictingClues: number[] = [];
@@ -165,9 +154,6 @@ for (let iteration = 0; iteration < 1; iteration++) {
     gradientColors: gradientPalette[(baseIndex + 2) % gradientPalette.length]
   });
 }
-
-// Calculate total puzzles needed
-const TOTAL_PUZZLES_NEEDED = packageDefinitions.reduce((sum, pkg) => sum + pkg.puzzleCount, 0);
 
 // Difficulty distribution: 40% easy, 30% medium, 10% hard, 10% challenging, 10% expert
 function getDifficultyDistribution(puzzleCount: number): Array<{ difficulty: Difficulty; count: number }> {

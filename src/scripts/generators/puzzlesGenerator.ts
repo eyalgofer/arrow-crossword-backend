@@ -90,11 +90,6 @@ function getAllClues(word: string, difficulty: Difficulty = Difficulty.EASY): st
   // Last resort fallback
   return [`[${word}]`];
 }
-
-// ============================================================================
-// MAIN GENERATOR CLASS
-// ============================================================================
-
 export class PuzzleGenerator {
   private wordIndex: CrossingIndex;
   private templates: GridTemplate[] = [];
@@ -144,19 +139,12 @@ export class PuzzleGenerator {
     console.log(`Added template: ${template.name} (${template.slots.length} slots)`);
   }
   
-  /**
-   * Add simple template for easier generation
-   * Note: This method is kept for compatibility but templates should be added explicitly
-   */
   addSimpleTemplate(): void {
-    // Simple templates can be added here if needed
-    // For now, we rely on programmatic generation
+
   }
   
-  /**
-   * Generate and add a programmatic template of specified size
-   */
-  addGeneratedTemplate(difficulty: Difficulty = Difficulty.EASY): void {
+
+  addGeneratedTemplate(difficulty: Difficulty = Difficulty.MEDIUM): void {
     const size: 'medium' | 'large' | 'xlarge' = 
       this.difficulty === Difficulty.EASY ? 'medium' :
       this.difficulty === Difficulty.MEDIUM ? 'medium' :
@@ -169,21 +157,10 @@ export class PuzzleGenerator {
     console.log(`Generated template: ${template.name} (${template.rows}x${template.cols}, ${template.slots.length} slots)`);
   }
   
-  /**
-   * Add multiple generated templates of different sizes
-   * Template size is based on difficulty and available word count
-   * All grids are now 11x11 or larger (no tiny 7x7)
-   */
   addGeneratedTemplates(): void {
-    // All puzzles now use at least 11x11 grids (medium size)
-    // With 124k+ words available at max 'challenging' difficulty, we can handle larger grids
-    // 15x15
     this.addGeneratedTemplate(this.difficulty);
   }
   
-  /**
-   * Generate a puzzle variant from a template
-   */
   generateFromTemplate(
     templateIndex: number = 0,
     config: {
@@ -198,20 +175,17 @@ export class PuzzleGenerator {
     
     const template = this.templates[templateIndex];
     
-    // MAXIMUM COMPUTE POWER: With 6M clues, we can try many more combinations
-    // Use massive attempts to find perfect dense solutions
+
     const slotCount = template.slots.length;
     const baseAttempts = 500000; // Much higher with huge clue database
     const attemptsPerSlot = 50000; // Much higher per slot
     const maxAttempts = Math.min(baseAttempts + (slotCount * attemptsPerSlot), 10000000); // Cap at 10M - use all compute power
     
-    // Solve the grid with increased attempts and allow word reuse
-    // Try with word reuse first (easier), then without if needed
     let result = solveGrid(template, this.wordIndex, {
       maxAttempts: maxAttempts,
       shuffleWords: true,
       preferCommonWords: true,
-      allowWordReuse: true // Allow words to be reused if needed
+      allowWordReuse: true
     });
     
     // If that fails, try multiple strategies with maximum attempts
@@ -285,10 +259,9 @@ export class PuzzleGenerator {
   }
   
   /**
-   * Generate ONE perfect puzzle with maximum compute power
-   * Generates a NEW template for each attempt until we get a solvable puzzle
+   * Internal method to generate a puzzle - use the standalone generatePuzzle() function instead
    */
-  generatePuzzle(
+  generate(
     config: {      
       category: string;
       title: string;
@@ -336,11 +309,11 @@ export class PuzzleGenerator {
       
       // Only proceed if template has reasonable density
       const minSlots = this.difficulty === Difficulty.EASY ? 20 :      
-                       this.difficulty === Difficulty.MEDIUM ? 22 :    
-                       this.difficulty === Difficulty.CHALLENGING ? 22 : 
-                       this.difficulty === Difficulty.HARD ? 22 :
-                       this.difficulty === Difficulty.EXPERT ? 22 :
-                       22;  
+                       this.difficulty === Difficulty.MEDIUM ? 20 :    
+                       this.difficulty === Difficulty.CHALLENGING ? 20 : 
+                       this.difficulty === Difficulty.HARD ? 20 :
+                       this.difficulty === Difficulty.EXPERT ? 20 :
+                       20;  
       if (template.slots.length < minSlots) {
         console.log(`   ⚠️  Template too sparse (${template.slots.length} slots, need ${minSlots}), trying again...`);
         continue;
@@ -372,56 +345,8 @@ export class PuzzleGenerator {
     console.log(`\n❌ Failed to generate puzzle after ${attempts} attempts`);
     return null;
   }
-
-  /**
-   * Generate multiple puzzle variants
-   */
-  generateBatch(
-    count: number,
-    config: {
-      difficulty: Difficulty;
-      category: string;
-      titlePrefix: string;
-    }
-  ): Puzzle[] {
-    const puzzles: Puzzle[] = [];
-    let attempts = 0;
-    const maxAttempts = count * 20; // Increased from count * 5
-    
-    while (puzzles.length < count && attempts < maxAttempts) {
-      attempts++;
-      
-      const templateIndex = Math.floor(Math.random() * this.templates.length);
-      const puzzle = this.generateFromTemplate(templateIndex, {
-        title: `${config.titlePrefix} #${puzzles.length + 1}`,
-        difficulty: config.difficulty,
-        category: config.category
-      });
-      
-      if (puzzle) {
-        puzzles.push(puzzle);
-        console.log(`Generated puzzle ${puzzles.length}/${count}`);
-      } else if (attempts % 10 === 0) {
-        // Log progress every 10 attempts
-        console.log(`Attempt ${attempts}/${maxAttempts}...`);
-      }
-    }
-    
-    console.log(`Generated ${puzzles.length} puzzles in ${attempts} attempts`);
-    if (puzzles.length < count) {
-      console.log(`⚠️  Warning: Only generated ${puzzles.length} out of ${count} requested puzzles`);
-    }
-    return puzzles;
-  }
 }
 
-/**
- * Generate puzzles using the generator
- * This function can be called from seedPuzzles.ts
- */
-/**
- * Now respects difficulty setting for word and clue selection
- */
 export function generatePuzzle(
   config: {
     difficulty?: Difficulty;
@@ -439,7 +364,7 @@ export function generatePuzzle(
   
   const generator = new PuzzleGenerator(difficulty);
   
-  const puzzle = generator.generatePuzzle({    
+  const puzzle = generator.generate({    
     category: config.category || 'Misc',
     title: config.title || 'Generated Puzzle'
   });
@@ -451,7 +376,7 @@ export function generatePuzzle(
     console.log(`  Title: ${puzzle.title}`);
     console.log(`  Grid: ${puzzle.grid.rows}x${puzzle.grid.cols}`);
     console.log(`  Puzzle Items: ${puzzle.puzzleItems.length}`);
-    console.log(`  Difficulty: ${puzzle.difficulty} (puzzle items filtered to ${clueDifficulty})`);
+    console.log(`  Difficulty: ${puzzle.difficulty}`);
     console.log(`  Category: ${puzzle.category}`);
     console.log(`  Estimated Time: ${puzzle.estimatedTime} minutes`);
     console.log(`  Coin Reward: ${puzzle.coinReward}`);
