@@ -56,7 +56,6 @@ function validatePuzzleBoundaries(puzzle: any): string[] {
   }
 
   const errors: string[] = [];
-  const inBounds = (r: number, c: number) => r >= 0 && r < rows && c >= 0 && c < cols;
 
   for (const clue of clues) {
     const answerCells = getAnswerCells(clue);
@@ -124,7 +123,6 @@ const iconNames = [
 ];
 
 // Package definitions - Pattern: 2 packages of 10 puzzles, then 1 package of 20 puzzles, repeated 3 times
-// Total: 6 packages of 10 puzzles + 3 packages of 20 puzzles = 9 packages, 120 puzzles total
 const packageDefinitions: Array<{
   name: string;
   description: string;
@@ -134,8 +132,8 @@ const packageDefinitions: Array<{
   gradientColors: string[];
 }> = [];
 
-for (let iteration = 0; iteration < 3; iteration++) {
-  const baseIndex = iteration * 3;
+for (let iteration = 0; iteration < 1; iteration++) {
+  const baseIndex = iteration * 1;
   
   // First package of 10 puzzles
   packageDefinitions.push({

@@ -6,6 +6,14 @@
 
 import { Direction, GridTemplate, ClueSlot, Difficulty } from '../core/types';
 import { getSlotCells, getAnswerOrientation, getNextCellAfterAnswer, getCellBeforeAnswer } from './direction-utils';
+import { 
+  normalizeWord, 
+  validateWordBoundaries, 
+  isValidClueCellPosition, 
+  hasAnswerClueOverlap,
+  recalculateCrossings,
+  validateOverlapsAreCrossings
+} from './validation-utils';
 
 /**
  * Creates a grid with strategic slot placement and crossings
@@ -66,7 +74,7 @@ export function generateTemplate(
     // TINY: For EASY difficulty with ~1,700 words - small 7x7 grid
     tiny: { rows: 7, cols: 7, minSlots: 8, maxSlots: 15, maxCrossingsPerSlot: 4, density: 0.85 },
     small: { rows: 14, cols: 14, minSlots: 50, maxSlots: 100, maxCrossingsPerSlot: 10, density: 0.99 },
-    medium: { rows: 11, cols: 11, minSlots: 25, maxSlots: 120, maxCrossingsPerSlot: 10, density: 0.99 },
+    medium: { rows: 11, cols: 11, minSlots: 22, maxSlots: 120, maxCrossingsPerSlot: 10, density: 0.99 },
     large: { rows: 15, cols: 15, minSlots: 80, maxSlots: 150, maxCrossingsPerSlot: 12, density: 0.99 },
     xlarge: { rows: 16, cols: 16, minSlots: 90, maxSlots: 180, maxCrossingsPerSlot: 12, density: 0.99 }
   };
@@ -482,50 +490,8 @@ export function generateTemplate(
     }
   }
   
-  // Calculate crossings between slots
-  // CRITICAL: Only register perpendicular crossings (horizontal x vertical)
-  // Parallel overlaps (same direction) should NOT be registered as crossings
-  for (let i = 0; i < slots.length; i++) {
-    const slot = slots[i];
-    const slotCells = getSlotCells(slot);
-    const slotOrientation = getAnswerOrientation(slot.direction);
-    
-    for (let j = i + 1; j < slots.length; j++) {
-      const otherSlot = slots[j];
-      const otherCells = getSlotCells(otherSlot);
-      const otherOrientation = getAnswerOrientation(otherSlot.direction);
-      
-      // Only register crossings for perpendicular slots
-      // If same orientation, skip (parallel overlaps are invalid but handled by placement logic)
-      if (slotOrientation === otherOrientation) {
-        continue;
-      }
-      
-      // Find crossing points (only for perpendicular slots)
-      for (let pos = 0; pos < slotCells.length; pos++) {
-        const cell = slotCells[pos];
-        const cellKey = `${cell.row},${cell.col}`;
-        
-        for (let otherPos = 0; otherPos < otherCells.length; otherPos++) {
-          const otherCell = otherCells[otherPos];
-          if (cell.row === otherCell.row && cell.col === otherCell.col) {
-            // Found a valid perpendicular crossing!
-            slot.crossings.push({
-              slotId: otherSlot.id,
-              thisPosition: pos,
-              otherPosition: otherPos
-            });
-            otherSlot.crossings.push({
-              slotId: slot.id,
-              thisPosition: otherPos,
-              otherPosition: pos
-            });
-            break; // Only one crossing per cell pair
-          }
-        }
-      }
-    }
-  }
+  // Calculate crossings between slots using consolidated function
+  recalculateCrossings(slots);
   
   // CRITICAL: Sort slots by crossing count (fewest first)
   // The solver will solve slots with most crossings first (MRV heuristic),
@@ -571,16 +537,7 @@ export function generateTemplate(
   const validatedSlots: typeof filteredSlots = [];
   for (const slot of filteredSlots) {
     const answerCells = getSlotCells(slot);
-    let hasOverlap = false;
-    for (const cell of answerCells) {
-      const cellKey = `${cell.row},${cell.col}`;
-      if (allClueCellPositions.has(cellKey)) {
-        // This answer cell overlaps with a clue cell - invalid!
-        hasOverlap = true;
-        break;
-      }
-    }
-    if (!hasOverlap) {
+    if (!hasAnswerClueOverlap(answerCells, allClueCellPositions)) {
       validatedSlots.push(slot);
     } else {
       console.log(`  ⚠️  Filtered out slot ${slot.id}: answer cells overlap with clue cells`);
@@ -589,149 +546,22 @@ export function generateTemplate(
   
   // CRITICAL: Recalculate crossings after filtering
   // When we remove slots, other slots' crossing counts decrease
-  // Clear all crossings first
-  for (const slot of validatedSlots) {
-    slot.crossings = [];
-  }
-  
-  // Recalculate crossings only between validated slots
-  // CRITICAL: Only register perpendicular crossings
-  for (let i = 0; i < validatedSlots.length; i++) {
-    const slot = validatedSlots[i];
-    const slotCells = getSlotCells(slot);
-    const slotOrientation = getAnswerOrientation(slot.direction);
-    
-    for (let j = i + 1; j < validatedSlots.length; j++) {
-      const otherSlot = validatedSlots[j];
-      const otherCells = getSlotCells(otherSlot);
-      const otherOrientation = getAnswerOrientation(otherSlot.direction);
-      
-      // Only register crossings for perpendicular slots
-      if (slotOrientation === otherOrientation) {
-        continue;
-      }
-      
-      // Find crossing points (only for perpendicular slots)
-      for (let pos = 0; pos < slotCells.length; pos++) {
-        const cell = slotCells[pos];
-        const cellKey = `${cell.row},${cell.col}`;
-        
-        for (let otherPos = 0; otherPos < otherCells.length; otherPos++) {
-          const otherCell = otherCells[otherPos];
-          if (cell.row === otherCell.row && cell.col === otherCell.col) {
-            // Found a valid perpendicular crossing!
-            slot.crossings.push({
-              slotId: otherSlot.id,
-              thisPosition: pos,
-              otherPosition: otherPos
-            });
-            otherSlot.crossings.push({
-              slotId: slot.id,
-              thisPosition: otherPos,
-              otherPosition: pos
-            });
-            break; // Only one crossing per cell pair
-          }
-        }
-      }
-    }
-  }
+  recalculateCrossings(validatedSlots);
   
   // CRITICAL: Validate that answer cells only overlap at registered crossing points
   // If two slots share cells but have no crossing registered, that's invalid
   // This will catch any parallel overlaps that somehow got through placement logic
-  const slotsWithInvalidOverlaps: typeof validatedSlots = [];
-  for (let i = 0; i < validatedSlots.length; i++) {
-    const slot = validatedSlots[i];
-    const slotCells = getSlotCells(slot);
-    const slotCellSet = new Set(slotCells.map(c => `${c.row},${c.col}`));
-    
-    // Check all other slots
-    for (let j = 0; j < validatedSlots.length; j++) {
-      if (i === j) continue;
-      const otherSlot = validatedSlots[j];
-      const otherCells = getSlotCells(otherSlot);
-      
-      // Check if there's an overlap
-      let hasOverlap = false;
-      for (const cell of otherCells) {
-        const cellKey = `${cell.row},${cell.col}`;
-        if (slotCellSet.has(cellKey)) {
-          hasOverlap = true;
-          break;
-        }
-      }
-      
-      // If there's an overlap, it must be registered as a crossing
-      if (hasOverlap) {
-        const isCrossing = slot.crossings.some(c => c.slotId === otherSlot.id);
-        if (!isCrossing) {
-          // Overlap exists but no crossing registered - invalid!
-          // This catches parallel overlaps (same direction) since they won't have crossings
-          if (!slotsWithInvalidOverlaps.includes(slot)) {
-            slotsWithInvalidOverlaps.push(slot);
-          }
-          if (!slotsWithInvalidOverlaps.includes(otherSlot)) {
-            slotsWithInvalidOverlaps.push(otherSlot);
-          }
-          const slotOrientation = getAnswerOrientation(slot.direction);
-          const otherOrientation = getAnswerOrientation(otherSlot.direction);
-          if (slotOrientation === otherOrientation) {
-            console.log(`  ⚠️  Parallel overlap detected: ${slot.id} (${slot.direction}) and ${otherSlot.id} (${otherSlot.direction}) share cells but have no crossing`);
-          } else {
-            console.log(`  ⚠️  Invalid overlap: ${slot.id} and ${otherSlot.id} share cells but have no crossing registered`);
-          }
-        }
-      }
-    }
+  const { invalidSlots: slotsWithInvalidOverlaps, errors: overlapErrors } = validateOverlapsAreCrossings(validatedSlots);
+  for (const error of overlapErrors) {
+    console.log(`  ⚠️  ${error}`);
   }
   
   // Remove slots with invalid overlaps
   if (slotsWithInvalidOverlaps.length > 0) {
     console.log(`  ⚠️  Removing ${slotsWithInvalidOverlaps.length} slots with invalid answer cell overlaps`);
     const validSlots = validatedSlots.filter(s => !slotsWithInvalidOverlaps.includes(s));
-    // Clear and recalculate crossings for remaining slots
-    for (const slot of validSlots) {
-      slot.crossings = [];
-    }
-    // Recalculate crossings for valid slots only
-    // CRITICAL: Only register perpendicular crossings
-    for (let i = 0; i < validSlots.length; i++) {
-      const slot = validSlots[i];
-      const slotCells = getSlotCells(slot);
-      const slotOrientation = getAnswerOrientation(slot.direction);
-      for (let j = i + 1; j < validSlots.length; j++) {
-        const otherSlot = validSlots[j];
-        const otherCells = getSlotCells(otherSlot);
-        const otherOrientation = getAnswerOrientation(otherSlot.direction);
-        
-        // Only register crossings for perpendicular slots
-        if (slotOrientation === otherOrientation) {
-          continue;
-        }
-        
-        for (let pos = 0; pos < slotCells.length; pos++) {
-          const cell = slotCells[pos];
-          for (let otherPos = 0; otherPos < otherCells.length; otherPos++) {
-            const otherCell = otherCells[otherPos];
-            if (cell.row === otherCell.row && cell.col === otherCell.col) {
-              // Valid perpendicular crossing
-              slot.crossings.push({
-                slotId: otherSlot.id,
-                thisPosition: pos,
-                otherPosition: otherPos
-              });
-              otherSlot.crossings.push({
-                slotId: slot.id,
-                thisPosition: otherPos,
-                otherPosition: pos
-              });
-              break;
-            }
-          }
-        }
-      }
-    }
+    // Recalculate crossings for remaining slots
+    recalculateCrossings(validSlots);
     // Replace validatedSlots with validSlots
     validatedSlots.length = 0;
     validatedSlots.push(...validSlots);
@@ -914,14 +744,6 @@ export function generateTemplate(
     // Keep going until we reach target empty cells
     while (gapFillAttempts < maxGapFillAttempts) {
       gapFillAttempts++;
-    
-    // Progress logging every 1000 attempts
-    if (gapFillAttempts % 1000 === 0) {
-      const currentFilled = gapFilledAnswerCells.size + gapFilledOccupiedCells.size;
-      const currentEmpty = totalCells - currentFilled;
-      const currentCoverageCheck = currentFilled / totalCells;
-      console.log(`  🔄 Gap-filling progress: ${gapFillAttempts}/${maxGapFillAttempts} attempts, ${currentEmpty} empty cells (${(currentCoverageCheck * 100).toFixed(1)}%), ${gapFilledCount} slots added`);
-    }
     
     // Check current coverage - stop when we reach 99%+ or within 5 cells of target
     const currentFilled = gapFilledAnswerCells.size + gapFilledOccupiedCells.size;
@@ -1272,138 +1094,21 @@ export function generateTemplate(
   } // End of gap-filling else block
   
   // Recalculate crossings for gap-filled slots
-  // CRITICAL: Only register perpendicular crossings
-  for (let i = 0; i < gapFilledSlots.length; i++) {
-    const slot = gapFilledSlots[i];
-    const slotCells = getSlotCells(slot);
-    const slotOrientation = getAnswerOrientation(slot.direction);
-    
-    for (let j = i + 1; j < gapFilledSlots.length; j++) {
-      const otherSlot = gapFilledSlots[j];
-      const otherCells = getSlotCells(otherSlot);
-      const otherOrientation = getAnswerOrientation(otherSlot.direction);
-      
-      // Only register crossings for perpendicular slots
-      if (slotOrientation === otherOrientation) {
-        continue;
-      }
-      
-      for (let pos = 0; pos < slotCells.length; pos++) {
-        const cell = slotCells[pos];
-        for (let otherPos = 0; otherPos < otherCells.length; otherPos++) {
-          const otherCell = otherCells[otherPos];
-          if (cell.row === otherCell.row && cell.col === otherCell.col) {
-            // Valid perpendicular crossing
-            slot.crossings.push({
-              slotId: otherSlot.id,
-              thisPosition: pos,
-              otherPosition: otherPos
-            });
-            otherSlot.crossings.push({
-              slotId: slot.id,
-              thisPosition: otherPos,
-              otherPosition: pos
-            });
-            break;
-          }
-        }
-      }
-    }
-  }
+  recalculateCrossings(gapFilledSlots);
   
   // CRITICAL: Validate that gap-filled slots' answer cells only overlap at registered crossing points
   // If two slots share cells but have no crossing registered, that's invalid
-  const gapFilledSlotsWithInvalidOverlaps: typeof gapFilledSlots = [];
-  for (let i = 0; i < gapFilledSlots.length; i++) {
-    const slot = gapFilledSlots[i];
-    const slotCells = getSlotCells(slot);
-    const slotCellSet = new Set(slotCells.map(c => `${c.row},${c.col}`));
-    
-    // Check all other slots
-    for (let j = 0; j < gapFilledSlots.length; j++) {
-      if (i === j) continue;
-      const otherSlot = gapFilledSlots[j];
-      const otherCells = getSlotCells(otherSlot);
-      
-      // Check if there's an overlap
-      let hasOverlap = false;
-      for (const cell of otherCells) {
-        const cellKey = `${cell.row},${cell.col}`;
-        if (slotCellSet.has(cellKey)) {
-          hasOverlap = true;
-          break;
-        }
-      }
-      
-      // If there's an overlap, it must be registered as a crossing
-      if (hasOverlap) {
-        const isCrossing = slot.crossings.some(c => c.slotId === otherSlot.id);
-        if (!isCrossing) {
-          // Overlap exists but no crossing registered - invalid!
-          if (!gapFilledSlotsWithInvalidOverlaps.includes(slot)) {
-            gapFilledSlotsWithInvalidOverlaps.push(slot);
-          }
-          if (!gapFilledSlotsWithInvalidOverlaps.includes(otherSlot)) {
-            gapFilledSlotsWithInvalidOverlaps.push(otherSlot);
-          }
-          const slotOrientation = getAnswerOrientation(slot.direction);
-          const otherOrientation = getAnswerOrientation(otherSlot.direction);
-          if (slotOrientation === otherOrientation) {
-            console.log(`  ⚠️  Parallel overlap in gap-filled slots: ${slot.id} (${slot.direction}) and ${otherSlot.id} (${otherSlot.direction}) share cells but have no crossing`);
-          } else {
-            console.log(`  ⚠️  Invalid gap-filled overlap: ${slot.id} and ${otherSlot.id} share cells but have no crossing registered`);
-          }
-        }
-      }
-    }
+  const { invalidSlots: gapFilledSlotsWithInvalidOverlaps, errors: gapFilledOverlapErrors } = validateOverlapsAreCrossings(gapFilledSlots);
+  for (const error of gapFilledOverlapErrors) {
+    console.log(`  ⚠️  ${error}`);
   }
   
   // Remove slots with invalid overlaps
   if (gapFilledSlotsWithInvalidOverlaps.length > 0) {
     console.log(`  ⚠️  Removing ${gapFilledSlotsWithInvalidOverlaps.length} gap-filled slots with invalid answer cell overlaps`);
     const validGapFilledSlots = gapFilledSlots.filter(s => !gapFilledSlotsWithInvalidOverlaps.includes(s));
-    // Clear and recalculate crossings for remaining slots
-    for (const slot of validGapFilledSlots) {
-      slot.crossings = [];
-    }
-    // Recalculate crossings for valid slots only
-    // CRITICAL: Only register perpendicular crossings
-    for (let i = 0; i < validGapFilledSlots.length; i++) {
-      const slot = validGapFilledSlots[i];
-      const slotCells = getSlotCells(slot);
-      const slotOrientation = getAnswerOrientation(slot.direction);
-      for (let j = i + 1; j < validGapFilledSlots.length; j++) {
-        const otherSlot = validGapFilledSlots[j];
-        const otherCells = getSlotCells(otherSlot);
-        const otherOrientation = getAnswerOrientation(otherSlot.direction);
-        
-        // Only register crossings for perpendicular slots
-        if (slotOrientation === otherOrientation) {
-          continue;
-        }
-        
-        for (let pos = 0; pos < slotCells.length; pos++) {
-          const cell = slotCells[pos];
-          for (let otherPos = 0; otherPos < otherCells.length; otherPos++) {
-            const otherCell = otherCells[otherPos];
-            if (cell.row === otherCell.row && cell.col === otherCell.col) {
-              // Valid perpendicular crossing
-              slot.crossings.push({
-                slotId: otherSlot.id,
-                thisPosition: pos,
-                otherPosition: otherPos
-              });
-              otherSlot.crossings.push({
-                slotId: slot.id,
-                thisPosition: otherPos,
-                otherPosition: pos
-              });
-              break;
-            }
-          }
-        }
-      }
-    }
+    // Recalculate crossings for remaining slots
+    recalculateCrossings(validGapFilledSlots);
     // Replace gapFilledSlots with valid slots
     gapFilledSlots.length = 0;
     gapFilledSlots.push(...validGapFilledSlots);
@@ -1425,16 +1130,7 @@ export function generateTemplate(
   
   for (const slot of gapFilledSlots) {
     const answerCells = getSlotCells(slot);
-    let hasOverlap = false;
-    for (const cell of answerCells) {
-      const cellKey = `${cell.row},${cell.col}`;
-      if (gapFilledClueCellPositions.has(cellKey)) {
-        // This answer cell overlaps with a clue cell - invalid!
-        hasOverlap = true;
-        break;
-      }
-    }
-    if (!hasOverlap) {
+    if (!hasAnswerClueOverlap(answerCells, gapFilledClueCellPositions)) {
       validatedGapFilledSlots.push(slot);
     } else {
       slotsWithOverlaps.push(slot);
@@ -1678,7 +1374,7 @@ export function generateTemplate(
     }
   }
   
-  // Validate each slot
+  // Validate each slot using consolidated validation function
   const validSlots: typeof safeSlots = [];
   const invalidSlots: typeof safeSlots = [];
   
@@ -1689,49 +1385,21 @@ export function generateTemplate(
       continue;
     }
     
-    let isValid = true;
-    let invalidReason = '';
+    const validation = validateWordBoundaries(
+      slot.direction,
+      slotCells,
+      config.rows,
+      config.cols,
+      finalClueCellPositions,
+      finalAnswerCellPositions,
+      finalBlockedCells
+    );
     
-    // Check cell BEFORE first answer letter
-    const firstCell = slotCells[0];
-    const cellBefore = getCellBeforeAnswer(slot.direction, firstCell, config.rows, config.cols);
-    if (cellBefore !== null) {
-      const beforeCellKey = `${cellBefore.row},${cellBefore.col}`;
-      if (finalAnswerCellPositions.has(beforeCellKey)) {
-        isValid = false;
-        invalidReason = `cell before first answer (${cellBefore.row},${cellBefore.col}) is an answer cell`;
-      } else if (!finalClueCellPositions.has(beforeCellKey) && !finalBlockedCells.has(beforeCellKey)) {
-        isValid = false;
-        invalidReason = `cell before first answer (${cellBefore.row},${cellBefore.col}) is not clue/block/boundary`;
-      }
-    }
-    
-    // Check cell AFTER last answer letter
-    if (isValid) {
-      const lastCell = slotCells[slotCells.length - 1];
-      const nextCellAfter = getNextCellAfterAnswer(slot.direction, lastCell, config.rows, config.cols);
-      
-      if (nextCellAfter === null) {
-        // Out of bounds - valid!
-      } else {
-        const nextCellKey = `${nextCellAfter.row},${nextCellAfter.col}`;
-        
-        // CRITICAL: The cell after the last answer letter must NOT be an answer cell
-        if (finalAnswerCellPositions.has(nextCellKey)) {
-          isValid = false;
-          invalidReason = `cell after last answer (${nextCellAfter.row},${nextCellAfter.col}) is an answer cell`;
-        } else if (!finalClueCellPositions.has(nextCellKey) && !finalBlockedCells.has(nextCellKey)) {
-          isValid = false;
-          invalidReason = `cell after last answer (${nextCellAfter.row},${nextCellAfter.col}) is not clue/block/boundary`;
-        }
-      }
-    }
-    
-    if (isValid) {
+    if (validation.isValid) {
       validSlots.push(slot);
     } else {
       invalidSlots.push(slot);
-      console.warn(`  ⚠️  Slot ${slot.id} (${slot.direction}) fails boundary rule: ${invalidReason}`);
+      console.warn(`  ⚠️  Slot ${slot.id} (${slot.direction}) fails boundary rule: ${validation.reason}`);
     }
   }
   
@@ -1740,49 +1408,8 @@ export function generateTemplate(
     
     // If we still have enough valid slots, use them
     if (validSlots.length >= config.minSlots) {
-      // Clear and recalculate crossings for valid slots only
-      for (const slot of validSlots) {
-        slot.crossings = [];
-      }
-      
-      // Recalculate crossings between valid slots
-      for (let i = 0; i < validSlots.length; i++) {
-        const slot = validSlots[i];
-        const slotCells = getSlotCells(slot);
-        const slotOrientation = getAnswerOrientation(slot.direction);
-        
-        for (let j = i + 1; j < validSlots.length; j++) {
-          const otherSlot = validSlots[j];
-          const otherCells = getSlotCells(otherSlot);
-          const otherOrientation = getAnswerOrientation(otherSlot.direction);
-          
-          // Only register crossings for perpendicular slots
-          if (slotOrientation === otherOrientation) {
-            continue;
-          }
-          
-          // Find crossing points
-          for (let pos = 0; pos < slotCells.length; pos++) {
-            const cell = slotCells[pos];
-            for (let otherPos = 0; otherPos < otherCells.length; otherPos++) {
-              const otherCell = otherCells[otherPos];
-              if (cell.row === otherCell.row && cell.col === otherCell.col) {
-                slot.crossings.push({
-                  slotId: otherSlot.id,
-                  thisPosition: pos,
-                  otherPosition: otherPos
-                });
-                otherSlot.crossings.push({
-                  slotId: slot.id,
-                  thisPosition: otherPos,
-                  otherPosition: pos
-                });
-                break;
-              }
-            }
-          }
-        }
-      }
+      // Recalculate crossings for valid slots only
+      recalculateCrossings(validSlots);
       
       // Rebuild clue cells from valid slots only
       const validClueCells = validSlots.map(slot => ({

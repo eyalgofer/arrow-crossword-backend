@@ -10,6 +10,7 @@ import { buildCrossingIndex, CrossingIndex } from './word-index';
 import { generateTemplate } from './template-generator';
 
 import { getCluesDatabase, getClueForWord, getWordsWithMaxDifficulty } from '../core/cluesFromCSV';
+import { normalizeWord } from './validation-utils';
 
 export type ClueDifficulty = 'easy' | 'medium' | 'challenging' | 'hard' | 'expert';
 
@@ -57,7 +58,7 @@ function getClue(word: string, difficulty: Difficulty = Difficulty.EASY): string
  */
 function getAllClues(word: string, difficulty: Difficulty = Difficulty.EASY): string[] {
   const clueDifficulty = mapDifficulty(difficulty);
-  const normalizedWord = word.toUpperCase().replace(/\s+/g, '');
+  const normalizedWord = normalizeWord(word);
   const entries = CLUES_DB.byAnswer[normalizedWord];
   
   if (!entries || entries.length === 0) {
@@ -160,19 +161,10 @@ export class PuzzleGenerator {
       this.difficulty === Difficulty.EASY ? 'medium' :
       this.difficulty === Difficulty.MEDIUM ? 'medium' :
       this.difficulty === Difficulty.CHALLENGING ? 'medium' :
-      this.difficulty === Difficulty.HARD ? 'large' :
-      this.difficulty === Difficulty.EXPERT ? 'xlarge' :
+      this.difficulty === Difficulty.HARD ? 'medium' :
+      this.difficulty === Difficulty.EXPERT ? 'medium' :
       'medium';
     const template = generateTemplate(size, difficulty);
-    
-    // Validate template has minimum required slots
-    // Scale minimums based on template size
-    const minSlots = size === 'medium' ? 11 : size === 'large' ? 50 : size === 'xlarge' ? 80 : 55;
-    if (template.slots.length < minSlots) {
-      console.warn(`⚠️  Skipping template: Only ${template.slots.length} slots (need ${minSlots} for ${size})`);
-      return;
-    }
-    
     this.templates.push(template);
     console.log(`Generated template: ${template.name} (${template.rows}x${template.cols}, ${template.slots.length} slots)`);
   }
@@ -318,13 +310,14 @@ export class PuzzleGenerator {
         break;
       }
       
-      // Generate a FRESH template for each attempt
-      // All grids are now 11x11 or larger (no tiny 7x7)
+      // TODO: change template size once we fix the generation of hard/expert puzzles
       const templateSize: 'tiny' | 'small' | 'medium' | 'large' | 'xlarge' = 
-        this.difficulty === Difficulty.EASY ? 'medium' :      // 11x11 (was 7x7)
+        this.difficulty === Difficulty.EASY ? 'medium' :      // 11x11
         this.difficulty === Difficulty.MEDIUM ? 'medium' :    // 11x11
-        this.difficulty === Difficulty.CHALLENGING ? 'medium' : // 14x14
-        'medium';                                                 // 15x15
+        this.difficulty === Difficulty.CHALLENGING ? 'medium' : // 11x11
+        this.difficulty === Difficulty.HARD ? 'medium' : // 11x11
+        this.difficulty === Difficulty.EXPERT ? 'medium' : // 11x11
+        'medium'; // 11x11
       console.log(`\n🔄 Attempt ${attempts}/${maxTemplateAttempts} - Generating fresh ${templateSize} template... (${(elapsed / 1000).toFixed(1)}s elapsed)`);
       const templateStartTime = Date.now();
       
@@ -343,11 +336,11 @@ export class PuzzleGenerator {
       
       // Only proceed if template has reasonable density
       const minSlots = this.difficulty === Difficulty.EASY ? 20 :      
-                       this.difficulty === Difficulty.MEDIUM ? 20 :    
-                       this.difficulty === Difficulty.CHALLENGING ? 20 : 
-                       this.difficulty === Difficulty.HARD ? 40 :
-                       this.difficulty === Difficulty.EXPERT ? 50 :
-                       20;                                                // 15x15 large
+                       this.difficulty === Difficulty.MEDIUM ? 22 :    
+                       this.difficulty === Difficulty.CHALLENGING ? 22 : 
+                       this.difficulty === Difficulty.HARD ? 22 :
+                       this.difficulty === Difficulty.EXPERT ? 22 :
+                       22;  
       if (template.slots.length < minSlots) {
         console.log(`   ⚠️  Template too sparse (${template.slots.length} slots, need ${minSlots}), trying again...`);
         continue;

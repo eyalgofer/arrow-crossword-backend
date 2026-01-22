@@ -9,6 +9,7 @@ import { GridTemplate, ClueSlot } from '../core/types';
 import { GridState, createEmptyGridState, getLetterAt, placeWord, canPlaceWord, getCrossingConstraints } from './grid-state';
 import { CrossingIndex, findMatchingWords } from './word-index';
 import { getSlotCells } from './direction-utils';
+import { normalizeWord } from './validation-utils';
 
 export interface SolverConfig {
   maxAttempts: number;
@@ -75,7 +76,7 @@ export function solveGrid(
       // Always exclude duplicate answers (normalized: uppercase, no spaces)
       const placedAnswers = Array.from(state.placedWords.values());
       const normalizedPlacedAnswers = new Set(
-        placedAnswers.map(w => w.replace(/\s+/g, '').toUpperCase())
+        placedAnswers.map(w => normalizeWord(w))
       );
       
       // If allowWordReuse is false, also exclude exact word matches
@@ -86,7 +87,7 @@ export function solveGrid(
       
       // CRITICAL: Filter out duplicate answers (normalized comparison)
       candidates = candidates.filter(w => {
-        const normalized = w.replace(/\s+/g, '').toUpperCase();
+        const normalized = normalizeWord(w);
         return !normalizedPlacedAnswers.has(normalized);
       });
       
@@ -189,7 +190,7 @@ export function solveGrid(
     // Always exclude duplicate answers (normalized: uppercase, no spaces)
     const placedAnswers = Array.from(state.placedWords.values());
     const normalizedPlacedAnswers = new Set(
-      placedAnswers.map(w => w.replace(/\s+/g, '').toUpperCase())
+      placedAnswers.map(w => normalizeWord(w))
     );
     
     // If allowWordReuse is false, also exclude exact word matches
@@ -207,7 +208,7 @@ export function solveGrid(
     // CRITICAL: Filter out duplicate answers (normalized comparison)
     // This prevents the same answer from appearing twice in the puzzle
     candidates = candidates.filter(w => {
-      const normalized = w.replace(/\s+/g, '').toUpperCase();
+      const normalized = normalizeWord(w);
       return !normalizedPlacedAnswers.has(normalized);
     });
     

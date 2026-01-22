@@ -7,6 +7,7 @@
 import { Puzzle, PuzzleItem, Direction, GridTemplate, ClueSlot, Difficulty } from '../core/types';
 import { GridState } from './grid-state';
 import { getAnswerCells, getNextCellAfterAnswer } from './direction-utils';
+import { normalizeWord, validateWordBoundaries } from './validation-utils';
 
 export interface ClueDatabase {
   getClue(word: string, difficulty: Difficulty): string;
@@ -127,7 +128,7 @@ export function generatePuzzleFromGrid(
     }
     
     // Normalize answer for duplicate checking (uppercase, no spaces)
-    const normalizedAnswer = word.toUpperCase().replace(/\s+/g, '');
+    const normalizedAnswer = normalizeWord(word);
     
     // Check if this answer is already used
     // Note: Duplicate answers should be prevented during solving, but if one slips through,
@@ -266,47 +267,46 @@ export function generatePuzzleFromGrid(
     }
   }
   
-  // Validate each clue
+  // Validate each clue using consolidated validation function
   const validationErrors: string[] = [];
   for (const clue of puzzleItems) {
     const answerCells = getAnswerCells(clue);
     if (answerCells.length === 0) continue;
     
-    const lastCell = answerCells[answerCells.length - 1];
-    const nextCellAfter = getNextCellAfterAnswer(clue.direction, lastCell, template.rows, template.cols);
+    const validation = validateWordBoundaries(
+      clue.direction,
+      answerCells,
+      template.rows,
+      template.cols,
+      clueCellPositions,
+      answerCellPositions,
+      blockedCellPositions
+    );
     
-    if (nextCellAfter === null) {
-      // Out of bounds - valid!
-      continue;
-    }
-    
-    const nextCellKey = `${nextCellAfter.row},${nextCellAfter.col}`;
-    
-    // CRITICAL: The cell after the last answer letter must NOT be an answer cell
-    // (Answer cells can only be at crossings, not as boundaries)
-    if (answerCellPositions.has(nextCellKey)) {
-      // Find which clue(s) use this cell to provide better error message
-      const conflictingClues: number[] = [];
-      for (const otherClue of puzzleItems) {
-        if (otherClue.number === clue.number) continue;
-        const otherCells = getAnswerCells(otherClue);
-        for (const cell of otherCells) {
-          if (cell.row === nextCellAfter.row && cell.col === nextCellAfter.col) {
-            conflictingClues.push(otherClue.number);
-            break;
+    if (!validation.isValid) {
+      // Find which clue(s) use the conflicting cell to provide better error message
+      const lastCell = answerCells[answerCells.length - 1];
+      const nextCellAfter = getNextCellAfterAnswer(clue.direction, lastCell, template.rows, template.cols);
+      let conflictingClues: number[] = [];
+      
+      if (nextCellAfter && answerCellPositions.has(`${nextCellAfter.row},${nextCellAfter.col}`)) {
+        for (const otherClue of puzzleItems) {
+          if (otherClue.number === clue.number) continue;
+          const otherCells = getAnswerCells(otherClue);
+          for (const cell of otherCells) {
+            if (cell.row === nextCellAfter.row && cell.col === nextCellAfter.col) {
+              conflictingClues.push(otherClue.number);
+              break;
+            }
           }
         }
       }
+      
+      const conflictInfo = conflictingClues.length > 0 
+        ? ` from clue(s) ${conflictingClues.join(', ')}`
+        : '';
       validationErrors.push(
-        `Clue #${clue.number} "${clue.clue}" (${clue.direction}, answer="${clue.answer}"): cell after last answer letter (${nextCellAfter.row},${nextCellAfter.col}) is an answer cell from clue(s) ${conflictingClues.join(', ')}. Last answer cell: (${lastCell.row},${lastCell.col})`
-      );
-      continue;
-    }
-    
-    // Must be either a clue cell or blocked cell
-    if (!clueCellPositions.has(nextCellKey) && !blockedCellPositions.has(nextCellKey)) {
-      validationErrors.push(
-        `Clue #${clue.number} "${clue.clue}" (${clue.direction}, answer="${clue.answer}"): cell after last answer letter (${nextCellAfter.row},${nextCellAfter.col}) is not clue/block/boundary. Last answer cell: (${lastCell.row},${lastCell.col})`
+        `Clue #${clue.number} "${clue.clue}" (${clue.direction}, answer="${clue.answer}"): ${validation.reason}${conflictInfo}`
       );
     }
   }

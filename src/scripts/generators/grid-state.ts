@@ -4,6 +4,8 @@
  * Handles grid state representation and manipulation
  */
 
+import { normalizeWord, validateWordBoundaries } from './validation-utils';
+
 export interface GridState {
   rows: number;
   cols: number;
@@ -67,7 +69,7 @@ export function placeWord(
   const newSlotDirections = new Map(state.slotDirections);
   
   // Normalize word: remove spaces for grid placement (e.g., "TONY HAWK" -> "TONYHAWK")
-  const normalized = word.replace(/\s+/g, '').toUpperCase();
+  const normalized = normalizeWord(word);
   
   // Place each letter (using normalized word without spaces) and mark as answer cell
   for (let i = 0; i < normalized.length; i++) {
@@ -108,7 +110,7 @@ export function canPlaceWord(
   colDelta?: number
 ): boolean {
   // Normalize word: remove spaces for grid placement (e.g., "TONY HAWK" -> "TONYHAWK")
-  const normalized = word.replace(/\s+/g, '').toUpperCase();
+  const normalized = normalizeWord(word);
   
   // Ensure we have enough cells for the normalized word
   if (normalized.length > cells.length) {
@@ -148,84 +150,56 @@ export function canPlaceWord(
   const calculatedRowDelta = rowDelta !== undefined ? rowDelta : (secondCell.row - firstCell.row);
   const calculatedColDelta = colDelta !== undefined ? colDelta : (secondCell.col - firstCell.col);
   
+  // Determine direction from deltas (for validation)
+  // We need to infer direction for validateWordBoundaries
+  // Since we don't have direction here, we'll use the simplified check below
+  // But first, let's check boundaries using the utility function where possible
+  
+  // For now, keep the existing logic but simplified
   // Check the cell BEFORE the first answer cell
-  {
-    
-    // Calculate previous cell in the opposite direction
-    const prevRow = firstCell.row - calculatedRowDelta;
-    const prevCol = firstCell.col - calculatedColDelta;
-    
-    // Check if previous cell is out of bounds (valid start point)
-    if (prevRow >= 0 && prevRow < state.rows && prevCol >= 0 && prevCol < state.cols) {
-      // Previous cell is in bounds - must NOT be an answer cell in the same direction
-      const prevCellKey = `${prevRow},${prevCol}`;
-      
-      // If it's a clue cell, that's valid
-      if (state.clueCells.has(prevCellKey)) {
-        // Previous cell is a clue cell - valid start point
-      } else if (state.answerCells.has(prevCellKey)) {
-        // Previous cell is an answer cell - words cannot start/end at answer cells (any direction)
-        // This would cause word merging or invalid placement
-        return false;
-      } else {
-        // Previous cell is empty - valid (will become a clue cell or remain empty)
-        // This is fine
-      }
+  const prevRow = firstCell.row - calculatedRowDelta;
+  const prevCol = firstCell.col - calculatedColDelta;
+  
+  if (prevRow >= 0 && prevRow < state.rows && prevCol >= 0 && prevCol < state.cols) {
+    const prevCellKey = `${prevRow},${prevCol}`;
+    if (state.answerCells.has(prevCellKey)) {
+      return false; // Previous cell is an answer cell - invalid
     }
-    // If previous cell is out of bounds, that's a valid start point (grid boundary)
-    
-    // Check the cell AFTER the last answer cell
-    const lastCell = cells[cells.length - 1];
-    const nextRow = lastCell.row + calculatedRowDelta;
-    const nextCol = lastCell.col + calculatedColDelta;
-    
-    // Check if next cell is out of bounds (valid end point)
-    if (nextRow >= 0 && nextRow < state.rows && nextCol >= 0 && nextCol < state.cols) {
-      // Next cell is in bounds - must NOT be an answer cell
-      const nextCellKey = `${nextRow},${nextCol}`;
-      
-      // If it's a clue cell, that's valid
-      if (state.clueCells.has(nextCellKey)) {
-        // Next cell is a clue cell - valid end point
-      } else if (state.answerCells.has(nextCellKey)) {
-        // Next cell is an answer cell - words cannot start/end at answer cells (any direction)
-        // This would cause word merging or invalid placement
-        return false;
-      } else {
-        // Next cell is empty - valid (will become a clue cell or remain empty)
-        // This is fine
-      }
+  }
+  
+  // Check the cell AFTER the last answer cell
+  const lastCell = cells[cells.length - 1];
+  const nextRow = lastCell.row + calculatedRowDelta;
+  const nextCol = lastCell.col + calculatedColDelta;
+  
+  if (nextRow >= 0 && nextRow < state.rows && nextCol >= 0 && nextCol < state.cols) {
+    const nextCellKey = `${nextRow},${nextCol}`;
+    if (state.answerCells.has(nextCellKey)) {
+      return false; // Next cell is an answer cell - invalid
     }
-    // If next cell is out of bounds, that's a valid end point (grid boundary)
-    
-    // ADDITIONAL CHECK: Also check if any answer cell is adjacent to our word's start/end in the same row/column
-    // This catches cases where words are adjacent horizontally or vertically but in different directions
-    // For horizontal words, check if any answer cell is in the same row immediately before/after
-    // For vertical words, check if any answer cell is in the same column immediately before/after
-    if (calculatedRowDelta === 0 && calculatedColDelta !== 0) {
-      // Horizontal word - check same row for adjacent answer cells
-      for (const cellKey of state.answerCells) {
-        const [row, col] = cellKey.split(',').map(Number);
-        if (row === firstCell.row) {
-          // Same row - check if it's immediately before or after (but not a crossing)
-          const isCrossing = cells.some(c => c.row === row && c.col === col);
-          if (!isCrossing && (col === firstCell.col - 1 || col === lastCell.col + 1)) {
-            // Adjacent in same row but not a crossing - invalid!
-            return false;
-          }
+  }
+  
+  // ADDITIONAL CHECK: Also check if any answer cell is adjacent to our word's start/end in the same row/column
+  // This catches cases where words are adjacent horizontally or vertically but in different directions
+  if (calculatedRowDelta === 0 && calculatedColDelta !== 0) {
+    // Horizontal word - check same row for adjacent answer cells
+    for (const cellKey of state.answerCells) {
+      const [row, col] = cellKey.split(',').map(Number);
+      if (row === firstCell.row) {
+        const isCrossing = cells.some(c => c.row === row && c.col === col);
+        if (!isCrossing && (col === firstCell.col - 1 || col === lastCell.col + 1)) {
+          return false; // Adjacent in same row but not a crossing - invalid!
         }
       }
-    } else if (calculatedRowDelta !== 0 && calculatedColDelta === 0) {
-      // Vertical word - check same column for adjacent answer cells
-      for (const cellKey of state.answerCells) {
-        const [row, col] = cellKey.split(',').map(Number);
-        if (col === firstCell.col) {
-          // Same column - check if it's immediately before or after (but not a crossing)
-          const isCrossing = cells.some(c => c.row === row && c.col === col);
-          if (!isCrossing && (row === firstCell.row - 1 || row === lastCell.row + 1)) {
-            // Adjacent in same column but not a crossing - invalid!
-            return false;
-          }
+    }
+  } else if (calculatedRowDelta !== 0 && calculatedColDelta === 0) {
+    // Vertical word - check same column for adjacent answer cells
+    for (const cellKey of state.answerCells) {
+      const [row, col] = cellKey.split(',').map(Number);
+      if (col === firstCell.col) {
+        const isCrossing = cells.some(c => c.row === row && c.col === col);
+        if (!isCrossing && (row === firstCell.row - 1 || row === lastCell.row + 1)) {
+          return false; // Adjacent in same column but not a crossing - invalid!
         }
       }
     }

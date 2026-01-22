@@ -4,6 +4,8 @@
  * Pre-computes word indices for O(1) lookups by length and letter position
  */
 
+import { normalizeWord } from './validation-utils';
+
 export interface CrossingIndex {
   // letter -> position -> list of words with that letter at that position (normalized, no spaces)
   byLetterPosition: Map<string, Map<number, string[]>>;
@@ -24,7 +26,7 @@ export function buildCrossingIndex(words: string[]): CrossingIndex {
   
   for (const originalWord of words) {
     // Normalize: remove spaces for grid placement (e.g., "TONY HAWK" -> "TONYHAWK")
-    const normalized = originalWord.replace(/\s+/g, '').toUpperCase();
+    const normalized = normalizeWord(originalWord);
     
     // Store mapping from normalized to original
     originalWords.set(normalized, originalWord);
@@ -89,7 +91,7 @@ export function findMatchingWords(
   // Remove excluded words (normalize excluded words for comparison)
   if (excludeWords) {
     const normalizedExcluded = new Set(
-      Array.from(excludeWords).map(w => w.replace(/\s+/g, '').toUpperCase())
+      Array.from(excludeWords).map(w => normalizeWord(w))
     );
     normalizedCandidates = normalizedCandidates.filter(w => !normalizedExcluded.has(w));
   }
