@@ -335,7 +335,7 @@ export class PuzzleGenerator {
       if (puzzle) {
         console.log(`\n✅ SUCCESS! Generated perfect puzzle: "${puzzle.title}"`);
         console.log(`   Grid: ${puzzle.grid.rows}x${puzzle.grid.cols}`);
-        console.log(`   Clues: ${puzzle.clues.length}`);
+        console.log(`   Puzzle Items: ${puzzle.puzzleItems.length}`);
         console.log(`   Difficulty: ${puzzle.difficulty}`);
         return puzzle;
       }
@@ -431,8 +431,8 @@ export function generatePuzzle(
     console.log('='.repeat(60));
     console.log(`  Title: ${puzzle.title}`);
     console.log(`  Grid: ${puzzle.grid.rows}x${puzzle.grid.cols}`);
-    console.log(`  Clues: ${puzzle.clues.length}`);
-    console.log(`  Difficulty: ${puzzle.difficulty} (clues filtered to ${clueDifficulty})`);
+    console.log(`  Puzzle Items: ${puzzle.puzzleItems.length}`);
+    console.log(`  Difficulty: ${puzzle.difficulty} (puzzle items filtered to ${clueDifficulty})`);
     console.log(`  Category: ${puzzle.category}`);
     console.log(`  Estimated Time: ${puzzle.estimatedTime} minutes`);
     console.log(`  Coin Reward: ${puzzle.coinReward}`);

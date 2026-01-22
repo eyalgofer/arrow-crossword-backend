@@ -126,7 +126,7 @@ const iconNames = [
 // Package definitions - 2 packages with 10 puzzles each
 // Total puzzles needed: 10 + 10 = 20
 const packageDefinitions = Array.from({ length: 8 }, (_, i) => {
-  const puzzleCount = 10;
+  const puzzleCount = 3;
   
   return {
     name: `Package #${i + 1}`,

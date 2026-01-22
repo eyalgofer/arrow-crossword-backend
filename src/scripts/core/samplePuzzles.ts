@@ -7,7 +7,7 @@ export const samplePuzzles = [
     difficulty: Difficulty.EASY,
     category: "Misc",
     grid: { rows: 11, cols: 9 },
-    clues: [
+    puzzleItems: [
       { number: 1, direction: 'right-down', clue: 'Ensure', answer: 'SEE', enumeration: [3], startRow: 0, startCol: 0 },
       { number: 2, direction: 'down', clue: 'Private', answer: 'PERSONAL', enumeration: [8], startRow: 0, startCol: 2 },
       { number: 3, direction: 'left-down', clue: 'Stores', answer: 'FILES', enumeration: [5], startRow: 0, startCol: 4 },

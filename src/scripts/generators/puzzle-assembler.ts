@@ -4,7 +4,7 @@
  * Converts solved grid states into complete puzzles and creates templates from existing puzzles
  */
 
-import { Puzzle, Clue, Direction, GridTemplate, ClueSlot, Difficulty } from '../core/types';
+import { Puzzle, PuzzleItem, Direction, GridTemplate, ClueSlot, Difficulty } from '../core/types';
 import { GridState } from './grid-state';
 import { getAnswerCells, getNextCellAfterAnswer } from './direction-utils';
 
@@ -23,15 +23,15 @@ export function createTemplateFromPuzzle(puzzle: Puzzle): GridTemplate {
   // Build slot map for crossing detection
   const cellToSlot = new Map<string, { slotId: string; position: number }>();
   
-  for (const clue of puzzle.clues) {
-    const slotId = `slot_${clue.number}`;
-    const cells = getAnswerCells(clue);
+  for (const puzzleItem of puzzle.puzzleItems) {
+    const slotId = `slot_${puzzleItem.number}`;
+    const cells = getAnswerCells(puzzleItem);
     
     // Record clue cell
     clueCells.push({
-      row: clue.startRow,
-      col: clue.startCol,
-      direction: clue.direction
+      row: puzzleItem.startRow,
+      col: puzzleItem.startCol,
+      direction: puzzleItem.direction
     });
     
     // Map cells to this slot
@@ -45,30 +45,30 @@ export function createTemplateFromPuzzle(puzzle: Puzzle): GridTemplate {
     
     slots.push({
       id: slotId,
-      direction: clue.direction,
-      startRow: clue.startRow,
-      startCol: clue.startCol,
-      length: clue.answer.length,
+      direction: puzzleItem.direction,
+      startRow: puzzleItem.startRow,
+      startCol: puzzleItem.startCol,
+      length: puzzleItem.answer.length,
       crossings: [] // Will fill in next pass
     });
   }
   
   // Second pass: detect crossings
-  for (const clue of puzzle.clues) {
-    const slotId = `slot_${clue.number}`;
+  for (const puzzleItem of puzzle.puzzleItems) {
+    const slotId = `slot_${puzzleItem.number}`;
     const slot = slots.find(s => s.id === slotId)!;
-    const cells = getAnswerCells(clue);
+    const cells = getAnswerCells(puzzleItem);
     
     for (let pos = 0; pos < cells.length; pos++) {
       const cell = cells[pos];
       const key = `${cell.row},${cell.col}`;
       
       // Check all other slots for crossing at this cell
-      for (const otherClue of puzzle.clues) {
-        if (otherClue.number === clue.number) continue;
+      for (const otherPuzzleItem of puzzle.puzzleItems) {
+        if (otherPuzzleItem.number === puzzleItem.number) continue;
         
-        const otherSlotId = `slot_${otherClue.number}`;
-        const otherCells = getAnswerCells(otherClue);
+        const otherSlotId = `slot_${otherPuzzleItem.number}`;
+        const otherCells = getAnswerCells(otherPuzzleItem);
         
         for (let otherPos = 0; otherPos < otherCells.length; otherPos++) {
           const otherCell = otherCells[otherPos];
@@ -115,11 +115,11 @@ export function generatePuzzleFromGrid(
     coinReward: number;
   }
 ): Puzzle {
-  const clues: Clue[] = [];
-  const usedClues = new Set<string>(); // Track used clue texts to prevent duplicates
+  const puzzleItems: PuzzleItem[] = [];
+  const usedPuzzleItems = new Set<string>(); // Track used puzzle item texts to prevent duplicates
   const usedAnswers = new Set<string>(); // Track used answers to prevent duplicates
   
-  let clueNumber = 1;
+  let puzzleItemNumber = 1;
   for (const slot of template.slots) {
     const word = gridState.placedWords.get(slot.id);
     if (!word) {
@@ -134,7 +134,7 @@ export function generatePuzzleFromGrid(
     // we'll skip it and continue (this should be extremely rare)
     if (usedAnswers.has(normalizedAnswer)) {
       console.warn(`⚠️  Duplicate answer "${word}" detected - skipping this clue (should have been prevented during solving)`);
-      clueNumber++; // Increment clue number to keep numbering sequential
+      puzzleItemNumber++; // Increment puzzle item number to keep numbering sequential
       continue; // Skip this slot and continue with the next one
     }
     
@@ -158,7 +158,7 @@ export function generatePuzzleFromGrid(
           : firstClue.substring(0, MAX_CLUE_LENGTH - 3) + '...';
       } else {
         // Find the first valid clue that hasn't been used
-        const unusedClue = validClues.find(clue => !usedClues.has(clue));
+        const unusedClue = validClues.find(clue => !usedPuzzleItems.has(clue));
         if (unusedClue) {
           clueText = unusedClue;
         } else {
@@ -181,10 +181,10 @@ export function generatePuzzleFromGrid(
           clueText = clueText.substring(0, MAX_CLUE_LENGTH - 3) + '...';
         }
         attempts++;
-      } while (usedClues.has(clueText) && attempts < maxClueAttempts);
+      } while (usedPuzzleItems.has(clueText) && attempts < maxClueAttempts);
       
       // If we still have a duplicate after max attempts, use a fallback
-      if (usedClues.has(clueText)) {
+      if (usedPuzzleItems.has(clueText)) {
         // Truncate the word suffix if needed
         const suffix = ` (${word})`;
         if (clueText.length + suffix.length > MAX_CLUE_LENGTH) {
@@ -201,15 +201,15 @@ export function generatePuzzleFromGrid(
       clueText = clueText.substring(0, MAX_CLUE_LENGTH - 3) + '...';
     }
     
-    usedClues.add(clueText);
+    usedPuzzleItems.add(clueText);
     usedAnswers.add(normalizedAnswer);
     
     // Handle multi-word answers (e.g., "STAR WARS" -> [4, 4])
     const words = word.split(' ');
     const enumeration = words.map(w => w.length);
     
-    clues.push({
-      number: clueNumber++,
+    puzzleItems.push({
+      number: puzzleItemNumber++,
       direction: slot.direction,
       clue: clueText,
       answer: word,
@@ -228,11 +228,11 @@ export function generatePuzzleFromGrid(
                    gridArea <= 225 ? 40 : // 15x15 large grid (HARD)
                    45;                    // 16x16+ xlarge grid
   
-  if (clues.length < minClues) {
+  if (puzzleItems.length < minClues) {
     // Instead of throwing, return null to allow retry
     // This prevents crashes and allows the generator to try again
-    console.error(`❌ Puzzle has only ${clues.length} clues, but minimum is ${minClues} for ${template.rows}x${template.cols} grid`);
-    throw new Error(`Puzzle has only ${clues.length} clues, but minimum is ${minClues} for ${template.rows}x${template.cols} grid`);
+    console.error(`❌ Puzzle has only ${puzzleItems.length} clues, but minimum is ${minClues} for ${template.rows}x${template.cols} grid`);
+    throw new Error(`Puzzle has only ${puzzleItems.length} clues, but minimum is ${minClues} for ${template.rows}x${template.cols} grid`);
   }
   
   // --------------------------------------------------------------------------
@@ -243,12 +243,12 @@ export function generatePuzzleFromGrid(
   // - A blocked cell (neither clue nor answer)
   // --------------------------------------------------------------------------
   const clueCellPositions = new Set<string>();
-  for (const clue of clues) {
+  for (const clue of puzzleItems) {
     clueCellPositions.add(`${clue.startRow},${clue.startCol}`);
   }
   
   const answerCellPositions = new Set<string>();
-  for (const clue of clues) {
+  for (const clue of puzzleItems) {
     const cells = getAnswerCells(clue);
     for (const cell of cells) {
       answerCellPositions.add(`${cell.row},${cell.col}`);
@@ -268,7 +268,7 @@ export function generatePuzzleFromGrid(
   
   // Validate each clue
   const validationErrors: string[] = [];
-  for (const clue of clues) {
+  for (const clue of puzzleItems) {
     const answerCells = getAnswerCells(clue);
     if (answerCells.length === 0) continue;
     
@@ -287,7 +287,7 @@ export function generatePuzzleFromGrid(
     if (answerCellPositions.has(nextCellKey)) {
       // Find which clue(s) use this cell to provide better error message
       const conflictingClues: number[] = [];
-      for (const otherClue of clues) {
+      for (const otherClue of puzzleItems) {
         if (otherClue.number === clue.number) continue;
         const otherCells = getAnswerCells(otherClue);
         for (const cell of otherCells) {
@@ -324,7 +324,7 @@ export function generatePuzzleFromGrid(
     difficulty: config.difficulty,
     category: config.category,
     grid: { rows: template.rows, cols: template.cols },
-    clues,
+    puzzleItems: puzzleItems,
     estimatedTime: config.estimatedTime,
     coinReward: config.coinReward,
     metadata: {

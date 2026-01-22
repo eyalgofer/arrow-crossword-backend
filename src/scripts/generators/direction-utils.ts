@@ -4,16 +4,16 @@
  * Handles direction-related calculations and conversions
  */
 
-import { Clue, Direction, ClueSlot } from '../core/types';
+import { PuzzleItem, Direction, ClueSlot } from '../core/types';
 
 /**
  * Get the cells that an answer occupies based on clue direction
  */
 export function getAnswerCells(
-  clue: Clue
+  puzzleItem: PuzzleItem
 ): Array<{ row: number; col: number }> {
   const cells: Array<{ row: number; col: number }> = [];
-  const { startRow, startCol, direction, answer } = clue;
+  const { startRow, startCol, direction, answer } = puzzleItem;
   
   // Determine starting position and direction of answer
   let answerStartRow = startRow;

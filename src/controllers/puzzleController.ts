@@ -80,7 +80,7 @@ export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
 
       const puzzleData = {
         ...fallbackPuzzle.toObject(),
-        clues: fallbackPuzzle.clues,
+        puzzleItems: fallbackPuzzle.puzzleItems,
       };
 
       return res.json({ puzzle: puzzleData });
@@ -118,7 +118,7 @@ export const getPuzzle = async (req: AuthRequest, res: Response) => {
 
     const puzzleData = {
       ...puzzle.toObject(),
-      clues: puzzle.clues,
+      puzzleItems: puzzle.puzzleItems,
     };
 
     res.json({ puzzle: puzzleData });
@@ -353,8 +353,8 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
         userId: user._id,
         puzzleId,
         cells: [],
-        completedCluesCount: puzzle.clues.length,
-        totalClues: puzzle.clues.length,
+        completedCluesCount: puzzle.puzzleItems.length,
+        totalClues: puzzle.puzzleItems.length,
         isCompleted: true,
         elapsedTime: completionTime,
         bestTime: completionTime,

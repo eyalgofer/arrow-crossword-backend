@@ -30,7 +30,7 @@ export interface Grid {
 // CLUE AND PUZZLE TYPES
 // ============================================================================
 
-export interface Clue {
+export interface PuzzleItem {
   number: number;
   direction: Direction;
   clue: string;
@@ -48,7 +48,7 @@ export interface Puzzle {
     rows: number;
     cols: number;
   };
-  clues: Clue[];
+  puzzleItems: PuzzleItem[];
   estimatedTime: number;
   coinReward: number;
   metadata?: {
