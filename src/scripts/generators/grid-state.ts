@@ -4,7 +4,7 @@
  * Handles grid state representation and manipulation
  */
 
-import { normalizeWord, validateWordBoundaries } from './validation-utils';
+import { normalizeWord } from './validation-utils';
 
 export interface GridState {
   rows: number;

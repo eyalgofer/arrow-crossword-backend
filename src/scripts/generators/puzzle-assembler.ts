@@ -62,7 +62,6 @@ export function createTemplateFromPuzzle(puzzle: Puzzle): GridTemplate {
     
     for (let pos = 0; pos < cells.length; pos++) {
       const cell = cells[pos];
-      const key = `${cell.row},${cell.col}`;
       
       // Check all other slots for crossing at this cell
       for (const otherPuzzleItem of puzzle.puzzleItems) {
@@ -224,7 +223,7 @@ export function generatePuzzleFromGrid(
   // Scale minimums based on grid size - smaller grids have fewer clues
   const gridArea = template.rows * template.cols;
   const minClues = gridArea <= 49 ? 6 :   // 7x7 tiny grid (EASY)
-                   gridArea <= 121 ? 18 : // 11x11 medium grid (MEDIUM)
+                   gridArea <= 121 ? 20 : // 11x11 medium grid (MEDIUM)
                    gridArea <= 196 ? 30 : // 14x14 grid
                    gridArea <= 225 ? 40 : // 15x15 large grid (HARD)
                    45;                    // 16x16+ xlarge grid
