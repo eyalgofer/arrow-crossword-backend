@@ -120,8 +120,8 @@ const packageDefinitions: Array<{
   gradientColors: string[];
 }> = [];
 
-for (let iteration = 0; iteration < 3; iteration++) {
-  const baseIndex = iteration * 3;
+for (let iteration = 0; iteration < 1; iteration++) {
+  const baseIndex = iteration;
   
   // First package of 10 puzzles
   packageDefinitions.push({
@@ -133,25 +133,25 @@ for (let iteration = 0; iteration < 3; iteration++) {
     gradientColors: gradientPalette[baseIndex % gradientPalette.length]
   });
   
-  // Second package of 10 puzzles
-  packageDefinitions.push({
-    name: `Package #${baseIndex + 2}`,
-    description: '10 puzzles to solve',
-    theme: 'Mixed',
-    puzzleCount: 10,
-    iconName: iconNames[(baseIndex + 1) % iconNames.length],
-    gradientColors: gradientPalette[(baseIndex + 1) % gradientPalette.length]
-  });
+  // // Second package of 10 puzzles
+  // packageDefinitions.push({
+  //   name: `Package #${baseIndex + 2}`,
+  //   description: '10 puzzles to solve',
+  //   theme: 'Mixed',
+  //   puzzleCount: 10,
+  //   iconName: iconNames[(baseIndex + 1) % iconNames.length],
+  //   gradientColors: gradientPalette[(baseIndex + 1) % gradientPalette.length]
+  // });
   
-  // Package of 20 puzzles
-  packageDefinitions.push({
-    name: `Package #${baseIndex + 3}`,
-    description: '20 puzzles to solve',
-    theme: 'Mixed',
-    puzzleCount: 20,
-    iconName: iconNames[(baseIndex + 2) % iconNames.length],
-    gradientColors: gradientPalette[(baseIndex + 2) % gradientPalette.length]
-  });
+  // // Package of 20 puzzles
+  // packageDefinitions.push({
+  //   name: `Package #${baseIndex + 3}`,
+  //   description: '20 puzzles to solve',
+  //   theme: 'Mixed',
+  //   puzzleCount: 20,
+  //   iconName: iconNames[(baseIndex + 2) % iconNames.length],
+  //   gradientColors: gradientPalette[(baseIndex + 2) % gradientPalette.length]
+  // });
 }
 
 function getDifficultyDistribution(puzzleCount: number): Array<{ difficulty: Difficulty; count: number }> {

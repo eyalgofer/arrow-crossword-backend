@@ -85,8 +85,7 @@ export function generateTemplate(
   // For easier puzzles, use fewer slots and simpler directions
   let slotNumber = 1;
   // For easier puzzles, aim for lower slot count (closer to minimum)
-  const targetRange = baseConfig.maxCrossingsPerSlot - config.minSlots;
-  const targetSlots = Math.floor(config.minSlots + (targetRange * 0.3) + Math.random() * (targetRange * 0.2));
+  const targetSlots = config.minSlots;
   
   const allDirections: Direction[] = ['across', 'down', 'right-down', 'left-down', 'down-across', 'up-across'];
   const directionUsage = new Map<Direction, number>();
@@ -201,12 +200,14 @@ export function generateTemplate(
       // Word length selection based on difficulty
       // Allow longer words for better variety
       const maxLength = selectedSize === 'xsmall' ? 9 : selectedSize === 'small' ? 10 : selectedSize === 'medium' ? 12 : selectedSize === 'large' ? 14 : selectedSize === 'xlarge' ? 15 : 15;
-      const minLength = 3; // Start from 3 letters
+      // Set minimum length based on difficulty to avoid very short words
+      const minLength = 2;
       
         let bestLength = 0;
         let bestCrossings = Infinity;
         let bestAnswerCells: Array<{ row: number; col: number }> = [];
-        for (let testLength = minLength; testLength <= maxLength; testLength++) {
+        // Prefer longer words - try from longest to shortest
+        for (let testLength = maxLength; testLength >= minLength; testLength--) {
         // Create a temporary slot to calculate answer cells
         const tempSlot: ClueSlot = {
           id: 'temp',
@@ -289,8 +290,12 @@ export function generateTemplate(
             }
           }
         }
-        
-        const isBetter = !hasConflict && testCrossingSlots.size < bestCrossings;
+
+        // This prevents selecting very short words just because they have fewer crossings
+        const isBetter = !hasConflict && (
+          testCrossingSlots.size < bestCrossings || 
+          (testCrossingSlots.size <= bestCrossings + 1 && testLength > bestLength)
+        );
         
         if (isBetter) {
           bestCrossings = testCrossingSlots.size;
@@ -312,41 +317,14 @@ export function generateTemplate(
       const crossingCount = bestCrossings; // Number of different slots we cross with (perpendicular only)
       
       const progressRatioForCrossings = slots.length / Math.max(config.minSlots, targetSlots);
-      let maxAllowedCrossings: number;
       
-      // Difficulty-based limits (much stricter for easy puzzles)
-      const baseMax = config.maxCrossingsPerSlot;
-      if (progressRatioForCrossings < 0.20) {
-        maxAllowedCrossings = Math.max(2, Math.floor(baseMax * 0.5)); // First 20%: very few crossings
-      } else if (progressRatioForCrossings < 0.50) {
-        maxAllowedCrossings = Math.max(2, Math.floor(baseMax * 0.7)); // Next 30%: slightly more
-      } else if (progressRatioForCrossings < 0.80) {
-        maxAllowedCrossings = Math.max(3, Math.floor(baseMax * 0.85)); // Next 30%: more allowed
-      } else {
-        maxAllowedCrossings = config.maxCrossingsPerSlot; // Last 20%: up to config max
-      }
       
       // Strictly enforce crossing limits during placement
       // This prevents placing slots that will be filtered out later
-      if (crossingCount > maxAllowedCrossings) {
+      if (crossingCount > config.maxCrossingsPerSlot) {
         continue; // Too many crossings for this stage, try a different position
       }
-      
-      // For easier puzzles, prefer slots WITH crossings (but not too many)
-      // For harder puzzles, be less strict about requiring crossings
-      if (crossingCount === 0 && slots.length > Math.max(config.minSlots, targetSlots) * 0.30) {
-        const slotsBehind = slots.length < (Math.max(config.minSlots, targetSlots) * progressRatioForCrossings * 0.7);
-        // Easier puzzles: be more strict about requiring at least some crossings
-        // Harder puzzles: be more lenient
-        const skipChance = difficulty === Difficulty.EASY 
-          ? (slotsBehind ? 0.40 : 0.50)  // 40-50% chance to skip (prefer crossings)
-          : difficulty === Difficulty.MEDIUM
-          ? (slotsBehind ? 0.60 : 0.70)  // 60-70% chance to skip
-          : (slotsBehind ? 0.60 : 0.75); // 60-75% chance to skip (more lenient)
-        if (Math.random() < skipChance) {
-          continue; // Skip some slots without crossings
-        }
-      }
+
       
       // Double-check that clue cell is still available (prevent duplicates)
       // Also check that clue cell doesn't overlap with answer cells
@@ -557,79 +535,72 @@ export function generateTemplate(
   
   // If we filtered out too many, be more lenient to maintain density
   console.log(`  📊 Initial placement: ${slots.length} slots placed`);
-  if (finalFilteredSlots.length < config.minSlots * 0.6) {
-    console.warn(`⚠️  Warning: Filtered out too many slots (${slots.length} -> ${finalFilteredSlots.length}). Only ${finalFilteredSlots.length} slots remain, need at least ${config.minSlots}.`);
-    // If we have too few slots, be MUCH less aggressive with filtering
-    if (finalFilteredSlots.length < config.minSlots * 0.6) {
-      console.warn(`⚠️  Too few slots! Relaxing filtering constraints...`);
-      // Re-add filtered slots to meet minimum - be VERY lenient
-      // Target at least the minimum required slots
-      const targetCount = Math.max(
-        config.minSlots, // Must have at least minSlots
-        finalFilteredSlots.length + 10 // Or at least add 10 more
-      );
-      const needed = targetCount - finalFilteredSlots.length;
-      let added = 0;
-      
-      // Build clue cell set ONLY from slots we're keeping (finalFilteredSlots)
-      // This allows us to re-add filtered-out slots if their clue cells aren't taken
-      const clueCellSet = new Set<string>();
-      for (const slot of finalFilteredSlots) {
-        clueCellSet.add(`${slot.startRow},${slot.startCol}`);
-      }
-      
-      // Get all slots that were filtered out (from validatedSlots, not original slots)
-      // Use validatedSlots because those have recalculated crossings
-      const filteredOutSlots = validatedSlots.filter(slot => !finalFilteredSlots.includes(slot));
-      
-      // Use the original crossing counts from validatedSlots (already recalculated)
-      // This is more accurate than recalculating against a smaller set
-      const slotsWithCrossings = filteredOutSlots.map(slot => {
-        // Use the crossings that were already calculated during validation
-        return { slot, crossings: slot.crossings.length };
-      });
-      
-      // Sort by crossing count (ascending) to prefer easier slots
-      slotsWithCrossings.sort((a, b) => a.crossings - b.crossings);
-      
-      for (const { slot, crossings } of slotsWithCrossings) {
-        if (added >= needed) break;
-        
-        // Check if clue cell is already taken
-        const clueKey = `${slot.startRow},${slot.startCol}`;
-        if (clueCellSet.has(clueKey)) {
-          continue; // Clue cell already taken
-        }
-        
-        // Check if answer cells overlap with clue cells
-        const slotCells = getSlotCells(slot);
-        let hasClueOverlap = false;
-        for (const cell of slotCells) {
-          const cellKey = `${cell.row},${cell.col}`;
-          if (clueCellSet.has(cellKey)) {
-            hasClueOverlap = true;
-            break;
-          }
-        }
-        if (hasClueOverlap) continue; // Skip slots that overlap with clue cells
-        
-        // With 6M clues, we can handle more crossings - be more aggressive
-        // Cap at 15 crossings for ultra-dense puzzles
-        const relaxedLimit = 15;
-        if (crossings <= relaxedLimit) {
-          // Double-check clue cell is still available before adding
-          if (!clueCellSet.has(clueKey)) {
-            finalFilteredSlots.push(slot);
-            clueCellSet.add(clueKey); // Add this slot's clue cell
-            added++;
-            console.log(`  ✅ Re-added slot ${slot.id} with ${crossings} crossings (relaxed limit: ${relaxedLimit})`);
-          } else {
-            console.log(`  ⚠️  Skipped re-adding slot ${slot.id}: clue cell (${slot.startRow},${slot.startCol}) already taken`);
-          }
-        }
-      }
-      console.log(`  ✅ Relaxed filtering: Added ${added} more slots. Total: ${finalFilteredSlots.length}`);
+  if (finalFilteredSlots.length < config.minSlots) {
+    const targetCount = Math.max(
+      config.minSlots, // Must have at least minSlots
+      finalFilteredSlots.length + 10 // Or at least add 10 more
+    );
+    const needed = targetCount - finalFilteredSlots.length;
+    let added = 0;
+    
+    // Build clue cell set ONLY from slots we're keeping (finalFilteredSlots)
+    // This allows us to re-add filtered-out slots if their clue cells aren't taken
+    const clueCellSet = new Set<string>();
+    for (const slot of finalFilteredSlots) {
+      clueCellSet.add(`${slot.startRow},${slot.startCol}`);
     }
+    
+    // Get all slots that were filtered out (from validatedSlots, not original slots)
+    // Use validatedSlots because those have recalculated crossings
+    const filteredOutSlots = validatedSlots.filter(slot => !finalFilteredSlots.includes(slot));
+    
+    // Use the original crossing counts from validatedSlots (already recalculated)
+    // This is more accurate than recalculating against a smaller set
+    const slotsWithCrossings = filteredOutSlots.map(slot => {
+      // Use the crossings that were already calculated during validation
+      return { slot, crossings: slot.crossings.length };
+    });
+    
+    // Sort by crossing count (ascending) to prefer easier slots
+    slotsWithCrossings.sort((a, b) => a.crossings - b.crossings);
+    
+    for (const { slot, crossings } of slotsWithCrossings) {
+      if (added >= needed) break;
+      
+      // Check if clue cell is already taken
+      const clueKey = `${slot.startRow},${slot.startCol}`;
+      if (clueCellSet.has(clueKey)) {
+        continue; // Clue cell already taken
+      }
+      
+      // Check if answer cells overlap with clue cells
+      const slotCells = getSlotCells(slot);
+      let hasClueOverlap = false;
+      for (const cell of slotCells) {
+        const cellKey = `${cell.row},${cell.col}`;
+        if (clueCellSet.has(cellKey)) {
+          hasClueOverlap = true;
+          break;
+        }
+      }
+      if (hasClueOverlap) continue; // Skip slots that overlap with clue cells
+      
+      // With 6M clues, we can handle more crossings - be more aggressive
+      // Cap at 15 crossings for ultra-dense puzzles
+      const relaxedLimit = 15;
+      if (crossings <= relaxedLimit) {
+        // Double-check clue cell is still available before adding
+        if (!clueCellSet.has(clueKey)) {
+          finalFilteredSlots.push(slot);
+          clueCellSet.add(clueKey); // Add this slot's clue cell
+          added++;
+          console.log(`  ✅ Re-added slot ${slot.id} with ${crossings} crossings (relaxed limit: ${relaxedLimit})`);
+        } else {
+          console.log(`  ⚠️  Skipped re-adding slot ${slot.id}: clue cell (${slot.startRow},${slot.startCol}) already taken`);
+        }
+      }
+    }
+    console.log(`  ✅ Relaxed filtering: Added ${added} more slots. Total: ${finalFilteredSlots.length}`);
   }
   
   // GAP-FILLING: Add more slots to fill empty areas and increase density
