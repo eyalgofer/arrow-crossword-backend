@@ -27,7 +27,7 @@ export function generateTemplate(
           densityTarget: 0.70,          
           preferFewerCrossings: false,  
           useSimpleDirections: false,   
-          enableGapFilling: false,      
+          enableGapFilling: true, 
           maxWordLength: 9
         };
 

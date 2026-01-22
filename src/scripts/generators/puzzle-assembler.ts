@@ -117,6 +117,7 @@ export function generatePuzzleFromGrid(
     usedAnswers.add(normalizedAnswer);
     
     // Handle multi-word answers (e.g., "STAR WARS" -> [4, 4])
+    // Use original word (with spaces) to calculate enumeration
     const words = word.split(' ');
     const enumeration = words.map(w => w.length);
     
@@ -124,7 +125,7 @@ export function generatePuzzleFromGrid(
       number: puzzleItemNumber++,
       direction: slot.direction,
       clue: clueText,
-      answer: word,
+      answer: normalizedAnswer, // Use normalized answer (no spaces) for crossword grid
       enumeration: enumeration,
       startRow: slot.startRow,
       startCol: slot.startCol
