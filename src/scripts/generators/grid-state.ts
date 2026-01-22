@@ -99,7 +99,7 @@ export function placeWord(
  * Check if a word can be placed without conflicts
  * Handles multi-word answers by removing spaces for grid placement
  * Also validates that words don't merge (end when another letter follows)
- * CRITICAL: Words can only start/end after clue cells, locked cells, or grid boundaries
+ * Words can only start/end after clue cells, locked cells, or grid boundaries
  */
 export function canPlaceWord(
   state: GridState,
@@ -136,7 +136,7 @@ export function canPlaceWord(
     }
   }
   
-  // CRITICAL: Validate that words can only start/end at grid bounds, clue cells, or blocked cells
+  // Validate that words can only start/end at grid bounds, clue cells, or blocked cells
   // Words CANNOT start/end at answer cells in the same direction (would cause word merging)
   // Calculate direction deltas if not provided
   if (cells.length < 2) {

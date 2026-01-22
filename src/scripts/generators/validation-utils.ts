@@ -75,7 +75,7 @@ export function validateWordBoundaries(
 
   const nextCellKey = `${nextCellAfter.row},${nextCellAfter.col}`;
   
-  // CRITICAL: The cell after the last answer letter must NOT be an answer cell
+  // The cell after the last answer letter must NOT be an answer cell
   if (answerCellPositions.has(nextCellKey)) {
     return {
       isValid: false,

@@ -222,40 +222,13 @@ export function getClues(): Record<string, string[]> {
 }
 
 /**
- * Get clues filtered by maximum difficulty
- * @param maxDifficulty - filters up to and including the specified difficulty
- * For puzzle generation, we typically want 'challenging' max (easy + medium + challenging)
- */
-export function getCluesFiltered(maxDifficulty: ClueDifficulty): Record<string, string[]> {
-  const db = getCluesDatabase();
-  const result: Record<string, string[]> = {};
-  
-  // Build allowed difficulties based on max
-  const difficultyOrder: ClueDifficulty[] = ['easy', 'medium', 'challenging', 'hard', 'expert'];
-  const maxIndex = difficultyOrder.indexOf(maxDifficulty);
-  const allowedDifficulties = new Set(difficultyOrder.slice(0, maxIndex + 1));
-  
-  for (const [answer, entries] of Object.entries(db.byAnswer)) {
-    const filteredClues = entries
-      .filter(e => allowedDifficulties.has(e.difficulty))
-      .map(e => e.clue);
-    
-    if (filteredClues.length > 0) {
-      result[answer] = filteredClues;
-    }
-  }
-  
-  return result;
-}
-
-/**
  * Get a single clue for a word, preferring easier clues based on difficulty setting
  * For puzzle packages, we only want easy/medium/challenging (no hard/expert)
  */
 export function getClueForWord(
   word: string, 
   preferDifficulty: ClueDifficulty = 'medium',
-  maxDifficulty: ClueDifficulty = 'challenging' // Default max is challenging (no hard/expert)
+  maxDifficulty: ClueDifficulty = 'challenging'
 ): string | null {
   const db = getCluesDatabase();
   const normalizedWord = word.toUpperCase().replace(/\s+/g, '');

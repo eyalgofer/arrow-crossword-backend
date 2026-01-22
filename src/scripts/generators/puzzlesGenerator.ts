@@ -138,7 +138,7 @@ export class PuzzleGenerator {
       this.difficulty === Difficulty.HARD ? 'medium' :
       this.difficulty === Difficulty.EXPERT ? 'medium' :
       'medium';
-    const template = generateTemplate(size, difficulty);
+    const template = generateTemplate(difficulty);
     this.templates.push(template);
     console.log(`Generated template: ${template.name} (${template.rows}x${template.cols}, ${template.slots.length} slots)`);
   }
@@ -147,7 +147,7 @@ export class PuzzleGenerator {
     this.addGeneratedTemplate(this.difficulty);
   }
   
-  generateFromTemplate(
+  solveTemplate(
     templateIndex: number = 0,
     config: {
       title: string;
@@ -208,6 +208,7 @@ export class PuzzleGenerator {
     
     // Build the puzzle
     try {
+
       const puzzle = generatePuzzleFromGrid(
         template,
         result,
@@ -215,19 +216,7 @@ export class PuzzleGenerator {
         {
         title: config.title,
         difficulty: config.difficulty,
-        category: config.category,
-        estimatedTime: config.difficulty === Difficulty.EASY ? 8 : 
-                       config.difficulty === Difficulty.MEDIUM ? 12 :
-                       config.difficulty === Difficulty.CHALLENGING ? 16 :
-                       config.difficulty === Difficulty.HARD ? 18 :
-                       config.difficulty === Difficulty.EXPERT ? 25 :
-                       15,
-        coinReward: config.difficulty === Difficulty.EASY ? 5 :
-                      config.difficulty === Difficulty.MEDIUM ? 10 :
-                      config.difficulty === Difficulty.CHALLENGING ? 20 :
-                      config.difficulty === Difficulty.HARD ? 25 :
-                      config.difficulty === Difficulty.EXPERT ? 30 :
-                      10
+        category: config.category
         }
       );
 
@@ -274,7 +263,6 @@ export class PuzzleGenerator {
         this.difficulty === Difficulty.EXPERT ? 'medium' : // 11x11
         'medium'; // 11x11
       console.log(`\n🔄 Attempt ${attempts}/${maxTemplateAttempts} - Generating fresh ${templateSize} template... (${(elapsed / 1000).toFixed(1)}s elapsed)`);
-      const templateStartTime = Date.now();
       
       this.templates = [];
       this.addGeneratedTemplate(this.difficulty);
@@ -283,27 +271,10 @@ export class PuzzleGenerator {
         console.log(`   ⚠️  Failed to generate template, skipping...`);
         continue;
       }
-      
-      const template = this.templates[0];
-      const templateTime = Date.now() - templateStartTime;
-      const density = ((template.slots.length * 4) / (template.rows * template.cols) * 100).toFixed(1);
-      console.log(`   📋 Template: ${template.slots.length} slots, ${template.rows}x${template.cols} grid, ~${density}% density (${templateTime}ms)`);
-      
-      // Only proceed if template has reasonable density
-      const minSlots = this.difficulty === Difficulty.EASY ? 20 :      
-                       this.difficulty === Difficulty.MEDIUM ? 20 :    
-                       this.difficulty === Difficulty.CHALLENGING ? 20 : 
-                       this.difficulty === Difficulty.HARD ? 20 :
-                       this.difficulty === Difficulty.EXPERT ? 20 :
-                       20;  
-      if (template.slots.length < minSlots) {
-        console.log(`   ⚠️  Template too sparse (${template.slots.length} slots, need ${minSlots}), trying again...`);
-        continue;
-      }
-      
+     
       console.log(`   🧩 Attempting to solve template with ~6M clues based on difficulty...`);
       const solveStartTime = Date.now();
-      const puzzle = this.generateFromTemplate(0, {
+      const puzzle = this.solveTemplate(0, {
         title: `${config.title}`,
         difficulty: this.difficulty,
         category: config.category
@@ -360,7 +331,7 @@ export function generatePuzzle(
     console.log(`  Puzzle Items: ${puzzle.puzzleItems.length}`);
     console.log(`  Difficulty: ${puzzle.difficulty}`);
     console.log(`  Category: ${puzzle.category}`);
-    console.log(`  Estimated Time: ${puzzle.estimatedTime} minutes`);
+    console.log(`  Estimated Time: ${puzzle.estimatedTime} seconds`);
     console.log(`  Coin Reward: ${puzzle.coinReward}`);
   } else {
     console.log('\n❌ Failed to generate perfect puzzle');

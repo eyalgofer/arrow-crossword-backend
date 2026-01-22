@@ -85,7 +85,7 @@ export function solveGrid(
         : undefined;
       let candidates = findMatchingWords(wordIndex, slot.length, constraints, excludeWords);
       
-      // CRITICAL: Filter out duplicate answers (normalized comparison)
+      // Filter out duplicate answers (normalized comparison)
       candidates = candidates.filter(w => {
         const normalized = normalizeWord(w);
         return !normalizedPlacedAnswers.has(normalized);
@@ -95,7 +95,7 @@ export function solveGrid(
       const rowDelta = cells.length >= 2 ? cells[1].row - cells[0].row : 0;
       const colDelta = cells.length >= 2 ? cells[1].col - cells[0].col : 0;
       
-      // CRITICAL: Pre-filter by placeability (key improvement from improved generator)
+      // Pre-filter by placeability (key improvement from improved generator)
       const validCandidates = candidates.filter(w => canPlaceWord(state, w, cells, rowDelta, colDelta));
       
       // Fail fast - if a slot has no valid candidates, return it immediately
@@ -135,13 +135,6 @@ export function solveGrid(
       if (previousAttempt === 0 || attemptsSinceLast > 1000) {
         stuckStates.set(stateSignature, attempts);
       }
-    }
-    
-    // Progress logging every 10k attempts
-    if (attempts % 10000 === 0 && depth === 0) {
-      const placedWords = Array.from(state.placedWords.values());
-      const totalSlots = template.slots.length;
-      console.log(`  🔄 Solver progress: ${attempts}/${config.maxAttempts} attempts, ${placedWords.length}/${totalSlots} slots filled`);
     }
     
     if (attempts > config.maxAttempts) {
@@ -205,7 +198,7 @@ export function solveGrid(
       excludeWords
     );
     
-    // CRITICAL: Filter out duplicate answers (normalized comparison)
+    // Filter out duplicate answers (normalized comparison)
     // This prevents the same answer from appearing twice in the puzzle
     candidates = candidates.filter(w => {
       const normalized = normalizeWord(w);
@@ -230,7 +223,6 @@ export function solveGrid(
         : ' (no constraints)';
       const totalSlots = template.slots.length;
       const remainingCount = remainingSlots.length;
-      console.log(`  📍 Selected slot (${remainingCount} remaining): ${slot.length} letters${constraintInfo}, ${candidates.length} placeable candidates`);
       
       // If no candidates, show why
       if (candidates.length === 0) {

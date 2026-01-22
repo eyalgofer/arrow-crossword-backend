@@ -7,19 +7,13 @@
 import { Direction, GridTemplate, ClueSlot, Difficulty } from '../core/types';
 import { getSlotCells, getAnswerOrientation, getNextCellAfterAnswer, getCellBeforeAnswer } from './direction-utils';
 import { 
-  normalizeWord, 
   validateWordBoundaries, 
-  isValidClueCellPosition, 
   hasAnswerClueOverlap,
   recalculateCrossings,
   validateOverlapsAreCrossings
 } from './validation-utils';
 
-/**
- * Creates a grid with strategic slot placement and crossings
- */
 export function generateTemplate(
-  size: 'tiny' | 'small' | 'medium' | 'large' | 'xlarge',
   difficulty: Difficulty = Difficulty.EASY
 ): GridTemplate {
   // Difficulty-based configuration for simpler puzzles
@@ -69,17 +63,61 @@ export function generateTemplate(
   };
 
   const difficultyMultipliers = getDifficultyMultipliers(difficulty);
+
+  // Map difficulty to size using randomness
+  type Size = 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge' | 'xxlarge';
   
-  const sizeConfig = {
-    // TINY: For EASY difficulty with ~1,700 words - small 7x7 grid
-    tiny: { rows: 7, cols: 7, minSlots: 8, maxSlots: 15, maxCrossingsPerSlot: 4, density: 0.85 },
-    small: { rows: 14, cols: 14, minSlots: 50, maxSlots: 100, maxCrossingsPerSlot: 10, density: 0.99 },
-    medium: { rows: 11, cols: 11, minSlots: 22, maxSlots: 120, maxCrossingsPerSlot: 10, density: 0.99 },
-    large: { rows: 15, cols: 15, minSlots: 80, maxSlots: 150, maxCrossingsPerSlot: 12, density: 0.99 },
-    xlarge: { rows: 16, cols: 16, minSlots: 90, maxSlots: 180, maxCrossingsPerSlot: 12, density: 0.99 }
+  const getSizeForDifficulty = (difficulty: Difficulty): Size => {
+    const random = Math.random();
+    
+    switch (difficulty) {
+      case Difficulty.EASY:
+        // easy: xsmall - medium
+        if (random < 0.33) return 'xsmall';
+        if (random < 0.67) return 'small';
+        return 'medium';
+      
+      case Difficulty.MEDIUM:
+        // medium: xsmall - medium
+        if (random < 0.33) return 'xsmall';
+        if (random < 0.67) return 'small';
+        return 'medium';
+      
+      case Difficulty.CHALLENGING:
+        // challenging: small - xlarge
+        if (random < 0.25) return 'small';
+        if (random < 0.5) return 'medium';
+        if (random < 0.75) return 'large';
+        return 'xlarge';
+      
+      case Difficulty.HARD:
+        // hard: large - xxlarge
+        if (random < 0.33) return 'large';
+        if (random < 0.67) return 'xlarge';
+        return 'xxlarge';
+      
+      case Difficulty.EXPERT:
+        // expert: xlarge - xxlarge
+        if (random < 0.5) return 'xlarge';
+        return 'xxlarge';
+      
+      default:
+        return 'medium';
+    }
   };
   
-  const baseConfig = sizeConfig[size];
+  const selectedSize = getSizeForDifficulty(difficulty);
+  
+  const sizeConfig: Record<Size, { rows: number; cols: number; minSlots: number; maxSlots: number; maxCrossingsPerSlot: number; density: number }> = {
+    xsmall: { rows: 9, cols: 9, minSlots: 18, maxSlots: 100, maxCrossingsPerSlot: 10, density: 0.99 },
+    small: { rows: 10, cols: 10, minSlots: 20, maxSlots: 100, maxCrossingsPerSlot: 10, density: 0.99 },
+    medium: { rows: 11, cols: 11, minSlots: 22, maxSlots: 120, maxCrossingsPerSlot: 10, density: 0.99 },
+    large: { rows: 12, cols: 12, minSlots: 24, maxSlots: 150, maxCrossingsPerSlot: 12, density: 0.99 },
+    xlarge: { rows: 13, cols: 13, minSlots: 26, maxSlots: 180, maxCrossingsPerSlot: 12, density: 0.99 },
+    xxlarge: { rows: 14, cols: 14, minSlots: 28, maxSlots: 180, maxCrossingsPerSlot: 12, density: 0.99 }
+  };
+  
+  const baseConfig = sizeConfig[selectedSize];
   // Apply difficulty multipliers
   const config = {
     ...baseConfig,
@@ -119,7 +157,7 @@ export function generateTemplate(
     const j = Math.floor(Math.random() * (i + 1));
     [directions[i], directions[j]] = [directions[j], directions[i]];
   }
-  
+
   for (let i = 0; i < targetSlots && slotNumber <= targetSlots; i++) {
     // Try to place a slot
     let placed = false;
@@ -127,7 +165,7 @@ export function generateTemplate(
     // MAXIMUM COMPUTE POWER: Use all available attempts for perfect placement
     // Significantly increased attempts to ensure we can place all slots
     // With 6M clues, use many more attempts to place all slots
-    const maxPlacementAttempts = size === 'xlarge' ? 15000 : size === 'large' ? 12000 : size === 'medium' ? 8000 : 5000;
+    const maxPlacementAttempts = selectedSize === 'xlarge' ? 15000 : selectedSize === 'large' ? 12000 : selectedSize === 'medium' ? 8000 : 5000;
     
     while (!placed && attempts < maxPlacementAttempts) {
       attempts++;
@@ -215,7 +253,7 @@ export function generateTemplate(
       // Allow longer words for better variety
       const maxLength = Math.min(
         difficultyMultipliers.maxWordLength,
-        size === 'tiny' ? 7 : size === 'small' ? 10 : size === 'medium' ? 12 : size === 'large' ? 14 : 15
+        selectedSize === 'xsmall' ? 9 : selectedSize === 'small' ? 10 : selectedSize === 'medium' ? 12 : selectedSize === 'large' ? 14 : selectedSize === 'xlarge' ? 15 : 15
       );
       const minLength = 3; // Start from 3 letters
       
@@ -837,7 +875,7 @@ export function generateTemplate(
     const minGapLength = difficulty === Difficulty.EASY ? 3 : difficulty === Difficulty.MEDIUM ? 4 : 5;
     const maxGapLength = Math.min(
       difficultyMultipliers.maxWordLength,
-      size === 'tiny' ? 6 : size === 'small' ? 8 : size === 'medium' ? 10 : size === 'large' ? 12 : 12
+      selectedSize === 'xsmall' ? 9 : selectedSize === 'small' ? 10 : selectedSize === 'medium' ? 12 : selectedSize === 'large' ? 14 : selectedSize === 'xlarge' ? 15 : 15
     );
     const wordLength = Math.floor(Math.random() * (maxGapLength - minGapLength + 1)) + minGapLength;
     
@@ -1265,7 +1303,7 @@ export function generateTemplate(
   
   // Ensure we have enough slots - if below minimum, be more lenient and keep more slots
   if (safeSlots.length < config.minSlots) {
-    console.warn(`⚠️  Warning: Only ${safeSlots.length} slots generated, but minimum is ${config.minSlots} for ${size} size`);
+    console.warn(`⚠️  Warning: Only ${safeSlots.length} slots generated, but minimum is ${config.minSlots} for ${selectedSize} size`);
     
     // If we're below minimum, be VERY lenient and re-add filtered slots
     const needed = config.minSlots - safeSlots.length;
@@ -1429,8 +1467,8 @@ export function generateTemplate(
       }
       
       return {
-        id: `generated_${size}_${Date.now()}`,
-        name: `Generated ${size} template`,
+        id: `generated_${selectedSize}_${Date.now()}`,
+        name: `Generated ${selectedSize} template`,
         rows: config.rows,
         cols: config.cols,
         slots: validSlots,
@@ -1441,7 +1479,7 @@ export function generateTemplate(
           verified: false,
           successRate: avgCrossings <= 2 ? 0.8 : avgCrossings <= 3 ? 0.7 : 0.6,
           generated: true,
-          size,
+          size: selectedSize,
           density: config.density,
           avgCrossings: avgCrossings.toFixed(2)
         }
@@ -1460,8 +1498,8 @@ export function generateTemplate(
   }
   
   return {
-    id: `generated_${size}_${Date.now()}`,
-    name: `Generated ${size} template`,
+    id: `generated_${selectedSize}_${Date.now()}`,
+    name: `Generated ${selectedSize} template`,
     rows: config.rows,
     cols: config.cols,
     slots: safeSlots,
@@ -1472,7 +1510,7 @@ export function generateTemplate(
       verified: false,
       successRate: avgCrossings <= 2 ? 0.8 : avgCrossings <= 3 ? 0.7 : 0.6,
       generated: true,
-      size,
+      size: selectedSize,
       density: config.density,
       avgCrossings: avgCrossings.toFixed(2)
     }

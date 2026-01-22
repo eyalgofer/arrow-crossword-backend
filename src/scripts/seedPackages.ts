@@ -154,13 +154,12 @@ for (let iteration = 0; iteration < 1; iteration++) {
   // });
 }
 
-// Difficulty distribution: 40% easy, 30% medium, 10% hard, 10% challenging, 10% expert
 function getDifficultyDistribution(puzzleCount: number): Array<{ difficulty: Difficulty; count: number }> {
-  const easy = Math.round(puzzleCount * 0.4);
+  const easy = Math.round(puzzleCount * 0.2);
   const medium = Math.round(puzzleCount * 0.3);
-  const hard = Math.round(puzzleCount * 0.1);
-  const challenging = Math.round(puzzleCount * 0.1);
-  const expert = Math.round(puzzleCount * 0.1);
+  const challenging = Math.round(puzzleCount * 0.2);
+  const hard = Math.round(puzzleCount * 0.15);
+  const expert = Math.round(puzzleCount * 0.15);
   
   // Adjust for rounding errors to ensure total equals puzzleCount
   const total = easy + medium + hard + challenging + expert;
@@ -350,7 +349,7 @@ const seedPackages = async () => {
     console.log(`   Total puzzles in packages: ${totalPuzzleSlots}`);
     console.log(`   Pattern: 10, 10, 20 (repeated 3 times)`);
     console.log(`   Difficulty distribution per package:`);
-    console.log(`     40% easy, 30% medium, 10% hard, 10% challenging, 10% expert`);
+    console.log(`     20% easy, 30% medium, 20% hard, 15% challenging, 15% expert`);
     console.log('='.repeat(60));
 
     console.log('\n✅ Package seeding completed successfully!');

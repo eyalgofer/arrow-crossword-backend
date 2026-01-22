@@ -25,8 +25,6 @@ export function generatePuzzleFromGrid(
     title: string;
     difficulty: Difficulty;
     category: string;
-    estimatedTime: number;
-    coinReward: number;
   }
 ): Puzzle {
   const puzzleItems: PuzzleItem[] = [];
@@ -132,25 +130,9 @@ export function generatePuzzleFromGrid(
       startCol: slot.startCol
     });
   }
-  
-  // Validate minimum clue count based on grid size
-  // Scale minimums based on grid size - smaller grids have fewer clues
-  const gridArea = template.rows * template.cols;
-  const minClues = gridArea <= 49 ? 6 :   // 7x7 tiny grid (EASY)
-                   gridArea <= 121 ? 20 : // 11x11 medium grid (MEDIUM)
-                   gridArea <= 196 ? 30 : // 14x14 grid
-                   gridArea <= 225 ? 40 : // 15x15 large grid (HARD)
-                   45;                    // 16x16+ xlarge grid
-  
-  if (puzzleItems.length < minClues) {
-    // Instead of throwing, return null to allow retry
-    // This prevents crashes and allows the generator to try again
-    console.error(`❌ Puzzle has only ${puzzleItems.length} clues, but minimum is ${minClues} for ${template.rows}x${template.cols} grid`);
-    throw new Error(`Puzzle has only ${puzzleItems.length} clues, but minimum is ${minClues} for ${template.rows}x${template.cols} grid`);
-  }
-  
+
   // --------------------------------------------------------------------------
-  // FINAL VALIDATION: Ensure every clue's answer follows the boundary rule
+  // Ensure every clue's answer follows the boundary rule
   // For each clue, the cell after the last answer letter must be:
   // - Out of bounds (grid boundary), OR
   // - A clue cell, OR
@@ -231,15 +213,24 @@ export function generatePuzzleFromGrid(
     }
     throw new Error(`Puzzle validation failed: ${validationErrors.length} clues violate boundary rule`);
   }
+  // Map difficulty to numeric value (1-5)
+  const difficultyNumber = config.difficulty === Difficulty.EASY ? 1 :
+                           config.difficulty === Difficulty.MEDIUM ? 2 :
+                           config.difficulty === Difficulty.CHALLENGING ? 3 :
+                           config.difficulty === Difficulty.HARD ? 4 :
+                           config.difficulty === Difficulty.EXPERT ? 5 :
+                           2; // Default to medium
   
+  const estimatedTime = puzzleItems.length * 15 * difficultyNumber;
+  const coinReward = (puzzleItems.length * difficultyNumber) / 4;
   return {
     title: config.title,
     difficulty: config.difficulty,
     category: config.category,
     grid: { rows: template.rows, cols: template.cols },
     puzzleItems: puzzleItems,
-    estimatedTime: config.estimatedTime,
-    coinReward: config.coinReward,
+    estimatedTime: estimatedTime,
+    coinReward: coinReward,
     metadata: {
       templateId: template.id,
       generationMethod: 'algorithmic'
