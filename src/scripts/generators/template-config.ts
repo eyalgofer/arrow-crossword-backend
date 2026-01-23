@@ -49,17 +49,13 @@ export const TEMPLATE_CONFIG = {
       switch (size) {
         case 'xxlarge':
         case 'xlarge':
-          return 0.95;
         case 'large':
-          return 0.92;
-        case 'medium':
-          return 0.90;
+        case 'medium':          
         case 'small':
-          return 0.88;
         case 'xsmall':
-          return 0.86;
+          return 0.95;
         default:
-          return 0.90;
+          return 0.95;
       }
     }
   }

@@ -132,7 +132,7 @@ export function loadCluesFromCSV(): CluesDatabase {
           if (filters.some(filter => clueText.includes(filter))) {
             continue; // Skip filtered clues
           }
-          if (clueText.length > 50) {
+          if (clueText.length > 40) {
             continue; // Skip clues that are too long to fit in a clue cell
           }
 
