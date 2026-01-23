@@ -119,8 +119,6 @@ const packageDefinitions: Array<{
   iconName: string;
   gradientColors: string[];
 }> = [];
-
-
   
   // First package of 10 puzzles
   packageDefinitions.push({
@@ -132,42 +130,42 @@ const packageDefinitions: Array<{
     gradientColors: gradientPalette[gradientPalette.length]
   });
   
-  // Second package of 10 puzzles
-  packageDefinitions.push({
-    name: `Package #${2}`,
-    description: '10 puzzles to solve',
-    theme: 'Mixed',
-    puzzleCount: 10,
-    iconName: iconNames[iconNames.length],
-    gradientColors: gradientPalette[gradientPalette.length]
-  });
+  // // Second package of 10 puzzles
+  // packageDefinitions.push({
+  //   name: `Package #${2}`,
+  //   description: '10 puzzles to solve',
+  //   theme: 'Mixed',
+  //   puzzleCount: 10,
+  //   iconName: iconNames[iconNames.length],
+  //   gradientColors: gradientPalette[gradientPalette.length]
+  // });
   
-  // Package of 20 puzzles
-  packageDefinitions.push({
-    name: `Package #${3}`,
-    description: '20 puzzles to solve',
-    theme: 'Mixed',
-    puzzleCount: 20,
-    iconName: iconNames[iconNames.length],
-    gradientColors: gradientPalette[gradientPalette.length]
-  });
+  // // Package of 20 puzzles
+  // packageDefinitions.push({
+  //   name: `Package #${3}`,
+  //   description: '20 puzzles to solve',
+  //   theme: 'Mixed',
+  //   puzzleCount: 20,
+  //   iconName: iconNames[iconNames.length],
+  //   gradientColors: gradientPalette[gradientPalette.length]
+  // });
 
-  packageDefinitions.push({
-    name: `Package #${4}`,
-    description: '10 puzzles to solve',
-    theme: 'Mixed',
-    puzzleCount: 10,
-    iconName: iconNames[iconNames.length],
-    gradientColors: gradientPalette[gradientPalette.length]
-  });
+  // packageDefinitions.push({
+  //   name: `Package #${4}`,
+  //   description: '10 puzzles to solve',
+  //   theme: 'Mixed',
+  //   puzzleCount: 10,
+  //   iconName: iconNames[iconNames.length],
+  //   gradientColors: gradientPalette[gradientPalette.length]
+  // });
   
 
 function getDifficultyDistribution(puzzleCount: number): Array<{ difficulty: Difficulty; count: number }> {
-  const easy = Math.round(puzzleCount * 0.2);
+  const easy = Math.round(puzzleCount * 0.4);
   const medium = Math.round(puzzleCount * 0.3);
   const challenging = Math.round(puzzleCount * 0.2);
-  const hard = Math.round(puzzleCount * 0.15);
-  const expert = Math.round(puzzleCount * 0.15);
+  const hard = Math.round(puzzleCount * 0.1);
+  const expert = Math.round(puzzleCount * 0.1);
   
   // Adjust for rounding errors to ensure total equals puzzleCount
   const total = easy + medium + hard + challenging + expert;
@@ -357,7 +355,7 @@ const seedPackages = async () => {
     console.log(`   Total puzzles in packages: ${totalPuzzleSlots}`);
     console.log(`   Pattern: 10, 10, 20 (repeated 3 times)`);
     console.log(`   Difficulty distribution per package:`);
-    console.log(`     20% easy, 30% medium, 20% hard, 15% challenging, 15% expert`);
+    console.log(`     40% easy, 30% medium, 20% hard, 10% challenging, 10% expert`);
     console.log('='.repeat(60));
 
     console.log('\n✅ Package seeding completed successfully!');

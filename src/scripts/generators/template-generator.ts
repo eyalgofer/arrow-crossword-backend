@@ -60,13 +60,13 @@ export function generateTemplate(
   
   const selectedSize = getSizeForDifficulty(difficulty);
   
-  const sizeConfig: Record<Size, { rows: number; cols: number; minSlots: number; maxCrossingsPerSlot: number; }> = {
-    xsmall: { rows: 9, cols: 9, minSlots: 20, maxCrossingsPerSlot: 10 },
-    small: { rows: 10, cols: 10, minSlots: 22, maxCrossingsPerSlot: 10},
-    medium: { rows: 11, cols: 11, minSlots: 23, maxCrossingsPerSlot: 10 },
-    large: { rows: 12, cols: 12, minSlots: 28, maxCrossingsPerSlot: 12 },
-    xlarge: { rows: 13, cols: 13, minSlots: 36, maxCrossingsPerSlot: 12 },
-    xxlarge: { rows: 14, cols: 14, minSlots: 42, maxCrossingsPerSlot: 12 }
+  const sizeConfig: Record<Size, { rows: number; cols: number; minSlots: number; }> = {
+    xsmall: { rows: 9, cols: 9, minSlots: 16 },
+    small: { rows: 10, cols: 10, minSlots: 18 },
+    medium: { rows: 11, cols: 11, minSlots: 20 },
+    large: { rows: 12, cols: 12, minSlots: 24 },
+    xlarge: { rows: 13, cols: 13, minSlots: 28 },
+    xxlarge: { rows: 14, cols: 14, minSlots: 32 }
   };
   
   const baseConfig = sizeConfig[selectedSize];
@@ -104,13 +104,13 @@ export function generateTemplate(
   // Place slots until we reach target density (99%)
   // Continue beyond minSlots to achieve high density
   const initialGridCells = config.rows * config.cols;
-  const initialTargetCoverage = 0.85;
+  const initialTargetCoverage = 0.95;
   const initialTargetFilledCells = Math.floor(initialGridCells * initialTargetCoverage);
   const initialMaxEmptyCells = initialGridCells - initialTargetFilledCells;
   
   let placementAttempts = 0;
   let consecutiveFailures = 0;
-  const maxConsecutiveFailures = 200; // If we fail 1000 times in a row, stop trying
+  const maxConsecutiveFailures = 200;
   const maxTotalPlacementAttempts = selectedSize === 'xlarge' ? 100000
    : selectedSize === 'large' ? 80000 
    : selectedSize === 'medium' ? 60000 
@@ -361,7 +361,7 @@ export function generateTemplate(
       
       // If we need more density, allow more crossings (up to 15)
       // Otherwise, stick to the config limit
-      const maxAllowedCrossings = needsMoreDensity ? Math.max(config.maxCrossingsPerSlot, 15) : config.maxCrossingsPerSlot;
+      const maxAllowedCrossings = needsMoreDensity ?  15 : 8;
       
       if (crossingCount > maxAllowedCrossings) {
         continue; // Too many crossings for this stage, try a different position
@@ -481,8 +481,7 @@ export function generateTemplate(
       
       // If we couldn't place a slot after many attempts, log and potentially stop
       if (attempts >= maxPlacementAttempts) {
-        // If we have minSlots and are at least 90% dense, stop
-        if (slots.length >= config.minSlots && currentCoverageLog >= 0.90) {
+        if (slots.length >= config.minSlots && currentCoverageLog >= initialTargetCoverage) {
           console.log(`  ⚠️  Stopping initial placement: ${slots.length} slots, ${currentFilledLog}/${initialGridCells} cells (${(currentCoverageLog * 100).toFixed(1)}% coverage)`);
           break;
         }

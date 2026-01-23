@@ -15,10 +15,8 @@ def calculate_difficulty(row):
     # Zipf scale: 7-8 ultra common, 5-6 very common, 3-4 common, 2-3 uncommon, <2 rare
     zipf = zipf_frequency(answer, 'en')
     
-    if zipf >= 6:
-        score -= 2  # Ultra common (the, and, have)
-    elif zipf >= 5:
-        score -= 1  # Very common (house, water)
+    if zipf >= 5:
+        score -= 2  # Ultra common (the, and, have) / Very common (house, water)
     elif zipf >= 3.5:
         pass       # Good crossword territory - no change
     elif zipf >= 2.5:
@@ -33,9 +31,9 @@ def calculate_difficulty(row):
         score -= 1
     elif len(answer) <= 4:
         pass  # Neutral for 4-letter words
-    elif len(answer) > 8:
-        score += 1
     elif len(answer) > 10:
+        score += 1
+    elif len(answer) > 12:
         score += 2
 
     # --- Factor C: Tricky letters ---

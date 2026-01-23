@@ -279,7 +279,7 @@ export function getClueForWord(
 export function getWordsWithMaxDifficulty(maxDifficulty: ClueDifficulty): string[] {
   const db = getCluesDatabase();
   const difficultyOrder: ClueDifficulty[] = ['easy', 'medium', 'challenging', 'hard', 'expert'];
-  let maxIndex = difficultyOrder.indexOf(maxDifficulty);
+  let maxIndex = difficultyOrder.indexOf(maxDifficulty) + 1;
   
   if (maxIndex === -1) {
     console.error(`❌ Invalid difficulty '${maxDifficulty}' passed to getWordsWithMaxDifficulty. Valid values: ${difficultyOrder.join(', ')}`);
