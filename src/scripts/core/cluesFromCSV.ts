@@ -132,7 +132,9 @@ export function loadCluesFromCSV(): CluesDatabase {
           if (filters.some(filter => clueText.includes(filter))) {
             continue; // Skip filtered clues
           }
-          
+          if (clueText.length > 50) {
+            continue; // Skip clues that are too long to fit in a clue cell
+          }
 
           const difficulty: ClueDifficulty = difficultyNum >= 1 && difficultyNum <= 5
             ? mapCsvDifficulty(difficultyNum)

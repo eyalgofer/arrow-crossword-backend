@@ -47,6 +47,10 @@ export function solveGrid(
 ): GridState | null {
   let attempts = 0;
   
+  // Progress tracking
+  const PROGRESS_MILESTONES = [0.25, 0.50, 0.75, 0.90];
+  let lastMilestone = 0;
+  
   // Initialize grid state with clue cells marked
   const initialState = createEmptyGridState(template.rows, template.cols);
   for (const clueCell of template.clueCells) {
@@ -57,7 +61,7 @@ export function solveGrid(
   // Dynamically select the slot with fewest valid candidates at each step
   // This is the correct CSP approach - fail fast on most constrained slots
   
-  // Track stuck states to detect infinite loops
+  // Track stuck states to detect infinite loops (more aggressive)
   const stuckStates = new Map<string, number>(); // state signature -> attempt count
   
   /**
@@ -124,15 +128,15 @@ export function solveGrid(
       const previousAttempt = stuckStates.get(stateSignature) || 0;
       const attemptsSinceLast = attempts - previousAttempt;
       
-      // If we've tried this exact state 5000+ times, we're stuck
-      if (previousAttempt > 0 && attemptsSinceLast > 5000) {
+      // If we've tried this exact state 2000+ times, we're stuck (more aggressive)
+      if (previousAttempt > 0 && attemptsSinceLast > 2000) {
         console.log(`  ⚠️  Detected stuck state with ${remainingSlots.length} slots remaining after ${attemptsSinceLast} attempts`);
         console.log(`     Placed words: ${Array.from(state.placedWords.values()).join(', ')}`);
         stuckStates.delete(stateSignature); // Reset to allow retry
         return null; // Exit this branch
       }
       
-      if (previousAttempt === 0 || attemptsSinceLast > 1000) {
+      if (previousAttempt === 0 || attemptsSinceLast > 500) {
         stuckStates.set(stateSignature, attempts);
       }
     }
@@ -167,6 +171,18 @@ export function solveGrid(
         console.log(`  ✅ All slots filled successfully!`);
       }
       return state;
+    }
+    
+    // Track progress milestones
+    if (depth === 0) {
+      const totalSlots = template.slots.length;
+      const placedSlots = totalSlots - remainingSlots.length;
+      const progress = placedSlots / totalSlots;
+      const nextMilestone = PROGRESS_MILESTONES.find(m => m > lastMilestone && progress >= m);
+      if (nextMilestone) {
+        console.log(`  📊 Progress: ${(progress * 100).toFixed(0)}% (${placedSlots}/${totalSlots} slots, ${attempts} attempts)`);
+        lastMilestone = nextMilestone;
+      }
     }
     
     // IMPROVED: Use MRV to select the most constrained slot dynamically
@@ -213,8 +229,10 @@ export function solveGrid(
     // This avoids wasting time trying words that can't be placed
     const placeableCandidates = candidates.filter(w => canPlaceWord(state, w, cells, rowDelta, colDelta));
     
-    // IMPROVEMENT: Limit candidates to avoid trying too many (from improved generator)
-    candidates = placeableCandidates.slice(0, 100);
+    // IMPROVEMENT: Limit candidates to avoid trying too many
+    // More aggressive limiting for very constrained slots
+    const maxCandidates = constraints.size > 3 ? 50 : 100;
+    candidates = placeableCandidates.slice(0, maxCandidates);
     
     // Log first attempt for each slot (only at top level)
     if (depth === 0 && attempts === 1) {

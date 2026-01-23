@@ -53,8 +53,8 @@ export function generatePuzzleFromGrid(
     // Get clue, ensuring it's not a duplicate
     let clueText: string;
     
-    // Clue text must be <= 20 characters to fit in clue cells
-    const MAX_CLUE_LENGTH = 20;
+    // Clue text must be <= 50 characters to fit in clue cells
+    const MAX_CLUE_LENGTH = 50;
     
     // Try to get all available clues if the database supports it
     if (clueDb.getAllClues) {

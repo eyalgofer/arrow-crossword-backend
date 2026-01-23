@@ -11,14 +11,13 @@ import {
   validateOverlapsAreCrossings,
   checkAnswerBoundaries
 } from './validation-utils';
+import { TEMPLATE_CONFIG, Size } from './template-config';
 
 export function generateTemplate(
   difficulty: Difficulty = Difficulty.EASY
 ): GridTemplate {
 
   // Map difficulty to size using randomness
-  type Size = 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge' | 'xxlarge';
-  
   const getSizeForDifficulty = (difficulty: Difficulty): Size => {
     const random = Math.random();
     
@@ -80,6 +79,38 @@ export function generateTemplate(
   const answerCells = new Map<string, { slotId: string; position: number }>(); // Track answer cells for crossings
   const blockedCells = new Set<string>(); // Track cells that must remain empty (after answer ends) to prevent word merging
   
+  // Cache empty cells for efficient lookup (updated incrementally)
+  const emptyCellsSet = new Set<string>();
+  // Initialize empty cells cache
+  for (let r = 0; r < config.rows; r++) {
+    for (let c = 0; c < config.cols; c++) {
+      emptyCellsSet.add(`${r},${c}`);
+    }
+  }
+  
+  // Helper to update empty cells cache when placing a slot
+  const updateEmptyCellsCache = (clueKey: string, answerCellsForSlot: Array<{ row: number; col: number }>) => {
+    // Remove clue cell
+    emptyCellsSet.delete(clueKey);
+    // Remove answer cells
+    for (const cell of answerCellsForSlot) {
+      emptyCellsSet.delete(`${cell.row},${cell.col}`);
+    }
+  };
+  
+  // Helper to rebuild empty cells cache if needed (safety check)
+  const rebuildEmptyCellsCache = () => {
+    emptyCellsSet.clear();
+    for (let r = 0; r < config.rows; r++) {
+      for (let c = 0; c < config.cols; c++) {
+        const cellKey = `${r},${c}`;
+        if (!occupiedCells.has(cellKey) && !answerCells.has(cellKey)) {
+          emptyCellsSet.add(cellKey);
+        }
+      }
+    }
+  };
+  
   // Generate slots with strategic placement
   // For easier puzzles, use fewer slots and simpler directions
   let slotNumber = 1;
@@ -101,20 +132,26 @@ export function generateTemplate(
     [directions[i], directions[j]] = [directions[j], directions[i]];
   }
 
-  // Place slots until we reach target density (99%)
-  // Continue beyond minSlots to achieve high density
+  // Place slots until we reach target density
+  // Use adaptive coverage targets based on size
   const initialGridCells = config.rows * config.cols;
-  const initialTargetCoverage = 0.95;
+  const initialTargetCoverage = TEMPLATE_CONFIG.COVERAGE.getTargetCoverage(selectedSize);
+  const acceptableCoverage = TEMPLATE_CONFIG.PLACEMENT.ACCEPTABLE_COVERAGE;
   const initialTargetFilledCells = Math.floor(initialGridCells * initialTargetCoverage);
   const initialMaxEmptyCells = initialGridCells - initialTargetFilledCells;
   
   let placementAttempts = 0;
   let consecutiveFailures = 0;
-  const maxConsecutiveFailures = 200;
-  const maxTotalPlacementAttempts = selectedSize === 'xlarge' ? 100000
-   : selectedSize === 'large' ? 80000 
-   : selectedSize === 'medium' ? 60000 
-   : 40000;
+  const maxTotalPlacementAttempts = TEMPLATE_CONFIG.PLACEMENT.MAX_PLACEMENT_ATTEMPTS[selectedSize] || 40000;
+  
+  // Helper to get adaptive failure threshold based on coverage
+  const getAdaptiveMaxFailures = (coverage: number): number => {
+    const thresholds = TEMPLATE_CONFIG.PLACEMENT.ADAPTIVE_FAILURE_THRESHOLDS;
+    if (coverage >= thresholds.HIGH_COVERAGE.threshold) return thresholds.HIGH_COVERAGE.maxFailures;
+    if (coverage >= thresholds.MEDIUM_COVERAGE.threshold) return thresholds.MEDIUM_COVERAGE.maxFailures;
+    if (coverage >= thresholds.LOW_COVERAGE.threshold) return thresholds.LOW_COVERAGE.maxFailures;
+    return thresholds.DEFAULT.maxFailures;
+  };
   
   // Continue placing slots until we reach target density OR we've placed minSlots and can't place more
   while (placementAttempts < maxTotalPlacementAttempts) {
@@ -122,6 +159,12 @@ export function generateTemplate(
     const currentFilled = answerCells.size + occupiedCells.size;
     const currentEmpty = initialGridCells - currentFilled;
     const currentCoverage = currentFilled / initialGridCells;
+    
+    // Early exit: Accept "good enough" coverage if we have minSlots
+    if (slots.length >= config.minSlots && currentCoverage >= acceptableCoverage) {
+      console.log(`  ✅ Reached acceptable coverage: ${currentFilled}/${initialGridCells} cells (${(currentCoverage * 100).toFixed(1)}% coverage) with ${slots.length} slots`);
+      break;
+    }
     
     // Stop if we've reached target density
     if (currentCoverage >= initialTargetCoverage || currentEmpty <= initialMaxEmptyCells) {
@@ -135,19 +178,17 @@ export function generateTemplate(
       break;
     }
     
-    // If we've failed too many times in a row, stop
-    if (consecutiveFailures >= maxConsecutiveFailures) {
-      console.log(`  ⚠️  Stopping initial placement: ${consecutiveFailures} consecutive failures, ${slots.length} slots, ${currentFilled}/${initialGridCells} cells (${(currentCoverage * 100).toFixed(1)}% coverage)`);
+    // Adaptive failure threshold based on current coverage
+    const adaptiveMaxFailures = getAdaptiveMaxFailures(currentCoverage);
+    if (consecutiveFailures >= adaptiveMaxFailures) {
+      console.log(`  ⚠️  Stopping initial placement: ${consecutiveFailures} consecutive failures (adaptive limit: ${adaptiveMaxFailures}), ${slots.length} slots, ${currentFilled}/${initialGridCells} cells (${(currentCoverage * 100).toFixed(1)}% coverage)`);
       break;
     }
     
     // Try to place a slot
     let placed = false;
     let attempts = 0;
-    const maxPlacementAttempts = selectedSize === 'xlarge' ? 15000
-     : selectedSize === 'large' ? 12000 
-     : selectedSize === 'medium' ? 8000 
-     : 5000;
+    const maxPlacementAttempts = TEMPLATE_CONFIG.PLACEMENT.MAX_PLACEMENT_ATTEMPTS_PER_SLOT[selectedSize] || 5000;
     
     while (!placed && attempts < maxPlacementAttempts) {
       attempts++;
@@ -185,16 +226,17 @@ export function generateTemplate(
       const hasMinSlots = slots.length >= config.minSlots;
       const progressRatio = slots.length / Math.max(config.minSlots, 1);
       if (progressRatio > 0.10 && answerCells.size > 0) {
-        // Find empty cells that could be filled
-        const emptyCellsList: Array<{ row: number; col: number }> = [];
-        for (let r = 0; r < config.rows; r++) {
-          for (let c = 0; c < config.cols; c++) {
-            const cellKey = `${r},${c}`;
-            if (!occupiedCells.has(cellKey) && !answerCells.has(cellKey)) {
-              emptyCellsList.push({ row: r, col: c });
-            }
-          }
+        // Use cached empty cells (much faster than scanning entire grid)
+        // Rebuild cache if it seems suspiciously small (safety check)
+        if (emptyCellsSet.size < 10 && emptyCellsSet.size !== (initialGridCells - currentFilled)) {
+          rebuildEmptyCellsCache();
         }
+        
+        // Convert cached empty cells to list for random selection
+        const emptyCellsList: Array<{ row: number; col: number }> = Array.from(emptyCellsSet).map(key => {
+          const [r, c] = key.split(',').map(Number);
+          return { row: r, col: c };
+        });
         
         // Once we have minSlots, prioritize filling empty cells (80% chance)
         // Before minSlots, balance crossings and coverage (70% crossings, 30% empty)
@@ -359,9 +401,11 @@ export function generateTemplate(
       const currentCoverageCheck = currentFilledCheck / initialGridCells;
       const needsMoreDensity = currentCoverageCheck < initialTargetCoverage;
       
-      // If we need more density, allow more crossings (up to 15)
-      // Otherwise, stick to the config limit
-      const maxAllowedCrossings = needsMoreDensity ?  15 : 8;
+      // If we need more density, allow more crossings (up to config max)
+      // Otherwise, stick to a lower limit
+      const maxAllowedCrossings = needsMoreDensity 
+        ? TEMPLATE_CONFIG.CROSSINGS.MAX_INITIAL 
+        : 8;
       
       if (crossingCount > maxAllowedCrossings) {
         continue; // Too many crossings for this stage, try a different position
@@ -422,6 +466,9 @@ export function generateTemplate(
       clueCells.push({ row: startRow, col: startCol, direction });
       occupiedCells.add(clueKey);
       
+      // Update empty cells cache (remove clue and answer cells)
+      updateEmptyCellsCache(clueKey, answerCellsForSlot);
+      
       // Track direction usage
       directionUsage.set(direction, (directionUsage.get(direction) || 0) + 1);
       
@@ -441,6 +488,8 @@ export function generateTemplate(
         // Only mark as blocked if it's not already a clue cell
         if (!occupiedCells.has(prevCellKey)) {
           blockedCells.add(prevCellKey);
+          // Also remove from empty cells cache (it's now blocked)
+          emptyCellsSet.delete(prevCellKey);
         }
       }
       
@@ -453,6 +502,8 @@ export function generateTemplate(
         // Only mark as blocked if it's not already a clue cell
         if (!occupiedCells.has(nextCellKey)) {
           blockedCells.add(nextCellKey);
+          // Also remove from empty cells cache (it's now blocked)
+          emptyCellsSet.delete(nextCellKey);
         }
       }
       
@@ -516,10 +567,10 @@ export function generateTemplate(
     const slot = slots[i];
     const crossings = slot.crossings.length;
     
-    // SOLVABILITY: Keep slots with up to 15 crossings initially
+    // SOLVABILITY: Keep slots with up to config max crossings initially
     // We'll filter more aggressively in the second pass, but keep more initially
     // to ensure we have enough slots to meet the minimum
-    const hardCap = 15; // Allow up to 15 crossings initially (increased from 12)
+    const hardCap = TEMPLATE_CONFIG.CROSSINGS.MAX_INITIAL;
     if (crossings <= hardCap) {
       filteredSlots.push(slot);
     } else {
@@ -582,17 +633,16 @@ export function generateTemplate(
     const slot = validatedSlots[i];
     const crossings = slot.crossings.length;
     
-    // With 6M clues: Keep slots with up to 12 crossings for ultra-dense puzzles
     // Progressive limits: earlier slots can have fewer crossings
-    // Much more lenient to keep as many slots as possible
+    // Use config-based progressive limits
     const progressRatio = i / validatedSlots.length;
-    let maxAllowed: number;
-    if (progressRatio < 0.40) {
-      maxAllowed = 10; // First 40%: max 10 crossings
-    } else if (progressRatio < 0.80) {
-      maxAllowed = 11; // Next 40%: max 11 crossings
-    } else {
-      maxAllowed = 12; // Last 20%: max 12 crossings (config max)
+    const limits = TEMPLATE_CONFIG.CROSSINGS.PROGRESSIVE_LIMITS;
+    let maxAllowed: number = limits[limits.length - 1].max; // Default to last limit
+    for (const limit of limits) {
+      if (progressRatio < limit.ratio) {
+        maxAllowed = limit.max;
+        break;
+      }
     }
     
     if (crossings <= maxAllowed) {
@@ -659,9 +709,8 @@ export function generateTemplate(
       }
       if (hasClueOverlap) continue; // Skip slots that overlap with clue cells
       
-      // With 6M clues, we can handle more crossings - be more aggressive
-      // Cap at 15 crossings for ultra-dense puzzles
-      const relaxedLimit = 15;
+      // Use config-based relaxed limit for ultra-dense puzzles
+      const relaxedLimit = TEMPLATE_CONFIG.CROSSINGS.RELAXED_LIMIT;
       if (crossings <= relaxedLimit) {
         // Double-check clue cell is still available before adding
         if (!clueCellSet.has(clueKey)) {

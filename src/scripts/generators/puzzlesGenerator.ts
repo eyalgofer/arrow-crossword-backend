@@ -115,7 +115,7 @@ export class PuzzleGenerator {
       const step = Math.floor(words.length / MAX_WORDS_FOR_INDEX);
       words = words.filter((_, index) => index % step === 0).slice(0, MAX_WORDS_FOR_INDEX);
     }
-    
+
     this.wordIndex = buildCrossingIndex(words.map(key => key.toUpperCase()));
     
     // Verify word index was built correctly (use iterative approach to avoid stack overflow)
@@ -130,7 +130,10 @@ export class PuzzleGenerator {
 
   buildGeneratedTemplate(difficulty: Difficulty = Difficulty.MEDIUM): boolean {
     try {
+      const templateStartTime = Date.now();
       const template = generateTemplate(difficulty);
+      const templateTime = Date.now() - templateStartTime;
+      
       this.templates.push(template);
       return true;
     } catch (error) {
@@ -161,9 +164,11 @@ export class PuzzleGenerator {
     const template = this.templates[templateIndex];
 
     const slotCount = template.slots.length;
-    const baseAttempts = 500000; 
-    const attemptsPerSlot = 50000;
-    const maxAttempts = Math.min(baseAttempts + (slotCount * attemptsPerSlot), 10000000);
+    // Reduced max attempts for better performance
+    // More conservative scaling: base + per-slot attempts, capped at 2M
+    const baseAttempts = 100000;  // Reduced from 500k
+    const attemptsPerSlot = 10000; // Reduced from 50k
+    const maxAttempts = Math.min(baseAttempts + (slotCount * attemptsPerSlot), 2000000); // Cap at 2M instead of 10M
     
     let result = solveGrid(template, this.wordIndex, {
       maxAttempts: maxAttempts,
@@ -216,6 +221,18 @@ export class PuzzleGenerator {
     }
   ): Puzzle | null {
     console.log('🎯 Generating puzzle...');
+    
+    // Performance metrics
+    const metrics = {
+      templateGeneration: 0,
+      slotPlacement: 0,
+      crossingCalculation: 0,
+      filtering: 0,
+      solving: 0,
+      puzzleAssembly: 0,
+      totalAttempts: 0
+    };
+    
     let attempts = 0;
     const maxTemplateAttempts = 100;
     const maxTotalTime = 2 * 60 * 1000; // 2 minutes
@@ -223,6 +240,7 @@ export class PuzzleGenerator {
     
     while (attempts < maxTemplateAttempts) {
       attempts++;
+      metrics.totalAttempts = attempts;
       
       // Check timeout
       const elapsed = Date.now() - startTime;
@@ -232,7 +250,9 @@ export class PuzzleGenerator {
       }
 
       this.templates = [];
+      const templateStartTime = Date.now();
       const templateGenerated = this.buildGeneratedTemplate(this.difficulty);
+      metrics.templateGeneration += Date.now() - templateStartTime;
       
       if (!templateGenerated || this.templates.length === 0) {
         console.log(`   ⚠️  Failed to generate template, trying again...`);
@@ -245,10 +265,20 @@ export class PuzzleGenerator {
         difficulty: this.difficulty,
         category: config.category
       });
+      metrics.solving += Date.now() - solveStartTime;
+      
       const solveTime = Date.now() - solveStartTime;
       console.log(`   ⏱️  Solve attempt took ${solveTime / 1000} seconds`);
       
       if (puzzle) {
+        // Log performance metrics
+        const totalTime = Date.now() - startTime;
+        console.log(`\n⏱️  Performance Metrics:`);
+        console.log(`   Template generation: ${metrics.templateGeneration}ms`);
+        console.log(`   Solving: ${metrics.solving}ms`);
+        console.log(`   Total time: ${totalTime}ms`);
+        console.log(`   Attempts: ${attempts}`);
+        
         return puzzle;
       }
       
@@ -258,6 +288,13 @@ export class PuzzleGenerator {
     }
     
     console.log(`\n❌ Failed to generate puzzle after ${attempts} attempts`);
+    const totalTime = Date.now() - startTime;
+    console.log(`\n⏱️  Performance Metrics:`);
+    console.log(`   Template generation: ${metrics.templateGeneration}ms`);
+    console.log(`   Solving: ${metrics.solving}ms`);
+    console.log(`   Total time: ${totalTime}ms`);
+    console.log(`   Attempts: ${attempts}`);
+    
     return null;
   }
 }
