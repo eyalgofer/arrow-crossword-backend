@@ -29,13 +29,13 @@ export const TEMPLATE_CONFIG = {
     }
   },
   CROSSINGS: {
-    MAX_INITIAL: 15,
-    MAX_FINAL: 12,
-    RELAXED_LIMIT: 15,
+    MAX_INITIAL: 8,  // Reduced from 15 - too many crossings make templates unsolvable
+    MAX_FINAL: 6,     // Reduced from 12 - keep templates solvable
+    RELAXED_LIMIT: 8,
     PROGRESSIVE_LIMITS: [
-      { ratio: 0.40, max: 10 },
-      { ratio: 0.80, max: 11 },
-      { ratio: 1.00, max: 12 }
+      { ratio: 0.40, max: 5 },
+      { ratio: 0.80, max: 6 },
+      { ratio: 1.00, max: 6 }
     ]
   },
   COVERAGE: {
