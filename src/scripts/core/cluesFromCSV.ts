@@ -128,13 +128,14 @@ export function loadCluesFromCSV(): CluesDatabase {
         const difficultyNum = parts.length >= 5 ? parseInt(parts[4].trim(), 10) : 0;
         
         if (answer && clueText) {
+          if (clueText.length > 20) {
+            continue; 
+          }
           const filters = ['___', '...'];
           if (filters.some(filter => clueText.includes(filter))) {
-            continue; // Skip filtered clues
+            continue; 
           }
-          if (clueText.length > 40) {
-            continue; // Skip clues that are too long to fit in a clue cell
-          }
+          
 
           const difficulty: ClueDifficulty = difficultyNum >= 1 && difficultyNum <= 5
             ? mapCsvDifficulty(difficultyNum)

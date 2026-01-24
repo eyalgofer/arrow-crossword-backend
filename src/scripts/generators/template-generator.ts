@@ -13,6 +13,64 @@ import {
 } from './validation-utils';
 import { TEMPLATE_CONFIG, Size } from './template-config';
 
+/**
+ * Check if a direction is valid for the top position in a split cell
+ * Top directions: across, right-down, up-across
+ * Note: down-across is also horizontal but not explicitly mentioned in split cell rules
+ * For now, we'll allow it but it won't be preferred for split cells
+ */
+function isTopDirection(direction: Direction): boolean {
+  return direction === 'across' || direction === 'right-down' || direction === 'up-across';
+}
+
+/**
+ * Check if a direction is valid for the bottom position in a split cell
+ * Bottom directions: down, left-down
+ * Note: "down-right" mentioned by user likely refers to "left-down"
+ */
+function isBottomDirection(direction: Direction): boolean {
+  return direction === 'down' || direction === 'left-down';
+}
+
+/**
+ * Check if a new direction is compatible with existing directions in a split cell
+ * A cell can have at most one top direction and one bottom direction
+ * When cell is empty, ALL directions are allowed
+ * When cell has one direction, only compatible directions are allowed (top/bottom split)
+ */
+function isDirectionCompatibleWithCell(
+  newDirection: Direction,
+  existingDirections: Set<Direction>
+): boolean {
+  // If cell is empty, ALL directions are allowed (not just top/bottom)
+  // Split cell rules only apply when there's already a direction in the cell
+  if (existingDirections.size === 0) {
+    return true; // Empty cell can accept any direction
+  }
+  
+  // If cell already has a direction, apply split cell rules
+  const isNewTop = isTopDirection(newDirection);
+  const isNewBottom = isBottomDirection(newDirection);
+  
+  // If new direction is not a valid split cell direction, reject it
+  // (down-across can't be in split cells, but can be in empty cells)
+  if (!isNewTop && !isNewBottom) {
+    return false;
+  }
+  
+  for (const existingDir of existingDirections) {
+    const isExistingTop = isTopDirection(existingDir);
+    const isExistingBottom = isBottomDirection(existingDir);
+    
+    // Can't have two top directions or two bottom directions
+    if ((isNewTop && isExistingTop) || (isNewBottom && isExistingBottom)) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
 export function generateTemplate(
   difficulty: Difficulty = Difficulty.EASY
 ): GridTemplate {
@@ -61,11 +119,11 @@ export function generateTemplate(
   
   const sizeConfig: Record<Size, { rows: number; cols: number; minSlots: number; }> = {
     xsmall: { rows: 9, cols: 9, minSlots: 16 },
-    small: { rows: 10, cols: 10, minSlots: 18 },
-    medium: { rows: 11, cols: 11, minSlots: 20 },
-    large: { rows: 12, cols: 12, minSlots: 24 },
-    xlarge: { rows: 13, cols: 13, minSlots: 28 },
-    xxlarge: { rows: 14, cols: 14, minSlots: 32 }
+    small: { rows: 10, cols: 10, minSlots: 22 },
+    medium: { rows: 11, cols: 11, minSlots: 22 },
+    large: { rows: 12, cols: 12, minSlots: 22 },
+    xlarge: { rows: 13, cols: 13, minSlots: 22 },
+    xxlarge: { rows: 14, cols: 14, minSlots: 22 }
   };
   
   const baseConfig = sizeConfig[selectedSize];
@@ -75,7 +133,8 @@ export function generateTemplate(
   };
   const slots: ClueSlot[] = [];
   const clueCells: Array<{ row: number; col: number; direction: Direction }> = [];
-  const occupiedCells = new Set<string>(); // Track which cells have clues
+  // Track which directions are already in each clue cell (supports split cells: two clues per cell)
+  const clueCellDirections = new Map<string, Set<Direction>>(); // "row,col" -> Set<Direction>
   const answerCells = new Map<string, { slotId: string; position: number }>(); // Track answer cells for crossings
   const blockedCells = new Set<string>(); // Track cells that must remain empty (after answer ends) to prevent word merging
   
@@ -90,12 +149,17 @@ export function generateTemplate(
   
   // Helper to update empty cells cache when placing a slot
   const updateEmptyCellsCache = (clueKey: string, answerCellsForSlot: Array<{ row: number; col: number }>) => {
-    // Remove clue cell
-    emptyCellsSet.delete(clueKey);
+    // Remove clue cell from empty set only if this is the FIRST direction in this cell
+    // If it's already a clue cell (split cell), keep it out of empty set
+    const directionsInCell = clueCellDirections.get(clueKey);
+    if (!directionsInCell || directionsInCell.size === 0) {
+      emptyCellsSet.delete(clueKey);
+    }
     // Remove answer cells
     for (const cell of answerCellsForSlot) {
       emptyCellsSet.delete(`${cell.row},${cell.col}`);
     }
+    // Note: Blocked cells are removed when they're marked as blocked (see below)
   };
   
   // Helper to rebuild empty cells cache if needed (safety check)
@@ -104,7 +168,10 @@ export function generateTemplate(
     for (let r = 0; r < config.rows; r++) {
       for (let c = 0; c < config.cols; c++) {
         const cellKey = `${r},${c}`;
-        if (!occupiedCells.has(cellKey) && !answerCells.has(cellKey)) {
+        // Cell is empty if it's not a clue cell (with any direction), not an answer cell, and not blocked
+        const hasClue = clueCellDirections.has(cellKey) && (clueCellDirections.get(cellKey)?.size ?? 0) > 0;
+        const isBlocked = blockedCells.has(cellKey);
+        if (!hasClue && !answerCells.has(cellKey) && !isBlocked) {
           emptyCellsSet.add(cellKey);
         }
       }
@@ -142,7 +209,9 @@ export function generateTemplate(
   
   let placementAttempts = 0;
   let consecutiveFailures = 0;
+  let failureResetCount = 0; // Track how many times we've reset the failure counter
   const maxTotalPlacementAttempts = TEMPLATE_CONFIG.PLACEMENT.MAX_PLACEMENT_ATTEMPTS[selectedSize] || 40000;
+  const maxFailureResets = 10; // Maximum number of times we'll reset the failure counter
   
   // Helper to get adaptive failure threshold based on coverage
   const getAdaptiveMaxFailures = (coverage: number): number => {
@@ -156,33 +225,77 @@ export function generateTemplate(
   // Continue placing slots until we reach target density OR we've placed minSlots and can't place more
   while (placementAttempts < maxTotalPlacementAttempts) {
     // Check if we've reached target density
-    const currentFilled = answerCells.size + occupiedCells.size;
+    // Count clue cells (each cell can have multiple directions, but counts as one cell)
+    const currentFilled = answerCells.size + clueCellDirections.size;
     const currentEmpty = initialGridCells - currentFilled;
     const currentCoverage = currentFilled / initialGridCells;
     
-    // Early exit: Accept "good enough" coverage if we have minSlots
+    // Early exit: Only accept if we have minSlots AND high coverage
+    // Don't stop early if we're below minSlots, even if coverage is good
     if (slots.length >= config.minSlots && currentCoverage >= acceptableCoverage) {
       console.log(`  ✅ Reached acceptable coverage: ${currentFilled}/${initialGridCells} cells (${(currentCoverage * 100).toFixed(1)}% coverage) with ${slots.length} slots`);
       break;
     }
     
-    // Stop if we've reached target density
-    if (currentCoverage >= initialTargetCoverage || currentEmpty <= initialMaxEmptyCells) {
+    // Stop if we've reached target density AND have minSlots
+    if (slots.length >= config.minSlots && (currentCoverage >= initialTargetCoverage || currentEmpty <= initialMaxEmptyCells)) {
       console.log(`  ✅ Initial placement reached target density: ${currentFilled}/${initialGridCells} cells (${(currentCoverage * 100).toFixed(1)}% coverage) with ${slots.length} slots`);
       break;
     }
     
-    // Also ensure we place at least minSlots
-    if (slots.length >= config.minSlots && currentEmpty <= initialMaxEmptyCells + 5) {
-      // Close enough to target, stop
+    // Don't stop early if we're below minSlots - keep trying
+    if (slots.length < config.minSlots) {
+      // Continue trying to place more slots
+    } else if (currentEmpty <= initialMaxEmptyCells + 5) {
+      // Close enough to target, stop only if we have minSlots
       break;
     }
     
     // Adaptive failure threshold based on current coverage
-    const adaptiveMaxFailures = getAdaptiveMaxFailures(currentCoverage);
+    let adaptiveMaxFailures = getAdaptiveMaxFailures(currentCoverage);
+    
+    // If we're far below target coverage OR below minSlots, increase failure threshold significantly
+    // This allows us to push towards 99% density even when placement is difficult
+    const isFarBelowTarget = currentCoverage < acceptableCoverage - 0.05; // More than 5% below acceptable
+    const isBelowMinSlots = slots.length < config.minSlots;
+    if (isFarBelowTarget || isBelowMinSlots) {
+      // Increase failure threshold significantly when far below target or below minSlots
+      // This allows many more attempts to reach the goal
+      adaptiveMaxFailures = Math.max(adaptiveMaxFailures * 3, 1000);
+    }
+    
     if (consecutiveFailures >= adaptiveMaxFailures) {
-      console.log(`  ⚠️  Stopping initial placement: ${consecutiveFailures} consecutive failures (adaptive limit: ${adaptiveMaxFailures}), ${slots.length} slots, ${currentFilled}/${initialGridCells} cells (${(currentCoverage * 100).toFixed(1)}% coverage)`);
-      break;
+      // Only stop if we're close to acceptable coverage AND we've placed min slots
+      const isCloseToAcceptable = currentCoverage >= acceptableCoverage - 0.02; // Within 2% of acceptable
+      const hasReachedMinSlots = slots.length >= config.minSlots;
+      
+      // Don't stop if we're below minSlots - keep trying
+      if (!hasReachedMinSlots) {
+        // Reset failure counter and continue if we're below minSlots
+        if (failureResetCount < maxFailureResets) {
+          console.log(`  🔄 Resetting failure counter (${consecutiveFailures} failures, reset #${failureResetCount + 1}) - below minSlots (${slots.length}/${config.minSlots}), continuing...`);
+          consecutiveFailures = 0;
+          failureResetCount++;
+        } else {
+          console.log(`  ⚠️  Stopping after ${failureResetCount} failure resets - still below minSlots (${slots.length}/${config.minSlots})`);
+          break;
+        }
+      } else if (isCloseToAcceptable || (hasReachedMinSlots && currentCoverage >= acceptableCoverage - 0.05)) {
+        console.log(`  ⚠️  Stopping initial placement: ${consecutiveFailures} consecutive failures (adaptive limit: ${adaptiveMaxFailures}), ${slots.length} slots, ${currentFilled}/${initialGridCells} cells (${(currentCoverage * 100).toFixed(1)}% coverage)`);
+        break;
+      } else {
+        // Still far below target, reset failure counter and continue (but log it)
+        // But only if we haven't reset too many times already
+        if (failureResetCount < maxFailureResets) {
+          console.log(`  🔄 Resetting failure counter (${consecutiveFailures} failures, reset #${failureResetCount + 1}) - still below target (${(currentCoverage * 100).toFixed(1)}% < ${(acceptableCoverage * 100).toFixed(1)}%), continuing towards 99%...`);
+          consecutiveFailures = 0; // Reset to allow more attempts
+          failureResetCount++;
+        } else {
+          // Too many resets, stop to prevent infinite loops
+          console.log(`  ⚠️  Stopping after ${failureResetCount} failure resets - reached max resets limit`);
+          break;
+        }
+      }
     }
     
     // Try to place a slot
@@ -238,10 +351,20 @@ export function generateTemplate(
           return { row: r, col: c };
         });
         
-        // Once we have minSlots, prioritize filling empty cells (80% chance)
-        // Before minSlots, balance crossings and coverage (70% crossings, 30% empty)
-        const emptyCellPriority = hasMinSlots ? 0.80 : 0.30;
-        if (Math.random() < (1 - emptyCellPriority) && answerCells.size > 0) {
+        // Once we have minSlots, prioritize filling empty cells (90% chance)
+        // Before minSlots, balance crossings and coverage (50% crossings, 50% empty)
+        // Also prioritize split cells when possible (try to place in existing clue cells)
+        const emptyCellPriority = hasMinSlots ? 0.90 : 0.50;
+        const splitCellPriority = 0.20; // 20% chance to try split cell placement
+        
+        if (Math.random() < splitCellPriority && clueCellDirections.size > 0) {
+          // Try to place in an existing clue cell (split cell)
+          const existingClueCells = Array.from(clueCellDirections.keys());
+          const targetClueCell = existingClueCells[Math.floor(Math.random() * existingClueCells.length)];
+          const [cellRow, cellCol] = targetClueCell.split(',').map(Number);
+          startRow = cellRow;
+          startCol = cellCol;
+        } else if (Math.random() < (1 - emptyCellPriority) && answerCells.size > 0) {
           const existingCells = Array.from(answerCells.keys());
           const randomCellKey = existingCells[Math.floor(Math.random() * existingCells.length)];
           const [cellRow, cellCol] = randomCellKey.split(',').map(Number);
@@ -319,8 +442,18 @@ export function generateTemplate(
       
 
       const testClueKey = `${startRow},${startCol}`;
-      if (occupiedCells.has(testClueKey)) {
-        continue; // Clue cell already taken by another clue
+      // Check if this direction is compatible with existing directions in this clue cell
+      // Split cell rules: top can have (across, right-down, up-across), bottom can have (down, left-down)
+      const directionsInCell = clueCellDirections.get(testClueKey);
+      if (directionsInCell) {
+        // Check if this exact direction is already used
+        if (directionsInCell.has(direction)) {
+          continue; // This direction is already used in this clue cell
+        }
+        // Check if this direction is compatible with split cell rules
+        if (!isDirectionCompatibleWithCell(direction, directionsInCell)) {
+          continue; // This direction conflicts with existing directions in split cell
+        }
       }
       
       // Clue cell cannot be in an answer cell position
@@ -341,8 +474,9 @@ export function generateTemplate(
       for (const cell of testAnswerCells) {
         const cellKey = `${cell.row},${cell.col}`;
         
-        // Can't place answer in a clue cell
-        if (occupiedCells.has(cellKey)) {
+        // Can't place answer in a clue cell (regardless of direction)
+        // Check if this cell has any clue directions
+        if (clueCellDirections.has(cellKey) && (clueCellDirections.get(cellKey)?.size ?? 0) > 0) {
           hasConflict = true;
           break;
         }
@@ -396,14 +530,15 @@ export function generateTemplate(
       // Use the crossing count from optimal selection (already calculated)
       const crossingCount = bestCrossings; // Number of different slots we cross with (perpendicular only)
       
-      // Enforce crossing limits, but be more lenient when we need to reach target density
-      const currentFilledCheck = answerCells.size + occupiedCells.size;
+      // Enforce crossing limits, but be more lenient when we need to reach target density or minSlots
+      const currentFilledCheck = answerCells.size + clueCellDirections.size;
       const currentCoverageCheck = currentFilledCheck / initialGridCells;
       const needsMoreDensity = currentCoverageCheck < initialTargetCoverage;
+      const needsMoreSlots = slots.length < config.minSlots;
       
-      // If we need more density, allow more crossings (up to config max)
+      // If we need more density OR more slots, allow more crossings (up to config max)
       // Otherwise, stick to a lower limit
-      const maxAllowedCrossings = needsMoreDensity 
+      const maxAllowedCrossings = (needsMoreDensity || needsMoreSlots)
         ? TEMPLATE_CONFIG.CROSSINGS.MAX_INITIAL 
         : 8;
       
@@ -411,11 +546,19 @@ export function generateTemplate(
         continue; // Too many crossings for this stage, try a different position
       }
 
-      // Double-check that clue cell is still available (prevent duplicates)
-      // Also check that clue cell doesn't overlap with answer cells
-      if (occupiedCells.has(clueKey)) {
-        // This should not happen due to earlier checks, but add safety check
-        continue; // Clue cell already taken, skip this slot
+      // Double-check that this direction is compatible with existing directions in this clue cell
+      // Split cell rules: top can have (across, right-down, up-across), bottom can have (down, left-down)
+      const directionsInCell = clueCellDirections.get(clueKey);
+      if (directionsInCell) {
+        // Check if this exact direction is already used
+        if (directionsInCell.has(direction)) {
+          // This should not happen due to earlier checks, but add safety check
+          continue; // This direction already used in this clue cell, skip this slot
+        }
+        // Check if this direction is compatible with split cell rules
+        if (!isDirectionCompatibleWithCell(direction, directionsInCell)) {
+          continue; // This direction conflicts with existing directions in split cell, skip this slot
+        }
       }
       
       // clue cell cannot be in an answer cell
@@ -433,7 +576,7 @@ export function generateTemplate(
           // This would cause word merging - invalid!
           continue;
         }
-        // Must be clue cell, blocked cell, or empty (will be marked as blocked when slot is placed)
+        // Must be clue cell (can be split cell), blocked cell, or empty (will be marked as blocked when slot is placed)
         // Empty is OK here because we'll mark it as blocked immediately after validation
       }
       
@@ -447,7 +590,7 @@ export function generateTemplate(
           // This would cause word merging - invalid!
           continue;
         }
-        // Must be clue cell, blocked cell, or empty (will be marked as blocked when slot is placed)
+        // Must be clue cell (can be split cell), blocked cell, or empty (will be marked as blocked when slot is placed)
         // Empty is OK here because we'll mark it as blocked immediately after validation
       }
       
@@ -464,7 +607,11 @@ export function generateTemplate(
       
       slots.push(slot);
       clueCells.push({ row: startRow, col: startCol, direction });
-      occupiedCells.add(clueKey);
+      // Track which directions are used in this clue cell (supports split cells)
+      if (!clueCellDirections.has(clueKey)) {
+        clueCellDirections.set(clueKey, new Set<Direction>());
+      }
+      clueCellDirections.get(clueKey)!.add(direction);
       
       // Update empty cells cache (remove clue and answer cells)
       updateEmptyCellsCache(clueKey, answerCellsForSlot);
@@ -485,8 +632,8 @@ export function generateTemplate(
       const cellBeforeAnswer = getCellBeforeAnswer(direction, firstAnswerCell, config.rows, config.cols);
       if (cellBeforeAnswer !== null) {
         const prevCellKey = `${cellBeforeAnswer.row},${cellBeforeAnswer.col}`;
-        // Only mark as blocked if it's not already a clue cell
-        if (!occupiedCells.has(prevCellKey)) {
+        // Only mark as blocked if it's not already a clue cell (can be split cell)
+        if (!clueCellDirections.has(prevCellKey)) {
           blockedCells.add(prevCellKey);
           // Also remove from empty cells cache (it's now blocked)
           emptyCellsSet.delete(prevCellKey);
@@ -499,8 +646,8 @@ export function generateTemplate(
       const nextCellAfterAnswer = getNextCellAfterAnswer(direction, lastAnswerCell, config.rows, config.cols);
       if (nextCellAfterAnswer !== null) {
         const nextCellKey = `${nextCellAfterAnswer.row},${nextCellAfterAnswer.col}`;
-        // Only mark as blocked if it's not already a clue cell
-        if (!occupiedCells.has(nextCellKey)) {
+        // Only mark as blocked if it's not already a clue cell (can be split cell)
+        if (!clueCellDirections.has(nextCellKey)) {
           blockedCells.add(nextCellKey);
           // Also remove from empty cells cache (it's now blocked)
           emptyCellsSet.delete(nextCellKey);
@@ -514,7 +661,7 @@ export function generateTemplate(
       
       // Log progress every 10 slots or when we reach milestones
       if (slots.length % 10 === 0 || slots.length === config.minSlots) {
-        const currentFilledLog = answerCells.size + occupiedCells.size;
+        const currentFilledLog = answerCells.size + clueCellDirections.size;
         const currentCoverageLog = currentFilledLog / initialGridCells;
         console.log(`  📊 Placed ${slots.length} slots: ${currentFilledLog}/${initialGridCells} cells (${(currentCoverageLog * 100).toFixed(1)}% coverage)`);
       }
@@ -527,7 +674,7 @@ export function generateTemplate(
       placementAttempts++;
       
       // Recalculate current coverage for logging (use fresh values)
-      const currentFilledLog = answerCells.size + occupiedCells.size;
+      const currentFilledLog = answerCells.size + clueCellDirections.size;
       const currentCoverageLog = currentFilledLog / initialGridCells;
       
       // If we couldn't place a slot after many attempts, log and potentially stop
@@ -587,7 +734,7 @@ export function generateTemplate(
   console.log(`  📊 Direction usage: ${directionCounts}`);
   
   // Validate that no answer cells overlap with clue cells
-  // Build a set of all clue cell positions
+  // Build a set of all clue cell positions (cells that have at least one clue direction)
   const allClueCellPositions = new Set<string>();
   for (const slot of filteredSlots) {
     allClueCellPositions.add(`${slot.startRow},${slot.startCol}`);
@@ -667,11 +814,15 @@ export function generateTemplate(
     const needed = targetCount - finalFilteredSlots.length;
     let added = 0;
     
-    // Build clue cell set ONLY from slots we're keeping (finalFilteredSlots)
-    // This allows us to re-add filtered-out slots if their clue cells aren't taken
-    const clueCellSet = new Set<string>();
+    // Build clue cell direction map ONLY from slots we're keeping (finalFilteredSlots)
+    // This allows us to re-add filtered-out slots if their clue cells don't already have that direction
+    const clueCellDirections = new Map<string, Set<Direction>>();
     for (const slot of finalFilteredSlots) {
-      clueCellSet.add(`${slot.startRow},${slot.startCol}`);
+      const clueKey = `${slot.startRow},${slot.startCol}`;
+      if (!clueCellDirections.has(clueKey)) {
+        clueCellDirections.set(clueKey, new Set<Direction>());
+      }
+      clueCellDirections.get(clueKey)!.add(slot.direction);
     }
     
     // Get all slots that were filtered out (from validatedSlots, not original slots)
@@ -691,18 +842,27 @@ export function generateTemplate(
     for (const { slot, crossings } of slotsWithCrossings) {
       if (added >= needed) break;
       
-      // Check if clue cell is already taken
+      // Check if this direction is compatible with existing directions in this clue cell
+      // Split cell rules: top can have (across, right-down, up-across), bottom can have (down, left-down)
       const clueKey = `${slot.startRow},${slot.startCol}`;
-      if (clueCellSet.has(clueKey)) {
-        continue; // Clue cell already taken
+      const directionsInCell = clueCellDirections.get(clueKey);
+      if (directionsInCell) {
+        // Check if this exact direction is already used
+        if (directionsInCell.has(slot.direction)) {
+          continue; // This direction already used in this clue cell
+        }
+        // Check if this direction is compatible with split cell rules
+        if (!isDirectionCompatibleWithCell(slot.direction, directionsInCell)) {
+          continue; // This direction conflicts with existing directions in split cell
+        }
       }
       
-      // Check if answer cells overlap with clue cells
+      // Check if answer cells overlap with clue cells (any direction)
       const slotCells = getSlotCells(slot);
       let hasClueOverlap = false;
       for (const cell of slotCells) {
         const cellKey = `${cell.row},${cell.col}`;
-        if (clueCellSet.has(cellKey)) {
+        if (clueCellDirections.has(cellKey) && (clueCellDirections.get(cellKey)?.size ?? 0) > 0) {
           hasClueOverlap = true;
           break;
         }
@@ -712,14 +872,19 @@ export function generateTemplate(
       // Use config-based relaxed limit for ultra-dense puzzles
       const relaxedLimit = TEMPLATE_CONFIG.CROSSINGS.RELAXED_LIMIT;
       if (crossings <= relaxedLimit) {
-        // Double-check clue cell is still available before adding
-        if (!clueCellSet.has(clueKey)) {
+        // Double-check this direction is still compatible before adding
+        const currentDirections = clueCellDirections.get(clueKey);
+        if (!currentDirections || (!currentDirections.has(slot.direction) && isDirectionCompatibleWithCell(slot.direction, currentDirections))) {
           finalFilteredSlots.push(slot);
-          clueCellSet.add(clueKey); // Add this slot's clue cell
+          // Add this slot's direction to the clue cell
+          if (!clueCellDirections.has(clueKey)) {
+            clueCellDirections.set(clueKey, new Set<Direction>());
+          }
+          clueCellDirections.get(clueKey)!.add(slot.direction);
           added++;
           console.log(`  ✅ Re-added slot ${slot.id} with ${crossings} crossings (relaxed limit: ${relaxedLimit})`);
         } else {
-          console.log(`  ⚠️  Skipped re-adding slot ${slot.id}: clue cell (${slot.startRow},${slot.startCol}) already taken`);
+          console.log(`  ⚠️  Skipped re-adding slot ${slot.id}: direction ${slot.direction} incompatible with existing directions in clue cell (${slot.startRow},${slot.startCol})`);
         }
       }
     }
@@ -728,7 +893,10 @@ export function generateTemplate(
   
     
   if (finalFilteredSlots.length >= config.minSlots) {
-    console.log(`  ✅ Generated ${finalFilteredSlots.length} slots with ${clueCells.length} unique clue cells`);
+    const uniqueClueCells = clueCellDirections.size;
+    const totalClueCells = clueCells.length;
+    const splitCellsCount = totalClueCells - uniqueClueCells;
+    console.log(`  ✅ Generated ${finalFilteredSlots.length} slots with ${uniqueClueCells} unique clue cells${splitCellsCount > 0 ? ` (${splitCellsCount} split cells with multiple directions)` : ''}`);
   } else {
     console.error(`  ❌ CRITICAL: Only ${finalFilteredSlots.length} slots (need ${config.minSlots}) - template is invalid`);
     // Throw error to trigger retry instead of returning invalid template
