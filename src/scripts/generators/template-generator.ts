@@ -123,10 +123,7 @@ function findValidPlacements(
     
     // Check if clue cell conflicts
     // For split cells, allow answer cells at clue position (they're from other compatible directions)
-    // But still block if it's a blocked cell
-    if (state.blockedCells.has(clueKey)) {
-      continue;
-    }
+    // Allow blocked cells - we can convert them to clue cells (aggressive split cell usage)
     // Only block answer cells at clue position if it's NOT a split cell placement
     if (!isSplitCell && state.answerCells.has(clueKey)) {
       continue;
@@ -291,6 +288,12 @@ function placeSlot(
     newState.clueCellDirections.set(clueKey, new Set<Direction>());
   }
   newState.clueCellDirections.get(clueKey)!.add(slot.direction);
+  
+  // If this clue cell was previously blocked, remove it from blocked cells
+  // (we're converting a blocked cell into a clue cell - aggressive split cell usage)
+  if (newState.blockedCells.has(clueKey)) {
+    newState.blockedCells.delete(clueKey);
+  }
   
   // Add answer cells
   for (let j = 0; j < placement.answerCells.length; j++) {
@@ -748,7 +751,85 @@ export function generateTemplate(
       }
     }
     
-    // Strategy 1: Try empty cells systematically (prioritize those with neighbors)
+    // Strategy 1: Try placing clue cells at blocked positions (aggressive split cell usage)
+    // This converts blocked cells into clue cells, reducing blocked cells and improving coverage
+    if (!placed && state.blockedCells.size > 0) {
+      const blockedCellsArray = Array.from(state.blockedCells);
+      // Prioritize blocked cells that are adjacent to answer cells (better clue positions)
+      const blockedCellsWithScore = blockedCellsArray.map(cellKey => {
+        const [row, col] = cellKey.split(',').map(Number);
+        let neighborScore = 0;
+        
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const neighborRow = row + dr;
+            const neighborCol = col + dc;
+            if (neighborRow >= 0 && neighborRow < config.rows && neighborCol >= 0 && neighborCol < config.cols) {
+              const neighborKey = `${neighborRow},${neighborCol}`;
+              if (state.answerCells.has(neighborKey)) {
+                neighborScore += 2; // Answer cells nearby make this a good clue position
+              } else if (state.clueCellDirections.has(neighborKey)) {
+                neighborScore += 1;
+              }
+            }
+          }
+        }
+        
+        return { cellKey, row, col, score: neighborScore };
+      });
+      
+      blockedCellsWithScore.sort((a, b) => b.score - a.score);
+      
+      // Try top blocked cells (those with most answer neighbors)
+      const blockedCellsToTry = Math.min(10, blockedCellsWithScore.length);
+      
+      for (let blockedIdx = 0; blockedIdx < blockedCellsToTry && !placed; blockedIdx++) {
+        const { row, col } = blockedCellsWithScore[blockedIdx];
+        
+        // Try all directions from this blocked cell position
+        for (const direction of allDirections) {
+          const placements = findValidPlacements(
+            direction,
+            row,
+            col,
+            config,
+            state,
+            2,
+            12 // Allow medium-length words
+          );
+          
+          if (placements.length > 0) {
+            // Prioritize fewer crossings and filling more empty cells
+            const bestPlacement = placements.sort((a, b) => {
+              if (a.crossings !== b.crossings) return a.crossings - b.crossings;
+              const emptyCellsNow = getEmptyCells(config, state);
+              const aFillsEmpty = a.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
+              const bFillsEmpty = b.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
+              if (aFillsEmpty !== bFillsEmpty) return bFillsEmpty - aFillsEmpty;
+              return b.length - a.length;
+            })[0];
+            
+            const slot: ClueSlot = {
+              id: `slot_${state.slotNumber}`,
+              direction,
+              startRow: row,
+              startCol: col,
+              length: bestPlacement.length,
+              crossings: []
+            };
+            
+            // Place the slot - this will convert the blocked cell into a clue cell
+            state = placeSlot(slot, bestPlacement, config, state);
+            placed = true;
+            consecutiveFailures = 0;
+            break;
+          }
+        }
+      }
+    }
+    
+    // Strategy 2: Try empty cells systematically (prioritize those with neighbors)
     if (!placed) {
       const centerRow = Math.floor(config.rows / 2);
       const centerCol = Math.floor(config.cols / 2);
@@ -868,7 +949,7 @@ export function generateTemplate(
       }
     }
     
-    // Strategy 2: Try split cell placement
+    // Strategy 3: Try split cell placement
     if (!placed && state.clueCellDirections.size > 0) {
       const existingClueCells = Array.from(state.clueCellDirections.keys());
       // Try more clue cells when stuck
@@ -931,7 +1012,7 @@ export function generateTemplate(
       }
     }
     
-    // Strategy 3: Try split cells at clue cells adjacent to empty cells
+    // Strategy 4: Try split cells at clue cells adjacent to empty cells
     if (!placed && emptyCells.length > 0) {
       // Find clue cells that are adjacent to empty cells
       const clueCellsAdjacentToEmpty: Array<{ clueKey: string; emptyNeighbors: number }> = [];
