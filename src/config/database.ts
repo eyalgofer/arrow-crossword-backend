@@ -8,7 +8,27 @@ export const connectDatabase = async (): Promise<void> => {
     console.log('   NODE_ENV:', process.env.NODE_ENV);
     console.log('   Available env vars with MONGODB:', Object.keys(process.env).filter(k => k.includes('MONGO')).join(', ') || 'none');
     
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/arrow-crossword';
+    let mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/arrow-crossword';
+    
+    // Ensure the database name is 'arrow-crossword' in the connection string
+    if (mongoUri.includes('mongodb+srv://') || mongoUri.includes('mongodb://')) {
+      const uriParts = mongoUri.split('/');
+      const lastPart = uriParts[uriParts.length - 1];
+
+      if (lastPart.includes('?')) {
+        const [dbName, options] = lastPart.split('?');
+        if (!dbName || dbName === 'test') {
+          uriParts[uriParts.length - 1] = `arrow-crossword?${options}`;
+          mongoUri = uriParts.join('/');
+          console.log('   ⚠️  Database name was missing or "test", changed to "arrow-crossword"');
+        }
+      } else {
+        if (!lastPart || lastPart === 'test') {
+          mongoUri = mongoUri.endsWith('/') ? `${mongoUri}arrow-crossword` : `${mongoUri}/arrow-crossword`;
+          console.log('   ⚠️  Database name was missing or "test", changed to "arrow-crossword"');
+        }
+      }
+    }
     
     if (!process.env.MONGODB_URI) {
       console.error('❌ MONGODB_URI environment variable is not set!');
@@ -16,8 +36,12 @@ export const connectDatabase = async (): Promise<void> => {
       console.error('   This will fail in production. Check AWS Secrets Manager configuration.');
     }
     
-    console.log(`🔌 Connecting to MongoDB: ${mongoUri.substring(0, 30)}...`);
+    console.log(`🔌 Connecting to MongoDB: ${mongoUri.substring(0, 50)}...`);
     await mongoose.connect(mongoUri);
+    
+    // Log the actual database we're connected to
+    const dbName = mongoose.connection.db?.databaseName;
+    console.log(`✅ Connected to database: ${dbName}`);
     
     mongoose.connection.on('error', (error) => {
       console.error('MongoDB connection error:', error);

@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import mongoose from 'mongoose';
 import { PuzzlePackage } from '../models/PuzzlePackage';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { User } from '../models/User';
@@ -10,6 +11,33 @@ import { AuthRequest } from '../types';
  */
 export const getPackages = async (req: AuthRequest, res: Response) => {
   try {
+    // Log connection details for debugging
+    const db = mongoose.connection.db;
+    const dbName = (db as any)?.databaseName || mongoose.connection.name || 'UNKNOWN';
+    const collectionName = PuzzlePackage.collection.name;
+    const connectionState = mongoose.connection.readyState; // 0=disconnected, 1=connected, 2=connecting, 3=disconnecting
+    
+    console.log(`🔍 Querying packages:`);
+    console.log(`   Connection state: ${connectionState} (0=disconnected, 1=connected)`);
+    console.log(`   Database: ${dbName}`);
+    console.log(`   Collection: ${collectionName}`);
+    console.log(`   Model name: ${PuzzlePackage.modelName}`);
+    console.log(`   Connection host: ${mongoose.connection.host || 'unknown'}`);
+
+    // Check total count first for debugging
+    const totalCount = await PuzzlePackage.countDocuments();
+    console.log(`📦 Total packages in database: ${totalCount}`);
+
+    // Also try raw collection query to see if documents exist
+    const rawCount = await PuzzlePackage.collection.countDocuments();
+    console.log(`📦 Raw collection count: ${rawCount}`);
+
+    // Try listing all collections to see what's available
+    if (mongoose.connection.db) {
+      const collections = await mongoose.connection.db.listCollections().toArray();
+      console.log(`📚 Available collections: ${collections.map(c => c.name).join(', ')}`);
+    }
+
     const packages = await PuzzlePackage.find()
       .sort({ order: 1 })
       .lean();
