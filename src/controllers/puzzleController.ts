@@ -108,12 +108,10 @@ export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
 
 export const getRandomPuzzle = async (req: AuthRequest, res: Response) => {
   try {
-    const puzzle = await Puzzle.aggregate([
-      { $match: { isActive: { $ne: false } } },
-      { $sample: { size: 1 } }
-    ]);
-    console.log(`✅ Returning puzzle ID: ${puzzle[0]._id.toString()}`);
-    res.json({ puzzle: puzzle[0].toObject() });
+    const randomPuzzle = await Puzzle.findOne({ isActive: { $ne: false } })
+        .sort({ createdAt: -1 });
+    console.log(`✅ Returning puzzle ID: ${randomPuzzle?._id.toString()}`);
+    res.json({ puzzleId: randomPuzzle?._id.toString() });
   } catch (error) {
     console.error('Get random puzzle error:', error);
     res.status(500).json({ error: 'Failed to get random puzzle' });
