@@ -106,6 +106,24 @@ export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const getRandomPuzzle = async (req: AuthRequest, res: Response) => {
+  try {
+    // Use MongoDB's $sample aggregation for efficient random selection
+    const puzzles = await Puzzle.aggregate([
+      { $sample: { size: 1 } }
+    ]);
+
+    if (puzzles.length === 0) {
+      return res.status(404).json({ error: 'No puzzles found' });
+    }
+    console.log('puzzleId', puzzles[0]._id.toString());
+    res.json({ puzzleId: puzzles[0]._id.toString() });
+  } catch (error) {
+    console.error('Get random puzzle error:', error);
+    res.status(500).json({ error: 'Failed to get random puzzle' });
+  }
+};
+
 export const getPuzzle = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;

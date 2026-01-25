@@ -3,6 +3,7 @@ import {
   getPuzzles, 
   getPuzzle, 
   getDailyPuzzle,
+  getRandomPuzzle,
   saveProgress, 
   getProgress,
   getAllProgress,
@@ -16,6 +17,7 @@ const router = Router();
 // Puzzle listing endpoints
 router.get('/', authenticateToken, getPuzzles);
 router.get('/daily', authenticateToken, getDailyPuzzle);
+router.get('/random', authenticateToken, getRandomPuzzle); // Must be before /:id to avoid conflict
 
 // Progress summary endpoint (must be before /:id to avoid conflict)
 router.get('/progress', authenticateToken, getAllProgress);
