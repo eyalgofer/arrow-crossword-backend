@@ -109,7 +109,7 @@ export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
 export const getRandomPuzzle = async (req: AuthRequest, res: Response) => {
   try {
     const randomPuzzle = await Puzzle.findOne({ isActive: { $ne: false } })
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: 1 });
     console.log(`✅ Returning puzzle ID: ${randomPuzzle?._id.toString()}`);
     res.json({ puzzleId: randomPuzzle?._id.toString() });
   } catch (error) {

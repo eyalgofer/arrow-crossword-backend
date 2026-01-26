@@ -1,16 +1,9 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export interface IProgressCell {
-  row: number;
-  col: number;
-  value: string;
-  locked: boolean;
-}
-
 export interface IUserPuzzleProgress extends Document {
   userId: mongoose.Types.ObjectId;
   puzzleId: mongoose.Types.ObjectId;
-  cells: IProgressCell[];
+  completedClueIds: string[]; // Format: "number|direction" (e.g., "1|across", "5|right-down")
   completedCluesCount: number;
   totalClues: number;
   isCompleted: boolean;
@@ -20,13 +13,6 @@ export interface IUserPuzzleProgress extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
-
-const progressCellSchema = new Schema({
-  row: { type: Number, required: true },
-  col: { type: Number, required: true },
-  value: { type: String, required: true },
-  locked: { type: Boolean, default: false }
-}, { _id: false });
 
 const userPuzzleProgressSchema = new Schema<IUserPuzzleProgress>({
   userId: {
@@ -39,8 +25,8 @@ const userPuzzleProgressSchema = new Schema<IUserPuzzleProgress>({
     ref: 'Puzzle',
     required: true
   },
-  cells: {
-    type: [progressCellSchema],
+  completedClueIds: {
+    type: [String],
     default: []
   },
   completedCluesCount: {
