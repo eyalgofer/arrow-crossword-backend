@@ -262,8 +262,8 @@ export function generatePuzzleFromGrid(
                            config.difficulty === Difficulty.EXPERT ? 5 :
                            2; // Default to medium
   
-  const estimatedTime = puzzleItems.length * 15 * difficultyNumber;
-  const coinReward = (puzzleItems.length * difficultyNumber) / 4;
+  const estimatedTime = puzzleItems.length * 20 * difficultyNumber;
+  const coinReward = Math.ceil(puzzleItems.length * difficultyNumber / 4);
   
   // Log clue source statistics if tracker is available
   if (clueDb.tracker) {

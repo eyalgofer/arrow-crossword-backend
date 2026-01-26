@@ -130,43 +130,43 @@ const packageDefinitions: Array<{
     gradientColors: gradientPalette[gradientPalette.length]
   });
   
-  // Second package of 10 puzzles
-  packageDefinitions.push({
-    name: `Keeping it simple`,
-    description: '10 puzzles to solve',
-    theme: 'Mixed',
-    puzzleCount: 10,
-    iconName: iconNames[iconNames.length],
-    gradientColors: gradientPalette[gradientPalette.length]
-  });
+  // // Second package of 10 puzzles
+  // packageDefinitions.push({
+  //   name: `Keeping it simple`,
+  //   description: '10 puzzles to solve',
+  //   theme: 'Mixed',
+  //   puzzleCount: 10,
+  //   iconName: iconNames[iconNames.length],
+  //   gradientColors: gradientPalette[gradientPalette.length]
+  // });
   
-  // // Package of 20 puzzles
-  packageDefinitions.push({
-    name: `Lets get creative`,
-    description: '20 puzzles to solve',
-    theme: 'Mixed',
-    puzzleCount: 20,
-    iconName: iconNames[iconNames.length],
-    gradientColors: gradientPalette[gradientPalette.length]
-  });
+  // // // Package of 20 puzzles
+  // packageDefinitions.push({
+  //   name: `Lets get creative`,
+  //   description: '20 puzzles to solve',
+  //   theme: 'Mixed',
+  //   puzzleCount: 20,
+  //   iconName: iconNames[iconNames.length],
+  //   gradientColors: gradientPalette[gradientPalette.length]
+  // });
 
-  packageDefinitions.push({
-    name: `You might be hooked`,
-    description: '10 puzzles to solve',
-    theme: 'Mixed',
-    puzzleCount: 10,
-    iconName: iconNames[iconNames.length],
-    gradientColors: gradientPalette[gradientPalette.length]
-  });
+  // packageDefinitions.push({
+  //   name: `You might be hooked`,
+  //   description: '10 puzzles to solve',
+  //   theme: 'Mixed',
+  //   puzzleCount: 10,
+  //   iconName: iconNames[iconNames.length],
+  //   gradientColors: gradientPalette[gradientPalette.length]
+  // });
 
-  packageDefinitions.push({
-    name: `This one is a bit harder`,
-    description: '10 puzzles to solve',
-    theme: 'Mixed',
-    puzzleCount: 10,
-    iconName: iconNames[iconNames.length],
-    gradientColors: gradientPalette[gradientPalette.length]
-  });
+  // packageDefinitions.push({
+  //   name: `This one is a bit harder`,
+  //   description: '10 puzzles to solve',
+  //   theme: 'Mixed',
+  //   puzzleCount: 10,x
+  //   iconName: iconNames[iconNames.length],
+  //   gradientColors: gradientPalette[gradientPalette.length]
+  // });
 
 function getDifficultyDistribution(puzzleCount: number): Array<{ difficulty: Difficulty; count: number }> {
   const easy = Math.round(puzzleCount * 0.6);

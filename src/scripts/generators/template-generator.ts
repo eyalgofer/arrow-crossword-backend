@@ -578,7 +578,7 @@ export function generateTemplate(
   const allDirections: Direction[] = ['across', 'down', 'right-down', 'left-down', 'down-across', 'up-across'];
   const initialGridCells = config.rows * config.cols;
   
-  // PHASE 1: Seed Placement - Create initial connected structure
+  // PHASE 1: Seed Placement - Create initial connected structure with variety
   console.log(`  🌱 Phase 1: Seed placement`);
   let state: GridState = {
     slots: [],
@@ -589,33 +589,55 @@ export function generateTemplate(
     slotNumber: 1
   };
   
-  const seedDirections: Direction[] = ['across', 'down'];
-  for (let i = 0; i < Math.min(4, config.minSlots); i++) {
+  // Use diverse directions in seed phase for more interesting templates
+  // Mix of standard and diagonal directions
+  const seedDirections: Direction[] = ['across', 'down', 'right-down', 'left-down', 'down-across', 'up-across'];
+  const centerRow = Math.floor(config.rows / 2);
+  const centerCol = Math.floor(config.cols / 2);
+  
+  // Place initial seeds with variety in directions and word lengths
+  const seedCount = Math.min(6, config.minSlots);
+  for (let i = 0; i < seedCount; i++) {
     const direction = seedDirections[i % seedDirections.length];
-    const centerRow = Math.floor(config.rows / 2);
-    const centerCol = Math.floor(config.cols / 2);
     
     let placed = false;
-    for (let offset = 0; offset < 3 && !placed; offset++) {
-      const startRow = direction === 'across' ? centerRow : centerRow - offset;
-      const startCol = direction === 'across' ? centerCol - offset : centerCol;
+    // Try multiple positions around center for better coverage
+    const offsets = [
+      { dr: 0, dc: 0 },
+      { dr: -1, dc: 0 },
+      { dr: 1, dc: 0 },
+      { dr: 0, dc: -1 },
+      { dr: 0, dc: 1 },
+      { dr: -1, dc: -1 },
+      { dr: 1, dc: 1 }
+    ];
+    
+    for (const offset of offsets) {
+      const startRow = centerRow + offset.dr;
+      const startCol = centerCol + offset.dc;
       
       if (startRow < 0 || startRow >= config.rows || startCol < 0 || startCol >= config.cols) continue;
       
+      // Encourage longer words in seed phase (4-10 letters) for more interesting structure
       const placements = findValidPlacements(
         direction,
         startRow,
         startCol,
         config,
         state,
-        3,
-        8
+        4,
+        10
       );
       
       if (placements.length > 0) {
-        // Prioritize fewer crossings even in seed phase for solvability
+        // Balance: prefer some crossings (1-3) for interest, but not too many
+        // Also prefer longer words for better structure
         const bestPlacement = placements.sort((a, b) => {
-          if (a.crossings !== b.crossings) return a.crossings - b.crossings;
+          // Prefer crossings between 1-3 (interesting but solvable)
+          const aCrossingScore = a.crossings >= 1 && a.crossings <= 3 ? 10 : (a.crossings === 0 ? 5 : 0);
+          const bCrossingScore = b.crossings >= 1 && b.crossings <= 3 ? 10 : (b.crossings === 0 ? 5 : 0);
+          if (aCrossingScore !== bCrossingScore) return bCrossingScore - aCrossingScore;
+          // Then prefer longer words
           return b.length - a.length;
         })[0];
         
@@ -630,6 +652,7 @@ export function generateTemplate(
         
         state = placeSlot(slot, bestPlacement, config, state);
         placed = true;
+        break;
       }
     }
   }
@@ -658,7 +681,7 @@ export function generateTemplate(
       lastProgressLog = Date.now();
     }
     
-    if (emptyCells.length === 0 || coverage >= 0.99) {
+    if (emptyCells.length === 0 || coverage >= 1.0) {
       console.log(`  ✅ All cells filled via greedy expansion!`);
       break;
     }
@@ -724,12 +747,16 @@ export function generateTemplate(
             );
             
             if (placements.length > 0) {
+              // Prefer interesting crossings (1-4) and longer words
               const bestPlacement = placements.sort((a, b) => {
-                if (a.crossings !== b.crossings) return a.crossings - b.crossings;
+                // Prefer 1-4 crossings (interesting but solvable)
+                const aCrossingScore = a.crossings >= 1 && a.crossings <= 4 ? 10 : (a.crossings === 0 ? 5 : 0);
+                const bCrossingScore = b.crossings >= 1 && b.crossings <= 4 ? 10 : (b.crossings === 0 ? 5 : 0);
+                if (aCrossingScore !== bCrossingScore) return bCrossingScore - aCrossingScore;
                 const aFillsEmpty = a.answerCells.filter(c => emptyCells.some(e => e.row === c.row && e.col === c.col)).length;
                 const bFillsEmpty = b.answerCells.filter(c => emptyCells.some(e => e.row === c.row && e.col === c.col)).length;
                 if (aFillsEmpty !== bFillsEmpty) return bFillsEmpty - aFillsEmpty;
-                return b.length - a.length;
+                return b.length - a.length; // Prefer longer words
               })[0];
               
               const slot: ClueSlot = {
@@ -788,26 +815,38 @@ export function generateTemplate(
         const { row, col } = blockedCellsWithScore[blockedIdx];
         
         // Try all directions from this blocked cell position
-        for (const direction of allDirections) {
+        // Prioritize diagonal directions for more interesting layouts
+        const sortedDirections = [...allDirections].sort((a, b) => {
+          const aIsDiagonal = a.includes('down') || a.includes('across');
+          const bIsDiagonal = b.includes('down') || b.includes('across');
+          if (aIsDiagonal && !bIsDiagonal) return -1;
+          if (!aIsDiagonal && bIsDiagonal) return 1;
+          return 0;
+        });
+        
+        for (const direction of sortedDirections) {
           const placements = findValidPlacements(
             direction,
             row,
             col,
             config,
             state,
-            2,
+            4, // Encourage longer words (4+)
             12 // Allow medium-length words
           );
           
           if (placements.length > 0) {
-            // Prioritize fewer crossings and filling more empty cells
+            // Prefer interesting crossings (1-4) and longer words
             const bestPlacement = placements.sort((a, b) => {
-              if (a.crossings !== b.crossings) return a.crossings - b.crossings;
+              // Prefer 1-4 crossings (interesting but solvable)
+              const aCrossingScore = a.crossings >= 1 && a.crossings <= 4 ? 10 : (a.crossings === 0 ? 5 : 0);
+              const bCrossingScore = b.crossings >= 1 && b.crossings <= 4 ? 10 : (b.crossings === 0 ? 5 : 0);
+              if (aCrossingScore !== bCrossingScore) return bCrossingScore - aCrossingScore;
               const emptyCellsNow = getEmptyCells(config, state);
               const aFillsEmpty = a.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
               const bFillsEmpty = b.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
               if (aFillsEmpty !== bFillsEmpty) return bFillsEmpty - aFillsEmpty;
-              return b.length - a.length;
+              return b.length - a.length; // Prefer longer words
             })[0];
             
             const slot: ClueSlot = {
@@ -831,6 +870,12 @@ export function generateTemplate(
     
     // Strategy 2: Try empty cells systematically (prioritize those with neighbors)
     if (!placed) {
+      // Calculate direction diversity to encourage variety
+      const directionCounts = new Map<Direction, number>();
+      for (const slot of state.slots) {
+        directionCounts.set(slot.direction, (directionCounts.get(slot.direction) || 0) + 1);
+      }
+      
       const centerRow = Math.floor(config.rows / 2);
       const centerCol = Math.floor(config.cols / 2);
       const emptyCellsWithScore = emptyCells.map(cell => {
@@ -874,12 +919,18 @@ export function generateTemplate(
       for (let candidateIdx = 0; candidateIdx < candidatesToTry && !placed; candidateIdx++) {
         const targetCell = emptyCellsWithScore[candidateIdx].cell;
         
-        // Try directions that create crossings
+        // Score directions: prefer underused directions for variety, and those that create interesting crossings
         const directionsToTry = [...allDirections].sort((a, b) => {
           const aOrientation = getAnswerOrientation(a);
           const bOrientation = getAnswerOrientation(b);
-          let aScore = 0, bScore = 0;
           
+          // Diversity bonus: prefer directions we haven't used much
+          const aCount = directionCounts.get(a) || 0;
+          const bCount = directionCounts.get(b) || 0;
+          const diversityBonus = bCount - aCount; // Prefer less used directions
+          
+          // Crossing bonus: prefer directions that create crossings (1-4 crossings is interesting)
+          let aCrossingScore = 0, bCrossingScore = 0;
           for (let dr = -1; dr <= 1; dr++) {
             for (let dc = -1; dc <= 1; dc++) {
               const neighborRow = targetCell.row + dr;
@@ -891,21 +942,23 @@ export function generateTemplate(
                   const existingSlot = state.slots.find(s => s.id === cellInfo.slotId);
                   if (existingSlot) {
                     const existingOrientation = getAnswerOrientation(existingSlot.direction);
-                    if (existingOrientation !== aOrientation) aScore += 10;
-                    if (existingOrientation !== bOrientation) bScore += 10;
+                    if (existingOrientation !== aOrientation) aCrossingScore += 5;
+                    if (existingOrientation !== bOrientation) bCrossingScore += 5;
                   }
                 }
               }
             }
           }
-          return bScore - aScore;
+          
+          // Combine scores: diversity is important, but crossings are also good
+          return (bCrossingScore + diversityBonus * 3) - (aCrossingScore + diversityBonus * 3);
         });
         
         // Try all directions
         for (const direction of directionsToTry) {
-          // When stuck, allow shorter words and be more lenient
-          const maxLength = isStuck ? 8 : 15;
-          const minLength = isStuck ? 2 : 2;
+          // Encourage longer words (4-12) for more interesting templates, shorter only when stuck
+          const maxLength = isStuck ? 8 : 12;
+          const minLength = isStuck ? 2 : 4;
           
           const placements = findValidPlacements(
             direction,
@@ -918,16 +971,20 @@ export function generateTemplate(
           );
           
           if (placements.length > 0) {
-            // Prioritize placements with fewer crossings to keep templates solvable
-            // Prefer: fewer crossings > fills more empty cells > longer words
+            // Balance crossings: prefer 1-4 crossings (interesting but solvable)
+            // Also prefer longer words and filling more empty cells
             const bestPlacement = placements.sort((a, b) => {
-              // First priority: minimize crossings (critical for solvability)
-              if (a.crossings !== b.crossings) return a.crossings - b.crossings;
+              // Crossing score: 1-4 crossings is ideal (interesting but solvable)
+              const aCrossingScore = a.crossings >= 1 && a.crossings <= 4 ? 10 : (a.crossings === 0 ? 5 : 0);
+              const bCrossingScore = b.crossings >= 1 && b.crossings <= 4 ? 10 : (b.crossings === 0 ? 5 : 0);
+              if (aCrossingScore !== bCrossingScore) return bCrossingScore - aCrossingScore;
+              
               // Second priority: fill more empty cells
               const aFillsEmpty = a.answerCells.filter(c => emptyCells.some(e => e.row === c.row && e.col === c.col)).length;
               const bFillsEmpty = b.answerCells.filter(c => emptyCells.some(e => e.row === c.row && e.col === c.col)).length;
               if (aFillsEmpty !== bFillsEmpty) return bFillsEmpty - aFillsEmpty;
-              // Third priority: prefer longer words (better coverage)
+              
+              // Third priority: prefer longer words (more interesting)
               return b.length - a.length;
             })[0];
             
@@ -949,13 +1006,13 @@ export function generateTemplate(
       }
     }
     
-    // Strategy 3: Try split cell placement
+    // Strategy 3: Try split cell placement (encourage more split cells for interesting layouts)
     if (!placed && state.clueCellDirections.size > 0) {
       const existingClueCells = Array.from(state.clueCellDirections.keys());
-      // Try more clue cells when stuck
+      // Try more clue cells - split cells make puzzles more interesting
       const clueCellsToTry = isStuck 
-        ? existingClueCells.slice(0, Math.min(20, existingClueCells.length))
-        : existingClueCells.slice(0, Math.min(10, existingClueCells.length));
+        ? existingClueCells.slice(0, Math.min(30, existingClueCells.length))
+        : existingClueCells.slice(0, Math.min(20, existingClueCells.length));
       
       for (const clueCellKey of clueCellsToTry) {
         if (placed) break;
@@ -968,23 +1025,36 @@ export function generateTemplate(
           !directionsInCell.has(d) && isDirectionCompatibleWithCell(d, directionsInCell)
         );
         
-        for (const direction of compatibleDirections) {
-          const maxLength = isStuck ? 8 : 12;
+        // Prioritize diagonal directions for split cells (more interesting)
+        const sortedDirections = compatibleDirections.sort((a, b) => {
+          const aIsDiagonal = a.includes('down') || a.includes('across');
+          const bIsDiagonal = b.includes('down') || b.includes('across');
+          if (aIsDiagonal && !bIsDiagonal) return -1;
+          if (!aIsDiagonal && bIsDiagonal) return 1;
+          return 0;
+        });
+        
+        for (const direction of sortedDirections) {
+          // Encourage longer words for split cells (4-10 letters)
+          const maxLength = isStuck ? 8 : 10;
+          const minLength = isStuck ? 2 : 4;
           const placements = findValidPlacements(
             direction,
             cellRow,
             cellCol,
             config,
             state,
-            2,
+            minLength,
             maxLength
           );
           
           if (placements.length > 0) {
-            // Prioritize fewer crossings for solvability
+            // Prefer interesting crossings (1-3) for split cells
             const bestPlacement = placements.sort((a, b) => {
-              // First: minimize crossings
-              if (a.crossings !== b.crossings) return a.crossings - b.crossings;
+              // Prefer 1-3 crossings (interesting but solvable)
+              const aCrossingScore = a.crossings >= 1 && a.crossings <= 3 ? 10 : (a.crossings === 0 ? 5 : 0);
+              const bCrossingScore = b.crossings >= 1 && b.crossings <= 3 ? 10 : (b.crossings === 0 ? 5 : 0);
+              if (aCrossingScore !== bCrossingScore) return bCrossingScore - aCrossingScore;
               // Second: fill more empty cells
               const emptyCellsNow = getEmptyCells(config, state);
               const aFillsEmpty = a.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
@@ -1066,17 +1136,17 @@ export function generateTemplate(
           );
           
           if (placements.length > 0) {
-            // Prioritize fewer crossings for solvability
+            // Prefer interesting crossings (1-3) for split cells
             const bestPlacement = placements.sort((a, b) => {
-              // First: minimize crossings
-              if (a.crossings !== b.crossings) return a.crossings - b.crossings;
-              // Second: fill more empty cells
+              // Prefer 1-3 crossings (interesting but solvable)
+              const aCrossingScore = a.crossings >= 1 && a.crossings <= 3 ? 10 : (a.crossings === 0 ? 5 : 0);
+              const bCrossingScore = b.crossings >= 1 && b.crossings <= 3 ? 10 : (b.crossings === 0 ? 5 : 0);
+              if (aCrossingScore !== bCrossingScore) return bCrossingScore - aCrossingScore;
               const emptyCellsNow = getEmptyCells(config, state);
               const aFillsEmpty = a.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
               const bFillsEmpty = b.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
               if (aFillsEmpty !== bFillsEmpty) return bFillsEmpty - aFillsEmpty;
-              // Third: prefer longer words
-              return b.length - a.length;
+              return b.length - a.length; // Prefer longer words
             })[0];
             
             const slot: ClueSlot = {
