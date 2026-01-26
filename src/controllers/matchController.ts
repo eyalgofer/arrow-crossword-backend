@@ -52,7 +52,7 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
       const enhancedPlayers = match.players.map(p => {
         const populatedUser = p.userId as any; // userId is populated
         return {
-          userId: populatedUser._id || populatedUser,
+          userId: populatedUser._id || populatedUser.userId,
           displayName: p.displayName || populatedUser.displayName,
           photoURL: p.photoURL || populatedUser.photoURL,
           progress: p.progress,
