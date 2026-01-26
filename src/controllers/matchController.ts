@@ -127,7 +127,10 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
     console.log('match players', match.players);
     // Verify user is part of this match
     const isPlayer = match.players.some(
-      p => p.userId._id.toString() === user._id.toString()
+      p => {
+        const playerUserId = (p.userId as any)?._id || p.userId;
+        return playerUserId.toString() === user._id.toString();
+      }
     );
 
     if (!isPlayer) {
@@ -136,22 +139,32 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
 
     // Enhance with opponent info and time elapsed
     const opponent = match.players.find(
-      p => p.userId.toString() !== user._id.toString()
+      p => {
+        const playerUserId = (p.userId as any)?._id || p.userId;
+        return playerUserId.toString() !== user._id.toString();
+      }
     );
     const currentUserPlayer = match.players.find(
-      p => p.userId.toString() === user._id.toString()
+      p => {
+        const playerUserId = (p.userId as any)?._id || p.userId;
+        return playerUserId.toString() === user._id.toString();
+      }
     );
     
     const timeElapsed = match.startedAt 
       ? Math.floor((Date.now() - match.startedAt.getTime()) / 1000) // seconds
       : 0;
 
+    // Get opponent userId from populated user or stored value
+    const opponentUserId = opponent ? ((opponent.userId as any)?._id || opponent.userId) : null;
+    const opponentPopulated = opponent ? (opponent.userId as any) : null;
+
     const enhancedMatch = {
       ...match.toObject(),
       opponent: opponent ? {
-        userId: opponent.userId,
-        displayName: opponent.displayName,
-        photoURL: opponent.photoURL,
+        userId: opponentUserId,
+        displayName: opponent.displayName || opponentPopulated?.displayName,
+        photoURL: opponent.photoURL || opponentPopulated?.photoURL,
         progress: opponent.progress
       } : null,
       currentUserPuzzleProgress: currentUserPlayer?.progress || 0,
