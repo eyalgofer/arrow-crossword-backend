@@ -123,7 +123,7 @@ const packageDefinitions: Array<{
   // First package of 10 puzzles
   packageDefinitions.push({
     name: `Package ${1}`,
-    description: '10 puzzles to solve',
+    description: 'Lets get started!',
     theme: 'Mixed',
     puzzleCount: 10,
     iconName: iconNames[iconNames.length],

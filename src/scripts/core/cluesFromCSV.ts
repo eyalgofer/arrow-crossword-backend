@@ -53,12 +53,11 @@ function mapCsvDifficulty(difficultyNum: number): ClueDifficulty {
 }
 
 /**
- * Load clues from train.csv file with difficulty from CSV column
- * CSV format: id,clue,answer,empty,difficulty (difficulty is 1-5)
+ * Load clues from a CSV file with difficulty from CSV column
+ * CSV format: id,clue,answer,difficulty (for simple.csv) or id,clue,answer,empty,difficulty (for train.csv)
  * Groups clues by answer (word) in uppercase, removing spaces for matching
  */
-export function loadCluesFromCSV(): CluesDatabase {
-  const csvPath = path.join(__dirname, 'train.csv');
+function loadCluesFromCSVFile(csvPath: string, isSimpleCSV: boolean = false): CluesDatabase {
   const database: CluesDatabase = {
     byAnswer: {},
     originalAnswers: new Map(),
@@ -76,7 +75,7 @@ export function loadCluesFromCSV(): CluesDatabase {
     }
   };
   
-  console.log(`📖 Loading clues from ${csvPath} with CSV difficulty column...`);
+  console.log(`📖 Loading clues from ${path.basename(csvPath)} with CSV difficulty column...`);
   const startTime = Date.now();
   
   try {
@@ -86,7 +85,7 @@ export function loadCluesFromCSV(): CluesDatabase {
     let processed = 0;
     const batchSize = 100000;
     
-    // Skip header line (id,clue,answer,empty,difficulty)
+    // Skip header line
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
@@ -123,12 +122,15 @@ export function loadCluesFromCSV(): CluesDatabase {
         // Preserve original answer format (uppercase but with spaces)
         const originalAnswer = answerRaw.toUpperCase();
         
-        // Get difficulty from CSV column (index 4, the last column with value)
-        // CSV has: id,clue,answer,empty,difficulty
-        const difficultyNum = parts.length >= 5 ? parseInt(parts[4].trim(), 10) : 0;
+        // Get difficulty from CSV column
+        // simple.csv format: id,clue,answer,difficulty (difficulty at index 3)
+        // train.csv format: id,clue,answer,empty,difficulty (difficulty at index 4)
+        const difficultyIndex = isSimpleCSV ? 3 : 4;
+        const difficultyNum = parts.length > difficultyIndex ? parseInt(parts[difficultyIndex].trim(), 10) : 0;
         
         if (answer && clueText) {
-          if (clueText.length > 20) {
+          // Allow clues up to 50 characters (matching puzzle-assembler.ts MAX_CLUE_LENGTH)
+          if (clueText.length > 50) {
             continue; 
           }
           const filters = ['___', '...'];
@@ -204,17 +206,117 @@ export function loadCluesFromCSV(): CluesDatabase {
   }
 }
 
-// Cache the loaded database
-let cachedDatabase: CluesDatabase | null = null;
+/**
+ * Combined database structure that holds both simple and train databases
+ */
+interface CombinedCluesDatabase {
+  simple: CluesDatabase;
+  train: CluesDatabase;
+}
+
+// Cache the loaded databases
+let cachedSimpleDatabase: CluesDatabase | null = null;
+let cachedTrainDatabase: CluesDatabase | null = null;
+let cachedCombinedDatabase: CluesDatabase | null = null;
+
+/**
+ * Load clues from both simple.csv (preferred) and train.csv (fallback)
+ * Simple.csv is tried first, then train.csv as fallback
+ */
+export function loadCluesFromCSV(): CluesDatabase {
+  const simplePath = path.join(__dirname, 'simple.csv');
+  const trainPath = path.join(__dirname, 'train.csv');
+  
+  // Load both databases
+  const simpleDb = loadCluesFromCSVFile(simplePath, true);
+  const trainDb = loadCluesFromCSVFile(trainPath, false);
+  
+  // Store separately for fallback logic
+  cachedSimpleDatabase = simpleDb;
+  cachedTrainDatabase = trainDb;
+  
+  // Create a combined database that prefers simple.csv but includes train.csv as fallback
+  // Words from simple.csv take precedence, but we merge clues from train.csv for words not in simple.csv
+  const combined: CluesDatabase = {
+    byAnswer: { ...simpleDb.byAnswer }, // Start with simple.csv words
+    originalAnswers: new Map(simpleDb.originalAnswers), // Start with simple.csv mappings
+    easyWords: new Set(simpleDb.easyWords),
+    mediumWords: new Set(simpleDb.mediumWords),
+    challengingWords: new Set(simpleDb.challengingWords),
+    stats: {
+      totalWords: simpleDb.stats.totalWords,
+      totalClues: simpleDb.stats.totalClues,
+      easyClues: simpleDb.stats.easyClues,
+      mediumClues: simpleDb.stats.mediumClues,
+      challengingClues: simpleDb.stats.challengingClues,
+      hardClues: simpleDb.stats.hardClues,
+      expertClues: simpleDb.stats.expertClues,
+    }
+  };
+  
+  // Add words from train.csv that aren't in simple.csv
+  for (const [word, entries] of Object.entries(trainDb.byAnswer)) {
+    if (!combined.byAnswer[word]) {
+      // Word not in simple.csv, add it from train.csv
+      combined.byAnswer[word] = [...entries];
+      combined.originalAnswers.set(word, trainDb.originalAnswers.get(word) || word);
+      
+      // Update word sets
+      if (trainDb.easyWords.has(word)) combined.easyWords.add(word);
+      if (trainDb.mediumWords.has(word)) combined.mediumWords.add(word);
+      if (trainDb.challengingWords.has(word)) combined.challengingWords.add(word);
+      
+      // Update stats
+      combined.stats.totalWords++;
+      for (const entry of entries) {
+        combined.stats.totalClues++;
+        switch (entry.difficulty) {
+          case 'easy': combined.stats.easyClues++; break;
+          case 'medium': combined.stats.mediumClues++; break;
+          case 'challenging': combined.stats.challengingClues++; break;
+          case 'hard': combined.stats.hardClues++; break;
+          case 'expert': combined.stats.expertClues++; break;
+        }
+      }
+    }
+  }
+  
+  console.log(`\n📚 Combined database: ${combined.stats.totalWords.toLocaleString()} words with ${combined.stats.totalClues.toLocaleString()} total clues`);
+  console.log(`   Simple.csv: ${simpleDb.stats.totalWords.toLocaleString()} words (preferred)`);
+  console.log(`   Train.csv fallback: ${(combined.stats.totalWords - simpleDb.stats.totalWords).toLocaleString()} additional words`);
+  
+  cachedCombinedDatabase = combined;
+  return combined;
+}
 
 /**
  * Get the clues database, loading from CSV if not already cached
  */
 export function getCluesDatabase(): CluesDatabase {
-  if (!cachedDatabase) {
-    cachedDatabase = loadCluesFromCSV();
+  if (!cachedCombinedDatabase) {
+    loadCluesFromCSV();
   }
-  return cachedDatabase;
+  return cachedCombinedDatabase!;
+}
+
+/**
+ * Get the simple database (preferred source)
+ */
+export function getSimpleDatabase(): CluesDatabase {
+  if (!cachedSimpleDatabase) {
+    loadCluesFromCSV();
+  }
+  return cachedSimpleDatabase!;
+}
+
+/**
+ * Get the train database (fallback source)
+ */
+export function getTrainDatabase(): CluesDatabase {
+  if (!cachedTrainDatabase) {
+    loadCluesFromCSV();
+  }
+  return cachedTrainDatabase!;
 }
 
 /**
@@ -234,6 +336,7 @@ export function getClues(): Record<string, string[]> {
 
 /**
  * Get a single clue for a word, preferring easier clues based on difficulty setting
+ * Tries simple.csv first, then falls back to train.csv
  * For puzzle packages, we only want easy/medium/challenging (no hard/expert)
  */
 export function getClueForWord(
@@ -241,46 +344,64 @@ export function getClueForWord(
   preferDifficulty: ClueDifficulty = 'medium',
   maxDifficulty: ClueDifficulty = 'challenging'
 ): string | null {
-  const db = getCluesDatabase();
   const normalizedWord = word.toUpperCase().replace(/\s+/g, '');
-  const entries = db.byAnswer[normalizedWord];
-  
-  if (!entries || entries.length === 0) {
-    return null;
-  }
   
   // Build allowed difficulties based on max
   const difficultyOrder: ClueDifficulty[] = ['easy', 'medium', 'challenging', 'hard', 'expert'];
   const maxIndex = difficultyOrder.indexOf(maxDifficulty);
   const allowedDifficulties = new Set(difficultyOrder.slice(0, maxIndex + 1));
   
-  // Group by difficulty (only allowed ones)
-  const byDiff: Record<ClueDifficulty, string[]> = { 
-    easy: [], medium: [], challenging: [], hard: [], expert: [] 
+  // Helper function to get clue from a database
+  const getClueFromDb = (db: CluesDatabase): string | null => {
+    const entries = db.byAnswer[normalizedWord];
+    if (!entries || entries.length === 0) {
+      return null;
+    }
+    
+    // Group by difficulty (only allowed ones)
+    const byDiff: Record<ClueDifficulty, string[]> = { 
+      easy: [], medium: [], challenging: [], hard: [], expert: [] 
+    };
+    for (const entry of entries) {
+      if (allowedDifficulties.has(entry.difficulty)) {
+        byDiff[entry.difficulty].push(entry.clue);
+      }
+    }
+    
+    for (const diff of allowedDifficulties) {
+      if (byDiff[diff].length > 0) {
+        // Pick a random clue from this difficulty
+        return byDiff[diff][Math.floor(Math.random() * byDiff[diff].length)];
+      }
+    }
+    
+    return null;
   };
-  for (const entry of entries) {
-    if (allowedDifficulties.has(entry.difficulty)) {
-      byDiff[entry.difficulty].push(entry.clue);
-    }
+  
+  // Try simple.csv first (preferred)
+  const simpleDb = getSimpleDatabase();
+  const simpleClue = getClueFromDb(simpleDb);
+  if (simpleClue) {
+    return simpleClue;
   }
   
-  for (const diff of allowedDifficulties) {
-    if (byDiff[diff].length > 0) {
-      // Pick a random clue from this difficulty
-      return byDiff[diff][Math.floor(Math.random() * byDiff[diff].length)];
-    }
+  // Fallback to train.csv
+  const trainDb = getTrainDatabase();
+  const trainClue = getClueFromDb(trainDb);
+  if (trainClue) {
+    return trainClue;
   }
   
-  // If no clue found in allowed difficulties, return null
+  // No clue found in either database
   return null;
 }
 
 /**
  * Get words that have clues at or below the specified max difficulty
  * This is used for puzzle generation to ensure all words have valid clues
+ * Returns words from simple.csv first (preferred), then train.csv (fallback)
  */
 export function getWordsWithMaxDifficulty(maxDifficulty: ClueDifficulty): string[] {
-  const db = getCluesDatabase();
   const difficultyOrder: ClueDifficulty[] = ['easy', 'medium', 'challenging', 'hard', 'expert'];
   let maxIndex = difficultyOrder.indexOf(maxDifficulty) + 1;
   
@@ -298,25 +419,51 @@ export function getWordsWithMaxDifficulty(maxDifficulty: ClueDifficulty): string
   }
   
   const validWords: string[] = [];
+  const wordsFromSimple = new Set<string>(); // Track words from simple.csv
   
-  for (const [word, entries] of Object.entries(db.byAnswer)) {
-    // Check if this word has at least one clue at an allowed difficulty
-    const hasValidClue = entries.some(e => allowedDifficulties.has(e.difficulty));
-    if (hasValidClue) {
-      // Return original answer format (with spaces) instead of normalized
-      const originalAnswer = db.originalAnswers.get(word) || word;
-      validWords.push(originalAnswer);
+  // Helper function to get words from a database
+  const getWordsFromDb = (db: CluesDatabase, isSimple: boolean): void => {
+    for (const [word, entries] of Object.entries(db.byAnswer)) {
+      // Check if this word has at least one clue at an allowed difficulty
+      const hasValidClue = entries.some(e => allowedDifficulties.has(e.difficulty));
+      if (hasValidClue) {
+        // Return original answer format (with spaces) instead of normalized
+        const originalAnswer = db.originalAnswers.get(word) || word;
+        
+        if (isSimple) {
+          // Words from simple.csv are added first and marked
+          validWords.push(originalAnswer);
+          wordsFromSimple.add(word);
+        } else {
+          // Words from train.csv are only added if not already in simple.csv
+          if (!wordsFromSimple.has(word)) {
+            validWords.push(originalAnswer);
+          }
+        }
+      }
     }
-  }
+  };
+  
+  // Get words from simple.csv first (preferred)
+  const simpleDb = getSimpleDatabase();
+  getWordsFromDb(simpleDb, true);
+  
+  // Get words from train.csv as fallback (only words not in simple.csv)
+  const trainDb = getTrainDatabase();
+  getWordsFromDb(trainDb, false);
   
   if (validWords.length === 0) {
-    const totalWordsInDb = Object.keys(db.byAnswer).length;
+    const simpleDb = getSimpleDatabase();
+    const trainDb = getTrainDatabase();
+    const totalWordsInSimple = Object.keys(simpleDb.byAnswer).length;
+    const totalWordsInTrain = Object.keys(trainDb.byAnswer).length;
     console.error(`❌ No words found for difficulty '${maxDifficulty}'. This is a critical error!`);
-    console.error(`   Total words in database: ${totalWordsInDb}`);
+    console.error(`   Total words in simple.csv: ${totalWordsInSimple}`);
+    console.error(`   Total words in train.csv: ${totalWordsInTrain}`);
     console.error(`   Allowed difficulties: ${Array.from(allowedDifficulties).join(', ')}`);
     // Show sample of what difficulties exist in the database
-    const sampleEntries = Object.entries(db.byAnswer).slice(0, 10);
-    console.error(`   Sample words and their difficulties:`);
+    const sampleEntries = Object.entries(simpleDb.byAnswer).slice(0, 10);
+    console.error(`   Sample words from simple.csv and their difficulties:`);
     for (const [word, entries] of sampleEntries) {
       const difficulties = new Set(entries.map(e => e.difficulty));
       console.error(`     '${word}': [${Array.from(difficulties).join(', ')}]`);

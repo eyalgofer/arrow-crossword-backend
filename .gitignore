@@ -9,3 +9,4 @@ firebase-service-account.json
 .vscode/
 .idea/
 train.csv
+simple.csv

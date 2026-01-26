@@ -149,7 +149,7 @@ export const saveProgress = async (req: AuthRequest, res: Response) => {
   try {
     const { puzzleId } = req.params;
     const { completedClueIds, completedCluesCount, totalClues, isCompleted, elapsedTime, bestTime } = req.body;
-    console.log('completedClueIds', completedClueIds);
+
     // Validate that completedClueIds is provided and is an array
     if (completedClueIds === undefined || !Array.isArray(completedClueIds)) {
       return res.status(400).json({ error: 'completedClueIds must be provided as an array' });

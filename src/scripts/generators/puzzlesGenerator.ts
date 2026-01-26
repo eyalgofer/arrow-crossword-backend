@@ -4,18 +4,20 @@ import {
   GridTemplate,
 } from '../core/types';
 
-import { generatePuzzleFromGrid, ClueDatabase } from './puzzle-assembler';
+import { generatePuzzleFromGrid, ClueDatabase, ClueSourceTracker } from './puzzle-assembler';
 import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
 import { generateTemplate } from './template-generator';
 
-import { getCluesDatabase, getClueForWord, getWordsWithMaxDifficulty } from '../core/cluesFromCSV';
+import { getCluesDatabase, getClueForWord, getWordsWithMaxDifficulty, getSimpleDatabase, getTrainDatabase } from '../core/cluesFromCSV';
 import { normalizeWord } from './validation-utils';
 
 export type ClueDifficulty = 'easy' | 'medium' | 'challenging' | 'hard' | 'expert';
 
-// Load clues database (with difficulty classification)
+// Load clues databases (with difficulty classification)
 const CLUES_DB = getCluesDatabase();
+const SIMPLE_DB = getSimpleDatabase();
+const TRAIN_DB = getTrainDatabase();
 
 /**
  * Map puzzle Difficulty to clue ClueDifficulty
@@ -41,50 +43,95 @@ function mapDifficulty(difficulty: Difficulty): ClueDifficulty {
 /**
  * Get a clue for a word, filtered by difficulty
  * Uses max difficulty of 'challenging' (no hard/expert clues)
+ * Tracks which database was used if tracker is provided
  */
-function getClue(word: string, difficulty: Difficulty = Difficulty.EASY): string {
+function getClue(word: string, difficulty: Difficulty = Difficulty.EASY, tracker?: { simpleCount: number; trainCount: number }): string {
   const clueDifficulty = mapDifficulty(difficulty);
-  const clue = getClueForWord(word, clueDifficulty);
-  if (clue) {
-    return clue;
+  const normalizedWord = normalizeWord(word);
+  
+  // Try simple.csv first
+  const simpleEntries = SIMPLE_DB.byAnswer[normalizedWord];
+  if (simpleEntries && simpleEntries.length > 0) {
+    const clue = getClueForWord(word, clueDifficulty);
+    if (clue && tracker) {
+      // Verify clue came from simple.csv by checking if it exists there
+      const simpleClues = simpleEntries.map(e => e.clue);
+      if (simpleClues.includes(clue)) {
+        tracker.simpleCount++;
+        return clue;
+      }
+    } else if (clue) {
+      return clue;
+    }
   }
+  
+  // Fallback to train.csv
+  const trainEntries = TRAIN_DB.byAnswer[normalizedWord];
+  if (trainEntries && trainEntries.length > 0) {
+    const clue = getClueForWord(word, clueDifficulty);
+    if (clue && tracker) {
+      tracker.trainCount++;
+      return clue;
+    } else if (clue) {
+      return clue;
+    }
+  }
+  
   // Fallback
   return `[${word}]`;
 }
 
 /**
  * Get all available clues for a word, filtered by difficulty
+ * Tries simple.csv first (preferred), then falls back to train.csv
  * Uses max difficulty of 'challenging' (no hard/expert clues)
+ * Tracks which database was used if tracker is provided
  */
-function getAllClues(word: string, difficulty: Difficulty = Difficulty.EASY): string[] {
+function getAllClues(word: string, difficulty: Difficulty = Difficulty.EASY, tracker?: { simpleCount: number; trainCount: number }): string[] {
   const clueDifficulty = mapDifficulty(difficulty);
   const normalizedWord = normalizeWord(word);
-  const entries = CLUES_DB.byAnswer[normalizedWord];
-  
-  if (!entries || entries.length === 0) {
-    return [`[${word}]`];
-  }
   
   // Build allowed difficulties up to max (challenging)
   const difficultyOrder: ClueDifficulty[] = ['easy', 'medium', 'challenging'];
   const preferredIndex = difficultyOrder.indexOf(clueDifficulty);
   const allowedDifficulties = new Set(difficultyOrder.slice(0, Math.max(preferredIndex + 1, 1)));
   
-  const filteredClues = entries
-    .filter(e => allowedDifficulties.has(e.difficulty))
-    .map(e => e.clue);
+  // Helper function to get clues from a database
+  const getCluesFromDb = (db: typeof SIMPLE_DB): string[] => {
+    const entries = db.byAnswer[normalizedWord];
+    if (!entries || entries.length === 0) {
+      return [];
+    }
+    
+    const filteredClues = entries
+      .filter(e => allowedDifficulties.has(e.difficulty))
+      .map(e => e.clue);
+    
+    if (filteredClues.length > 0) {
+      return filteredClues;
+    }
+    
+    // Fallback to all allowed difficulties if no clues match preferred difficulty
+    const allAllowed = new Set<ClueDifficulty>(['easy', 'medium', 'challenging', 'hard', 'expert']);
+    const fallbackClues = entries
+      .filter(e => allAllowed.has(e.difficulty))
+      .map(e => e.clue);
+    
+    return fallbackClues;
+  };
   
-  if (filteredClues.length > 0) {
-    return filteredClues;
+  // Try simple.csv first (preferred)
+  const simpleClues = getCluesFromDb(SIMPLE_DB);
+  if (simpleClues.length > 0) {
+    // Track that we used simple.csv (will be counted when clue is actually selected)
+    return simpleClues;
   }
   
-  const allAllowed = new Set<ClueDifficulty>(['easy', 'medium', 'challenging', 'hard', 'expert']);
-  const fallbackClues = entries
-    .filter(e => allAllowed.has(e.difficulty))
-    .map(e => e.clue);
-  
-  if (fallbackClues.length > 0) {
-    return fallbackClues;
+  // Fallback to train.csv
+  const trainClues = getCluesFromDb(TRAIN_DB);
+  if (trainClues.length > 0) {
+    // Track that we used train.csv (will be counted when clue is actually selected)
+    return trainClues;
   }
   
   // Last resort fallback
@@ -182,10 +229,14 @@ export class PuzzleGenerator {
       return null;
     }
     
-    // Create clue database
+    // Create clue source tracker
+    const clueSourceTracker = { simpleCount: 0, trainCount: 0 };
+    
+    // Create clue database with tracker
     const clueDb: ClueDatabase = {
-      getClue: (word: string, difficulty: Difficulty) => getClue(word, difficulty),
-      getAllClues: (word: string, difficulty: Difficulty) => getAllClues(word, difficulty)
+      getClue: (word: string, difficulty: Difficulty) => getClue(word, difficulty, clueSourceTracker),
+      getAllClues: (word: string, difficulty: Difficulty) => getAllClues(word, difficulty, clueSourceTracker),
+      tracker: clueSourceTracker
     };
     
     // Build the puzzle

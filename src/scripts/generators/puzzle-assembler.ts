@@ -8,10 +8,17 @@ import { Puzzle, PuzzleItem, GridTemplate, Difficulty } from '../core/types';
 import { GridState } from './grid-state';
 import { getAnswerCells, getNextCellAfterAnswer } from './direction-utils';
 import { normalizeWord, validateWordBoundaries } from './validation-utils';
+import { getSimpleDatabase } from '../core/cluesFromCSV';
+
+export interface ClueSourceTracker {
+  simpleCount: number;
+  trainCount: number;
+}
 
 export interface ClueDatabase {
   getClue(word: string, difficulty: Difficulty): string;
   getAllClues?(word: string, difficulty: Difficulty): string[]; // Optional: get all available clues
+  tracker?: ClueSourceTracker; // Optional: track which database was used
 }
 
 /**
@@ -30,6 +37,12 @@ export function generatePuzzleFromGrid(
   const puzzleItems: PuzzleItem[] = [];
   const usedPuzzleItems = new Set<string>(); // Track used puzzle item texts to prevent duplicates
   const usedAnswers = new Set<string>(); // Track used answers to prevent duplicates
+  
+  // Initialize tracker if provided
+  if (clueDb.tracker) {
+    clueDb.tracker.simpleCount = 0;
+    clueDb.tracker.trainCount = 0;
+  }
   
   let puzzleItemNumber = 1;
   for (const slot of template.slots) {
@@ -56,6 +69,12 @@ export function generatePuzzleFromGrid(
     
     // Try to get all available clues if the database supports it
     if (clueDb.getAllClues) {
+      // Check which database has clues for this word (for tracking)
+      const normalizedWordForTracking = normalizeWord(word);
+      const simpleDb = getSimpleDatabase();
+      const simpleEntries = simpleDb.byAnswer[normalizedWordForTracking];
+      const hasSimpleClues = simpleEntries && simpleEntries.length > 0;
+      
       const allClues = clueDb.getAllClues(word, config.difficulty);
       // Filter to only clues that fit (<= 20 characters)
       const validClues = allClues.filter(clue => clue.length <= MAX_CLUE_LENGTH);
@@ -77,6 +96,16 @@ export function generatePuzzleFromGrid(
           clueText = firstValid.length <= MAX_CLUE_LENGTH 
             ? firstValid 
             : firstValid.substring(0, MAX_CLUE_LENGTH - 3) + '...';
+        }
+      }
+      
+      // Track which database was used
+      // If simple.csv has clues for this word, we used simple.csv (since getAllClues tries simple first)
+      if (clueDb.tracker && clueText && !clueText.startsWith('[')) {
+        if (hasSimpleClues) {
+          clueDb.tracker.simpleCount++;
+        } else {
+          clueDb.tracker.trainCount++;
         }
       }
     } else {
@@ -102,6 +131,19 @@ export function generatePuzzleFromGrid(
           clueText = clueText.substring(0, Math.max(0, availableSpace - 3)) + '...' + suffix;
         } else {
           clueText = `${clueText}${suffix}`; // Add word to make it unique
+        }
+      }
+      
+      // Track which database was used
+      // Check if simple.csv has clues for this word (since getClue tries simple first)
+      if (clueDb.tracker && clueText && !clueText.startsWith('[')) {
+        const normalizedWordForTracking = normalizeWord(word);
+        const simpleDb = getSimpleDatabase();
+        const simpleEntries = simpleDb.byAnswer[normalizedWordForTracking];
+        if (simpleEntries && simpleEntries.length > 0) {
+          clueDb.tracker.simpleCount++;
+        } else {
+          clueDb.tracker.trainCount++;
         }
       }
     }
@@ -222,6 +264,18 @@ export function generatePuzzleFromGrid(
   
   const estimatedTime = puzzleItems.length * 15 * difficultyNumber;
   const coinReward = (puzzleItems.length * difficultyNumber) / 4;
+  
+  // Log clue source statistics if tracker is available
+  if (clueDb.tracker) {
+    const totalClues = clueDb.tracker.simpleCount + clueDb.tracker.trainCount;
+    const simplePercent = totalClues > 0 ? ((clueDb.tracker.simpleCount / totalClues) * 100).toFixed(1) : '0.0';
+    const trainPercent = totalClues > 0 ? ((clueDb.tracker.trainCount / totalClues) * 100).toFixed(1) : '0.0';
+    console.log(`\n📊 Clue Source Statistics:`);
+    console.log(`   Simple.csv: ${clueDb.tracker.simpleCount} clues (${simplePercent}%)`);
+    console.log(`   Train.csv: ${clueDb.tracker.trainCount} clues (${trainPercent}%)`);
+    console.log(`   Total clues: ${totalClues}`);
+  }
+  
   return {
     title: config.title,
     difficulty: config.difficulty,
