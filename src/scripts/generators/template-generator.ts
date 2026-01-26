@@ -352,8 +352,8 @@ function backtrackFill(
     console.log(`    🔍 Backtracking depth ${depth}: ${state.slots.length} slots, ${filledCells}/${totalCells} cells (${(coverage * 100).toFixed(1)}%), ${emptyCells.length} empty`);
   }
   
-  // Success: 100% coverage (or very close, accounting for blocked cells)
-  if (emptyCells.length === 0 || coverage >= 0.99) {
+  // Success: 100% coverage
+  if (emptyCells.length === 0 || coverage >= 1.0) {
     if (state.slots.length >= config.minSlots) {
       return state;
     }
@@ -1218,6 +1218,29 @@ export function generateTemplate(
   
   console.log(`  📊 After greedy expansion: ${state.slots.length} slots, ${state.answerCells.size + state.clueCellDirections.size}/${initialGridCells} cells filled`);
   
+  // PHASE 3: Backtracking fill for remaining cells (if greedy didn't reach 100%)
+  const remainingEmpty = getEmptyCells(config, state);
+  const finalCoverageBeforeBacktrack = (state.answerCells.size + state.clueCellDirections.size) / initialGridCells;
+  
+  if (remainingEmpty.length > 0 && finalCoverageBeforeBacktrack < 1.0) {
+    console.log(`  🔄 Phase 3: Backtracking fill for remaining ${remainingEmpty.length} empty cells (${(finalCoverageBeforeBacktrack * 100).toFixed(1)}% coverage)`);
+    const backtrackResult = backtrackFill(
+      { ...config, minSlots: state.slots.length },
+      state,
+      allDirections,
+      1000, // More depth for final fill
+      0,
+      Date.now()
+    );
+    
+    if (backtrackResult) {
+      state = backtrackResult;
+      console.log(`  ✅ Backtracking fill completed!`);
+    } else {
+      console.log(`  ⚠️  Backtracking fill failed, continuing with ${remainingEmpty.length} empty cells`);
+    }
+  }
+  
   // Calculate crossings
   recalculateCrossings(state.slots);
   
@@ -1237,13 +1260,13 @@ export function generateTemplate(
   
   recalculateCrossings(validatedSlots);
   
-  const finalSlots = validatedSlots.filter(slot => 
+  let finalSlots = validatedSlots.filter(slot => 
     slot.crossings.length <= TEMPLATE_CONFIG.CROSSINGS.MAX_FINAL
   );
   
-  const finalFilled = state.answerCells.size + state.clueCellDirections.size;
-  const finalCoverage = finalFilled / initialGridCells;
-  const emptyCells = getEmptyCells(config, state);
+  let finalFilled = state.answerCells.size + state.clueCellDirections.size;
+  let finalCoverage = finalFilled / initialGridCells;
+  let emptyCells = getEmptyCells(config, state);
   
   console.log(`  ✅ Generated ${finalSlots.length} slots: ${finalFilled}/${initialGridCells} cells (${(finalCoverage * 100).toFixed(1)}% coverage), ${emptyCells.length} empty cells`);
   
@@ -1251,8 +1274,66 @@ export function generateTemplate(
     throw new Error(`Template generation failed: only ${finalSlots.length} slots generated (need ${config.minSlots})`);
   }
   
-  if (emptyCells.length > 0 && finalCoverage < 0.99) {
+  if (emptyCells.length > 0 && finalCoverage < 1.0) {
     console.warn(`  ⚠️  Warning: ${emptyCells.length} empty cells remaining (${(finalCoverage * 100).toFixed(1)}% coverage)`);
+    // Try one more aggressive pass to fill remaining cells
+    const remainingEmptyAfterFilter = getEmptyCells(config, state);
+    if (remainingEmptyAfterFilter.length > 0 && remainingEmptyAfterFilter.length <= 5) {
+      console.log(`  🔄 Final aggressive fill attempt for ${remainingEmptyAfterFilter.length} remaining cells`);
+      for (const emptyCell of remainingEmptyAfterFilter) {
+        for (const direction of allDirections) {
+          const placements = findValidPlacements(
+            direction,
+            emptyCell.row,
+            emptyCell.col,
+            config,
+            state,
+            2,
+            6 // Very short words to fill isolated cells
+          );
+          
+          if (placements.length > 0) {
+            const bestPlacement = placements[0];
+            const slot: ClueSlot = {
+              id: `slot_${state.slotNumber}`,
+              direction,
+              startRow: emptyCell.row,
+              startCol: emptyCell.col,
+              length: bestPlacement.length,
+              crossings: []
+            };
+            state = placeSlot(slot, bestPlacement, config, state);
+            break;
+          }
+        }
+      }
+      
+      // Recalculate after final fill
+      recalculateCrossings(state.slots);
+      const finalSlotsAfterFill = state.slots.filter(slot => 
+        slot.crossings.length <= TEMPLATE_CONFIG.CROSSINGS.MAX_FINAL
+      );
+      const finalFilledAfterFill = state.answerCells.size + state.clueCellDirections.size;
+      const finalCoverageAfterFill = finalFilledAfterFill / initialGridCells;
+      const emptyCellsAfterFill = getEmptyCells(config, state);
+      
+      console.log(`  ✅ After final fill: ${finalSlotsAfterFill.length} slots, ${finalFilledAfterFill}/${initialGridCells} cells (${(finalCoverageAfterFill * 100).toFixed(1)}% coverage), ${emptyCellsAfterFill.length} empty cells`);
+      
+      if (emptyCellsAfterFill.length === 0) {
+        // Update finalSlots to use the recalculated slots
+        const updatedValidatedSlots = state.slots.filter(slot => {
+          const answerCellsForSlot = getSlotCells(slot);
+          return !hasAnswerClueOverlap(answerCellsForSlot, allClueCellPositions);
+        });
+        recalculateCrossings(updatedValidatedSlots);
+        finalSlots = updatedValidatedSlots.filter(slot => 
+          slot.crossings.length <= TEMPLATE_CONFIG.CROSSINGS.MAX_FINAL
+        );
+        emptyCells = emptyCellsAfterFill;
+        finalCoverage = finalCoverageAfterFill;
+        finalFilled = finalFilledAfterFill;
+      }
+    }
   }
   
   return {
