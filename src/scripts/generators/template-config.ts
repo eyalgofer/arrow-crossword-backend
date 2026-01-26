@@ -4,13 +4,13 @@ export const TEMPLATE_CONFIG = {
   PLACEMENT: {
     MAX_CONSECUTIVE_FAILURES: 200,
     ADAPTIVE_FAILURE_THRESHOLDS: {
-      HIGH_COVERAGE: { threshold: 0.98, maxFailures: 1000 }, // Very close to 99%, allow many attempts
+      HIGH_COVERAGE: { threshold: 0.99, maxFailures: 1000 }, // Very close to 100%, allow many attempts
       MEDIUM_COVERAGE: { threshold: 0.95, maxFailures: 800 }, // Close to target, allow more attempts
       LOW_COVERAGE: { threshold: 0.90, maxFailures: 600 }, // Getting there, moderate attempts
       DEFAULT: { maxFailures: 400 } // Below 90%, increase standard limit for better coverage
     },
-    TARGET_COVERAGE: 0.99, // Target 99% density
-    ACCEPTABLE_COVERAGE: 0.7, // Acceptable 85% density for now
+    TARGET_COVERAGE: 1.0, // Target 100% density - STRICT REQUIREMENT
+    ACCEPTABLE_COVERAGE: 0.99, // Acceptable 99% density minimum
     MAX_PLACEMENT_ATTEMPTS: {
       xsmall: 60000,
       small: 80000,
@@ -40,17 +40,8 @@ export const TEMPLATE_CONFIG = {
   },
   COVERAGE: {
     getTargetCoverage: (size: Size): number => {
-      switch (size) {
-        case 'xxlarge':
-        case 'xlarge':
-        case 'large':
-        case 'medium':          
-        case 'small':
-        case 'xsmall':
-          return 0.99; // Target 99% density
-        default:
-          return 0.99;
-      }
+      // ALL sizes target 100% coverage
+      return 1.0;
     }
   }
 };

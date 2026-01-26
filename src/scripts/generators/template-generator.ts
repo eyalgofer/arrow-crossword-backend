@@ -476,14 +476,49 @@ function backtrackFill(
       }
     }
     
-    // Try split cell placement (only at shallow depths for efficiency)
-    if (depth < 30 && state.clueCellDirections.size > 0) {
+    // Try split cell placement (AGGRESSIVE - removed depth limit for 100% coverage)
+    // Split cells are ESSENTIAL for reaching 100% coverage
+    if (state.clueCellDirections.size > 0) {
       const existingClueCells = Array.from(state.clueCellDirections.keys());
-      // Limit split cell attempts
-      const maxSplitAttempts = Math.min(3, existingClueCells.length);
+      // Try MANY more split cell attempts - increased from 3
+      const maxSplitAttempts = depth < 100 
+        ? Math.min(20, existingClueCells.length) // More attempts at shallow depths
+        : Math.min(10, existingClueCells.length); // Still try at deeper depths
       
-      for (let splitIdx = 0; splitIdx < maxSplitAttempts; splitIdx++) {
-        const clueCellKey = existingClueCells[splitIdx];
+      // Score clue cells by empty neighbors
+      const clueCellsWithScore = existingClueCells.map(clueCellKey => {
+        const [cellRow, cellCol] = clueCellKey.split(',').map(Number);
+        let emptyNeighbors = 0;
+        const directionsInCell = state.clueCellDirections.get(clueCellKey);
+        const compatibleCount = directionsInCell ? allDirections.filter(d => 
+          !directionsInCell.has(d) && isDirectionCompatibleWithCell(d, directionsInCell)
+        ).length : 0;
+        
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const neighborRow = cellRow + dr;
+            const neighborCol = cellCol + dc;
+            if (neighborRow >= 0 && neighborRow < config.rows && neighborCol >= 0 && neighborCol < config.cols) {
+              const neighborKey = `${neighborRow},${neighborCol}`;
+              const hasClue = state.clueCellDirections.has(neighborKey) && (state.clueCellDirections.get(neighborKey)?.size ?? 0) > 0;
+              const isBlocked = state.blockedCells.has(neighborKey);
+              const isAnswer = state.answerCells.has(neighborKey);
+              if (!hasClue && !isAnswer && !isBlocked) {
+                emptyNeighbors++;
+              }
+            }
+          }
+        }
+        
+        return { clueCellKey, emptyNeighbors, compatibleCount, score: emptyNeighbors * 10 + compatibleCount };
+      });
+      
+      clueCellsWithScore.sort((a, b) => b.score - a.score);
+      const sortedClueCells = clueCellsWithScore.map(item => item.clueCellKey).slice(0, maxSplitAttempts);
+      
+      for (let splitIdx = 0; splitIdx < sortedClueCells.length; splitIdx++) {
+        const clueCellKey = sortedClueCells[splitIdx];
         const [cellRow, cellCol] = clueCellKey.split(',').map(Number);
         
         // Try only compatible directions
@@ -494,7 +529,8 @@ function backtrackFill(
           !directionsInCell.has(d) && isDirectionCompatibleWithCell(d, directionsInCell)
         );
         
-        for (const direction of compatibleDirections.slice(0, 2)) { // Limit to 2 directions
+        // Try ALL compatible directions (increased from 2)
+        for (const direction of compatibleDirections) {
           const placements = findValidPlacements(
             direction,
             cellRow,
@@ -502,11 +538,18 @@ function backtrackFill(
             config,
             state,
             2,
-            8
+            depth < 50 ? 10 : 8 // Longer words at shallow depths
           );
           
           if (placements.length > 0) {
-            const bestPlacement = placements[0];
+            // Prefer placements that fill more empty cells
+            const bestPlacement = placements.sort((a, b) => {
+              const emptyCellsNow = getEmptyCells(config, state);
+              const aFillsEmpty = a.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
+              const bFillsEmpty = b.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
+              if (aFillsEmpty !== bFillsEmpty) return bFillsEmpty - aFillsEmpty;
+              return b.length - a.length;
+            })[0];
             
             const slot: ClueSlot = {
               id: `slot_${state.slotNumber}`,
@@ -661,10 +704,19 @@ export function generateTemplate(
   
   // PHASE 2: Greedy Expansion - Build outwards efficiently until 100% coverage
   console.log(`  🔗 Phase 2: Greedy expansion to 100% coverage`);
-  const maxGreedyAttempts = 100000;
+  const maxGreedyAttempts = 200000; // Increased for better coverage
   let greedyAttempts = 0;
   let lastProgressLog = Date.now();
   let consecutiveFailures = 0;
+  
+  // Track direction usage for professional distribution
+  const directionUsage = new Map<Direction, number>();
+  for (const dir of allDirections) {
+    directionUsage.set(dir, 0);
+  }
+  for (const slot of state.slots) {
+    directionUsage.set(slot.direction, (directionUsage.get(slot.direction) || 0) + 1);
+  }
   
   while (greedyAttempts < maxGreedyAttempts) {
     greedyAttempts++;
@@ -681,13 +733,14 @@ export function generateTemplate(
       lastProgressLog = Date.now();
     }
     
-    if (emptyCells.length === 0 || coverage >= 1.0) {
+    // STRICT: Only accept 100% coverage
+    if (emptyCells.length === 0 && coverage >= 1.0) {
       console.log(`  ✅ All cells filled via greedy expansion!`);
       break;
     }
     
     // When stuck, try more aggressive strategies
-    const isStuck = consecutiveFailures > 100;
+    const isStuck = consecutiveFailures > 50; // More aggressive threshold
     
     let placed = false;
     
@@ -870,10 +923,15 @@ export function generateTemplate(
     
     // Strategy 2: Try empty cells systematically (prioritize those with neighbors)
     if (!placed) {
-      // Calculate direction diversity to encourage variety
+      // Calculate direction diversity to encourage variety - STRONG preference for underused directions
       const directionCounts = new Map<Direction, number>();
       for (const slot of state.slots) {
         directionCounts.set(slot.direction, (directionCounts.get(slot.direction) || 0) + 1);
+      }
+      
+      // Update directionUsage map
+      for (const slot of state.slots) {
+        directionUsage.set(slot.direction, (directionUsage.get(slot.direction) || 0) + 1);
       }
       
       const centerRow = Math.floor(config.rows / 2);
@@ -913,21 +971,25 @@ export function generateTemplate(
       
       emptyCellsWithScore.sort((a, b) => b.score - a.score);
       
-      // Try more candidates when stuck
-      const candidatesToTry = isStuck ? Math.min(emptyCells.length, 20) : Math.min(10, emptyCells.length);
+      // Try more candidates when stuck - be more aggressive
+      const candidatesToTry = isStuck ? Math.min(emptyCells.length, 50) : Math.min(20, emptyCells.length);
       
       for (let candidateIdx = 0; candidateIdx < candidatesToTry && !placed; candidateIdx++) {
         const targetCell = emptyCellsWithScore[candidateIdx].cell;
         
-        // Score directions: prefer underused directions for variety, and those that create interesting crossings
+        // Score directions: STRONG preference for underused directions for professional variety
         const directionsToTry = [...allDirections].sort((a, b) => {
           const aOrientation = getAnswerOrientation(a);
           const bOrientation = getAnswerOrientation(b);
           
-          // Diversity bonus: prefer directions we haven't used much
-          const aCount = directionCounts.get(a) || 0;
-          const bCount = directionCounts.get(b) || 0;
-          const diversityBonus = bCount - aCount; // Prefer less used directions
+          // STRONG diversity bonus: prefer directions we haven't used much (multiply by 10 for stronger effect)
+          const aCount = directionUsage.get(a) || 0;
+          const bCount = directionUsage.get(b) || 0;
+          const totalSlots = state.slots.length;
+          const aRatio = totalSlots > 0 ? aCount / totalSlots : 0;
+          const bRatio = totalSlots > 0 ? bCount / totalSlots : 0;
+          // Prefer directions that are used less than average (target ~16.7% each for 6 directions)
+          const diversityBonus = (bRatio < 0.167 ? 20 : 0) - (aRatio < 0.167 ? 20 : 0) + (bCount - aCount) * 5;
           
           // Crossing bonus: prefer directions that create crossings (1-4 crossings is interesting)
           let aCrossingScore = 0, bCrossingScore = 0;
@@ -950,11 +1012,11 @@ export function generateTemplate(
             }
           }
           
-          // Combine scores: diversity is important, but crossings are also good
-          return (bCrossingScore + diversityBonus * 3) - (aCrossingScore + diversityBonus * 3);
+          // Combine scores: diversity is VERY important for professional look
+          return (bCrossingScore + diversityBonus) - (aCrossingScore + diversityBonus);
         });
         
-        // Try all directions
+        // Try all directions - ensure we use all 6 directions
         for (const direction of directionsToTry) {
           // Encourage longer words (4-12) for more interesting templates, shorter only when stuck
           const maxLength = isStuck ? 8 : 12;
@@ -998,6 +1060,7 @@ export function generateTemplate(
             };
             
             state = placeSlot(slot, bestPlacement, config, state);
+            directionUsage.set(direction, (directionUsage.get(direction) || 0) + 1);
             placed = true;
             consecutiveFailures = 0;
             break;
@@ -1006,15 +1069,45 @@ export function generateTemplate(
       }
     }
     
-    // Strategy 3: Try split cell placement (encourage more split cells for interesting layouts)
+    // Strategy 3: Try split cell placement (AGGRESSIVE - split cells are key for 100% coverage)
+    // REMOVED depth limit - always try split cells for maximum coverage
     if (!placed && state.clueCellDirections.size > 0) {
       const existingClueCells = Array.from(state.clueCellDirections.keys());
-      // Try more clue cells - split cells make puzzles more interesting
+      // Try MANY more clue cells - split cells are essential for 100% coverage
       const clueCellsToTry = isStuck 
-        ? existingClueCells.slice(0, Math.min(30, existingClueCells.length))
-        : existingClueCells.slice(0, Math.min(20, existingClueCells.length));
+        ? existingClueCells.slice(0, Math.min(100, existingClueCells.length)) // Increased from 30
+        : existingClueCells.slice(0, Math.min(50, existingClueCells.length)); // Increased from 20
       
-      for (const clueCellKey of clueCellsToTry) {
+      // Score clue cells by how many empty neighbors they have (prioritize those that can fill empty cells)
+      const clueCellsWithScore = existingClueCells.map(clueCellKey => {
+        const [cellRow, cellCol] = clueCellKey.split(',').map(Number);
+        let emptyNeighbors = 0;
+        const directionsInCell = state.clueCellDirections.get(clueCellKey);
+        const compatibleCount = directionsInCell ? allDirections.filter(d => 
+          !directionsInCell.has(d) && isDirectionCompatibleWithCell(d, directionsInCell)
+        ).length : 0;
+        
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const neighborRow = cellRow + dr;
+            const neighborCol = cellCol + dc;
+            if (neighborRow >= 0 && neighborRow < config.rows && neighborCol >= 0 && neighborCol < config.cols) {
+              const neighborKey = `${neighborRow},${neighborCol}`;
+              if (emptyCells.some(e => e.row === neighborRow && e.col === neighborCol)) {
+                emptyNeighbors++;
+              }
+            }
+          }
+        }
+        
+        return { clueCellKey, emptyNeighbors, compatibleCount, score: emptyNeighbors * 10 + compatibleCount };
+      });
+      
+      clueCellsWithScore.sort((a, b) => b.score - a.score);
+      const sortedClueCells = clueCellsWithScore.map(item => item.clueCellKey).slice(0, clueCellsToTry.length);
+      
+      for (const clueCellKey of sortedClueCells) {
         if (placed) break;
         
         const [cellRow, cellCol] = clueCellKey.split(',').map(Number);
@@ -1025,18 +1118,24 @@ export function generateTemplate(
           !directionsInCell.has(d) && isDirectionCompatibleWithCell(d, directionsInCell)
         );
         
-        // Prioritize diagonal directions for split cells (more interesting)
+        // Prioritize underused directions AND diagonal directions for split cells (more interesting)
         const sortedDirections = compatibleDirections.sort((a, b) => {
-          const aIsDiagonal = a.includes('down') || a.includes('across');
-          const bIsDiagonal = b.includes('down') || b.includes('across');
-          if (aIsDiagonal && !bIsDiagonal) return -1;
-          if (!aIsDiagonal && bIsDiagonal) return 1;
-          return 0;
+          // First: prefer underused directions
+          const aCount = directionUsage.get(a) || 0;
+          const bCount = directionUsage.get(b) || 0;
+          const diversityBonus = (bCount - aCount) * 5;
+          
+          // Second: prefer diagonal directions (more interesting)
+          const aIsDiagonal = (a.includes('down') && a.includes('across')) || a === 'right-down' || a === 'left-down';
+          const bIsDiagonal = (b.includes('down') && b.includes('across')) || b === 'right-down' || b === 'left-down';
+          const diagonalBonus = (bIsDiagonal ? 10 : 0) - (aIsDiagonal ? 10 : 0);
+          
+          return diversityBonus + diagonalBonus;
         });
         
         for (const direction of sortedDirections) {
-          // Encourage longer words for split cells (4-10 letters)
-          const maxLength = isStuck ? 8 : 10;
+          // Encourage longer words for split cells (4-12 letters) - more professional
+          const maxLength = isStuck ? 10 : 12;
           const minLength = isStuck ? 2 : 4;
           const placements = findValidPlacements(
             direction,
@@ -1049,13 +1148,13 @@ export function generateTemplate(
           );
           
           if (placements.length > 0) {
-            // Prefer interesting crossings (1-3) for split cells
+            // Prefer interesting crossings (1-4) for split cells
             const bestPlacement = placements.sort((a, b) => {
-              // Prefer 1-3 crossings (interesting but solvable)
-              const aCrossingScore = a.crossings >= 1 && a.crossings <= 3 ? 10 : (a.crossings === 0 ? 5 : 0);
-              const bCrossingScore = b.crossings >= 1 && b.crossings <= 3 ? 10 : (b.crossings === 0 ? 5 : 0);
+              // Prefer 1-4 crossings (interesting but solvable)
+              const aCrossingScore = a.crossings >= 1 && a.crossings <= 4 ? 10 : (a.crossings === 0 ? 5 : 0);
+              const bCrossingScore = b.crossings >= 1 && b.crossings <= 4 ? 10 : (b.crossings === 0 ? 5 : 0);
               if (aCrossingScore !== bCrossingScore) return bCrossingScore - aCrossingScore;
-              // Second: fill more empty cells
+              // Second: fill more empty cells (critical for 100% coverage)
               const emptyCellsNow = getEmptyCells(config, state);
               const aFillsEmpty = a.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
               const bFillsEmpty = b.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
@@ -1074,6 +1173,7 @@ export function generateTemplate(
             };
             
             state = placeSlot(slot, bestPlacement, config, state);
+            directionUsage.set(direction, (directionUsage.get(direction) || 0) + 1);
             placed = true;
             consecutiveFailures = 0;
             break;
@@ -1082,14 +1182,18 @@ export function generateTemplate(
       }
     }
     
-    // Strategy 4: Try split cells at clue cells adjacent to empty cells
+    // Strategy 4: Try split cells at clue cells adjacent to empty cells (AGGRESSIVE)
     if (!placed && emptyCells.length > 0) {
       // Find clue cells that are adjacent to empty cells
-      const clueCellsAdjacentToEmpty: Array<{ clueKey: string; emptyNeighbors: number }> = [];
+      const clueCellsAdjacentToEmpty: Array<{ clueKey: string; emptyNeighbors: number; compatibleCount: number }> = [];
       
       for (const clueCellKey of state.clueCellDirections.keys()) {
         const [clueRow, clueCol] = clueCellKey.split(',').map(Number);
         let emptyNeighbors = 0;
+        const directionsInCell = state.clueCellDirections.get(clueCellKey);
+        const compatibleCount = directionsInCell ? allDirections.filter(d => 
+          !directionsInCell.has(d) && isDirectionCompatibleWithCell(d, directionsInCell)
+        ).length : 0;
         
         for (let dr = -1; dr <= 1; dr++) {
           for (let dc = -1; dc <= 1; dc++) {
@@ -1105,14 +1209,15 @@ export function generateTemplate(
           }
         }
         
-        if (emptyNeighbors > 0) {
-          clueCellsAdjacentToEmpty.push({ clueKey: clueCellKey, emptyNeighbors });
+        if (emptyNeighbors > 0 || compatibleCount > 0) {
+          clueCellsAdjacentToEmpty.push({ clueKey: clueCellKey, emptyNeighbors, compatibleCount });
         }
       }
       
-      clueCellsAdjacentToEmpty.sort((a, b) => b.emptyNeighbors - a.emptyNeighbors);
+      clueCellsAdjacentToEmpty.sort((a, b) => (b.emptyNeighbors * 10 + b.compatibleCount) - (a.emptyNeighbors * 10 + a.compatibleCount));
       
-      for (const { clueKey } of clueCellsAdjacentToEmpty.slice(0, Math.min(10, clueCellsAdjacentToEmpty.length))) {
+      // Try MANY more clue cells - increased from 10 to 50
+      for (const { clueKey } of clueCellsAdjacentToEmpty.slice(0, Math.min(50, clueCellsAdjacentToEmpty.length))) {
         if (placed) break;
         
         const [cellRow, cellCol] = clueKey.split(',').map(Number);
@@ -1123,8 +1228,15 @@ export function generateTemplate(
           !directionsInCell.has(d) && isDirectionCompatibleWithCell(d, directionsInCell)
         );
         
-        for (const direction of compatibleDirections) {
-          const maxLength = isStuck ? 6 : 10;
+        // Prioritize underused directions
+        const sortedDirections = compatibleDirections.sort((a, b) => {
+          const aCount = directionUsage.get(a) || 0;
+          const bCount = directionUsage.get(b) || 0;
+          return bCount - aCount; // Prefer less used directions
+        });
+        
+        for (const direction of sortedDirections) {
+          const maxLength = isStuck ? 8 : 12; // Increased from 6/10
           const placements = findValidPlacements(
             direction,
             cellRow,
@@ -1136,11 +1248,11 @@ export function generateTemplate(
           );
           
           if (placements.length > 0) {
-            // Prefer interesting crossings (1-3) for split cells
+            // Prefer interesting crossings (1-4) for split cells
             const bestPlacement = placements.sort((a, b) => {
-              // Prefer 1-3 crossings (interesting but solvable)
-              const aCrossingScore = a.crossings >= 1 && a.crossings <= 3 ? 10 : (a.crossings === 0 ? 5 : 0);
-              const bCrossingScore = b.crossings >= 1 && b.crossings <= 3 ? 10 : (b.crossings === 0 ? 5 : 0);
+              // Prefer 1-4 crossings (interesting but solvable)
+              const aCrossingScore = a.crossings >= 1 && a.crossings <= 4 ? 10 : (a.crossings === 0 ? 5 : 0);
+              const bCrossingScore = b.crossings >= 1 && b.crossings <= 4 ? 10 : (b.crossings === 0 ? 5 : 0);
               if (aCrossingScore !== bCrossingScore) return bCrossingScore - aCrossingScore;
               const emptyCellsNow = getEmptyCells(config, state);
               const aFillsEmpty = a.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
@@ -1159,6 +1271,7 @@ export function generateTemplate(
             };
             
             state = placeSlot(slot, bestPlacement, config, state);
+            directionUsage.set(direction, (directionUsage.get(direction) || 0) + 1);
             placed = true;
             consecutiveFailures = 0;
             break;
@@ -1208,36 +1321,83 @@ export function generateTemplate(
     }
     
     // If we still haven't placed anything after many attempts, we're truly stuck
-    if (!placed && consecutiveFailures > 5000) {
+    // BUT: Don't give up easily - we need 100% coverage!
+    if (!placed && consecutiveFailures > 10000) { // Increased from 5000
       console.log(`  ⚠️  Greedy expansion stuck after ${consecutiveFailures} consecutive failures`);
       const remainingEmpty = getEmptyCells(config, state);
-      console.log(`  ⚠️  Accepting ${(coverage * 100).toFixed(1)}% coverage (${remainingEmpty.length} empty cells remain)`);
+      console.log(`  ⚠️  Current coverage: ${(coverage * 100).toFixed(1)}% (${remainingEmpty.length} empty cells remain)`);
+      // Don't break - continue to backtracking phase
       break;
     }
   }
   
+  // Log direction usage statistics
+  console.log(`  📊 Direction usage:`);
+  for (const [dir, count] of directionUsage.entries()) {
+    const percentage = state.slots.length > 0 ? ((count / state.slots.length) * 100).toFixed(1) : '0.0';
+    console.log(`     ${dir}: ${count} (${percentage}%)`);
+  }
+  
   console.log(`  📊 After greedy expansion: ${state.slots.length} slots, ${state.answerCells.size + state.clueCellDirections.size}/${initialGridCells} cells filled`);
   
-  // PHASE 3: Backtracking fill for remaining cells (if greedy didn't reach 100%)
+  // PHASE 3: Backtracking fill for remaining cells (AGGRESSIVE - must reach 100%)
   const remainingEmpty = getEmptyCells(config, state);
   const finalCoverageBeforeBacktrack = (state.answerCells.size + state.clueCellDirections.size) / initialGridCells;
   
   if (remainingEmpty.length > 0 && finalCoverageBeforeBacktrack < 1.0) {
-    console.log(`  🔄 Phase 3: Backtracking fill for remaining ${remainingEmpty.length} empty cells (${(finalCoverageBeforeBacktrack * 100).toFixed(1)}% coverage)`);
+    console.log(`  🔄 Phase 3: Aggressive backtracking fill for remaining ${remainingEmpty.length} empty cells (${(finalCoverageBeforeBacktrack * 100).toFixed(1)}% coverage)`);
+    // Increased depth significantly - we MUST reach 100%
     const backtrackResult = backtrackFill(
       { ...config, minSlots: state.slots.length },
       state,
       allDirections,
-      1000, // More depth for final fill
+      2000, // Increased from 1000 - more aggressive backtracking
       0,
       Date.now()
     );
     
     if (backtrackResult) {
       state = backtrackResult;
-      console.log(`  ✅ Backtracking fill completed!`);
+      const finalCoverageAfterBacktrack = (state.answerCells.size + state.clueCellDirections.size) / initialGridCells;
+      console.log(`  ✅ Backtracking fill completed! Coverage: ${(finalCoverageAfterBacktrack * 100).toFixed(1)}%`);
     } else {
-      console.log(`  ⚠️  Backtracking fill failed, continuing with ${remainingEmpty.length} empty cells`);
+      console.log(`  ⚠️  Backtracking fill failed, trying final aggressive pass...`);
+      // Final aggressive pass: try to fill every remaining empty cell
+      const remainingAfterBacktrack = getEmptyCells(config, state);
+      if (remainingAfterBacktrack.length > 0 && remainingAfterBacktrack.length <= 10) {
+        console.log(`  🔄 Final aggressive fill for ${remainingAfterBacktrack.length} remaining cells`);
+        for (const emptyCell of remainingAfterBacktrack) {
+          let cellPlaced = false;
+          // Try ALL directions aggressively
+          for (const direction of allDirections) {
+            if (cellPlaced) break;
+            const placements = findValidPlacements(
+              direction,
+              emptyCell.row,
+              emptyCell.col,
+              config,
+              state,
+              2, // Very short words allowed
+              8  // Short max length
+            );
+            
+            if (placements.length > 0) {
+              const bestPlacement = placements[0]; // Take first valid placement
+              const slot: ClueSlot = {
+                id: `slot_${state.slotNumber}`,
+                direction,
+                startRow: emptyCell.row,
+                startCol: emptyCell.col,
+                length: bestPlacement.length,
+                crossings: []
+              };
+              state = placeSlot(slot, bestPlacement, config, state);
+              directionUsage.set(direction, (directionUsage.get(direction) || 0) + 1);
+              cellPlaced = true;
+            }
+          }
+        }
+      }
     }
   }
   
@@ -1274,26 +1434,45 @@ export function generateTemplate(
     throw new Error(`Template generation failed: only ${finalSlots.length} slots generated (need ${config.minSlots})`);
   }
   
+  // STRICT: Must achieve 100% coverage - try multiple aggressive passes
   if (emptyCells.length > 0 && finalCoverage < 1.0) {
     console.warn(`  ⚠️  Warning: ${emptyCells.length} empty cells remaining (${(finalCoverage * 100).toFixed(1)}% coverage)`);
-    // Try one more aggressive pass to fill remaining cells
-    const remainingEmptyAfterFilter = getEmptyCells(config, state);
-    if (remainingEmptyAfterFilter.length > 0 && remainingEmptyAfterFilter.length <= 5) {
-      console.log(`  🔄 Final aggressive fill attempt for ${remainingEmptyAfterFilter.length} remaining cells`);
-      for (const emptyCell of remainingEmptyAfterFilter) {
+    console.log(`  🔄 Attempting final aggressive fill for ${emptyCells.length} remaining cells`);
+    
+    // Multiple aggressive passes until 100% coverage or no more progress
+    let pass = 0;
+    const maxPasses = 5;
+    while (pass < maxPasses && emptyCells.length > 0) {
+      pass++;
+      const remainingEmptyBeforePass = getEmptyCells(config, state);
+      let cellsFilledThisPass = 0;
+      
+      // Try ALL empty cells, not just <= 5
+      for (const emptyCell of remainingEmptyBeforePass) {
+        let cellPlaced = false;
+        // Try ALL directions aggressively
         for (const direction of allDirections) {
+          if (cellPlaced) break;
           const placements = findValidPlacements(
             direction,
             emptyCell.row,
             emptyCell.col,
             config,
             state,
-            2,
-            6 // Very short words to fill isolated cells
+            2, // Very short words allowed
+            8  // Short max length
           );
           
           if (placements.length > 0) {
-            const bestPlacement = placements[0];
+            // Prefer placements that fill more empty cells
+            const bestPlacement = placements.sort((a, b) => {
+              const emptyCellsNow = getEmptyCells(config, state);
+              const aFillsEmpty = a.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
+              const bFillsEmpty = b.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
+              if (aFillsEmpty !== bFillsEmpty) return bFillsEmpty - aFillsEmpty;
+              return b.length - a.length;
+            })[0];
+            
             const slot: ClueSlot = {
               id: `slot_${state.slotNumber}`,
               direction,
@@ -1303,36 +1482,61 @@ export function generateTemplate(
               crossings: []
             };
             state = placeSlot(slot, bestPlacement, config, state);
-            break;
+            directionUsage.set(direction, (directionUsage.get(direction) || 0) + 1);
+            cellPlaced = true;
+            cellsFilledThisPass++;
           }
         }
       }
       
-      // Recalculate after final fill
+      // Recalculate after this pass
       recalculateCrossings(state.slots);
-      const finalSlotsAfterFill = state.slots.filter(slot => 
+      const emptyCellsAfterPass = getEmptyCells(config, state);
+      const filledAfterPass = state.answerCells.size + state.clueCellDirections.size;
+      const coverageAfterPass = filledAfterPass / initialGridCells;
+      
+      console.log(`  📊 Pass ${pass}: Filled ${cellsFilledThisPass} cells, ${emptyCellsAfterPass.length} remaining (${(coverageAfterPass * 100).toFixed(1)}% coverage)`);
+      
+      if (emptyCellsAfterPass.length === 0 || coverageAfterPass >= 1.0) {
+        console.log(`  ✅ Achieved 100% coverage after ${pass} passes!`);
+        emptyCells = emptyCellsAfterPass;
+        finalCoverage = coverageAfterPass;
+        finalFilled = filledAfterPass;
+        break;
+      }
+      
+      if (cellsFilledThisPass === 0) {
+        console.log(`  ⚠️  No progress in pass ${pass}, stopping`);
+        break;
+      }
+      
+      emptyCells = emptyCellsAfterPass;
+    }
+    
+    // Final recalculation
+    recalculateCrossings(state.slots);
+    const finalSlotsAfterFill = state.slots.filter(slot => 
+      slot.crossings.length <= TEMPLATE_CONFIG.CROSSINGS.MAX_FINAL
+    );
+    const finalFilledAfterFill = state.answerCells.size + state.clueCellDirections.size;
+    const finalCoverageAfterFill = finalFilledAfterFill / initialGridCells;
+    const emptyCellsAfterFill = getEmptyCells(config, state);
+    
+    console.log(`  ✅ After final aggressive fill: ${finalSlotsAfterFill.length} slots, ${finalFilledAfterFill}/${initialGridCells} cells (${(finalCoverageAfterFill * 100).toFixed(1)}% coverage), ${emptyCellsAfterFill.length} empty cells`);
+    
+    if (emptyCellsAfterFill.length === 0 || finalCoverageAfterFill >= 1.0) {
+      // Update finalSlots to use the recalculated slots
+      const updatedValidatedSlots = state.slots.filter(slot => {
+        const answerCellsForSlot = getSlotCells(slot);
+        return !hasAnswerClueOverlap(answerCellsForSlot, allClueCellPositions);
+      });
+      recalculateCrossings(updatedValidatedSlots);
+      finalSlots = updatedValidatedSlots.filter(slot => 
         slot.crossings.length <= TEMPLATE_CONFIG.CROSSINGS.MAX_FINAL
       );
-      const finalFilledAfterFill = state.answerCells.size + state.clueCellDirections.size;
-      const finalCoverageAfterFill = finalFilledAfterFill / initialGridCells;
-      const emptyCellsAfterFill = getEmptyCells(config, state);
-      
-      console.log(`  ✅ After final fill: ${finalSlotsAfterFill.length} slots, ${finalFilledAfterFill}/${initialGridCells} cells (${(finalCoverageAfterFill * 100).toFixed(1)}% coverage), ${emptyCellsAfterFill.length} empty cells`);
-      
-      if (emptyCellsAfterFill.length === 0) {
-        // Update finalSlots to use the recalculated slots
-        const updatedValidatedSlots = state.slots.filter(slot => {
-          const answerCellsForSlot = getSlotCells(slot);
-          return !hasAnswerClueOverlap(answerCellsForSlot, allClueCellPositions);
-        });
-        recalculateCrossings(updatedValidatedSlots);
-        finalSlots = updatedValidatedSlots.filter(slot => 
-          slot.crossings.length <= TEMPLATE_CONFIG.CROSSINGS.MAX_FINAL
-        );
-        emptyCells = emptyCellsAfterFill;
-        finalCoverage = finalCoverageAfterFill;
-        finalFilled = finalFilledAfterFill;
-      }
+      emptyCells = emptyCellsAfterFill;
+      finalCoverage = finalCoverageAfterFill;
+      finalFilled = finalFilledAfterFill;
     }
   }
   
