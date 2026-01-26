@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { Puzzle } from '../models/Puzzle';
 import { PuzzlePackage } from '../models/PuzzlePackage';
-import { UserPuzzleProgress, IProgressCell } from '../models/UserPuzzleProgress';
+import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { DailyPuzzle } from '../models/DailyPuzzle';
 import { User } from '../models/User';
 import { AuthRequest, ProgressSummary } from '../types';
@@ -143,11 +143,17 @@ export const getPuzzle = async (req: AuthRequest, res: Response) => {
 /**
  * POST /api/puzzles/:puzzleId/progress
  * Save or update the user's progress on a specific puzzle (upsert)
+ * Accepts completedClueIds: string[] (format: "number|direction")
  */
 export const saveProgress = async (req: AuthRequest, res: Response) => {
   try {
     const { puzzleId } = req.params;
-    const { cells, completedCluesCount, totalClues, isCompleted, elapsedTime, bestTime } = req.body;
+    const { completedClueIds, completedCluesCount, totalClues, isCompleted, elapsedTime, bestTime } = req.body;
+    console.log('completedClueIds', completedClueIds);
+    // Validate that completedClueIds is provided and is an array
+    if (completedClueIds === undefined || !Array.isArray(completedClueIds)) {
+      return res.status(400).json({ error: 'completedClueIds must be provided as an array' });
+    }
 
     const user = await User.findOne({ firebaseUid: req.user!.uid });
     if (!user) {
@@ -169,11 +175,19 @@ export const saveProgress = async (req: AuthRequest, res: Response) => {
 
     if (progress) {
       // Update existing progress
-      progress.cells = cells as IProgressCell[];
-      progress.completedCluesCount = completedCluesCount;
-      progress.totalClues = totalClues;
-      progress.isCompleted = isCompleted;
-      progress.elapsedTime = elapsedTime;
+      progress.completedClueIds = completedClueIds;
+      if (completedCluesCount !== undefined) {
+        progress.completedCluesCount = completedCluesCount;
+      }
+      if (totalClues !== undefined) {
+        progress.totalClues = totalClues;
+      }
+      if (isCompleted !== undefined) {
+        progress.isCompleted = isCompleted;
+      }
+      if (elapsedTime !== undefined) {
+        progress.elapsedTime = elapsedTime;
+      }
       progress.lastPlayedAt = now;
       
       // Only update bestTime if provided and better than existing
@@ -189,11 +203,11 @@ export const saveProgress = async (req: AuthRequest, res: Response) => {
       progress = new UserPuzzleProgress({
         userId: user._id,
         puzzleId,
-        cells: cells as IProgressCell[],
-        completedCluesCount,
-        totalClues,
-        isCompleted,
-        elapsedTime,
+        completedClueIds: completedClueIds,
+        completedCluesCount: completedCluesCount ?? 0,
+        totalClues: totalClues ?? puzzle.puzzleItems.length,
+        isCompleted: isCompleted ?? false,
+        elapsedTime: elapsedTime ?? 0,
         bestTime: bestTime ?? null,
         lastPlayedAt: now
       });
@@ -204,7 +218,7 @@ export const saveProgress = async (req: AuthRequest, res: Response) => {
       success: true,
       progress: {
         puzzleId: progress.puzzleId,
-        cells: progress.cells,
+        completedClueIds: progress.completedClueIds,
         completedCluesCount: progress.completedCluesCount,
         totalClues: progress.totalClues,
         isCompleted: progress.isCompleted,
@@ -250,7 +264,7 @@ export const getProgress = async (req: AuthRequest, res: Response) => {
     res.json({
       progress: {
         puzzleId: progress.puzzleId,
-        cells: progress.cells,
+        completedClueIds: progress.completedClueIds || [],
         completedCluesCount: progress.completedCluesCount,
         totalClues: progress.totalClues,
         isCompleted: progress.isCompleted,
@@ -331,6 +345,11 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
     const wasAlreadyCompleted = progress?.isCompleted ?? false;
     let coinsAwarded = 0;
 
+    // Generate all completed clue IDs in format "number|direction"
+    const allCompletedClueIds = puzzle.puzzleItems.map(
+      item => `${item.number}|${item.direction}`
+    );
+
     if (progress) {
       // Update existing progress
       const shouldUpdateBestTime = progress.bestTime === null || completionTime < progress.bestTime;
@@ -342,6 +361,7 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
       if (!progress.isCompleted) {
         progress.isCompleted = true;
         progress.completedCluesCount = progress.totalClues;
+        progress.completedClueIds = allCompletedClueIds;
         
         // Award coins only on first completion
         coinsAwarded = puzzle.coinReward;
@@ -364,7 +384,7 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
       progress = new UserPuzzleProgress({
         userId: user._id,
         puzzleId,
-        cells: [],
+        completedClueIds: allCompletedClueIds,
         completedCluesCount: puzzle.puzzleItems.length,
         totalClues: puzzle.puzzleItems.length,
         isCompleted: true,
