@@ -170,8 +170,8 @@ const packageDefinitions: Array<{
 
 function getDifficultyDistribution(puzzleCount: number): Array<{ difficulty: Difficulty; count: number }> {
   const easy = Math.round(puzzleCount * 0.6);
-  const medium = Math.round(puzzleCount * 0.3);
-  const challenging = Math.round(puzzleCount * 1);
+  const medium = Math.round(puzzleCount * 0.4);
+  const challenging = Math.round(puzzleCount * 0);
   const hard = Math.round(puzzleCount * 0);
   const expert = Math.round(puzzleCount * 0);
   
