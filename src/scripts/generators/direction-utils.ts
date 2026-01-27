@@ -90,7 +90,7 @@ export function getAnswerOrientation(direction: Direction): 'horizontal' | 'vert
 
 /**
  * Convert a template slot to cells.
- * If slot.cells is provided (e.g. from template-generator-v2 Engel geometry), use it.
+ * If slot.cells is provided (e.g. from  Engel geometry), use it.
  */
 export function getSlotCells(slot: ClueSlot): Array<{ row: number; col: number }> {
   if (slot.cells && slot.cells.length > 0) {

@@ -7,7 +7,7 @@ import {
 import { generatePuzzleFromGrid, ClueDatabase } from './puzzle-assembler';
 import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
-import { generateTemplate } from './template-generator-v2';
+import { generateTemplate } from './template-generator';
 
 import { getClueForWord, getWordsWithMaxDifficulty, getSimpleDatabase, getTrainDatabase } from '../core/cluesFromCSV';
 import { normalizeWord } from './validation-utils';

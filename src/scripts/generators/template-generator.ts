@@ -1,1558 +1,1431 @@
+import { Direction, Difficulty, GridTemplate, ClueSlot } from '../core/types';
+import { validateSlotsBoundaries } from './validation-utils';
+
 /**
- * Template Generator for Swedish Arrow Crossword Puzzles
+ * Arrow Crossword Template Generator
+ * EXACT implementation based on "Generating Swedish-style Crossword Puzzle Masks 
+ * using Evolutionary Algorithms" by Jakob Julian Engel (2009)
  * 
- * Uses backtracking to GUARANTEE 100% coverage:
- * 1. Seed placement: Create initial connected structure
- * 2. Systematic expansion: Build outwards ensuring connectivity
- * 3. Backtracking fill: Guarantee every cell is filled
+ * This generator uses a memetic algorithm combining crossover operations with 
+ * hill climbing optimization as described in Chapter 4 of the thesis.
  */
-import { Direction, GridTemplate, ClueSlot, Difficulty } from '../core/types';
-import { getSlotCells, getAnswerOrientation, getNextCellAfterAnswer, getCellBeforeAnswer } from './direction-utils';
-import {   
-  hasAnswerClueOverlap,
-  recalculateCrossings,
-  validateOverlapsAreCrossings,
-  checkAnswerBoundaries
-} from './validation-utils';
-import { TEMPLATE_CONFIG, Size } from './template-config';
+
+// ============================================================================
+// Types (matching thesis definitions - Chapter 2.1)
+// ============================================================================
 
 /**
- * Check if a direction is valid for the top position in a split cell
+ * Field types in the mask (from thesis Figure 2.2):
+ * 0: Letter field
+ * 1: Definition field - arrow points RIGHT (→) - horizontal word
+ * 2: Definition field - arrow points DOWN (↓) - vertical word
+ * 3: Definition field - arrow points RIGHT-DOWN diagonal (↘) - vertical word starting below-right
+ * 4: Definition field - arrow points LEFT-DOWN diagonal (↙) - vertical word starting below-left  
+ * 5: Definition field - arrow points RIGHT from bottom (↗→) - horizontal word
+ * 6: Definition field - arrow points RIGHT from top (↘→) - horizontal word
+ * #: Cut-out field (blocked)
+ * 
+ * Per thesis: Types 1, 5, 6 define HORIZONTAL words
+ *            Types 2, 3, 4 define VERTICAL words
  */
-function isTopDirection(direction: Direction): boolean {
-  return direction === 'across' || direction === 'right-down' || direction === 'up-across';
+type FieldType = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '#';
+
+interface Mask {
+  rows: number;
+  cols: number;
+  grid: FieldType[][];
+  fitness?: number;
+  validityPenalty?: number;
+  qualityPenalty?: number;
+  potentialRating?: number;
+  localPenalties?: Map<string, number>;
 }
 
-/**
- * Check if a direction is valid for the bottom position in a split cell
- */
-function isBottomDirection(direction: Direction): boolean {
-  return direction === 'down' || direction === 'left-down';
-}
-
-/**
- * Check if a new direction is compatible with existing directions in a split cell
- */
-function isDirectionCompatibleWithCell(
-  newDirection: Direction,
-  existingDirections: Set<Direction>
-): boolean {
-  if (existingDirections.size === 0) {
-    return true; // Empty cell can accept any direction
-  }
-  
-  const isNewTop = isTopDirection(newDirection);
-  const isNewBottom = isBottomDirection(newDirection);
-  
-  if (!isNewTop && !isNewBottom) {
-    return false; // Not a valid split cell direction
-  }
-  
-  for (const existingDir of existingDirections) {
-    const isExistingTop = isTopDirection(existingDir);
-    const isExistingBottom = isBottomDirection(existingDir);
-    
-    if ((isNewTop && isExistingTop) || (isNewBottom && isExistingBottom)) {
-      return false; // Can't have two top or two bottom directions
-    }
-  }
-  
-  return true;
-}
-
-/**
- * Grid state for backtracking
- */
-interface GridState {
-  slots: ClueSlot[];
-  clueCells: Array<{ row: number; col: number; direction: Direction }>;
-  clueCellDirections: Map<string, Set<Direction>>;
-  answerCells: Map<string, { slotId: string; position: number }>;
-  blockedCells: Set<string>;
-  slotNumber: number;
-}
-
-/**
- * Find all valid placements for a given direction and position
- */
-function findValidPlacements(
-  direction: Direction,
-  startRow: number,
-  startCol: number,
-  config: { rows: number; cols: number },
-  state: GridState,
-  minLength: number = 2,
-  maxLength: number = 15
-): Array<{ length: number; answerCells: Array<{ row: number; col: number }>; crossings: number }> {
-  const validPlacements: Array<{ length: number; answerCells: Array<{ row: number; col: number }>; crossings: number }> = [];
-  
-  for (let length = maxLength; length >= minLength; length--) {
-    const tempSlot: ClueSlot = {
-      id: 'temp',
-      direction,
-      startRow,
-      startCol,
-      length,
-      crossings: []
-    };
-    
-    const testAnswerCells = getSlotCells(tempSlot);
-    
-    // Check bounds
-    const lastCell = testAnswerCells[testAnswerCells.length - 1];
-    if (lastCell.row < 0 || lastCell.row >= config.rows || lastCell.col < 0 || lastCell.col >= config.cols) {
-      continue;
-    }
-    
-    // Check boundaries
-    const answerCellPositions = new Set(state.answerCells.keys());
-    if (!checkAnswerBoundaries(direction, testAnswerCells, config.rows, config.cols, answerCellPositions)) {
-      continue;
-    }
-    
-    // Check clue cell compatibility
-    const clueKey = `${startRow},${startCol}`;
-    const directionsInCell = state.clueCellDirections.get(clueKey);
-    const isSplitCell = directionsInCell && directionsInCell.size > 0;
-    
-    if (directionsInCell) {
-      if (directionsInCell.has(direction) || !isDirectionCompatibleWithCell(direction, directionsInCell)) {
-        continue;
-      }
-    }
-    
-    // Check if clue cell conflicts
-    // For split cells, allow answer cells at clue position (they're from other compatible directions)
-    // Allow blocked cells - we can convert them to clue cells (aggressive split cell usage)
-    // Only block answer cells at clue position if it's NOT a split cell placement
-    if (!isSplitCell && state.answerCells.has(clueKey)) {
-      continue;
-    }
-    
-    // Check answer cells for conflicts and count crossings
-    let hasConflict = false;
-    const crossingSlots = new Set<string>();
-    const testOrientation = getAnswerOrientation(direction);
-    
-    for (const cell of testAnswerCells) {
-      const cellKey = `${cell.row},${cell.col}`;
-      
-      if (state.clueCellDirections.has(cellKey) && (state.clueCellDirections.get(cellKey)?.size ?? 0) > 0) {
-        hasConflict = true;
-        break;
-      }
-      
-      if (state.blockedCells.has(cellKey)) {
-        hasConflict = true;
-        break;
-      }
-      
-      if (state.answerCells.has(cellKey)) {
-        const existingSlotInfo = state.answerCells.get(cellKey);
-        if (existingSlotInfo) {
-          const existingSlot = state.slots.find(s => s.id === existingSlotInfo.slotId);
-          if (existingSlot) {
-            const existingOrientation = getAnswerOrientation(existingSlot.direction);
-            if (existingOrientation !== testOrientation) {
-              crossingSlots.add(existingSlotInfo.slotId);
-            } else {
-              hasConflict = true;
-              break;
-            }
-          }
-        }
-      }
-    }
-    
-    if (!hasConflict && crossingSlots.size <= TEMPLATE_CONFIG.CROSSINGS.MAX_INITIAL) {
-      validPlacements.push({
-        length,
-        answerCells: testAnswerCells,
-        crossings: crossingSlots.size
-      });
-    }
-  }
-  
-  return validPlacements;
-}
-
-/**
- * Get all empty cells in the grid
- */
-function getEmptyCells(
-  config: { rows: number; cols: number },
-  state: GridState
-): Array<{ row: number; col: number }> {
-  const emptyCells: Array<{ row: number; col: number }> = [];
-  
-  for (let r = 0; r < config.rows; r++) {
-    for (let c = 0; c < config.cols; c++) {
-      const cellKey = `${r},${c}`;
-      const hasClue = state.clueCellDirections.has(cellKey) && (state.clueCellDirections.get(cellKey)?.size ?? 0) > 0;
-      const isBlocked = state.blockedCells.has(cellKey);
-      
-      if (!hasClue && !state.answerCells.has(cellKey) && !isBlocked) {
-        emptyCells.push({ row: r, col: c });
-      }
-    }
-  }
-  
-  return emptyCells;
-}
-
-/**
- * Detect large empty regions using flood fill
- * Returns cells grouped by region, sorted by region size (largest first)
- */
-function detectEmptyRegions(
-  config: { rows: number; cols: number },
-  state: GridState
-): Array<Array<{ row: number; col: number }>> {
-  const emptyCells = getEmptyCells(config, state);
-  const visited = new Set<string>();
-  const regions: Array<Array<{ row: number; col: number }>> = [];
-  
-  for (const cell of emptyCells) {
-    const cellKey = `${cell.row},${cell.col}`;
-    if (visited.has(cellKey)) continue;
-    
-    // Flood fill to find connected empty region
-    const region: Array<{ row: number; col: number }> = [];
-    const queue: Array<{ row: number; col: number }> = [cell];
-    
-    while (queue.length > 0) {
-      const current = queue.shift()!;
-      const currentKey = `${current.row},${current.col}`;
-      
-      if (visited.has(currentKey)) continue;
-      visited.add(currentKey);
-      
-      // Check if this cell is actually empty
-      const hasClue = state.clueCellDirections.has(currentKey) && (state.clueCellDirections.get(currentKey)?.size ?? 0) > 0;
-      const isBlocked = state.blockedCells.has(currentKey);
-      const isAnswer = state.answerCells.has(currentKey);
-      
-      if (!hasClue && !isAnswer && !isBlocked) {
-        region.push(current);
-        
-        // Add neighbors to queue
-        for (let dr = -1; dr <= 1; dr++) {
-          for (let dc = -1; dc <= 1; dc++) {
-            if (dr === 0 && dc === 0) continue;
-            if (Math.abs(dr) + Math.abs(dc) > 1) continue; // Only orthogonal neighbors
-            
-            const neighborRow = current.row + dr;
-            const neighborCol = current.col + dc;
-            if (neighborRow >= 0 && neighborRow < config.rows && neighborCol >= 0 && neighborCol < config.cols) {
-              const neighborKey = `${neighborRow},${neighborCol}`;
-              if (!visited.has(neighborKey)) {
-                queue.push({ row: neighborRow, col: neighborCol });
-              }
-            }
-          }
-        }
-      }
-    }
-    
-    if (region.length > 0) {
-      regions.push(region);
-    }
-  }
-  
-  // Sort by size (largest first) - these are the problematic empty regions
-  regions.sort((a, b) => b.length - a.length);
-  return regions;
-}
-
-/**
- * Place a slot and return new state
- */
-function placeSlot(
-  slot: ClueSlot,
-  placement: { answerCells: Array<{ row: number; col: number }> },
-  config: { rows: number; cols: number },
-  state: GridState
-): GridState {
-  const newState: GridState = {
-    slots: [...state.slots, slot],
-    clueCells: [...state.clueCells, { row: slot.startRow, col: slot.startCol, direction: slot.direction }],
-    clueCellDirections: new Map(state.clueCellDirections),
-    answerCells: new Map(state.answerCells),
-    blockedCells: new Set(state.blockedCells),
-    slotNumber: state.slotNumber + 1
+interface GeneratorConfig {
+  rows: number;
+  cols: number;
+  populationSize: number;        // n in thesis
+  weakBreakCondition: number;    // bw in thesis (default 2000)
+  strongBreakCondition: number;  // bs in thesis (default 10000)
+  similarityThreshold: number;   // δ in thesis (default 0.1)
+  cutoutCells?: Array<{ row: number; col: number }>;
+  minPopulation?: number;       // floor so n never drops below this (avoids collapse)
+  maxIterations?: number;      // cap iterations (default 100)
+  quiet?: boolean;             // suppress per-iteration logs when true
+  // Fitness weights from thesis Chapter 3.2
+  weights: {
+    // Coverage penalties (Chapter 3.2.1)
+    uncoveredField: number;           // Type 1: completely uncovered
+    singleCoveredEnclosed: number;    // Type 2: covered once, enclosed
+    singleCoveredOpen: number;        // Type 3: covered once, not enclosed
+    doubleCoveredSameDirection: number; // Type 4: covered >1 in same direction
+    // Word length penalties (Chapter 3.2.2, Table 3.1)
+    wordLength: Record<number, number>;
+    longWordIntersectionMultiplier: number; // For words > 6 letters intersecting
+    // Clustering penalties (Chapter 3.2.3, Table 3.2)
+    clusterPenalty: (size: number, maxExtension: number, touchesBorder: boolean) => number;
+    // Invalid definition penalty (Chapter 3.2.4)
+    invalidDefinition: number;
+    // Dead end penalty (Chapter 3.2.5)
+    deadEnd: number;
   };
-  
-  // Add clue cell direction
-  const clueKey = `${slot.startRow},${slot.startCol}`;
-  if (!newState.clueCellDirections.has(clueKey)) {
-    newState.clueCellDirections.set(clueKey, new Set<Direction>());
-  }
-  newState.clueCellDirections.get(clueKey)!.add(slot.direction);
-  
-  // If this clue cell was previously blocked, remove it from blocked cells
-  // (we're converting a blocked cell into a clue cell - aggressive split cell usage)
-  if (newState.blockedCells.has(clueKey)) {
-    newState.blockedCells.delete(clueKey);
-  }
-  
-  // Add answer cells
-  for (let j = 0; j < placement.answerCells.length; j++) {
-    const cell = placement.answerCells[j];
-    newState.answerCells.set(`${cell.row},${cell.col}`, { slotId: slot.id, position: j });
-  }
-  
-  // Mark blocked cells to prevent word merging
-  // Block cells before/after answers UNLESS they're already clue cells (split cell scenario)
-  const firstCell = placement.answerCells[0];
-  const cellBefore = getCellBeforeAnswer(slot.direction, firstCell, config.rows, config.cols);
-  if (cellBefore && !newState.clueCellDirections.has(`${cellBefore.row},${cellBefore.col}`)) {
-    // Only block if it's not already an answer cell (shouldn't happen, but be safe)
-    if (!newState.answerCells.has(`${cellBefore.row},${cellBefore.col}`)) {
-      newState.blockedCells.add(`${cellBefore.row},${cellBefore.col}`);
-    }
-  }
-  
-  const lastCell = placement.answerCells[placement.answerCells.length - 1];
-  const cellAfter = getNextCellAfterAnswer(slot.direction, lastCell, config.rows, config.cols);
-  if (cellAfter && !newState.clueCellDirections.has(`${cellAfter.row},${cellAfter.col}`)) {
-    // Only block if it's not already an answer cell (shouldn't happen, but be safe)
-    if (!newState.answerCells.has(`${cellAfter.row},${cellAfter.col}`)) {
-      newState.blockedCells.add(`${cellAfter.row},${cellAfter.col}`);
-    }
-  }
-  
-  return newState;
 }
 
-/**
- * Backtracking algorithm to guarantee 100% coverage
- * Uses iterative deepening and aggressive pruning for efficiency
- */
-function backtrackFill(
-  config: { rows: number; cols: number; minSlots: number },
-  state: GridState,
-  allDirections: Direction[],
-  maxDepth: number = 500,
-  depth: number = 0,
-  startTime: number = Date.now()
-): GridState | null {
-  // Timeout after 30 seconds
-  if (Date.now() - startTime > 30000) {
-    return null;
-  }
-  
-  // Base case: Check if we've achieved 100% coverage
-  const emptyCells = getEmptyCells(config, state);
-  const totalCells = config.rows * config.cols;
-  const filledCells = state.answerCells.size + state.clueCellDirections.size;
-  const coverage = filledCells / totalCells;
-  
-  // Log progress every 50 depth levels
-  if (depth % 50 === 0 && depth > 0) {
-    console.log(`    🔍 Backtracking depth ${depth}: ${state.slots.length} slots, ${filledCells}/${totalCells} cells (${(coverage * 100).toFixed(1)}%), ${emptyCells.length} empty`);
-  }
-  
-  // Success: 100% coverage
-  if (emptyCells.length === 0 || coverage >= 1.0) {
-    if (state.slots.length >= config.minSlots) {
-      return state;
-    }
-  }
-  
-  // Prevent infinite recursion - more aggressive limits
-  if (depth >= maxDepth || state.slots.length > config.minSlots * 1.5) {
-    return null;
-  }
-  
-  // Early pruning: if we have too many empty cells relative to depth, this branch is unlikely to succeed
-  const emptyRatio = emptyCells.length / totalCells;
-  if (depth > 100 && emptyRatio > 0.3) {
-    return null; // Too many empty cells, unlikely to fill them all
-  }
-  
-  // Try to fill empty cells systematically
-  // Sort empty cells by how many neighbors are filled (prefer cells near existing structure)
-  const emptyCellsWithScore = emptyCells.map(cell => {
-    let score = 0;
-    for (let dr = -1; dr <= 1; dr++) {
-      for (let dc = -1; dc <= 1; dc++) {
-        if (dr === 0 && dc === 0) continue;
-        const neighborRow = cell.row + dr;
-        const neighborCol = cell.col + dc;
-        if (neighborRow >= 0 && neighborRow < config.rows && neighborCol >= 0 && neighborCol < config.cols) {
-          const neighborKey = `${neighborRow},${neighborCol}`;
-          if (state.answerCells.has(neighborKey) || state.clueCellDirections.has(neighborKey)) {
-            score++;
-          }
-        }
-      }
-    }
-    return { cell, score };
-  });
-  
-  // Sort by score (cells with more filled neighbors first)
-  emptyCellsWithScore.sort((a, b) => b.score - a.score);
-  
-  // Reduce candidates as depth increases (focus search)
-  const candidatesToTry = depth < 50 ? Math.min(5, emptyCellsWithScore.length) : Math.min(2, emptyCellsWithScore.length);
-  
-  for (let i = 0; i < candidatesToTry; i++) {
-    const { cell: targetCell } = emptyCellsWithScore[i];
-    
-    // Prioritize directions that create crossings (more efficient)
-    const directionsToTry = [...allDirections].sort((a, b) => {
-      // Prefer directions that would cross with existing slots
-      const aOrientation = getAnswerOrientation(a);
-      const bOrientation = getAnswerOrientation(b);
-      // Check if any nearby answer cells have perpendicular orientation
-      let aScore = 0, bScore = 0;
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          const neighborRow = targetCell.row + dr;
-          const neighborCol = targetCell.col + dc;
-          if (neighborRow >= 0 && neighborRow < config.rows && neighborCol >= 0 && neighborCol < config.cols) {
-            const neighborKey = `${neighborRow},${neighborCol}`;
-            const cellInfo = state.answerCells.get(neighborKey);
-            if (cellInfo) {
-              const existingSlot = state.slots.find(s => s.id === cellInfo.slotId);
-              if (existingSlot) {
-                const existingOrientation = getAnswerOrientation(existingSlot.direction);
-                if (existingOrientation !== aOrientation) aScore++;
-                if (existingOrientation !== bOrientation) bScore++;
-              }
-            }
-          }
-        }
-      }
-      return bScore - aScore;
-    });
-    
-    // Limit directions tried
-    const maxDirections = depth < 100 ? 6 : 3;
-    
-    for (let dirIdx = 0; dirIdx < Math.min(maxDirections, directionsToTry.length); dirIdx++) {
-      const direction = directionsToTry[dirIdx];
-      const placements = findValidPlacements(
-        direction,
-        targetCell.row,
-        targetCell.col,
-        config,
-        state,
-        2,
-        depth < 50 ? 10 : 6 // Shorter words at deeper levels
-      );
+// ============================================================================
+// Default Configuration (from thesis Chapter 3.2)
+// ============================================================================
+
+const DEFAULT_CONFIG: Partial<GeneratorConfig> = {
+  populationSize: 15,           // n = 15 from thesis Chapter 4.3
+  weakBreakCondition: 2000,     // bw = 2000 from thesis Chapter 4.3
+  strongBreakCondition: 10000,  // bs = 10000 from thesis Chapter 4.3
+  similarityThreshold: 0.1,     // δ = 0.1 from thesis Chapter 4.3
+  weights: {
+    // Table 3.1 and Chapter 3.2.1
+    uncoveredField: 1500,
+    singleCoveredEnclosed: 75,
+    singleCoveredOpen: 200,
+    doubleCoveredSameDirection: 600,
+    // Table 3.1 - Word length penalties
+    wordLength: {
+      0: 1800,
+      1: 1500,
+      2: 650,
+      3: 100,
+      4: 10,
+      5: 0,
+      6: 0,
+      7: 30,
+      8: 50,
+      9: 150,
+      10: 250,
+      11: 400,
+      12: 550,
+      13: 750,
+      14: 1000,
+      15: 1300
+    },
+    longWordIntersectionMultiplier: 1, // Product of lengths for words > 6
+    // Table 3.2 - Cluster penalties (simplified function based on table)
+    clusterPenalty: (size: number, maxExtension: number, touchesBorder: boolean): number => {
+      // Base penalties from Table 3.2
+      const basePenalties: Record<number, Record<number, number>> = {
+        1: { 1: 0 },
+        2: { 2: 150 },
+        3: { 2: 288, 3: 320 },
+        4: { 2: 542, 3: 603, 4: 670 },
+        5: { 3: 794, 4: 882, 5: 980 },
+        6: { 4: 1053, 6: 1300 },
+        7: { 5: 1620, 7: 2000 }
+      };
       
-      if (placements.length === 0) continue;
-      
-      // Try placements in order (prefer longer words that fill more cells)
-      const sortedPlacements = placements.sort((a, b) => {
-        // Prefer placements that fill more empty cells
-        const aFillsEmpty = a.answerCells.filter(c => emptyCells.some(e => e.row === c.row && e.col === c.col)).length;
-        const bFillsEmpty = b.answerCells.filter(c => emptyCells.some(e => e.row === c.row && e.col === c.col)).length;
-        if (aFillsEmpty !== bFillsEmpty) return bFillsEmpty - aFillsEmpty;
-        return b.length - a.length;
-      });
-      
-      // Limit placements tried per direction
-      const maxPlacements = depth < 50 ? sortedPlacements.length : Math.min(3, sortedPlacements.length);
-      
-      for (let pIdx = 0; pIdx < maxPlacements; pIdx++) {
-        const placement = sortedPlacements[pIdx];
-        const slot: ClueSlot = {
-          id: `slot_${state.slotNumber}`,
-          direction,
-          startRow: targetCell.row,
-          startCol: targetCell.col,
-          length: placement.length,
-          crossings: []
-        };
-        
-        const newState = placeSlot(slot, placement, config, state);
-        const result = backtrackFill(config, newState, allDirections, maxDepth, depth + 1, startTime);
-        
-        if (result !== null) {
-          return result;
-        }
-      }
-    }
-    
-    // Try split cell placement (AGGRESSIVE - removed depth limit for 100% coverage)
-    // Split cells are ESSENTIAL for reaching 100% coverage
-    if (state.clueCellDirections.size > 0) {
-      const existingClueCells = Array.from(state.clueCellDirections.keys());
-      // Try MANY more split cell attempts - increased from 3
-      const maxSplitAttempts = depth < 100 
-        ? Math.min(20, existingClueCells.length) // More attempts at shallow depths
-        : Math.min(10, existingClueCells.length); // Still try at deeper depths
-      
-      // Score clue cells by empty neighbors
-      const clueCellsWithScore = existingClueCells.map(clueCellKey => {
-        const [cellRow, cellCol] = clueCellKey.split(',').map(Number);
-        let emptyNeighbors = 0;
-        const directionsInCell = state.clueCellDirections.get(clueCellKey);
-        const compatibleCount = directionsInCell ? allDirections.filter(d => 
-          !directionsInCell.has(d) && isDirectionCompatibleWithCell(d, directionsInCell)
-        ).length : 0;
-        
-        for (let dr = -1; dr <= 1; dr++) {
-          for (let dc = -1; dc <= 1; dc++) {
-            if (dr === 0 && dc === 0) continue;
-            const neighborRow = cellRow + dr;
-            const neighborCol = cellCol + dc;
-            if (neighborRow >= 0 && neighborRow < config.rows && neighborCol >= 0 && neighborCol < config.cols) {
-              const neighborKey = `${neighborRow},${neighborCol}`;
-              const hasClue = state.clueCellDirections.has(neighborKey) && (state.clueCellDirections.get(neighborKey)?.size ?? 0) > 0;
-              const isBlocked = state.blockedCells.has(neighborKey);
-              const isAnswer = state.answerCells.has(neighborKey);
-              if (!hasClue && !isAnswer && !isBlocked) {
-                emptyNeighbors++;
-              }
-            }
-          }
-        }
-        
-        return { clueCellKey, emptyNeighbors, compatibleCount, score: emptyNeighbors * 10 + compatibleCount };
-      });
-      
-      clueCellsWithScore.sort((a, b) => b.score - a.score);
-      const sortedClueCells = clueCellsWithScore.map(item => item.clueCellKey).slice(0, maxSplitAttempts);
-      
-      for (let splitIdx = 0; splitIdx < sortedClueCells.length; splitIdx++) {
-        const clueCellKey = sortedClueCells[splitIdx];
-        const [cellRow, cellCol] = clueCellKey.split(',').map(Number);
-        
-        // Try only compatible directions
-        const directionsInCell = state.clueCellDirections.get(clueCellKey);
-        if (!directionsInCell) continue;
-        
-        const compatibleDirections = allDirections.filter(d => 
-          !directionsInCell.has(d) && isDirectionCompatibleWithCell(d, directionsInCell)
+      let penalty: number;
+      if (size <= 7 && basePenalties[size] && basePenalties[size][maxExtension]) {
+        penalty = basePenalties[size][maxExtension];
+      } else if (size <= 7 && basePenalties[size]) {
+        // Find closest extension
+        const extensions = Object.keys(basePenalties[size]).map(Number);
+        const closest = extensions.reduce((a, b) => 
+          Math.abs(b - maxExtension) < Math.abs(a - maxExtension) ? b : a
         );
-        
-        // Try ALL compatible directions (increased from 2)
-        for (const direction of compatibleDirections) {
-          const placements = findValidPlacements(
-            direction,
-            cellRow,
-            cellCol,
-            config,
-            state,
-            2,
-            depth < 50 ? 10 : 8 // Longer words at shallow depths
-          );
-          
-          if (placements.length > 0) {
-            // Prefer placements that fill more empty cells
-            const bestPlacement = placements.sort((a, b) => {
-              const emptyCellsNow = getEmptyCells(config, state);
-              const aFillsEmpty = a.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
-              const bFillsEmpty = b.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
-              if (aFillsEmpty !== bFillsEmpty) return bFillsEmpty - aFillsEmpty;
-              return b.length - a.length;
-            })[0];
-            
-            const slot: ClueSlot = {
-              id: `slot_${state.slotNumber}`,
-              direction,
-              startRow: cellRow,
-              startCol: cellCol,
-              length: bestPlacement.length,
-              crossings: []
-            };
-            
-            const newState = placeSlot(slot, bestPlacement, config, state);
-            const result = backtrackFill(config, newState, allDirections, maxDepth, depth + 1, startTime);
-            
-            if (result !== null) {
-              return result;
-            }
-          }
-        }
+        penalty = basePenalties[size][closest];
+      } else {
+        // Extrapolate for larger clusters
+        penalty = 2000 + (size - 7) * 500;
       }
-    }
+      
+      // Per thesis: "definition fields at the left or top border of the mask 
+      // are only counted half"
+      return touchesBorder ? penalty * 0.5 : penalty;
+    },
+    invalidDefinition: 2000,
+    deadEnd: 400
   }
-  
-  return null; // No solution found from this state
+};
+
+// ============================================================================
+// Direction Utilities (from thesis Chapter 2.1)
+// ============================================================================
+
+/**
+ * Get the direction vector for each definition field type
+ * From thesis Figure 2.2:
+ * Types 1, 5, 6 → HORIZONTAL words (move right along row)
+ * Types 2, 3, 4 → VERTICAL words (move down along column)
+ */
+function getWordDirection(fieldType: FieldType): { dr: number; dc: number } | null {
+  switch (fieldType) {
+    case '1': return { dr: 0, dc: 1 };   // Right →
+    case '2': return { dr: 1, dc: 0 };   // Down ↓
+    case '3': return { dr: 1, dc: 0 };   // Vertical word (starts at specific position)
+    case '4': return { dr: 1, dc: 0 };   // Vertical word (starts at specific position)
+    case '5': return { dr: 0, dc: 1 };   // Horizontal word
+    case '6': return { dr: 0, dc: 1 };   // Horizontal word
+    default: return null;
+  }
 }
 
-export function generateTemplate(
-  difficulty: Difficulty = Difficulty.EASY
-): GridTemplate {
-  const getSizeForDifficulty = (difficulty: Difficulty): Size => {
-    const random = Math.random();
-    switch (difficulty) {
-      case Difficulty.EASY:
-        if (random < 0.33) return 'xsmall';
-        if (random < 0.67) return 'small';
-        return 'medium';
-      case Difficulty.MEDIUM:
-        if (random < 0.33) return 'xsmall';
-        if (random < 0.67) return 'small';
-        return 'medium';
-      case Difficulty.CHALLENGING:
-        if (random < 0.25) return 'small';
-        if (random < 0.5) return 'medium';
-        if (random < 0.75) return 'large';
-        return 'xlarge';
-      case Difficulty.HARD:
-        if (random < 0.33) return 'large';
-        if (random < 0.67) return 'xlarge';
-        return 'xlarge';
-      case Difficulty.EXPERT:
-        if (random < 0.5) return 'xlarge';
-        return 'xlarge';
-      default:
-        return 'medium';
-    }
+/**
+ * Get starting position offset for word based on definition field type
+ * From thesis Figure 2.2
+ */
+function getWordStartOffset(fieldType: FieldType): { dr: number; dc: number } | null {
+  switch (fieldType) {
+    case '1': return { dr: 0, dc: 1 };   // Word starts directly to the right
+    case '2': return { dr: 1, dc: 0 };   // Word starts directly below
+    case '3': return { dr: 1, dc: 1 };   // Word starts diagonally down-right, then goes down
+    case '4': return { dr: 1, dc: -1 };  // Word starts diagonally down-left, then goes down
+    case '5': return { dr: 1, dc: 0 };   // Word starts below, then goes right (from bottom of def field)
+    case '6': return { dr: -1, dc: 1 };  // Word starts up-right, then goes right (from top of def field)
+    default: return null;
+  }
+}
+
+/**
+ * Check if definition field type creates horizontal word
+ * Per thesis: "Words defined by a definition field of type 1,5 or 6 are called horizontal words"
+ */
+function isHorizontalWord(fieldType: FieldType): boolean {
+  return fieldType === '1' || fieldType === '5' || fieldType === '6';
+}
+
+/**
+ * Check if definition field type creates vertical word
+ * Per thesis: "words defined by a definition field of type 2,3 or 4 are called vertical words"
+ */
+function isVerticalWord(fieldType: FieldType): boolean {
+  return fieldType === '2' || fieldType === '3' || fieldType === '4';
+}
+
+/**
+ * Maps internal field types to output Direction type
+ */
+function fieldTypeToDirection(fieldType: FieldType): Direction | null {
+  if (isHorizontalWord(fieldType)) return 'across';
+  if (isVerticalWord(fieldType)) return 'down';
+  return null;
+}
+
+/**
+ * Check if field type is a definition field
+ */
+function isDefinitionField(fieldType: FieldType): boolean {
+  return ['1', '2', '3', '4', '5', '6'].includes(fieldType);
+}
+
+/**
+ * Check if field type is a letter field
+ */
+function isLetterField(fieldType: FieldType): boolean {
+  return fieldType === '0';
+}
+
+/**
+ * Check if field type is blocked (non-letter)
+ */
+function isBlockedField(fieldType: FieldType): boolean {
+  return fieldType !== '0';
+}
+
+// ============================================================================
+// Mask Operations
+// ============================================================================
+
+function createEmptyMask(rows: number, cols: number): Mask {
+  const grid: FieldType[][] = [];
+  for (let r = 0; r < rows; r++) {
+    grid.push(new Array(cols).fill('0'));
+  }
+  return { rows, cols, grid };
+}
+
+function cloneMask(mask: Mask): Mask {
+  return {
+    rows: mask.rows,
+    cols: mask.cols,
+    grid: mask.grid.map(row => [...row]),
+    fitness: mask.fitness,
+    validityPenalty: mask.validityPenalty,
+    qualityPenalty: mask.qualityPenalty,
+    potentialRating: mask.potentialRating
   };
-  
-  const selectedSize = getSizeForDifficulty(difficulty);
-  
-  const sizeConfig: Record<Size, { rows: number; cols: number; minSlots: number; }> = {
-    xsmall: { rows: 9, cols: 9, minSlots: 16 },
-    small: { rows: 10, cols: 10, minSlots: 22 },
-    medium: { rows: 11, cols: 11, minSlots: 22 },
-    large: { rows: 12, cols: 12, minSlots: 22 },
-    xlarge: { rows: 13, cols: 13, minSlots: 22 },
-    xxlarge: { rows: 14, cols: 14, minSlots: 22 }
-  };
-  
-  const config = sizeConfig[selectedSize];
-  const allDirections: Direction[] = ['across', 'down', 'right-down', 'left-down', 'down-across', 'up-across'];
-  const initialGridCells = config.rows * config.cols;
-  
-  // PHASE 1: Seed Placement - Create initial connected structure with variety
-  console.log(`  🌱 Phase 1: Seed placement`);
-  let state: GridState = {
-    slots: [],
-    clueCells: [],
-    clueCellDirections: new Map(),
-    answerCells: new Map(),
-    blockedCells: new Set(),
-    slotNumber: 1
-  };
-  
-  // Use diverse directions in seed phase for more interesting templates
-  // Mix of standard and diagonal directions
-  const seedDirections: Direction[] = ['across', 'down', 'right-down', 'left-down', 'down-across', 'up-across'];
-  const centerRow = Math.floor(config.rows / 2);
-  const centerCol = Math.floor(config.cols / 2);
-  
-  // Place initial seeds with variety in directions and word lengths
-  const seedCount = Math.min(6, config.minSlots);
-  for (let i = 0; i < seedCount; i++) {
-    const direction = seedDirections[i % seedDirections.length];
-    
-    let placed = false;
-    // Try multiple positions around center for better coverage
-    const offsets = [
-      { dr: 0, dc: 0 },
-      { dr: -1, dc: 0 },
-      { dr: 1, dc: 0 },
-      { dr: 0, dc: -1 },
-      { dr: 0, dc: 1 },
-      { dr: -1, dc: -1 },
-      { dr: 1, dc: 1 }
-    ];
-    
-    for (const offset of offsets) {
-      const startRow = centerRow + offset.dr;
-      const startCol = centerCol + offset.dc;
-      
-      if (startRow < 0 || startRow >= config.rows || startCol < 0 || startCol >= config.cols) continue;
-      
-      // Encourage longer words in seed phase (4-10 letters) for more interesting structure
-      const placements = findValidPlacements(
-        direction,
-        startRow,
-        startCol,
-        config,
-        state,
-        4,
-        10
-      );
-      
-      if (placements.length > 0) {
-        // Balance: prefer some crossings (1-3) for interest, but not too many
-        // Also prefer longer words for better structure
-        const bestPlacement = placements.sort((a, b) => {
-          // Prefer crossings between 1-3 (interesting but solvable)
-          const aCrossingScore = a.crossings >= 1 && a.crossings <= 3 ? 10 : (a.crossings === 0 ? 5 : 0);
-          const bCrossingScore = b.crossings >= 1 && b.crossings <= 3 ? 10 : (b.crossings === 0 ? 5 : 0);
-          if (aCrossingScore !== bCrossingScore) return bCrossingScore - aCrossingScore;
-          // Then prefer longer words
-          return b.length - a.length;
-        })[0];
-        
-        const slot: ClueSlot = {
-          id: `slot_${state.slotNumber}`,
-          direction,
+}
+
+function isValidCoord(mask: Mask, row: number, col: number): boolean {
+  return row >= 0 && row < mask.rows && col >= 0 && col < mask.cols;
+}
+
+function getField(mask: Mask, row: number, col: number): FieldType | null {
+  if (!isValidCoord(mask, row, col)) return null;
+  return mask.grid[row][col];
+}
+
+function setField(mask: Mask, row: number, col: number, fieldType: FieldType): void {
+  if (isValidCoord(mask, row, col)) {
+    mask.grid[row][col] = fieldType;
+  }
+}
+
+// ============================================================================
+// Word Detection (from thesis Chapter 2.1)
+// ============================================================================
+
+interface WordInfo {
+  definitionRow: number;
+  definitionCol: number;
+  definitionType: FieldType;
+  startRow: number;
+  startCol: number;
+  length: number;
+  direction: { dr: number; dc: number };
+  letters: Array<{ row: number; col: number }>;
+  isHorizontal: boolean;
+}
+
+/**
+ * Find all words defined by definition fields in the mask
+ * Per thesis: "The word starts at a field dependent on the type of its definition field, 
+ * and continues along the corresponding row or column, until either the end of the grid 
+ * is reached, or the next field is not a letter field."
+ */
+function findAllWords(mask: Mask): WordInfo[] {
+  const words: WordInfo[] = [];
+
+  for (let r = 0; r < mask.rows; r++) {
+    for (let c = 0; c < mask.cols; c++) {
+      const fieldType = mask.grid[r][c];
+      if (!isDefinitionField(fieldType)) continue;
+
+      const startOffset = getWordStartOffset(fieldType);
+      const dir = getWordDirection(fieldType);
+      if (!startOffset || !dir) continue;
+
+      // Find start position
+      const startRow = r + startOffset.dr;
+      const startCol = c + startOffset.dc;
+
+      // Check if start position is valid
+      if (!isValidCoord(mask, startRow, startCol)) {
+        // Word of length 0
+        words.push({
+          definitionRow: r,
+          definitionCol: c,
+          definitionType: fieldType,
           startRow,
           startCol,
-          length: bestPlacement.length,
-          crossings: []
-        };
-        
-        state = placeSlot(slot, bestPlacement, config, state);
-        placed = true;
-        break;
-      }
-    }
-  }
-  
-  console.log(`  📊 After seed: ${state.slots.length} slots, ${state.answerCells.size + state.clueCellDirections.size}/${initialGridCells} cells filled`);
-  
-  // PHASE 2: Greedy Expansion - Build outwards efficiently until 100% coverage
-  console.log(`  🔗 Phase 2: Greedy expansion to 100% coverage`);
-  const maxGreedyAttempts = 200000; // Increased for better coverage
-  let greedyAttempts = 0;
-  let lastProgressLog = Date.now();
-  let consecutiveFailures = 0;
-  
-  // Track direction usage for professional distribution
-  const directionUsage = new Map<Direction, number>();
-  for (const dir of allDirections) {
-    directionUsage.set(dir, 0);
-  }
-  for (const slot of state.slots) {
-    directionUsage.set(slot.direction, (directionUsage.get(slot.direction) || 0) + 1);
-  }
-  
-  while (greedyAttempts < maxGreedyAttempts) {
-    greedyAttempts++;
-    consecutiveFailures++;
-    
-    const emptyCells = getEmptyCells(config, state);
-    const totalCells = config.rows * config.cols;
-    const filledCells = state.answerCells.size + state.clueCellDirections.size;
-    const coverage = filledCells / totalCells;
-    
-    // Log progress every 5 seconds
-    if (Date.now() - lastProgressLog > 5000) {
-      console.log(`    📊 Progress: ${state.slots.length} slots, ${filledCells}/${totalCells} cells (${(coverage * 100).toFixed(1)}%), ${emptyCells.length} empty cells`);
-      lastProgressLog = Date.now();
-    }
-    
-    // STRICT: Only accept 100% coverage
-    if (emptyCells.length === 0 && coverage >= 1.0) {
-      console.log(`  ✅ All cells filled via greedy expansion!`);
-      break;
-    }
-    
-    // When stuck, try more aggressive strategies
-    const isStuck = consecutiveFailures > 50; // More aggressive threshold
-    
-    let placed = false;
-    
-    // Strategy 0: Detect and fill large empty regions first (prevents big empty squares)
-    if (!placed && emptyCells.length > 5) {
-      const emptyRegions = detectEmptyRegions(config, state);
-      const largeRegions = emptyRegions.filter(region => region.length >= 4); // Regions with 4+ cells
-      
-      if (largeRegions.length > 0) {
-        // Prioritize filling the largest empty region
-        const targetRegion = largeRegions[0];
-        
-        // Score cells in this region by how many neighbors they have (prefer edge cells)
-        const regionCellsWithScore = targetRegion.map(cell => {
-          let neighborScore = 0;
-          let crossingScore = 0;
-          
-          for (let dr = -1; dr <= 1; dr++) {
-            for (let dc = -1; dc <= 1; dc++) {
-              if (dr === 0 && dc === 0) continue;
-              const neighborRow = cell.row + dr;
-              const neighborCol = cell.col + dc;
-              if (neighborRow >= 0 && neighborRow < config.rows && neighborCol >= 0 && neighborCol < config.cols) {
-                const neighborKey = `${neighborRow},${neighborCol}`;
-                if (state.answerCells.has(neighborKey)) {
-                  neighborScore += 3; // Higher weight for answer cells
-                  crossingScore += 1;
-                } else if (state.clueCellDirections.has(neighborKey)) {
-                  neighborScore += 2;
-                }
-              }
-            }
-          }
-          
-          return { 
-            cell, 
-            score: neighborScore * 10 + crossingScore * 5 
-          };
+          length: 0,
+          direction: dir,
+          letters: [],
+          isHorizontal: isHorizontalWord(fieldType)
         });
-        
-        regionCellsWithScore.sort((a, b) => b.score - a.score);
-        
-        // Try top cells from the large empty region
-        for (let candidateIdx = 0; candidateIdx < Math.min(5, regionCellsWithScore.length) && !placed; candidateIdx++) {
-          const targetCell = regionCellsWithScore[candidateIdx].cell;
-          
-          // Try all directions
-          for (const direction of allDirections) {
-            const placements = findValidPlacements(
-              direction,
-              targetCell.row,
-              targetCell.col,
-              config,
-              state,
-              2,
-              12
-            );
-            
-            if (placements.length > 0) {
-              // Prefer interesting crossings (1-4) and longer words
-              const bestPlacement = placements.sort((a, b) => {
-                // Prefer 1-4 crossings (interesting but solvable)
-                const aCrossingScore = a.crossings >= 1 && a.crossings <= 4 ? 10 : (a.crossings === 0 ? 5 : 0);
-                const bCrossingScore = b.crossings >= 1 && b.crossings <= 4 ? 10 : (b.crossings === 0 ? 5 : 0);
-                if (aCrossingScore !== bCrossingScore) return bCrossingScore - aCrossingScore;
-                const aFillsEmpty = a.answerCells.filter(c => emptyCells.some(e => e.row === c.row && e.col === c.col)).length;
-                const bFillsEmpty = b.answerCells.filter(c => emptyCells.some(e => e.row === c.row && e.col === c.col)).length;
-                if (aFillsEmpty !== bFillsEmpty) return bFillsEmpty - aFillsEmpty;
-                return b.length - a.length; // Prefer longer words
-              })[0];
-              
-              const slot: ClueSlot = {
-                id: `slot_${state.slotNumber}`,
-                direction,
-                startRow: targetCell.row,
-                startCol: targetCell.col,
-                length: bestPlacement.length,
-                crossings: []
-              };
-              
-              state = placeSlot(slot, bestPlacement, config, state);
-              placed = true;
-              consecutiveFailures = 0;
-              break;
-            }
-          }
-        }
+        continue;
       }
-    }
-    
-    // Strategy 1: Try placing clue cells at blocked positions (aggressive split cell usage)
-    // This converts blocked cells into clue cells, reducing blocked cells and improving coverage
-    if (!placed && state.blockedCells.size > 0) {
-      const blockedCellsArray = Array.from(state.blockedCells);
-      // Prioritize blocked cells that are adjacent to answer cells (better clue positions)
-      const blockedCellsWithScore = blockedCellsArray.map(cellKey => {
-        const [row, col] = cellKey.split(',').map(Number);
-        let neighborScore = 0;
-        
-        for (let dr = -1; dr <= 1; dr++) {
-          for (let dc = -1; dc <= 1; dc++) {
-            if (dr === 0 && dc === 0) continue;
-            const neighborRow = row + dr;
-            const neighborCol = col + dc;
-            if (neighborRow >= 0 && neighborRow < config.rows && neighborCol >= 0 && neighborCol < config.cols) {
-              const neighborKey = `${neighborRow},${neighborCol}`;
-              if (state.answerCells.has(neighborKey)) {
-                neighborScore += 2; // Answer cells nearby make this a good clue position
-              } else if (state.clueCellDirections.has(neighborKey)) {
-                neighborScore += 1;
-              }
-            }
-          }
-        }
-        
-        return { cellKey, row, col, score: neighborScore };
+
+      // Collect letters - continue until non-letter or grid boundary
+      const letters: Array<{ row: number; col: number }> = [];
+      let cr = startRow;
+      let cc = startCol;
+
+      while (isValidCoord(mask, cr, cc) && isLetterField(mask.grid[cr][cc])) {
+        letters.push({ row: cr, col: cc });
+        cr += dir.dr;
+        cc += dir.dc;
+      }
+
+      words.push({
+        definitionRow: r,
+        definitionCol: c,
+        definitionType: fieldType,
+        startRow,
+        startCol,
+        length: letters.length,
+        direction: dir,
+        letters,
+        isHorizontal: isHorizontalWord(fieldType)
       });
-      
-      blockedCellsWithScore.sort((a, b) => b.score - a.score);
-      
-      // Try top blocked cells (those with most answer neighbors)
-      const blockedCellsToTry = Math.min(10, blockedCellsWithScore.length);
-      
-      for (let blockedIdx = 0; blockedIdx < blockedCellsToTry && !placed; blockedIdx++) {
-        const { row, col } = blockedCellsWithScore[blockedIdx];
-        
-        // Try all directions from this blocked cell position
-        // Prioritize diagonal directions for more interesting layouts
-        const sortedDirections = [...allDirections].sort((a, b) => {
-          const aIsDiagonal = a.includes('down') || a.includes('across');
-          const bIsDiagonal = b.includes('down') || b.includes('across');
-          if (aIsDiagonal && !bIsDiagonal) return -1;
-          if (!aIsDiagonal && bIsDiagonal) return 1;
-          return 0;
-        });
-        
-        for (const direction of sortedDirections) {
-          const placements = findValidPlacements(
-            direction,
-            row,
-            col,
-            config,
-            state,
-            4, // Encourage longer words (4+)
-            12 // Allow medium-length words
-          );
-          
-          if (placements.length > 0) {
-            // Prefer interesting crossings (1-4) and longer words
-            const bestPlacement = placements.sort((a, b) => {
-              // Prefer 1-4 crossings (interesting but solvable)
-              const aCrossingScore = a.crossings >= 1 && a.crossings <= 4 ? 10 : (a.crossings === 0 ? 5 : 0);
-              const bCrossingScore = b.crossings >= 1 && b.crossings <= 4 ? 10 : (b.crossings === 0 ? 5 : 0);
-              if (aCrossingScore !== bCrossingScore) return bCrossingScore - aCrossingScore;
-              const emptyCellsNow = getEmptyCells(config, state);
-              const aFillsEmpty = a.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
-              const bFillsEmpty = b.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
-              if (aFillsEmpty !== bFillsEmpty) return bFillsEmpty - aFillsEmpty;
-              return b.length - a.length; // Prefer longer words
-            })[0];
-            
-            const slot: ClueSlot = {
-              id: `slot_${state.slotNumber}`,
-              direction,
-              startRow: row,
-              startCol: col,
-              length: bestPlacement.length,
-              crossings: []
-            };
-            
-            // Place the slot - this will convert the blocked cell into a clue cell
-            state = placeSlot(slot, bestPlacement, config, state);
-            placed = true;
-            consecutiveFailures = 0;
-            break;
-          }
-        }
-      }
-    }
-    
-    // Strategy 2: Try empty cells systematically (prioritize those with neighbors)
-    if (!placed) {
-      // Calculate direction diversity to encourage variety - STRONG preference for underused directions
-      const directionCounts = new Map<Direction, number>();
-      for (const slot of state.slots) {
-        directionCounts.set(slot.direction, (directionCounts.get(slot.direction) || 0) + 1);
-      }
-      
-      // Update directionUsage map
-      for (const slot of state.slots) {
-        directionUsage.set(slot.direction, (directionUsage.get(slot.direction) || 0) + 1);
-      }
-      
-      const centerRow = Math.floor(config.rows / 2);
-      const centerCol = Math.floor(config.cols / 2);
-      const emptyCellsWithScore = emptyCells.map(cell => {
-        let neighborScore = 0;
-        let crossingScore = 0;
-        
-        for (let dr = -1; dr <= 1; dr++) {
-          for (let dc = -1; dc <= 1; dc++) {
-            if (dr === 0 && dc === 0) continue;
-            const neighborRow = cell.row + dr;
-            const neighborCol = cell.col + dc;
-            if (neighborRow >= 0 && neighborRow < config.rows && neighborCol >= 0 && neighborCol < config.cols) {
-              const neighborKey = `${neighborRow},${neighborCol}`;
-              if (state.answerCells.has(neighborKey)) {
-                neighborScore += 2;
-                const cellInfo = state.answerCells.get(neighborKey);
-                if (cellInfo) {
-                  crossingScore += 1;
-                }
-              } else if (state.clueCellDirections.has(neighborKey)) {
-                neighborScore += 1;
-              }
-            }
-          }
-        }
-        
-        const distanceFromCenter = Math.abs(cell.row - centerRow) + Math.abs(cell.col - centerCol);
-        const centerScore = Math.max(0, 10 - distanceFromCenter);
-        
-        return { 
-          cell, 
-          score: neighborScore * 10 + crossingScore * 5 + centerScore 
-        };
-      });
-      
-      emptyCellsWithScore.sort((a, b) => b.score - a.score);
-      
-      // Try more candidates when stuck - be more aggressive
-      const candidatesToTry = isStuck ? Math.min(emptyCells.length, 50) : Math.min(20, emptyCells.length);
-      
-      for (let candidateIdx = 0; candidateIdx < candidatesToTry && !placed; candidateIdx++) {
-        const targetCell = emptyCellsWithScore[candidateIdx].cell;
-        
-        // Score directions: STRONG preference for underused directions for professional variety
-        const directionsToTry = [...allDirections].sort((a, b) => {
-          const aOrientation = getAnswerOrientation(a);
-          const bOrientation = getAnswerOrientation(b);
-          
-          // STRONG diversity bonus: prefer directions we haven't used much (multiply by 10 for stronger effect)
-          const aCount = directionUsage.get(a) || 0;
-          const bCount = directionUsage.get(b) || 0;
-          const totalSlots = state.slots.length;
-          const aRatio = totalSlots > 0 ? aCount / totalSlots : 0;
-          const bRatio = totalSlots > 0 ? bCount / totalSlots : 0;
-          // Prefer directions that are used less than average (target ~16.7% each for 6 directions)
-          const diversityBonus = (bRatio < 0.167 ? 20 : 0) - (aRatio < 0.167 ? 20 : 0) + (bCount - aCount) * 5;
-          
-          // Crossing bonus: prefer directions that create crossings (1-4 crossings is interesting)
-          let aCrossingScore = 0, bCrossingScore = 0;
-          for (let dr = -1; dr <= 1; dr++) {
-            for (let dc = -1; dc <= 1; dc++) {
-              const neighborRow = targetCell.row + dr;
-              const neighborCol = targetCell.col + dc;
-              if (neighborRow >= 0 && neighborRow < config.rows && neighborCol >= 0 && neighborCol < config.cols) {
-                const neighborKey = `${neighborRow},${neighborCol}`;
-                const cellInfo = state.answerCells.get(neighborKey);
-                if (cellInfo) {
-                  const existingSlot = state.slots.find(s => s.id === cellInfo.slotId);
-                  if (existingSlot) {
-                    const existingOrientation = getAnswerOrientation(existingSlot.direction);
-                    if (existingOrientation !== aOrientation) aCrossingScore += 5;
-                    if (existingOrientation !== bOrientation) bCrossingScore += 5;
-                  }
-                }
-              }
-            }
-          }
-          
-          // Combine scores: diversity is VERY important for professional look
-          return (bCrossingScore + diversityBonus) - (aCrossingScore + diversityBonus);
-        });
-        
-        // Try all directions - ensure we use all 6 directions
-        for (const direction of directionsToTry) {
-          // Encourage longer words (4-12) for more interesting templates, shorter only when stuck
-          const maxLength = isStuck ? 8 : 12;
-          const minLength = isStuck ? 2 : 4;
-          
-          const placements = findValidPlacements(
-            direction,
-            targetCell.row,
-            targetCell.col,
-            config,
-            state,
-            minLength,
-            maxLength
-          );
-          
-          if (placements.length > 0) {
-            // Balance crossings: prefer 1-4 crossings (interesting but solvable)
-            // Also prefer longer words and filling more empty cells
-            const bestPlacement = placements.sort((a, b) => {
-              // Crossing score: 1-4 crossings is ideal (interesting but solvable)
-              const aCrossingScore = a.crossings >= 1 && a.crossings <= 4 ? 10 : (a.crossings === 0 ? 5 : 0);
-              const bCrossingScore = b.crossings >= 1 && b.crossings <= 4 ? 10 : (b.crossings === 0 ? 5 : 0);
-              if (aCrossingScore !== bCrossingScore) return bCrossingScore - aCrossingScore;
-              
-              // Second priority: fill more empty cells
-              const aFillsEmpty = a.answerCells.filter(c => emptyCells.some(e => e.row === c.row && e.col === c.col)).length;
-              const bFillsEmpty = b.answerCells.filter(c => emptyCells.some(e => e.row === c.row && e.col === c.col)).length;
-              if (aFillsEmpty !== bFillsEmpty) return bFillsEmpty - aFillsEmpty;
-              
-              // Third priority: prefer longer words (more interesting)
-              return b.length - a.length;
-            })[0];
-            
-            const slot: ClueSlot = {
-              id: `slot_${state.slotNumber}`,
-              direction,
-              startRow: targetCell.row,
-              startCol: targetCell.col,
-              length: bestPlacement.length,
-              crossings: []
-            };
-            
-            state = placeSlot(slot, bestPlacement, config, state);
-            directionUsage.set(direction, (directionUsage.get(direction) || 0) + 1);
-            placed = true;
-            consecutiveFailures = 0;
-            break;
-          }
-        }
-      }
-    }
-    
-    // Strategy 3: Try split cell placement (AGGRESSIVE - split cells are key for 100% coverage)
-    // REMOVED depth limit - always try split cells for maximum coverage
-    if (!placed && state.clueCellDirections.size > 0) {
-      const existingClueCells = Array.from(state.clueCellDirections.keys());
-      // Try MANY more clue cells - split cells are essential for 100% coverage
-      const clueCellsToTry = isStuck 
-        ? existingClueCells.slice(0, Math.min(100, existingClueCells.length)) // Increased from 30
-        : existingClueCells.slice(0, Math.min(50, existingClueCells.length)); // Increased from 20
-      
-      // Score clue cells by how many empty neighbors they have (prioritize those that can fill empty cells)
-      const clueCellsWithScore = existingClueCells.map(clueCellKey => {
-        const [cellRow, cellCol] = clueCellKey.split(',').map(Number);
-        let emptyNeighbors = 0;
-        const directionsInCell = state.clueCellDirections.get(clueCellKey);
-        const compatibleCount = directionsInCell ? allDirections.filter(d => 
-          !directionsInCell.has(d) && isDirectionCompatibleWithCell(d, directionsInCell)
-        ).length : 0;
-        
-        for (let dr = -1; dr <= 1; dr++) {
-          for (let dc = -1; dc <= 1; dc++) {
-            if (dr === 0 && dc === 0) continue;
-            const neighborRow = cellRow + dr;
-            const neighborCol = cellCol + dc;
-            if (neighborRow >= 0 && neighborRow < config.rows && neighborCol >= 0 && neighborCol < config.cols) {
-              const neighborKey = `${neighborRow},${neighborCol}`;
-              if (emptyCells.some(e => e.row === neighborRow && e.col === neighborCol)) {
-                emptyNeighbors++;
-              }
-            }
-          }
-        }
-        
-        return { clueCellKey, emptyNeighbors, compatibleCount, score: emptyNeighbors * 10 + compatibleCount };
-      });
-      
-      clueCellsWithScore.sort((a, b) => b.score - a.score);
-      const sortedClueCells = clueCellsWithScore.map(item => item.clueCellKey).slice(0, clueCellsToTry.length);
-      
-      for (const clueCellKey of sortedClueCells) {
-        if (placed) break;
-        
-        const [cellRow, cellCol] = clueCellKey.split(',').map(Number);
-        const directionsInCell = state.clueCellDirections.get(clueCellKey);
-        if (!directionsInCell) continue;
-        
-        const compatibleDirections = allDirections.filter(d => 
-          !directionsInCell.has(d) && isDirectionCompatibleWithCell(d, directionsInCell)
-        );
-        
-        // Prioritize underused directions AND diagonal directions for split cells (more interesting)
-        const sortedDirections = compatibleDirections.sort((a, b) => {
-          // First: prefer underused directions
-          const aCount = directionUsage.get(a) || 0;
-          const bCount = directionUsage.get(b) || 0;
-          const diversityBonus = (bCount - aCount) * 5;
-          
-          // Second: prefer diagonal directions (more interesting)
-          const aIsDiagonal = (a.includes('down') && a.includes('across')) || a === 'right-down' || a === 'left-down';
-          const bIsDiagonal = (b.includes('down') && b.includes('across')) || b === 'right-down' || b === 'left-down';
-          const diagonalBonus = (bIsDiagonal ? 10 : 0) - (aIsDiagonal ? 10 : 0);
-          
-          return diversityBonus + diagonalBonus;
-        });
-        
-        for (const direction of sortedDirections) {
-          // Encourage longer words for split cells (4-12 letters) - more professional
-          const maxLength = isStuck ? 10 : 12;
-          const minLength = isStuck ? 2 : 4;
-          const placements = findValidPlacements(
-            direction,
-            cellRow,
-            cellCol,
-            config,
-            state,
-            minLength,
-            maxLength
-          );
-          
-          if (placements.length > 0) {
-            // Prefer interesting crossings (1-4) for split cells
-            const bestPlacement = placements.sort((a, b) => {
-              // Prefer 1-4 crossings (interesting but solvable)
-              const aCrossingScore = a.crossings >= 1 && a.crossings <= 4 ? 10 : (a.crossings === 0 ? 5 : 0);
-              const bCrossingScore = b.crossings >= 1 && b.crossings <= 4 ? 10 : (b.crossings === 0 ? 5 : 0);
-              if (aCrossingScore !== bCrossingScore) return bCrossingScore - aCrossingScore;
-              // Second: fill more empty cells (critical for 100% coverage)
-              const emptyCellsNow = getEmptyCells(config, state);
-              const aFillsEmpty = a.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
-              const bFillsEmpty = b.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
-              if (aFillsEmpty !== bFillsEmpty) return bFillsEmpty - aFillsEmpty;
-              // Third: prefer longer words
-              return b.length - a.length;
-            })[0];
-            
-            const slot: ClueSlot = {
-              id: `slot_${state.slotNumber}`,
-              direction,
-              startRow: cellRow,
-              startCol: cellCol,
-              length: bestPlacement.length,
-              crossings: []
-            };
-            
-            state = placeSlot(slot, bestPlacement, config, state);
-            directionUsage.set(direction, (directionUsage.get(direction) || 0) + 1);
-            placed = true;
-            consecutiveFailures = 0;
-            break;
-          }
-        }
-      }
-    }
-    
-    // Strategy 4: Try split cells at clue cells adjacent to empty cells (AGGRESSIVE)
-    if (!placed && emptyCells.length > 0) {
-      // Find clue cells that are adjacent to empty cells
-      const clueCellsAdjacentToEmpty: Array<{ clueKey: string; emptyNeighbors: number; compatibleCount: number }> = [];
-      
-      for (const clueCellKey of state.clueCellDirections.keys()) {
-        const [clueRow, clueCol] = clueCellKey.split(',').map(Number);
-        let emptyNeighbors = 0;
-        const directionsInCell = state.clueCellDirections.get(clueCellKey);
-        const compatibleCount = directionsInCell ? allDirections.filter(d => 
-          !directionsInCell.has(d) && isDirectionCompatibleWithCell(d, directionsInCell)
-        ).length : 0;
-        
-        for (let dr = -1; dr <= 1; dr++) {
-          for (let dc = -1; dc <= 1; dc++) {
-            if (dr === 0 && dc === 0) continue;
-            const neighborRow = clueRow + dr;
-            const neighborCol = clueCol + dc;
-            if (neighborRow >= 0 && neighborRow < config.rows && neighborCol >= 0 && neighborCol < config.cols) {
-              const neighborKey = `${neighborRow},${neighborCol}`;
-              if (emptyCells.some(e => e.row === neighborRow && e.col === neighborCol)) {
-                emptyNeighbors++;
-              }
-            }
-          }
-        }
-        
-        if (emptyNeighbors > 0 || compatibleCount > 0) {
-          clueCellsAdjacentToEmpty.push({ clueKey: clueCellKey, emptyNeighbors, compatibleCount });
-        }
-      }
-      
-      clueCellsAdjacentToEmpty.sort((a, b) => (b.emptyNeighbors * 10 + b.compatibleCount) - (a.emptyNeighbors * 10 + a.compatibleCount));
-      
-      // Try MANY more clue cells - increased from 10 to 50
-      for (const { clueKey } of clueCellsAdjacentToEmpty.slice(0, Math.min(50, clueCellsAdjacentToEmpty.length))) {
-        if (placed) break;
-        
-        const [cellRow, cellCol] = clueKey.split(',').map(Number);
-        const directionsInCell = state.clueCellDirections.get(clueKey);
-        if (!directionsInCell) continue;
-        
-        const compatibleDirections = allDirections.filter(d => 
-          !directionsInCell.has(d) && isDirectionCompatibleWithCell(d, directionsInCell)
-        );
-        
-        // Prioritize underused directions
-        const sortedDirections = compatibleDirections.sort((a, b) => {
-          const aCount = directionUsage.get(a) || 0;
-          const bCount = directionUsage.get(b) || 0;
-          return bCount - aCount; // Prefer less used directions
-        });
-        
-        for (const direction of sortedDirections) {
-          const maxLength = isStuck ? 8 : 12; // Increased from 6/10
-          const placements = findValidPlacements(
-            direction,
-            cellRow,
-            cellCol,
-            config,
-            state,
-            2,
-            maxLength
-          );
-          
-          if (placements.length > 0) {
-            // Prefer interesting crossings (1-4) for split cells
-            const bestPlacement = placements.sort((a, b) => {
-              // Prefer 1-4 crossings (interesting but solvable)
-              const aCrossingScore = a.crossings >= 1 && a.crossings <= 4 ? 10 : (a.crossings === 0 ? 5 : 0);
-              const bCrossingScore = b.crossings >= 1 && b.crossings <= 4 ? 10 : (b.crossings === 0 ? 5 : 0);
-              if (aCrossingScore !== bCrossingScore) return bCrossingScore - aCrossingScore;
-              const emptyCellsNow = getEmptyCells(config, state);
-              const aFillsEmpty = a.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
-              const bFillsEmpty = b.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
-              if (aFillsEmpty !== bFillsEmpty) return bFillsEmpty - aFillsEmpty;
-              return b.length - a.length; // Prefer longer words
-            })[0];
-            
-            const slot: ClueSlot = {
-              id: `slot_${state.slotNumber}`,
-              direction,
-              startRow: cellRow,
-              startCol: cellCol,
-              length: bestPlacement.length,
-              crossings: []
-            };
-            
-            state = placeSlot(slot, bestPlacement, config, state);
-            directionUsage.set(direction, (directionUsage.get(direction) || 0) + 1);
-            placed = true;
-            consecutiveFailures = 0;
-            break;
-          }
-        }
-      }
-    }
-    
-    // Strategy 4: When very stuck, try placing clue cells in ANY empty cell (even isolated ones)
-    if (!placed && isStuck && emptyCells.length > 0) {
-      // Try random empty cells
-      const cellsToTry = emptyCells.slice(0, Math.min(30, emptyCells.length));
-      
-      for (const targetCell of cellsToTry) {
-        if (placed) break;
-        
-        // Try all directions with shorter words
-        for (const direction of allDirections) {
-          const placements = findValidPlacements(
-            direction,
-            targetCell.row,
-            targetCell.col,
-            config,
-            state,
-            2,
-            6 // Very short words when desperate
-          );
-          
-          if (placements.length > 0) {
-            const bestPlacement = placements[0];
-            const slot: ClueSlot = {
-              id: `slot_${state.slotNumber}`,
-              direction,
-              startRow: targetCell.row,
-              startCol: targetCell.col,
-              length: bestPlacement.length,
-              crossings: []
-            };
-            
-            state = placeSlot(slot, bestPlacement, config, state);
-            placed = true;
-            consecutiveFailures = 0;
-            break;
-          }
-        }
-      }
-    }
-    
-    // If we still haven't placed anything after many attempts, we're truly stuck
-    // BUT: Don't give up easily - we need 100% coverage!
-    if (!placed && consecutiveFailures > 10000) { // Increased from 5000
-      console.log(`  ⚠️  Greedy expansion stuck after ${consecutiveFailures} consecutive failures`);
-      const remainingEmpty = getEmptyCells(config, state);
-      console.log(`  ⚠️  Current coverage: ${(coverage * 100).toFixed(1)}% (${remainingEmpty.length} empty cells remain)`);
-      // Don't break - continue to backtracking phase
-      break;
     }
   }
-  
-  // Log direction usage statistics
-  console.log(`  📊 Direction usage:`);
-  for (const [dir, count] of directionUsage.entries()) {
-    const percentage = state.slots.length > 0 ? ((count / state.slots.length) * 100).toFixed(1) : '0.0';
-    console.log(`     ${dir}: ${count} (${percentage}%)`);
+
+  return words;
+}
+
+// ============================================================================
+// Coverage Analysis (from thesis Chapter 3.2.1)
+// ============================================================================
+
+interface CoverageInfo {
+  horizontalCount: number;
+  verticalCount: number;
+  total: number;
+  isEnclosedHorizontally: boolean;
+  isEnclosedVertically: boolean;
+}
+
+/**
+ * Analyze coverage for each letter field
+ * Per thesis Figure 3.2 and Chapter 3.2.1
+ */
+function analyzeCoverage(mask: Mask, words: WordInfo[]): Map<string, CoverageInfo> {
+  const coverage = new Map<string, CoverageInfo>();
+
+  // Initialize coverage for all letter fields
+  for (let r = 0; r < mask.rows; r++) {
+    for (let c = 0; c < mask.cols; c++) {
+      if (isLetterField(mask.grid[r][c])) {
+        // Check enclosure
+        const leftBlocked = c === 0 || isBlockedField(mask.grid[r][c - 1]);
+        const rightBlocked = c === mask.cols - 1 || isBlockedField(mask.grid[r][c + 1]);
+        const topBlocked = r === 0 || isBlockedField(mask.grid[r - 1][c]);
+        const bottomBlocked = r === mask.rows - 1 || isBlockedField(mask.grid[r + 1][c]);
+
+        coverage.set(`${r},${c}`, {
+          horizontalCount: 0,
+          verticalCount: 0,
+          total: 0,
+          isEnclosedHorizontally: leftBlocked && rightBlocked,
+          isEnclosedVertically: topBlocked && bottomBlocked
+        });
+      }
+    }
   }
-  
-  console.log(`  📊 After greedy expansion: ${state.slots.length} slots, ${state.answerCells.size + state.clueCellDirections.size}/${initialGridCells} cells filled`);
-  
-  // PHASE 3: Backtracking fill for remaining cells (AGGRESSIVE - must reach 100%)
-  const remainingEmpty = getEmptyCells(config, state);
-  const finalCoverageBeforeBacktrack = (state.answerCells.size + state.clueCellDirections.size) / initialGridCells;
-  
-  if (remainingEmpty.length > 0 && finalCoverageBeforeBacktrack < 1.0) {
-    console.log(`  🔄 Phase 3: Aggressive backtracking fill for remaining ${remainingEmpty.length} empty cells (${(finalCoverageBeforeBacktrack * 100).toFixed(1)}% coverage)`);
-    // Increased depth significantly - we MUST reach 100%
-    const backtrackResult = backtrackFill(
-      { ...config, minSlots: state.slots.length },
-      state,
-      allDirections,
-      2000, // Increased from 1000 - more aggressive backtracking
-      0,
-      Date.now()
+
+  // Count coverage from words
+  for (const word of words) {
+    for (const letter of word.letters) {
+      const key = `${letter.row},${letter.col}`;
+      const info = coverage.get(key);
+      if (info) {
+        if (word.isHorizontal) {
+          info.horizontalCount++;
+        } else {
+          info.verticalCount++;
+        }
+        info.total = info.horizontalCount + info.verticalCount;
+      }
+    }
+  }
+
+  return coverage;
+}
+
+// ============================================================================
+// Cluster Detection (from thesis Chapter 3.2.3)
+// ============================================================================
+
+interface Cluster {
+  cells: Array<{ row: number; col: number }>;
+  size: number;
+  maxExtension: number;
+  touchesBorder: boolean;
+}
+
+/**
+ * Find all 8-connected clusters of definition fields
+ * Per thesis: "8-connected (i.e. diagonal adjacency is considered as well)"
+ */
+function findDefinitionClusters(mask: Mask): Cluster[] {
+  const visited = new Set<string>();
+  const clusters: Cluster[] = [];
+
+  for (let r = 0; r < mask.rows; r++) {
+    for (let c = 0; c < mask.cols; c++) {
+      const key = `${r},${c}`;
+      if (visited.has(key)) continue;
+      if (!isDefinitionField(mask.grid[r][c])) continue;
+
+      // BFS to find cluster
+      const cluster: Array<{ row: number; col: number }> = [];
+      const queue: Array<{ row: number; col: number }> = [{ row: r, col: c }];
+      visited.add(key);
+
+      while (queue.length > 0) {
+        const current = queue.shift()!;
+        cluster.push(current);
+
+        // Check 8 neighbors (including diagonals)
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = current.row + dr;
+            const nc = current.col + dc;
+            const nkey = `${nr},${nc}`;
+
+            if (!isValidCoord(mask, nr, nc)) continue;
+            if (visited.has(nkey)) continue;
+            if (!isDefinitionField(mask.grid[nr][nc])) continue;
+
+            visited.add(nkey);
+            queue.push({ row: nr, col: nc });
+          }
+        }
+      }
+
+      // Calculate max extension (horizontal or vertical span)
+      const rows = cluster.map(c => c.row);
+      const cols = cluster.map(c => c.col);
+      const rowSpan = Math.max(...rows) - Math.min(...rows) + 1;
+      const colSpan = Math.max(...cols) - Math.min(...cols) + 1;
+      const maxExtension = Math.max(rowSpan, colSpan);
+
+      // Check if cluster touches left or top border
+      const touchesBorder = cluster.some(cell => cell.row === 0 || cell.col === 0);
+
+      clusters.push({
+        cells: cluster,
+        size: cluster.length,
+        maxExtension,
+        touchesBorder
+      });
+    }
+  }
+
+  return clusters;
+}
+
+// ============================================================================
+// Dead End Detection (from thesis Chapter 3.2.5)
+// ============================================================================
+
+/**
+ * Find dead ends: letter fields enclosed by 3 non-letter fields
+ * Per thesis: "excluding the ones at the left and top border, as there such situations 
+ * are unavoidable"
+ */
+function findDeadEnds(mask: Mask): Array<{ row: number; col: number }> {
+  const deadEnds: Array<{ row: number; col: number }> = [];
+
+  for (let r = 0; r < mask.rows; r++) {
+    for (let c = 0; c < mask.cols; c++) {
+      if (!isLetterField(mask.grid[r][c])) continue;
+      
+      // Skip fields at top or left border (per thesis)
+      if (r === 0 || c === 0) continue;
+
+      // Count blocked neighbors (4-connected)
+      let blockedCount = 0;
+      const neighbors = [
+        { dr: -1, dc: 0 },  // top
+        { dr: 1, dc: 0 },   // bottom
+        { dr: 0, dc: -1 },  // left
+        { dr: 0, dc: 1 }    // right
+      ];
+
+      for (const { dr, dc } of neighbors) {
+        const nr = r + dr;
+        const nc = c + dc;
+        if (!isValidCoord(mask, nr, nc) || isBlockedField(mask.grid[nr][nc])) {
+          blockedCount++;
+        }
+      }
+
+      // Dead end if enclosed by 3+ non-letter fields
+      if (blockedCount >= 3) {
+        deadEnds.push({ row: r, col: c });
+      }
+    }
+  }
+
+  return deadEnds;
+}
+
+// ============================================================================
+// Fitness Evaluation (from thesis Chapter 3.2)
+// ============================================================================
+
+/**
+ * Calculate fitness (lower is better) - exact implementation from thesis
+ * Per thesis Chapter 3.2.6: fitness = validityPenalty + qualityPenalty
+ */
+function evaluateFitness(mask: Mask, config: GeneratorConfig): number {
+  let validityPenalty = 0;
+  let qualityPenalty = 0;
+
+  const words = findAllWords(mask);
+  const coverage = analyzeCoverage(mask, words);
+  const clusters = findDefinitionClusters(mask);
+  const deadEnds = findDeadEnds(mask);
+
+  // Initialize local penalties map for guided mutation
+  const localPenalties = new Map<string, number>();
+  for (let r = 0; r < mask.rows; r++) {
+    for (let c = 0; c < mask.cols; c++) {
+      localPenalties.set(`${r},${c}`, 0);
+    }
+  }
+
+  // 1. Coverage penalties (Chapter 3.2.1)
+  for (const [key, info] of coverage) {
+    let penalty = 0;
+    
+    if (info.total === 0) {
+      // Type 1: completely uncovered (validity violation)
+      penalty = config.weights.uncoveredField;
+      validityPenalty += penalty;
+    } else if (info.total === 1) {
+      // Type 2 or 3: covered only once
+      if (info.isEnclosedHorizontally || info.isEnclosedVertically) {
+        // Type 2: enclosed between two non-letter fields
+        penalty = config.weights.singleCoveredEnclosed;
+      } else {
+        // Type 3: not enclosed
+        penalty = config.weights.singleCoveredOpen;
+      }
+      qualityPenalty += penalty;
+    } else if (info.horizontalCount > 1 || info.verticalCount > 1) {
+      // Type 4: covered more than once in same direction (validity violation)
+      penalty = config.weights.doubleCoveredSameDirection;
+      validityPenalty += penalty;
+    }
+    // Type 5: covered once horizontally and vertically = 0 penalty
+    
+    localPenalties.set(key, (localPenalties.get(key) ?? 0) + penalty);
+  }
+
+  // 2. Word length penalties (Chapter 3.2.2)
+  for (const word of words) {
+    const lengthPenalty = config.weights.wordLength[Math.min(word.length, 15)] ?? 1500;
+    qualityPenalty += lengthPenalty;
+    
+    // Distribute to definition field
+    const defKey = `${word.definitionRow},${word.definitionCol}`;
+    localPenalties.set(defKey, (localPenalties.get(defKey) ?? 0) + lengthPenalty);
+
+    // Validity constraint: words must have length >= 2
+    if (word.length < 2) {
+      validityPenalty += 1000;
+      localPenalties.set(defKey, (localPenalties.get(defKey) ?? 0) + 1000);
+    }
+  }
+
+  // 3. Long word intersection penalties (Chapter 3.2.2)
+  // "intersections of two words both longer than six letters receive additional penalty 
+  // points given by the product of the lengths"
+  const letterToWords = new Map<string, WordInfo[]>();
+  for (const word of words) {
+    for (const letter of word.letters) {
+      const key = `${letter.row},${letter.col}`;
+      if (!letterToWords.has(key)) {
+        letterToWords.set(key, []);
+      }
+      letterToWords.get(key)!.push(word);
+    }
+  }
+
+  for (const [key, wordList] of letterToWords) {
+    if (wordList.length >= 2) {
+      for (let i = 0; i < wordList.length; i++) {
+        for (let j = i + 1; j < wordList.length; j++) {
+          if (wordList[i].length > 6 && wordList[j].length > 6) {
+            const penalty = wordList[i].length * wordList[j].length * 
+                           config.weights.longWordIntersectionMultiplier;
+            qualityPenalty += penalty;
+            localPenalties.set(key, (localPenalties.get(key) ?? 0) + penalty);
+          }
+        }
+      }
+    }
+  }
+
+  // 4. Cluster penalties (Chapter 3.2.3)
+  for (const cluster of clusters) {
+    const penalty = config.weights.clusterPenalty(
+      cluster.size, 
+      cluster.maxExtension, 
+      cluster.touchesBorder
     );
+    qualityPenalty += penalty;
     
-    if (backtrackResult) {
-      state = backtrackResult;
-      const finalCoverageAfterBacktrack = (state.answerCells.size + state.clueCellDirections.size) / initialGridCells;
-      console.log(`  ✅ Backtracking fill completed! Coverage: ${(finalCoverageAfterBacktrack * 100).toFixed(1)}%`);
+    // Distribute penalty among cluster cells
+    const perCellPenalty = penalty / cluster.size;
+    for (const cell of cluster.cells) {
+      const key = `${cell.row},${cell.col}`;
+      localPenalties.set(key, (localPenalties.get(key) ?? 0) + perCellPenalty);
+    }
+  }
+
+  // 5. Invalid definition field penalties (Chapter 3.2.4)
+  // "penalty of 2000 is introduced for each word violating [enclosure] constraint"
+  for (const word of words) {
+    if (word.length > 0) {
+      const lastLetter = word.letters[word.letters.length - 1];
+      const nextRow = lastLetter.row + word.direction.dr;
+      const nextCol = lastLetter.col + word.direction.dc;
+
+      // Word should end at grid boundary or blocked field
+      if (isValidCoord(mask, nextRow, nextCol) && isLetterField(mask.grid[nextRow][nextCol])) {
+        validityPenalty += config.weights.invalidDefinition;
+        const defKey = `${word.definitionRow},${word.definitionCol}`;
+        localPenalties.set(defKey, (localPenalties.get(defKey) ?? 0) + config.weights.invalidDefinition);
+      }
+    }
+  }
+
+  // 6. Dead end penalties (Chapter 3.2.5)
+  for (const deadEnd of deadEnds) {
+    qualityPenalty += config.weights.deadEnd;
+    const key = `${deadEnd.row},${deadEnd.col}`;
+    localPenalties.set(key, (localPenalties.get(key) ?? 0) + config.weights.deadEnd);
+  }
+
+  const totalFitness = validityPenalty + qualityPenalty;
+  mask.fitness = totalFitness;
+  mask.validityPenalty = validityPenalty;
+  mask.qualityPenalty = qualityPenalty;
+  mask.localPenalties = localPenalties;
+
+  return totalFitness;
+}
+
+// ============================================================================
+// Initialization (from thesis Chapter 3.3)
+// ============================================================================
+
+/**
+ * Get allowed field types for a position based on constraints
+ * Per thesis Chapter 3.3: "field assignments which - no matter how the surrounding 
+ * mask looks like - are certain to cause a validity violation are disallowed"
+ */
+function getAllowedFieldTypes(mask: Mask, row: number, col: number): FieldType[] {
+  const allowed: FieldType[] = ['0']; // Letter field always allowed
+
+  // Don't allow definition fields that would point outside grid or create impossible words
+  // Type 1: needs at least 2 cells to the right
+  if (col < mask.cols - 2) allowed.push('1');
+  
+  // Type 2: needs at least 2 cells below
+  if (row < mask.rows - 2) allowed.push('2');
+  // Restrict to types 1 and 2 only so (startRow, startCol, direction) matches
+  // getAnswerCells() on the client (no Engel types 3–6, no client changes needed).
+
+  // Per thesis Figure 3.6: Avoid certain configurations that cause violations
+  // Check for adjacent definition fields that would cause problems
+  const above = getField(mask, row - 1, col);
+  const left = getField(mask, row, col - 1);
+  const right = getField(mask, row, col + 1);
+  const below = getField(mask, row + 1, col);
+
+  // Remove types that would conflict with existing arrows
+  // If cell above is type 2 pointing down, we shouldn't start a horizontal word here
+  if (above === '2' || above === '3' || above === '4') {
+    // These would create overlapping words - remove horizontal types that start here
+  }
+
+  // If cell to left is type 1 pointing right, we shouldn't start a vertical word here
+  if (left === '1' || left === '5' || left === '6') {
+    // These would create overlapping words - remove vertical types that start here  
+  }
+
+  return allowed;
+}
+
+/**
+ * Initialize border fields for Swedish-style layout
+ * Per thesis Chapter 3.3 and Figure 3.7
+ */
+function initializeBorders(mask: Mask): void {
+  // Top row: typically has definition fields pointing down
+  for (let c = 0; c < mask.cols; c++) {
+    if (mask.grid[0][c] === '#') continue; // Skip cutouts
+    
+    // Randomly place down-pointing definition fields
+    if (Math.random() < 0.3 && c > 0) {
+      const allowed = getAllowedFieldTypes(mask, 0, c);
+      if (allowed.includes('2')) {
+        mask.grid[0][c] = '2';
+      }
+    }
+  }
+
+  // Left column: typically has definition fields pointing right
+  for (let r = 0; r < mask.rows; r++) {
+    if (mask.grid[r][0] === '#') continue; // Skip cutouts
+    
+    // Randomly place right-pointing definition fields
+    if (Math.random() < 0.3 && r > 0) {
+      const allowed = getAllowedFieldTypes(mask, r, 0);
+      if (allowed.includes('1')) {
+        mask.grid[r][0] = '1';
+      }
+    }
+  }
+}
+
+/**
+ * Create a random initial mask
+ * Per thesis: "initializing the rest of the mask with letter fields only improves 
+ * the performance even further"
+ */
+function createRandomMask(config: GeneratorConfig): Mask {
+  const mask = createEmptyMask(config.rows, config.cols);
+
+  // Apply cutouts
+  if (config.cutoutCells) {
+    for (const { row, col } of config.cutoutCells) {
+      setField(mask, row, col, '#');
+    }
+  }
+
+  // Initialize borders
+  initializeBorders(mask);
+
+  // Rest starts as letter fields (per thesis)
+  // The hillclimber will find good positions for definition fields
+
+  return mask;
+}
+
+// ============================================================================
+// Mutation (from thesis Chapter 3.4)
+// ============================================================================
+
+/**
+ * Generate random number from standard normal distribution (Box-Muller transform)
+ */
+function gaussianRandom(): number {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+}
+
+/**
+ * Mutate a mask according to thesis Chapter 3.4
+ * Algorithm 1 from Appendix A
+ */
+function mutate(mask: Mask, config: GeneratorConfig): Mask {
+  const mutated = cloneMask(mask);
+  
+  // Per thesis: mutation size k randomly chosen from {2, 3}
+  const mutationSize = Math.random() < 0.5 ? 2 : 3;
+  
+  // Per thesis: "Guided Mutation" - select center point using tournament selection
+  // with α = 2, favoring areas with high penalty
+  const candidates: Array<{ row: number; col: number }> = [];
+  for (let r = 0; r < mask.rows; r++) {
+    for (let c = 0; c < mask.cols; c++) {
+      if (mask.grid[r][c] !== '#') {
+        candidates.push({ row: r, col: c });
+      }
+    }
+  }
+
+  // Tournament selection for center point (α = 2)
+  const tournamentSize = 2;
+  let bestCandidate = candidates[Math.floor(Math.random() * candidates.length)];
+  let bestPenalty = mask.localPenalties?.get(`${bestCandidate.row},${bestCandidate.col}`) ?? 0;
+  
+  for (let i = 1; i < tournamentSize; i++) {
+    const candidate = candidates[Math.floor(Math.random() * candidates.length)];
+    const penalty = mask.localPenalties?.get(`${candidate.row},${candidate.col}`) ?? 0;
+    if (penalty > bestPenalty) {
+      bestCandidate = candidate;
+      bestPenalty = penalty;
+    }
+  }
+
+  const centerRow = bestCandidate.row;
+  const centerCol = bestCandidate.col;
+  
+  // Per thesis: σ = 3 for standard deviation
+  const sigma = 3;
+
+  // Mutate k fields around center
+  for (let i = 0; i < mutationSize; i++) {
+    let targetRow: number, targetCol: number;
+
+    if (i === 0) {
+      // First mutation is at center point
+      targetRow = centerRow;
+      targetCol = centerCol;
     } else {
-      console.log(`  ⚠️  Backtracking fill failed, trying final aggressive pass...`);
-      // Final aggressive pass: try to fill every remaining empty cell
-      const remainingAfterBacktrack = getEmptyCells(config, state);
-      if (remainingAfterBacktrack.length > 0 && remainingAfterBacktrack.length <= 10) {
-        console.log(`  🔄 Final aggressive fill for ${remainingAfterBacktrack.length} remaining cells`);
-        for (const emptyCell of remainingAfterBacktrack) {
-          let cellPlaced = false;
-          // Try ALL directions aggressively
-          for (const direction of allDirections) {
-            if (cellPlaced) break;
-            const placements = findValidPlacements(
-              direction,
-              emptyCell.row,
-              emptyCell.col,
-              config,
-              state,
-              2, // Very short words allowed
-              8  // Short max length
-            );
-            
-            if (placements.length > 0) {
-              const bestPlacement = placements[0]; // Take first valid placement
-              const slot: ClueSlot = {
-                id: `slot_${state.slotNumber}`,
-                direction,
-                startRow: emptyCell.row,
-                startCol: emptyCell.col,
-                length: bestPlacement.length,
-                crossings: []
-              };
-              state = placeSlot(slot, bestPlacement, config, state);
-              directionUsage.set(direction, (directionUsage.get(direction) || 0) + 1);
-              cellPlaced = true;
+      // Per thesis: "The remaining fields to be modified are then chosen close to 
+      // this central point, using a two-dimensional normal distribution"
+      const dr = Math.round(gaussianRandom() * sigma);
+      const dc = Math.round(gaussianRandom() * sigma);
+      targetRow = centerRow + dr;
+      targetCol = centerCol + dc;
+    }
+
+    if (!isValidCoord(mutated, targetRow, targetCol)) continue;
+    if (mutated.grid[targetRow][targetCol] === '#') continue;
+
+    // Get allowed types and pick one different from current
+    const allowed = getAllowedFieldTypes(mutated, targetRow, targetCol);
+    const current = mutated.grid[targetRow][targetCol];
+    const options = allowed.filter(t => t !== current);
+
+    if (options.length > 0) {
+      // Per thesis Chapter 3.4: "Field Type Probabilities"
+      // "a letter field is chosen with probability 2/3"
+      // "type 1 and 2 each get a probability of 1/12"
+      // "type 3, 4, 5 and 6 each 1/24"
+      
+      const rand = Math.random();
+      let newType: FieldType;
+      
+      if (rand < 2/3 && options.includes('0')) {
+        newType = '0';
+      } else {
+        // Choose from definition field types with appropriate weights
+        const defOptions = options.filter(t => t !== '0');
+        if (defOptions.length === 0) {
+          newType = options[Math.floor(Math.random() * options.length)];
+        } else {
+          // Weight type 1,2 higher than 3,4,5,6
+          const weighted: FieldType[] = [];
+          for (const t of defOptions) {
+            if (t === '1' || t === '2') {
+              weighted.push(t, t); // Double weight for types 1,2
+            } else {
+              weighted.push(t);
             }
           }
+          newType = weighted[Math.floor(Math.random() * weighted.length)];
+        }
+      }
+      
+      mutated.grid[targetRow][targetCol] = newType;
+    }
+  }
+
+  return mutated;
+}
+
+// ============================================================================
+// Crossover (from thesis Chapter 3.5)
+// ============================================================================
+
+/**
+ * Crossover two masks using a line through the center at angle beta
+ * Algorithm 2 from Appendix A
+ * @param beta Optional angle in radians; if omitted, chosen randomly (for backward compatibility)
+ */
+function crossover(parent1: Mask, parent2: Mask, beta?: number): Mask {
+  const child = createEmptyMask(parent1.rows, parent1.cols);
+
+  // Per thesis: "Random angle for splitting line through center"
+  // When called from memetic algorithm, use the beta that had best potential rating
+  const angle = beta ?? Math.random() * Math.PI * 2;
+  
+  // Calculate center (with respect to non-cutout fields)
+  let sumRow = 0, sumCol = 0, count = 0;
+  for (let r = 0; r < parent1.rows; r++) {
+    for (let c = 0; c < parent1.cols; c++) {
+      if (parent1.grid[r][c] !== '#') {
+        sumRow += r;
+        sumCol += c;
+        count++;
+      }
+    }
+  }
+  const gx = count > 0 ? sumCol / count : parent1.cols / 2;
+  const gy = count > 0 ? sumRow / count : parent1.rows / 2;
+
+  // Per thesis Algorithm 2: 
+  // "if (sin β, cos β)(i − gx, j − gy)^T ≤ 0 then result[i,j] ← parent1[i,j]"
+  for (let r = 0; r < parent1.rows; r++) {
+    for (let c = 0; c < parent1.cols; c++) {
+      const dx = c - gx;
+      const dy = r - gy;
+      const side = Math.sin(angle) * dx + Math.cos(angle) * dy;
+
+      child.grid[r][c] = side <= 0 ? parent1.grid[r][c] : parent2.grid[r][c];
+    }
+  }
+
+  return child;
+}
+
+/**
+ * Calculate potential rating for a crossover result
+ * Per thesis Chapter 4.2: "Let the potential rating of a crossover result be defined 
+ * as the sum of the local ratings of both halves"
+ */
+function calculatePotentialRating(parent1: Mask, parent2: Mask, beta: number): number {
+  if (!parent1.localPenalties || !parent2.localPenalties) return Infinity;
+
+  let sumRow = 0, sumCol = 0, count = 0;
+  for (let r = 0; r < parent1.rows; r++) {
+    for (let c = 0; c < parent1.cols; c++) {
+      if (parent1.grid[r][c] !== '#') {
+        sumRow += r;
+        sumCol += c;
+        count++;
+      }
+    }
+  }
+  const gx = count > 0 ? sumCol / count : parent1.cols / 2;
+  const gy = count > 0 ? sumRow / count : parent1.rows / 2;
+
+  let potential = 0;
+  for (let r = 0; r < parent1.rows; r++) {
+    for (let c = 0; c < parent1.cols; c++) {
+      const key = `${r},${c}`;
+      const dx = c - gx;
+      const dy = r - gy;
+      const side = Math.sin(beta) * dx + Math.cos(beta) * dy;
+
+      if (side <= 0) {
+        potential += parent1.localPenalties.get(key) ?? 0;
+      } else {
+        potential += parent2.localPenalties.get(key) ?? 0;
+      }
+    }
+  }
+
+  return potential;
+}
+
+// ============================================================================
+// Hill Climbing (from thesis Algorithm 3)
+// ============================================================================
+
+/**
+ * Hill climb a mask to local optimum
+ * Algorithm 3 from Appendix A
+ */
+function hillClimb(mask: Mask, config: GeneratorConfig, limit: number): Mask {
+  let current = cloneMask(mask);
+  evaluateFitness(current, config);
+
+  let noChange = 0;
+
+  while (noChange < limit) {
+    const mutated = mutate(current, config);
+    evaluateFitness(mutated, config);
+
+    if (mutated.fitness! < current.fitness!) {
+      current = mutated;
+      noChange = 0;
+    } else {
+      noChange++;
+    }
+  }
+
+  return current;
+}
+
+// ============================================================================
+// Similarity Calculation (for thesis Chapter 4.2)
+// ============================================================================
+
+/**
+ * Calculate similarity between two masks (Hamming distance based)
+ * Per thesis: masks are "too similar" if more than (1-δ) fields are identical
+ */
+function areTooSimilar(mask1: Mask, mask2: Mask, threshold: number): boolean {
+  let same = 0;
+  let total = 0;
+
+  for (let r = 0; r < mask1.rows; r++) {
+    for (let c = 0; c < mask1.cols; c++) {
+      if (mask1.grid[r][c] !== '#') {
+        total++;
+        if (mask1.grid[r][c] === mask2.grid[r][c]) {
+          same++;
         }
       }
     }
   }
-  
-  // Calculate crossings
-  recalculateCrossings(state.slots);
-  
-  // Filter slots with too many crossings
-  const filteredSlots = state.slots.filter(slot => slot.crossings.length <= TEMPLATE_CONFIG.CROSSINGS.MAX_INITIAL);
-  
-  // Validate
-  const allClueCellPositions = new Set<string>();
-  for (const slot of filteredSlots) {
-    allClueCellPositions.add(`${slot.startRow},${slot.startCol}`);
+
+  // Per thesis: δ = maximal fraction of identically assigned fields
+  // Two masks are "too similar" if similarity > (1 - δ)
+  const similarity = total > 0 ? same / total : 0;
+  return similarity > (1 - threshold);
+}
+
+// ============================================================================
+// Memetic Algorithm (from thesis Chapter 4.2, Algorithm 5)
+// ============================================================================
+
+/**
+ * Run the memetic algorithm exactly as described in thesis Chapter 4.2
+ * This is the main algorithm - see Figure 4.2 and Algorithm 5 in Appendix A
+ */
+function memeticAlgorithm(config: GeneratorConfig): Mask {
+  if (!config.quiet) {
+    console.log(`Starting memetic algorithm: ${config.rows}x${config.cols} grid`);
+    console.log(`Parameters: n=${config.populationSize}, bw=${config.weakBreakCondition}, bs=${config.strongBreakCondition}, δ=${config.similarityThreshold}`);
   }
-  
-  const validatedSlots = filteredSlots.filter(slot => {
-    const answerCellsForSlot = getSlotCells(slot);
-    return !hasAnswerClueOverlap(answerCellsForSlot, allClueCellPositions);
-  });
-  
-  recalculateCrossings(validatedSlots);
-  
-  let finalSlots = validatedSlots.filter(slot => 
-    slot.crossings.length <= TEMPLATE_CONFIG.CROSSINGS.MAX_FINAL
-  );
-  
-  let finalFilled = state.answerCells.size + state.clueCellDirections.size;
-  let finalCoverage = finalFilled / initialGridCells;
-  let emptyCells = getEmptyCells(config, state);
-  
-  console.log(`  ✅ Generated ${finalSlots.length} slots: ${finalFilled}/${initialGridCells} cells (${(finalCoverage * 100).toFixed(1)}% coverage), ${emptyCells.length} empty cells`);
-  
-  if (finalSlots.length < config.minSlots) {
-    throw new Error(`Template generation failed: only ${finalSlots.length} slots generated (need ${config.minSlots})`);
+
+  let n = config.populationSize;
+
+  // Step 0: Create initial masks using a hillclimber
+  // Per thesis: "for i ← 1 to n do population[i] ← hillclimbe(getRandomMask(), bs)"
+  let population: Mask[] = [];
+  for (let i = 0; i < n; i++) {
+    if (!config.quiet) console.log(`Initializing mask ${i + 1}/${n}...`);
+    const randomMask = createRandomMask(config);
+    const optimized = hillClimb(randomMask, config, config.strongBreakCondition);
+    population.push(optimized);
   }
-  
-  // STRICT: Must achieve 100% coverage - try multiple aggressive passes
-  if (emptyCells.length > 0 && finalCoverage < 1.0) {
-    console.warn(`  ⚠️  Warning: ${emptyCells.length} empty cells remaining (${(finalCoverage * 100).toFixed(1)}% coverage)`);
-    console.log(`  🔄 Attempting final aggressive fill for ${emptyCells.length} remaining cells`);
+
+  if (!config.quiet) console.log(`Initial population created. Best fitness: ${Math.min(...population.map(m => m.fitness!))}`);
+
+  let iteration = 0;
+  const maxIterations = config.maxIterations ?? 100; // Safety limit
+
+  while (iteration < maxIterations) {
+    iteration++;
+    if (!config.quiet) console.log(`\n=== Iteration ${iteration} ===`);
+
+    // Step 1: Cross every pair of masks, try multiple crossover lines
+    // Per thesis: "forall {i, j} in ([n] choose 2) do"
+    const newPop: Mask[] = [];
     
-    // Multiple aggressive passes until 100% coverage or no more progress
-    let pass = 0;
-    const maxPasses = 5;
-    while (pass < maxPasses && emptyCells.length > 0) {
-      pass++;
-      const remainingEmptyBeforePass = getEmptyCells(config, state);
-      let cellsFilledThisPass = 0;
-      
-      // Try ALL empty cells, not just <= 5
-      for (const emptyCell of remainingEmptyBeforePass) {
-        let cellPlaced = false;
-        // Try ALL directions aggressively
-        for (const direction of allDirections) {
-          if (cellPlaced) break;
-          const placements = findValidPlacements(
-            direction,
-            emptyCell.row,
-            emptyCell.col,
-            config,
-            state,
-            2, // Very short words allowed
-            8  // Short max length
-          );
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        // Per thesis: "try 50 crossover lines, keep best by potential rating"
+        let bestChild: Mask | null = null;
+        let bestPotential = Infinity;
+        let bestBeta = 0;
+
+        for (let k = 0; k < 50; k++) {
+          const beta = Math.random() * Math.PI * 2;
+          const potential = calculatePotentialRating(population[i], population[j], beta);
           
-          if (placements.length > 0) {
-            // Prefer placements that fill more empty cells
-            const bestPlacement = placements.sort((a, b) => {
-              const emptyCellsNow = getEmptyCells(config, state);
-              const aFillsEmpty = a.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
-              const bFillsEmpty = b.answerCells.filter(c => emptyCellsNow.some(e => e.row === c.row && e.col === c.col)).length;
-              if (aFillsEmpty !== bFillsEmpty) return bFillsEmpty - aFillsEmpty;
-              return b.length - a.length;
-            })[0];
-            
-            const slot: ClueSlot = {
-              id: `slot_${state.slotNumber}`,
-              direction,
-              startRow: emptyCell.row,
-              startCol: emptyCell.col,
-              length: bestPlacement.length,
-              crossings: []
-            };
-            state = placeSlot(slot, bestPlacement, config, state);
-            directionUsage.set(direction, (directionUsage.get(direction) || 0) + 1);
-            cellPlaced = true;
-            cellsFilledThisPass++;
+          if (potential < bestPotential) {
+            bestPotential = potential;
+            bestBeta = beta;
+          }
+        }
+
+        // Create child with the crossover line that had best potential (per thesis: use that beta)
+        const child = crossover(population[i], population[j], bestBeta);
+        evaluateFitness(child, config);
+        child.potentialRating = bestPotential;
+        newPop.push(child);
+      }
+    }
+
+    if (!config.quiet) console.log(`Step 1: Created ${newPop.length} crossover children`);
+
+    // Step 2: Select the 2n best masks with respect to potential rating
+    newPop.sort((a, b) => (a.potentialRating ?? Infinity) - (b.potentialRating ?? Infinity));
+    const selected2n = newPop.slice(0, 2 * n);
+    
+    if (!config.quiet) console.log(`Step 2: Selected ${selected2n.length} masks by potential rating`);
+
+    // Step 3: Apply hillclimber with weak break condition
+    if (!config.quiet) console.log(`Step 3: Applying weak hillclimber (bw=${config.weakBreakCondition})...`);
+    for (let i = 0; i < selected2n.length; i++) {
+      selected2n[i] = hillClimb(selected2n[i], config, config.weakBreakCondition);
+    }
+
+    // Step 4: Remove masks that are too similar to each other
+    // Per thesis: "sort newPop (by descending actual rating of masks)"
+    selected2n.sort((a, b) => (a.fitness ?? Infinity) - (b.fitness ?? Infinity));
+    
+    const minPop = config.minPopulation ?? 5; // Floor to avoid collapse spiral
+    const diverse: Mask[] = [];
+    const markedForDeletion = new Set<number>();
+    
+    for (let i = 0; i < selected2n.length; i++) {
+      if (markedForDeletion.has(i)) continue;
+      diverse.push(selected2n[i]);
+      for (let j = i + 1; j < selected2n.length; j++) {
+        if (areTooSimilar(selected2n[i], selected2n[j], config.similarityThreshold)) {
+          markedForDeletion.add(j);
+        }
+      }
+    }
+
+    if (!config.quiet) {
+      console.log(`Step 4: Removed ${selected2n.length - diverse.length} similar masks, ${diverse.length} remain`);
+    }
+
+    // Step 5: Select the at most n best masks; never shrink n below minPopulation
+    // Per thesis: "if population.Count ≥ n then keep only best n masks in population
+    //             else n ← population.Count"
+    if (diverse.length >= n) {
+      population = diverse.slice(0, n);
+    } else if (diverse.length >= minPop) {
+      population = diverse;
+      n = population.length;
+      if (!config.quiet) console.log(`Warning: Population reduced to ${n} masks`);
+    } else {
+      // Diversity culled too many: keep top minPop (or all) from selected2n to avoid collapse
+      const keep = Math.min(selected2n.length, Math.max(minPop, diverse.length));
+      population = selected2n.slice(0, keep);
+      n = population.length;
+      if (!config.quiet) console.log(`Warning: Diversity culled to ${diverse.length}; keeping top ${n} by fitness`);
+    }
+
+    if (!config.quiet) console.log(`Step 5: Population size = ${population.length}`);
+
+    // Step 6: Apply hillclimber with strong break condition
+    if (!config.quiet) console.log(`Step 6: Applying strong hillclimber (bs=${config.strongBreakCondition})...`);
+    for (let i = 0; i < population.length; i++) {
+      population[i] = hillClimb(population[i], config, config.strongBreakCondition);
+    }
+
+    population.sort((a, b) => (a.fitness ?? Infinity) - (b.fitness ?? Infinity));
+
+    const bestFitness = population[0].fitness!;
+    const bestValidity = population[0].validityPenalty!;
+    const bestQuality = population[0].qualityPenalty!;
+    
+    if (!config.quiet) console.log(`Best fitness: ${bestFitness} (validity: ${bestValidity}, quality: ${bestQuality})`);
+
+    // Early termination if we have a valid, good-enough mask (relaxed for seed speed)
+    const qualityThreshold = config.rows * config.cols * 60; // ~6000 for 10x10
+    if (bestValidity === 0 && bestQuality < qualityThreshold) {
+      if (!config.quiet) console.log('Found satisfactory solution, terminating');
+      break;
+    }
+
+    // Check for population collapse: keep best mask(s), refill rest
+    if (population.length < 2) {
+      if (!config.quiet) console.log('Population too small, refilling while keeping best...');
+      const kept = population.length > 0 ? [population[0]] : [];
+      const fillCount = config.populationSize - kept.length;
+      const newMasks: Mask[] = [];
+      for (let i = 0; i < fillCount; i++) {
+        const randomMask = createRandomMask(config);
+        const optimized = hillClimb(randomMask, config, config.strongBreakCondition);
+        newMasks.push(optimized);
+      }
+      population = [...kept, ...newMasks].sort((a, b) => (a.fitness ?? Infinity) - (b.fitness ?? Infinity));
+      population = population.slice(0, config.populationSize);
+      n = population.length;
+    }
+  }
+
+  // Return best mask
+  population.sort((a, b) => (a.fitness ?? Infinity) - (b.fitness ?? Infinity));
+  
+  if (!config.quiet) {
+    console.log('\nFinal mask:');
+    printMask(population[0]);
+  }
+  
+  return population[0];
+}
+
+// ============================================================================
+// Convert to GridTemplate
+// ============================================================================
+
+/**
+ * Convert internal mask to GridTemplate format
+ */
+function maskToGridTemplate(mask: Mask, name: string, difficulty: Difficulty): GridTemplate {
+  const words = findAllWords(mask);
+  const slots: ClueSlot[] = [];
+  const clueCells: Array<{ row: number; col: number; direction: Direction }> = [];
+
+  // Create slots from words with length >= 2
+  let slotIndex = 0;
+  for (const word of words) {
+    if (word.length < 2) continue;
+
+    const direction = fieldTypeToDirection(word.definitionType);
+    if (!direction) continue;
+
+    const slotId = `slot_${slotIndex++}`;
+    // startRow/startCol = clue cell; cells = actual letter positions (Engel types 3,4,6 differ from direction-utils)
+    const slot: ClueSlot = {
+      id: slotId,
+      direction,
+      startRow: word.definitionRow,
+      startCol: word.definitionCol,
+      length: word.length,
+      crossings: [],
+      cells: word.letters.map((l) => ({ row: l.row, col: l.col }))
+    };
+
+    slots.push(slot);
+
+    clueCells.push({
+      row: word.definitionRow,
+      col: word.definitionCol,
+      direction
+    });
+  }
+
+  // Calculate crossings
+  const letterToSlots = new Map<string, Array<{ slotId: string; position: number }>>();
+
+  for (const slot of slots) {
+    const word = words.find(w =>
+      w.definitionRow === slot.startRow &&
+      w.definitionCol === slot.startCol &&
+      fieldTypeToDirection(w.definitionType) === slot.direction &&
+      w.length === slot.length
+    );
+
+    if (word) {
+      for (let pos = 0; pos < word.letters.length; pos++) {
+        const letter = word.letters[pos];
+        const key = `${letter.row},${letter.col}`;
+
+        if (!letterToSlots.has(key)) {
+          letterToSlots.set(key, []);
+        }
+        letterToSlots.get(key)!.push({ slotId: slot.id, position: pos });
+      }
+    }
+  }
+
+  // Add crossing info to slots
+  for (const [, slotInfos] of letterToSlots) {
+    if (slotInfos.length >= 2) {
+      for (let i = 0; i < slotInfos.length; i++) {
+        for (let j = i + 1; j < slotInfos.length; j++) {
+          const slot1 = slots.find(s => s.id === slotInfos[i].slotId);
+          const slot2 = slots.find(s => s.id === slotInfos[j].slotId);
+
+          if (slot1 && slot2) {
+            slot1.crossings.push({
+              slotId: slot2.id,
+              thisPosition: slotInfos[i].position,
+              otherPosition: slotInfos[j].position
+            });
+
+            slot2.crossings.push({
+              slotId: slot1.id,
+              thisPosition: slotInfos[j].position,
+              otherPosition: slotInfos[i].position
+            });
           }
         }
       }
-      
-      // Recalculate after this pass
-      recalculateCrossings(state.slots);
-      const emptyCellsAfterPass = getEmptyCells(config, state);
-      const filledAfterPass = state.answerCells.size + state.clueCellDirections.size;
-      const coverageAfterPass = filledAfterPass / initialGridCells;
-      
-      console.log(`  📊 Pass ${pass}: Filled ${cellsFilledThisPass} cells, ${emptyCellsAfterPass.length} remaining (${(coverageAfterPass * 100).toFixed(1)}% coverage)`);
-      
-      if (emptyCellsAfterPass.length === 0 || coverageAfterPass >= 1.0) {
-        console.log(`  ✅ Achieved 100% coverage after ${pass} passes!`);
-        emptyCells = emptyCellsAfterPass;
-        finalCoverage = coverageAfterPass;
-        finalFilled = filledAfterPass;
-        break;
-      }
-      
-      if (cellsFilledThisPass === 0) {
-        console.log(`  ⚠️  No progress in pass ${pass}, stopping`);
-        break;
-      }
-      
-      emptyCells = emptyCellsAfterPass;
-    }
-    
-    // Final recalculation
-    recalculateCrossings(state.slots);
-    const finalSlotsAfterFill = state.slots.filter(slot => 
-      slot.crossings.length <= TEMPLATE_CONFIG.CROSSINGS.MAX_FINAL
-    );
-    const finalFilledAfterFill = state.answerCells.size + state.clueCellDirections.size;
-    const finalCoverageAfterFill = finalFilledAfterFill / initialGridCells;
-    const emptyCellsAfterFill = getEmptyCells(config, state);
-    
-    console.log(`  ✅ After final aggressive fill: ${finalSlotsAfterFill.length} slots, ${finalFilledAfterFill}/${initialGridCells} cells (${(finalCoverageAfterFill * 100).toFixed(1)}% coverage), ${emptyCellsAfterFill.length} empty cells`);
-    
-    if (emptyCellsAfterFill.length === 0 || finalCoverageAfterFill >= 1.0) {
-      // Update finalSlots to use the recalculated slots
-      const updatedValidatedSlots = state.slots.filter(slot => {
-        const answerCellsForSlot = getSlotCells(slot);
-        return !hasAnswerClueOverlap(answerCellsForSlot, allClueCellPositions);
-      });
-      recalculateCrossings(updatedValidatedSlots);
-      finalSlots = updatedValidatedSlots.filter(slot => 
-        slot.crossings.length <= TEMPLATE_CONFIG.CROSSINGS.MAX_FINAL
-      );
-      emptyCells = emptyCellsAfterFill;
-      finalCoverage = finalCoverageAfterFill;
-      finalFilled = finalFilledAfterFill;
     }
   }
-  
+
+  const boundaryCheck = validateSlotsBoundaries(slots, mask.rows, mask.cols);
+  if (!boundaryCheck.valid) {
+    throw new Error(`Template boundary validation failed: ${(boundaryCheck.errors ?? []).join('; ')}`);
+  }
+
   return {
-    id: `generated_${selectedSize}_${Date.now()}`,
-    name: `Generated ${selectedSize} template`,
-    rows: config.rows,
-    cols: config.cols,
-    slots: finalSlots,
-    clueCells: state.clueCells,
+    id: `template_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    name,
+    rows: mask.rows,
+    cols: mask.cols,
+    slots,
+    clueCells,
     difficulty,
-    categories: ['Generated'],
-    metadata: {
-      verified: false,
-      generated: true,
-      size: selectedSize,
-    }
+    categories: ['Generated']
   };
 }
+
+// ============================================================================
+// Main Generator Function
+// ============================================================================
+
+export interface GenerateTemplateOptions {
+  rows: number;
+  cols: number;
+  difficulty?: Difficulty;
+  name?: string;
+  cutoutCells?: Array<{ row: number; col: number }>;
+  // Optional algorithm parameters (defaults from thesis)
+  populationSize?: number;        // n, default 15
+  weakBreakCondition?: number;    // bw, default 2000
+  strongBreakCondition?: number;  // bs, default 10000
+  similarityThreshold?: number;   // δ, default 0.1
+  minPopulation?: number;         // floor for n to avoid collapse, default 5
+  maxIterations?: number;         // cap iterations, default 100
+  quiet?: boolean;               // suppress per-iteration logs
+}
+
+/**
+ * Generate an arrow crossword template using the memetic algorithm
+ * from Jakob Engel's thesis
+ */
+export function generateTemplate(options: GenerateTemplateOptions): GridTemplate {
+  const {
+    rows,
+    cols,
+    difficulty = Difficulty.MEDIUM,
+    name = `Arrow Crossword ${rows}x${cols}`,
+    cutoutCells = [],
+    populationSize = 15,
+    weakBreakCondition = 2000,
+    strongBreakCondition = 10000,
+    similarityThreshold = 0.1,
+    minPopulation = 5,
+    maxIterations = 100,
+    quiet = false
+  } = options;
+
+  // Scale break conditions based on grid size (larger grids need more iterations)
+  const scaleFactor = Math.sqrt((rows * cols) / 400); // Normalized to 20x20
+  const scaledWeakBreak = Math.round(weakBreakCondition * scaleFactor);
+  const scaledStrongBreak = Math.round(strongBreakCondition * scaleFactor);
+
+  const config: GeneratorConfig = {
+    rows,
+    cols,
+    populationSize,
+    weakBreakCondition: scaledWeakBreak,
+    strongBreakCondition: scaledStrongBreak,
+    similarityThreshold,
+    minPopulation,
+    maxIterations,
+    quiet,
+    cutoutCells,
+    weights: DEFAULT_CONFIG.weights!
+  };
+
+  // Adjust word length penalties based on difficulty
+  if (difficulty === 'easy') {
+    // Prefer shorter words (3-5 letters)
+    config.weights.wordLength = {
+      ...config.weights.wordLength,
+      3: 50, 4: 0, 5: 0, 6: 20, 7: 100
+    };
+  } else if (difficulty === 'hard' || difficulty === 'expert') {
+    // Prefer longer words (5-8 letters)
+    config.weights.wordLength = {
+      ...config.weights.wordLength,
+      3: 200, 4: 100, 5: 0, 6: 0, 7: 0, 8: 0, 9: 100
+    };
+  }
+
+  const maxBoundaryRetries = 3;
+  for (let attempt = 0; attempt < maxBoundaryRetries; attempt++) {
+    const bestMask = memeticAlgorithm(config);
+    try {
+      return maskToGridTemplate(bestMask, name, difficulty);
+    } catch (e) {
+      const isBoundaryError = e instanceof Error && e.message.startsWith('Template boundary validation failed');
+      if (isBoundaryError && attempt < maxBoundaryRetries - 1) {
+        if (!quiet) {
+          console.warn(`Template boundary validation failed (attempt ${attempt + 1}/${maxBoundaryRetries}), retrying...`);
+        }
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw new Error('Template boundary validation failed after retries');
+}
+
+/**
+ * Print mask to console for debugging
+ */
+function printMask(mask: Mask): void {
+  const symbols: Record<FieldType, string> = {
+    '0': '·',
+    '1': '→',
+    '2': '↓',
+    '3': '↘',
+    '4': '↙',
+    '5': '⤵',
+    '6': '⤴',
+    '#': '█'
+  };
+
+  console.log(`Fitness: ${mask.fitness} (validity: ${mask.validityPenalty}, quality: ${mask.qualityPenalty})`);
+  for (let r = 0; r < mask.rows; r++) {
+    let row = '';
+    for (let c = 0; c < mask.cols; c++) {
+      row += symbols[mask.grid[r][c]] + ' ';
+    }
+    console.log(row);
+  }
+}
+
+export default generateTemplate;
