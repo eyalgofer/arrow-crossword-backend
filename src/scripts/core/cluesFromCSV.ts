@@ -206,13 +206,7 @@ function loadCluesFromCSVFile(csvPath: string, isSimpleCSV: boolean = false): Cl
   }
 }
 
-/**
- * Combined database structure that holds both simple and train databases
- */
-interface CombinedCluesDatabase {
-  simple: CluesDatabase;
-  train: CluesDatabase;
-}
+
 
 // Cache the loaded databases
 let cachedSimpleDatabase: CluesDatabase | null = null;

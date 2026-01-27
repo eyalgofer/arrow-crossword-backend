@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { Puzzle } from '../models/Puzzle';
 import { PuzzlePackage } from '../models/PuzzlePackage';
-import { generatePuzzle } from './generators/puzzlesGenerator';
+import { generatePuzzlesBatch } from './generators/puzzlesGenerator';
 import { Difficulty } from '../types';
 import { getAnswerCells, getNextCellAfterAnswer } from './generators/direction-utils';
 
@@ -254,36 +254,25 @@ const seedPackages = async () => {
       const puzzleIds: mongoose.Types.ObjectId[] = [];
       const generatedPuzzles: any[] = [];
       
-      // Generate puzzles for this package with the correct difficulty distribution
+      // Generate puzzles for this package: one template per difficulty, then solve it count times
       for (const { difficulty, count } of difficultyDistribution) {
-        for (let j = 0; j < count; j++) {
-          let attempts = 0;
-          const maxAttempts = 10;
-          
-          while (attempts < maxAttempts) {
-            const puzzle = generatePuzzle({
-              difficulty: difficulty,
-              category: 'Misc',
-              title: `Puzzle ${globalPuzzleIndex}`
-            });
-            
-            if (puzzle) {
-              // Validate the generated puzzle
-              const boundaryErrors = validatePuzzleBoundaries(puzzle);
-              if (boundaryErrors.length === 0) {
-                generatedPuzzles.push(puzzle);
-                globalPuzzleIndex++;
-                break;
-              } else {
-                attempts++;
-                if (attempts >= maxAttempts) {
-                  console.log(`   ⚠️  Warning: Failed to generate valid ${difficulty} puzzle after ${maxAttempts} attempts`);
-                }
-              }
-            } else {
-              attempts++;
-            }
+        if (count === 0) continue;
+        console.log(`   Generating ${count} ${difficulty} puzzle(s) from one template...`);
+        const batch = generatePuzzlesBatch({
+          difficulty,
+          count,
+          category: 'Misc',
+          startIndex: globalPuzzleIndex,
+        });
+        for (const puzzle of batch) {
+          const boundaryErrors = validatePuzzleBoundaries(puzzle);
+          if (boundaryErrors.length === 0) {
+            generatedPuzzles.push(puzzle);
+            globalPuzzleIndex++;
           }
+        }
+        if (batch.length < count) {
+          console.log(`   ⚠️  Got ${batch.length}/${count} valid ${difficulty} puzzles`);
         }
       }
       

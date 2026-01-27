@@ -11,7 +11,7 @@ export { Difficulty };
 // BASIC TYPES
 // ============================================================================
 
-export type Direction = 'across' | 'down' | 'right-down' | 'left-down' | 'down-across' | 'up-across';
+
 
 export interface GridCell {
   row: number;
@@ -75,7 +75,11 @@ export interface ClueSlot {
   startCol: number;
   length: number;
   crossings: CrossingPoint[];
+  /** When set, solver uses these cells directly instead of deriving from startRow/startCol/direction. Used by template-generator-v2 for Engel geometry (types 3,4,6). */
+  cells?: Array<{ row: number; col: number }>;
 }
+
+export type Direction = 'across' | 'down' | 'right-down' | 'left-down' | 'down-across' | 'up-across';
 
 export interface GridTemplate {
   id: string;

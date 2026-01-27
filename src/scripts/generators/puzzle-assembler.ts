@@ -6,7 +6,7 @@
 
 import { Puzzle, PuzzleItem, GridTemplate, Difficulty } from '../core/types';
 import { GridState } from './grid-state';
-import { getAnswerCells, getNextCellAfterAnswer } from './direction-utils';
+import { getSlotCells } from './direction-utils';
 import { normalizeWord, validateWordBoundaries } from './validation-utils';
 import { getSimpleDatabase } from '../core/cluesFromCSV';
 
@@ -35,6 +35,7 @@ export function generatePuzzleFromGrid(
   }
 ): Puzzle {
   const puzzleItems: PuzzleItem[] = [];
+  const slotIdToClueNumber = new Map<string, number>(); // slot.id -> puzzle item number (for validation errors)
   const usedPuzzleItems = new Set<string>(); // Track used puzzle item texts to prevent duplicates
   const usedAnswers = new Set<string>(); // Track used answers to prevent duplicates
   
@@ -161,8 +162,10 @@ export function generatePuzzleFromGrid(
     const words = word.split(' ');
     const enumeration = words.map(w => w.length);
     
+    const clueNumber = puzzleItemNumber++;
+    slotIdToClueNumber.set(slot.id, clueNumber);
     puzzleItems.push({
-      number: puzzleItemNumber++,
+      number: clueNumber,
       direction: slot.direction,
       clue: clueText,
       answer: normalizedAnswer, // Use normalized answer (no spaces) for crossword grid
@@ -174,25 +177,22 @@ export function generatePuzzleFromGrid(
 
   // --------------------------------------------------------------------------
   // Ensure every clue's answer follows the boundary rule
-  // For each clue, the cell after the last answer letter must be:
-  // - Out of bounds (grid boundary), OR
-  // - A clue cell, OR
-  // - A blocked cell (neither clue nor answer)
+  // Use template slot geometry (getSlotCells) so we validate the same cells the solver filled.
   // --------------------------------------------------------------------------
+  // Build clue/answer sets from template slots (getSlotCells) so we validate the same geometry the solver used.
   const clueCellPositions = new Set<string>();
-  for (const clue of puzzleItems) {
-    clueCellPositions.add(`${clue.startRow},${clue.startCol}`);
-  }
-  
   const answerCellPositions = new Set<string>();
-  for (const clue of puzzleItems) {
-    const cells = getAnswerCells(clue);
-    for (const cell of cells) {
-      answerCellPositions.add(`${cell.row},${cell.col}`);
+  const cellToSlotId = new Map<string, string>();
+  for (const slot of template.slots) {
+    if (!gridState.placedWords.has(slot.id)) continue;
+    clueCellPositions.add(`${slot.startRow},${slot.startCol}`);
+    for (const c of getSlotCells(slot)) {
+      const key = `${c.row},${c.col}`;
+      answerCellPositions.add(key);
+      cellToSlotId.set(key, slot.id);
     }
   }
   
-  // Compute blocked cells: cells that are neither clue nor answer
   const blockedCellPositions = new Set<string>();
   for (let r = 0; r < template.rows; r++) {
     for (let c = 0; c < template.cols; c++) {
@@ -203,14 +203,14 @@ export function generatePuzzleFromGrid(
     }
   }
   
-  // Validate each clue using consolidated validation function
   const validationErrors: string[] = [];
-  for (const clue of puzzleItems) {
-    const answerCells = getAnswerCells(clue);
+  for (const slot of template.slots) {
+    if (!gridState.placedWords.has(slot.id)) continue;
+    const answerCells = getSlotCells(slot);
     if (answerCells.length === 0) continue;
     
     const validation = validateWordBoundaries(
-      clue.direction,
+      slot.direction,
       answerCells,
       template.rows,
       template.cols,
@@ -220,30 +220,23 @@ export function generatePuzzleFromGrid(
     );
     
     if (!validation.isValid) {
-      // Find which clue(s) use the conflicting cell to provide better error message
-      const lastCell = answerCells[answerCells.length - 1];
-      const nextCellAfter = getNextCellAfterAnswer(clue.direction, lastCell, template.rows, template.cols);
+      const clueNumber = slotIdToClueNumber.get(slot.id);
+      const clue = puzzleItems.find(p => p.number === clueNumber);
+      const clueLabel = clue ? `Clue #${clueNumber} "${clue.clue}" (${slot.direction}, answer="${clue?.answer}")` : `Slot ${slot.id} (${slot.direction})`;
       let conflictingClues: number[] = [];
-      
-      if (nextCellAfter && answerCellPositions.has(`${nextCellAfter.row},${nextCellAfter.col}`)) {
-        for (const otherClue of puzzleItems) {
-          if (otherClue.number === clue.number) continue;
-          const otherCells = getAnswerCells(otherClue);
-          for (const cell of otherCells) {
-            if (cell.row === nextCellAfter.row && cell.col === nextCellAfter.col) {
-              conflictingClues.push(otherClue.number);
-              break;
-            }
+      if (validation.reason) {
+        const m = validation.reason.match(/\((\d+),(\d+)\)/);
+        if (m) {
+          const key = `${m[1]},${m[2]}`;
+          const otherSlotId = cellToSlotId.get(key);
+          if (otherSlotId) {
+            const n = slotIdToClueNumber.get(otherSlotId);
+            if (n != null) conflictingClues.push(n);
           }
         }
       }
-      
-      const conflictInfo = conflictingClues.length > 0 
-        ? ` from clue(s) ${conflictingClues.join(', ')}`
-        : '';
-      validationErrors.push(
-        `Clue #${clue.number} "${clue.clue}" (${clue.direction}, answer="${clue.answer}"): ${validation.reason}${conflictInfo}`
-      );
+      const conflictInfo = conflictingClues.length > 0 ? ` from clue(s) ${conflictingClues.join(', ')}` : '';
+      validationErrors.push(`${clueLabel}: ${validation.reason}${conflictInfo}`);
     }
   }
   

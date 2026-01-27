@@ -13,6 +13,8 @@ import { normalizeWord } from './validation-utils';
 
 export interface SolverConfig {
   maxAttempts: number;
+  /** If set, solver aborts after this many ms (avoids multi‑minute hangs). */
+  maxSolveTimeMs?: number;
   shuffleWords: boolean;
   preferCommonWords: boolean;
   allowWordReuse?: boolean; // Allow words to be reused across slots
@@ -46,6 +48,7 @@ export function solveGrid(
   config: SolverConfig = DEFAULT_SOLVER_CONFIG
 ): GridState | null {
   let attempts = 0;
+  const startTime = Date.now();
   
   // Progress tracking
   const PROGRESS_MILESTONES = [0.25, 0.50, 0.75, 0.90];
@@ -119,8 +122,11 @@ export function solveGrid(
   
   function backtrack(state: GridState, remainingSlots: ClueSlot[], depth: number = 0): GridState | null {
     // Increment attempts to track exploration depth
-    // This counts how many times we've entered the backtrack function
     attempts++;
+    // Abort if time limit exceeded (check every 2k attempts to cap runtime without slowing tight loops)
+    if (config.maxSolveTimeMs && attempts % 2000 === 0 && (Date.now() - startTime > config.maxSolveTimeMs)) {
+      return null;
+    }
     
     // Detect if we're stuck in a loop
     if (depth === 0 && remainingSlots.length > 0) {
@@ -229,9 +235,9 @@ export function solveGrid(
     // This avoids wasting time trying words that can't be placed
     const placeableCandidates = candidates.filter(w => canPlaceWord(state, w, cells, rowDelta, colDelta));
     
-    // IMPROVEMENT: Limit candidates to avoid trying too many
-    // More aggressive limiting for very constrained slots
-    const maxCandidates = constraints.size > 3 ? 50 : 100;
+    // Limit candidates to balance exploration vs runtime. Use higher limits for constrained
+    // slots so we don't miss valid solutions (v2 templates often need more exploration).
+    const maxCandidates = constraints.size > 7 ? 400 : constraints.size > 5 ? 300 : constraints.size > 3 ? 200 : 150;
     candidates = placeableCandidates.slice(0, maxCandidates);
     
     // Log first attempt for each slot (only at top level)
@@ -467,14 +473,15 @@ export function solveGrid(
     return currentState;
   }
   
-  const startTime = Date.now();
   const result = backtrack(initialState, [...template.slots]);
   const elapsed = Date.now() - startTime;
   if (!result) {
-    console.log(`  ❌ Failed to solve template after ${attempts} attempts (${elapsed}ms)`);
-    // Show which slots were successfully filled (result is null, so we can't show placed words)
+    console.log(`  ❌ Failed to solve template after ${attempts} attempts (${(elapsed / 1000).toFixed(1)}s)`);
+    if (config.maxSolveTimeMs && elapsed >= config.maxSolveTimeMs * 0.95) {
+      console.log(`  ⏱️  Time limit reached (${config.maxSolveTimeMs / 1000}s) – will retry with a new template`);
+    }
   } else {
-    console.log(`  ✅ Solved template in ${attempts} attempts (${elapsed}ms)`);
+    console.log(`  ✅ Solved template in ${attempts} attempts (${(elapsed / 1000).toFixed(1)}s)`);
   }
   return result;
 }

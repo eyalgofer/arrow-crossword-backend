@@ -140,6 +140,53 @@ export function checkAnswerBoundaries(
 }
 
 /**
+ * Validate that all slots satisfy the boundary rule: for each slot, the cell before
+ * its first answer and the cell after its last answer must not be answer cells of
+ * any other slot. Also: each slot's clue cell (startRow, startCol) must not be an
+ * answer cell of any other slot (avoids down-clue definition sitting on across answer).
+ * Used at template level (e.g. v2 mask→template) to reject invalid templates.
+ */
+export function validateSlotsBoundaries(
+  slots: ClueSlot[],
+  gridRows: number,
+  gridCols: number
+): { valid: boolean; errors?: string[] } {
+  const errors: string[] = [];
+  for (let i = 0; i < slots.length; i++) {
+    const slot = slots[i];
+    const answerCells = getSlotCells(slot);
+    if (answerCells.length === 0) continue;
+
+    const otherAnswerCells = new Set<string>();
+    for (let j = 0; j < slots.length; j++) {
+      if (j === i) continue;
+      for (const c of getSlotCells(slots[j])) {
+        otherAnswerCells.add(`${c.row},${c.col}`);
+      }
+    }
+
+    const clueCellKey = `${slot.startRow},${slot.startCol}`;
+    if (otherAnswerCells.has(clueCellKey)) {
+      errors.push(`Slot ${slot.id} (${slot.direction}): clue cell (${slot.startRow},${slot.startCol}) is an answer cell of another slot`);
+    }
+
+    if (!checkAnswerBoundaries(slot.direction, answerCells, gridRows, gridCols, otherAnswerCells)) {
+      const firstCell = answerCells[0];
+      const lastCell = answerCells[answerCells.length - 1];
+      const cellBefore = getCellBeforeAnswer(slot.direction, firstCell, gridRows, gridCols);
+      const cellAfter = getNextCellAfterAnswer(slot.direction, lastCell, gridRows, gridCols);
+      if (cellBefore && otherAnswerCells.has(`${cellBefore.row},${cellBefore.col}`)) {
+        errors.push(`Slot ${slot.id} (${slot.direction}): cell before first answer (${cellBefore.row},${cellBefore.col}) is an answer cell`);
+      }
+      if (cellAfter && otherAnswerCells.has(`${cellAfter.row},${cellAfter.col}`)) {
+        errors.push(`Slot ${slot.id} (${slot.direction}): cell after last answer (${cellAfter.row},${cellAfter.col}) is an answer cell`);
+      }
+    }
+  }
+  return errors.length === 0 ? { valid: true } : { valid: false, errors };
+}
+
+/**
  * Simple boundary check using deltas (for contexts where Direction is not available)
  * Verifies that cells before/after answer cells are not answer cells
  */

@@ -4,18 +4,17 @@ import {
   GridTemplate,
 } from '../core/types';
 
-import { generatePuzzleFromGrid, ClueDatabase, ClueSourceTracker } from './puzzle-assembler';
+import { generatePuzzleFromGrid, ClueDatabase } from './puzzle-assembler';
 import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
-import { generateTemplate } from './template-generator';
+import { generateTemplate } from './template-generator-v2';
 
-import { getCluesDatabase, getClueForWord, getWordsWithMaxDifficulty, getSimpleDatabase, getTrainDatabase } from '../core/cluesFromCSV';
+import { getClueForWord, getWordsWithMaxDifficulty, getSimpleDatabase, getTrainDatabase } from '../core/cluesFromCSV';
 import { normalizeWord } from './validation-utils';
 
 export type ClueDifficulty = 'easy' | 'medium' | 'challenging' | 'hard' | 'expert';
 
 // Load clues databases (with difficulty classification)
-const CLUES_DB = getCluesDatabase();
 const SIMPLE_DB = getSimpleDatabase();
 const TRAIN_DB = getTrainDatabase();
 
@@ -145,10 +144,11 @@ export class PuzzleGenerator {
   constructor(difficulty: Difficulty = Difficulty.MEDIUM) {
     this.difficulty = difficulty;
     
-    // Build word index for fast lookups, filtered by difficulty
-    // Convert Difficulty enum to ClueDifficulty string type
+    // Build word index for fast lookups. Use a broader pool for easy so the solver
+    // has more words to fill templates; clues are still selected by difficulty when assembling.
     const clueDifficulty = mapDifficulty(difficulty);
-    let words = getWordsWithMaxDifficulty(clueDifficulty);
+    const indexDifficulty = difficulty === Difficulty.EASY ? 'medium' : clueDifficulty;
+    let words = getWordsWithMaxDifficulty(indexDifficulty);
     
     if (words.length === 0) {
       throw new Error(`No words available for difficulty '${clueDifficulty}'. This indicates a problem with the clues database or difficulty filtering.`);
@@ -175,26 +175,48 @@ export class PuzzleGenerator {
     }
   }
 
-  buildGeneratedTemplate(difficulty: Difficulty = Difficulty.MEDIUM): boolean {
+  buildGeneratedTemplate(difficulty: Difficulty = Difficulty.MEDIUM, opts?: { quiet?: boolean; maxIterations?: number }): boolean {
     try {
-      const templateStartTime = Date.now();
-      const template = generateTemplate(difficulty);
-      const templateTime = Date.now() - templateStartTime;
-      
+      const template = generateTemplate({
+        rows: 10,
+        cols: 10,
+        difficulty,
+        name: 'New Generator Template',
+        quiet: opts?.quiet ?? false,
+        maxIterations: opts?.maxIterations,
+        minPopulation: 5,
+      });
       this.templates.push(template);
       return true;
     } catch (error) {
-      // Template generation failed (e.g., couldn't place enough slots)
-      // Log the error but don't throw - let the retry loop try again
-      if (error instanceof Error) {
-        console.log(`   ⚠️  Template generation failed: ${error.message}`);
-      } else {
-        console.log(`   ⚠️  Template generation failed: ${error}`);
-      }
+      if (!opts?.quiet) console.log(`   ⚠️  Template generation failed: ${error}`);
       return false;
     }
   }
 
+  /**
+   * Build one template and solve it count times. Use for packages to avoid N template runs.
+   */
+  generateBatch(config: {
+    count: number;
+    category: string;
+    getTitle: (index: number) => string;
+  }): Puzzle[] {
+    this.templates = [];
+    const built = this.buildGeneratedTemplate(this.difficulty, { quiet: true, maxIterations: 25 });
+    if (!built || this.templates.length === 0) return [];
+
+    const puzzles: Puzzle[] = [];
+    for (let i = 0; i < config.count; i++) {
+      const p = this.solveTemplate(0, {
+        title: config.getTitle(i),
+        difficulty: this.difficulty,
+        category: config.category,
+      }, { quiet: true });
+      if (p) puzzles.push(p);
+    }
+    return puzzles;
+  }
   
   solveTemplate(
     templateIndex: number = 0,
@@ -202,7 +224,8 @@ export class PuzzleGenerator {
       title: string;
       difficulty: Difficulty;
       category: string;
-    }
+    },
+    opts?: { quiet?: boolean }
   ): Puzzle | null {
     if (templateIndex >= this.templates.length) {
       throw new Error(`Template index ${templateIndex} out of bounds`);
@@ -211,21 +234,22 @@ export class PuzzleGenerator {
     const template = this.templates[templateIndex];
 
     const slotCount = template.slots.length;
-    // Reduced max attempts for better performance
-    // More conservative scaling: base + per-slot attempts, capped at 2M
-    const baseAttempts = 100000;  // Reduced from 500k
-    const attemptsPerSlot = 10000; // Reduced from 50k
-    const maxAttempts = Math.min(baseAttempts + (slotCount * attemptsPerSlot), 2000000); // Cap at 2M instead of 10M
+    // Cap runtime so a single solve never hangs for minutes. Prefer failing fast and retrying.
+    const maxSolveTimeMs = 45 * 1000; // 45 seconds per solve
+    const baseAttempts = 100000;
+    const attemptsPerSlot = 8000;
+    const maxAttempts = Math.min(baseAttempts + (slotCount * attemptsPerSlot), 500000);
     
     let result = solveGrid(template, this.wordIndex, {
-      maxAttempts: maxAttempts,
+      maxAttempts,
+      maxSolveTimeMs,
       shuffleWords: true,
       preferCommonWords: true,
       allowWordReuse: true
     });
     
     if (!result) {
-      console.log(`Failed to generate puzzle variant (template: ${template.name}, slots: ${template.slots.length})`);
+      if (!opts?.quiet) console.log(`Failed to generate puzzle variant (template: ${template.name}, slots: ${template.slots.length})`);
       return null;
     }
     
@@ -388,6 +412,21 @@ export function generatePuzzle(
   }
 
   return puzzle;
+}
+
+
+export function generatePuzzlesBatch(config: {
+  difficulty: Difficulty;
+  count: number;
+  category: string;
+  startIndex: number;
+}): Puzzle[] {
+  const gen = new PuzzleGenerator(config.difficulty);
+  return gen.generateBatch({
+    count: config.count,
+    category: config.category,
+    getTitle: (i) => `Puzzle ${config.startIndex + i}`,
+  });
 }
 
 export {

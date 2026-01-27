@@ -89,16 +89,20 @@ export function getAnswerOrientation(direction: Direction): 'horizontal' | 'vert
 }
 
 /**
- * Convert a template slot to cells
+ * Convert a template slot to cells.
+ * If slot.cells is provided (e.g. from template-generator-v2 Engel geometry), use it.
  */
 export function getSlotCells(slot: ClueSlot): Array<{ row: number; col: number }> {
+  if (slot.cells && slot.cells.length > 0) {
+    return slot.cells;
+  }
+
   const cells: Array<{ row: number; col: number }> = [];
-  
   let rowDelta = 0;
   let colDelta = 0;
   let startRow = slot.startRow;
   let startCol = slot.startCol;
-  
+
   // Adjust start based on direction (clue cell vs answer start)
   switch (slot.direction) {
     case 'across':
