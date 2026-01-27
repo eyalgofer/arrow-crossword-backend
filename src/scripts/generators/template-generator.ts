@@ -3,11 +3,14 @@ import { validateSlotsBoundaries } from './validation-utils';
 
 /**
  * Arrow Crossword Template Generator
- * EXACT implementation based on "Generating Swedish-style Crossword Puzzle Masks 
- * using Evolutionary Algorithms" by Jakob Julian Engel (2009)
- * 
- * This generator uses a memetic algorithm combining crossover operations with 
- * hill climbing optimization as described in Chapter 4 of the thesis.
+ * Based on Jakob Engel’s BSc thesis “Generating Swedish-style Crossword Puzzle Masks
+ * using Evolutionary Algorithms” (2009).
+ * Reference: https://jakobengel.github.io/pdf/JakobEngelBsc.pdf
+ *
+ * Swedish arrow crosswords (arrowords): clue-in-cell, arrows show direction (→↓↘↙⤵⤴),
+ * high letter intersection. Six definition types (Figure 2.2) map to across, down,
+ * right-down, left-down, down-across, up-across. Memetic algorithm (Ch. 4) with
+ * fitness from coverage, word length, clustering, dead ends (Ch. 3.2).
  */
 
 // ============================================================================
@@ -166,15 +169,16 @@ function getWordDirection(fieldType: FieldType): { dr: number; dc: number } | nu
 }
 
 /**
- * Get starting position offset for word based on definition field type
- * From thesis Figure 2.2
+ * Get starting position offset for word based on definition field type.
+ * Aligned with direction-utils / puzzle: right-down and left-down start in the cell
+ * beside the clue (right or left), then go down.
  */
 function getWordStartOffset(fieldType: FieldType): { dr: number; dc: number } | null {
   switch (fieldType) {
     case '1': return { dr: 0, dc: 1 };   // Word starts directly to the right
     case '2': return { dr: 1, dc: 0 };   // Word starts directly below
-    case '3': return { dr: 1, dc: 1 };   // Word starts diagonally down-right, then goes down
-    case '4': return { dr: 1, dc: -1 };  // Word starts diagonally down-left, then goes down
+    case '3': return { dr: 0, dc: 1 };   // Right-down: vertical, starts in cell to the RIGHT of clue, then down
+    case '4': return { dr: 0, dc: -1 };  // Left-down: vertical, starts in cell to the LEFT of clue, then down
     case '5': return { dr: 1, dc: 0 };   // Word starts below, then goes right (from bottom of def field)
     case '6': return { dr: -1, dc: 1 };  // Word starts up-right, then goes right (from top of def field)
     default: return null;
@@ -199,11 +203,18 @@ function isVerticalWord(fieldType: FieldType): boolean {
 
 /**
  * Maps internal field types to output Direction type
+ * Per thesis Figure 2.2: 1→, 2↓, 3↘, 4↙, 5⤵(horizontal from below), 6⤴(horizontal from above)
  */
 function fieldTypeToDirection(fieldType: FieldType): Direction | null {
-  if (isHorizontalWord(fieldType)) return 'across';
-  if (isVerticalWord(fieldType)) return 'down';
-  return null;
+  switch (fieldType) {
+    case '1': return 'across';      // → horizontal
+    case '2': return 'down';       // ↓ vertical
+    case '3': return 'right-down'; // ↘ vertical, starts down-right
+    case '4': return 'left-down';  // ↙ vertical, starts down-left
+    case '5': return 'down-across';// ⤵ horizontal from bottom
+    case '6': return 'up-across';  // ⤴ horizontal from top
+    default: return null;
+  }
 }
 
 /**
@@ -689,13 +700,19 @@ function getAllowedFieldTypes(mask: Mask, row: number, col: number): FieldType[]
   const allowed: FieldType[] = ['0']; // Letter field always allowed
 
   // Don't allow definition fields that would point outside grid or create impossible words
+  // Per thesis Figure 2.2: 1→, 2↓, 3↘, 4↙, 5⤵, 6⤴
   // Type 1: needs at least 2 cells to the right
   if (col < mask.cols - 2) allowed.push('1');
-  
   // Type 2: needs at least 2 cells below
   if (row < mask.rows - 2) allowed.push('2');
-  // Restrict to types 1 and 2 only so (startRow, startCol, direction) matches
-  // getAnswerCells() on the client (no Engel types 3–6, no client changes needed).
+  // Type 3 (right-down): vertical, start in cell (r,c+1) right of clue, go down; need ≥2 cells
+  if (col < mask.cols - 1 && row < mask.rows - 1) allowed.push('3');
+  // Type 4 (left-down): vertical, start in cell (r,c-1) left of clue, go down; need ≥2 cells
+  if (col >= 1 && row < mask.rows - 1) allowed.push('4');
+  // Type 5 (down-across): start (r+1,c), go right; need space below and right
+  if (row < mask.rows - 1 && col < mask.cols - 2) allowed.push('5');
+  // Type 6 (up-across): start (r-1,c), go right; need space above and right
+  if (row >= 1 && col < mask.cols - 2) allowed.push('6');
 
   // Per thesis Figure 3.6: Avoid certain configurations that cause violations
   // Check for adjacent definition fields that would cause problems
