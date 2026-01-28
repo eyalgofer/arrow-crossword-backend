@@ -12,4 +12,4 @@ train.csv
 simple.csv
 synonym-seed-words.csv
 synonyms.csv
-src/scripts/core/synonyms.csv
+src/scripts/core/*
