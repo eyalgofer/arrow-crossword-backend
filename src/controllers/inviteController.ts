@@ -6,6 +6,7 @@ import { Puzzle } from '../models/Puzzle';
 import { AuthRequest, MatchStatus } from '../types';
 import { io } from '../server';
 import { getUserActiveSockets } from '../sockets/gameHandler';
+import { MultiplayerPuzzle } from '../models/MultiplayerPuzzle';
 
 export const createInvite = async (req: AuthRequest, res: Response) => {
   try {
@@ -142,11 +143,12 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
     }
 
     // Get a random active puzzle for the match
-    const puzzles = await Puzzle.find({ isActive: true });
+    const multiplayerPuzzleIds = await MultiplayerPuzzle.find().select('_id');
+    const randomPuzzleId = multiplayerPuzzleIds[Math.floor(Math.random() * multiplayerPuzzleIds.length)]._id;
+    const puzzles = await Puzzle.find({ _id: randomPuzzleId });
     if (puzzles.length === 0) {
       return res.status(500).json({ error: 'No puzzles available' });
     }
-    const randomPuzzle = puzzles[Math.floor(Math.random() * puzzles.length)];
 
     // Create the match
     const match = new Match({
@@ -162,7 +164,7 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
           progress: 0
         }
       ],
-      puzzleId: randomPuzzle._id,
+      puzzleId: randomPuzzleId,
       status: MatchStatus.IN_PROGRESS,
       startedAt: new Date()
     });
@@ -178,7 +180,7 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
     const userRoom = `user:${fromUser.firebaseUid}`;
     const inviteAcceptedData = {
       matchId: match._id.toString(),
-      puzzleId: randomPuzzle._id.toString(),
+      puzzleId: randomPuzzleId.toString(),
       opponent: {
         userId: currentUser._id.toString(),
         displayName: currentUser.displayName,
@@ -203,7 +205,7 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
     res.json({ 
       success: true, 
       matchId: match._id.toString(), 
-      puzzleId: randomPuzzle._id.toString() 
+      puzzleId: randomPuzzleId.toString() 
     });
   } catch (error) {
     console.error('Accept invite error:', error);
