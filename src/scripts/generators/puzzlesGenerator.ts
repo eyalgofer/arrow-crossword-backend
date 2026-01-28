@@ -9,7 +9,7 @@ import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
 import { generateTemplate } from './template-generator';
 
-import { getClueForWord, getWordsWithMaxDifficulty, getTrainDatabase, getSynonymsDatabase } from '../core/cluesFromCSV';
+import { getClueForWord, getWordsWithMaxDifficulty, getWordsWithMaxDifficultyFromPreferredSourcesOnly, getTrainDatabase, getSynonymsDatabase } from '../core/cluesFromCSV';
 import { normalizeWord } from './validation-utils';
 
 export type ClueDifficulty = 'easy' | 'medium' | 'challenging' | 'hard' | 'expert';
@@ -41,9 +41,27 @@ function mapDifficulty(difficulty: Difficulty): ClueDifficulty {
 
 /**
  * Get a clue for a word, filtered by difficulty
- * Tries synonyms.csv first, then train.csv
+ * For EASY puzzles: only uses synonyms.csv (no train.csv)
+ * For other difficulties: tries synonyms.csv first, then train.csv
  */
 function getClue(word: string, difficulty: Difficulty = Difficulty.EASY): string {
+  // For easy puzzles, only use synonyms database
+  if (difficulty === Difficulty.EASY) {
+    const normalizedWord = normalizeWord(word);
+    const entries = SYNONYMS_DB.byAnswer[normalizedWord];
+    if (entries && entries.length > 0) {
+      // Filter to only easy/medium clues (no hard/expert)
+      const easyClues = entries
+        .filter(e => e.difficulty === 'easy' || e.difficulty === 'medium')
+        .map(e => e.clue);
+      if (easyClues.length > 0) {
+        return easyClues[Math.floor(Math.random() * easyClues.length)];
+      }
+    }
+    return `[${word}]`;
+  }
+  
+  // For other difficulties, use the standard function
   const clueDifficulty = mapDifficulty(difficulty);
   const clue = getClueForWord(word, clueDifficulty);
   return clue || `[${word}]`;
@@ -51,11 +69,27 @@ function getClue(word: string, difficulty: Difficulty = Difficulty.EASY): string
 
 /**
  * Get all available clues for a word, filtered by difficulty
- * Tries synonyms.csv first, then train.csv
+ * For EASY puzzles: only uses synonyms.csv with easy/medium clues (no train.csv, no hard/expert)
+ * For other difficulties: tries synonyms.csv first, then train.csv
  */
 function getAllClues(word: string, difficulty: Difficulty = Difficulty.EASY): string[] {
-  const clueDifficulty = mapDifficulty(difficulty);
   const normalizedWord = normalizeWord(word);
+  
+  // For easy puzzles, only use synonyms database with easy/medium clues
+  if (difficulty === Difficulty.EASY) {
+    const entries = SYNONYMS_DB.byAnswer[normalizedWord];
+    if (!entries || entries.length === 0) return [`[${word}]`];
+    
+    // Only allow easy and medium clues (no challenging, hard, or expert)
+    const easyMediumClues = entries
+      .filter(e => e.difficulty === 'easy' || e.difficulty === 'medium')
+      .map(e => e.clue);
+    
+    return easyMediumClues.length > 0 ? easyMediumClues : [`[${word}]`];
+  }
+  
+  // For other difficulties, use the standard logic
+  const clueDifficulty = mapDifficulty(difficulty);
   const difficultyOrder: ClueDifficulty[] = ['easy', 'medium', 'challenging'];
   const preferredIndex = difficultyOrder.indexOf(clueDifficulty);
   const allowedDifficulties = new Set(difficultyOrder.slice(0, Math.max(preferredIndex + 1, 1)));
@@ -103,12 +137,18 @@ export class PuzzleGenerator {
       return 0;
     };
 
-    // Build word index for fast lookups. Use a broader pool for easy so the solver
-    // has more words to fill templates; clues are still selected by difficulty when assembling.
-    // wordScorer will heavily prefer synonyms/simple words, but train words remain available as fallback.
+    // Build word index for fast lookups.
+    // For EASY puzzles: only use synonyms words (no train words) to ensure easier puzzles
+    // For other difficulties: use broader pool including train words as fallback
     const clueDifficulty = mapDifficulty(difficulty);
-    const indexDifficulty = difficulty === Difficulty.EASY ? 'medium' : clueDifficulty;
-    let words = getWordsWithMaxDifficulty(indexDifficulty);
+    let words: string[];
+    if (difficulty === Difficulty.EASY) {
+      // For easy puzzles, only use synonyms words with easy/medium difficulty
+      words = getWordsWithMaxDifficultyFromPreferredSourcesOnly('medium');
+    } else {
+      const indexDifficulty = clueDifficulty;
+      words = getWordsWithMaxDifficulty(indexDifficulty);
+    }
 
     if (words.length === 0) {
       throw new Error(`No words available for difficulty '${clueDifficulty}'. This indicates a problem with the clues database or difficulty filtering.`);

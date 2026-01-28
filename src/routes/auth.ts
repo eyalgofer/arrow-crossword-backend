@@ -184,69 +184,7 @@ router.post('/apple', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/demo', async (req: Request, res: Response) => {
-  try {
-    console.log('🎮 Demo auth request received');
 
-    const DEMO_USER_ID = 'demo-user';
-    const DEMO_EMAIL = 'demo@arrowcrossword.app';
-    const DEMO_NAME = 'Demo User';
-    const DEMO_COINS = 1000; // Give demo user some coins to access features
-
-    // Find or create demo user
-    let user = await User.findOne({ firebaseUid: DEMO_USER_ID });
-
-    if (!user) {
-      // Create demo user
-      user = new User({
-        firebaseUid: DEMO_USER_ID,
-        email: DEMO_EMAIL,
-        displayName: DEMO_NAME,
-        photoURL: undefined,
-        coins: DEMO_COINS,
-      });
-      await user.save();
-      console.log('Created demo user:', user.email);
-    } else {
-      // Ensure demo user has coins for full feature access
-      if (user.coins < DEMO_COINS) {
-        user.coins = DEMO_COINS;
-        await user.save();
-      }
-      console.log('Demo user signed in:', user.email);
-    }
-
-    // Create JWT session token
-    const token = jwt.sign(
-      { userId: user.firebaseUid },
-      process.env.JWT_SECRET!,
-      { expiresIn: '7d' }
-    );
-
-    res.json({
-      token,
-      user: {
-        id: user.firebaseUid,
-        email: user.email,
-        name: user.displayName,
-        avatar: user.photoURL,
-        coins: user.coins,
-      },
-    });
-  } catch (error: any) {
-    console.error('❌ Demo auth error:', error?.message || error);
-    console.error('   Full error:', JSON.stringify(error, null, 2));
-    res.status(500).json({ 
-      error: 'Demo authentication failed',
-      message: error?.message || 'Unknown error'
-    });
-  }
-});
-
-/**
- * DELETE /api/auth/delete-account
- * Permanently deletes the user account and all associated data
- */
 router.delete('/delete-account', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
