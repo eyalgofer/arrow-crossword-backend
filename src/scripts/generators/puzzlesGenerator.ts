@@ -9,12 +9,13 @@ import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
 import { generateTemplate } from './template-generator';
 
-import { getClueForWord, getWordsWithMaxDifficulty, getSimpleDatabase, getTrainDatabase } from '../core/cluesFromCSV';
+import { getClueForWord, getWordsWithMaxDifficulty, getSimpleDatabase, getTrainDatabase, getSynonymsDatabase } from '../core/cluesFromCSV';
 import { normalizeWord } from './validation-utils';
 
 export type ClueDifficulty = 'easy' | 'medium' | 'challenging' | 'hard' | 'expert';
 
 // Load clues databases (with difficulty classification)
+const SYNONYMS_DB = getSynonymsDatabase();
 const SIMPLE_DB = getSimpleDatabase();
 const TRAIN_DB = getTrainDatabase();
 
@@ -47,19 +48,20 @@ function mapDifficulty(difficulty: Difficulty): ClueDifficulty {
 function getClue(word: string, difficulty: Difficulty = Difficulty.EASY, tracker?: { simpleCount: number; trainCount: number }): string {
   const clueDifficulty = mapDifficulty(difficulty);
   const normalizedWord = normalizeWord(word);
-  
-  // Try simple.csv first
+
+    // Try synonyms.csv first
+    const synonymsEntries = SYNONYMS_DB.byAnswer[normalizedWord];
+    if (synonymsEntries && synonymsEntries.length > 0) {
+      const clue = getClueForWord(word, clueDifficulty);
+      if (clue) {
+        return clue;
+      }
+    }
+
   const simpleEntries = SIMPLE_DB.byAnswer[normalizedWord];
   if (simpleEntries && simpleEntries.length > 0) {
     const clue = getClueForWord(word, clueDifficulty);
-    if (clue && tracker) {
-      // Verify clue came from simple.csv by checking if it exists there
-      const simpleClues = simpleEntries.map(e => e.clue);
-      if (simpleClues.includes(clue)) {
-        tracker.simpleCount++;
-        return clue;
-      }
-    } else if (clue) {
+    if (clue) {
       return clue;
     }
   }
@@ -68,10 +70,7 @@ function getClue(word: string, difficulty: Difficulty = Difficulty.EASY, tracker
   const trainEntries = TRAIN_DB.byAnswer[normalizedWord];
   if (trainEntries && trainEntries.length > 0) {
     const clue = getClueForWord(word, clueDifficulty);
-    if (clue && tracker) {
-      tracker.trainCount++;
-      return clue;
-    } else if (clue) {
+    if (clue) {
       return clue;
     }
   }
@@ -175,11 +174,13 @@ export class PuzzleGenerator {
     }
   }
 
-  buildGeneratedTemplate(difficulty: Difficulty = Difficulty.MEDIUM, opts?: { quiet?: boolean; maxIterations?: number }): boolean {
+  buildGeneratedTemplate(difficulty: Difficulty = Difficulty.MEDIUM, opts?: { quiet?: boolean; maxIterations?: number; rows?: number; cols?: number }): boolean {
+    const rows = opts?.rows ?? 10;
+    const cols = opts?.cols ?? 10;
     try {
       const template = generateTemplate({
-        rows: 10,
-        cols: 10,
+        rows,
+        cols,
         difficulty,
         name: 'New Generator Template',
         quiet: opts?.quiet ?? false,
@@ -201,9 +202,16 @@ export class PuzzleGenerator {
     count: number;
     category: string;
     getTitle: (index: number) => string;
+    rows?: number;
+    cols?: number;
   }): Puzzle[] {
     this.templates = [];
-    const built = this.buildGeneratedTemplate(this.difficulty, { quiet: true, maxIterations: 25 });
+    const built = this.buildGeneratedTemplate(this.difficulty, {
+      quiet: true,
+      maxIterations: 25,
+      rows: config.rows,
+      cols: config.cols,
+    });
     if (!built || this.templates.length === 0) return [];
 
     const puzzles: Puzzle[] = [];
@@ -420,12 +428,16 @@ export function generatePuzzlesBatch(config: {
   count: number;
   category: string;
   startIndex: number;
+  rows?: number;
+  cols?: number;
 }): Puzzle[] {
   const gen = new PuzzleGenerator(config.difficulty);
   return gen.generateBatch({
     count: config.count,
     category: config.category,
     getTitle: (i) => `Puzzle ${config.startIndex + i}`,
+    rows: config.rows,
+    cols: config.cols,
   });
 }
 

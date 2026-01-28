@@ -4,99 +4,9 @@ import { Puzzle } from '../models/Puzzle';
 import { PuzzlePackage } from '../models/PuzzlePackage';
 import { generatePuzzlesBatch } from './generators/puzzlesGenerator';
 import { Difficulty } from '../types';
-import { getAnswerCells, getNextCellAfterAnswer } from './generators/direction-utils';
+import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 
 dotenv.config();
-
-function validatePuzzleBoundaries(puzzle: any): string[] {
-  const rows: number = puzzle.grid?.rows;
-  const cols: number = puzzle.grid?.cols;
-  const items: any[] = puzzle.puzzleItems || [];
-  const blockedCellsInput: Array<{ row: number; col: number }> = puzzle.grid?.blockedCells || [];
-
-  const clueCellPositions = new Set<string>();
-  for (const item of items) {
-    clueCellPositions.add(`${item.startRow},${item.startCol}`);
-  }
-
-  const blockedCellPositions = new Set<string>();
-  for (const bc of blockedCellsInput) {
-    blockedCellPositions.add(`${bc.row},${bc.col}`);
-  }
-
-  const answerCellPositions = new Set<string>();
-  for (const item of items) {
-    const cells = getAnswerCells(item);
-    for (const cell of cells) {
-      answerCellPositions.add(`${cell.row},${cell.col}`);
-    }
-  }
-
-  // Answer cells must not include any clue cell (question cell in answer placement)
-  const errors: string[] = [];
-  for (const item of items) {
-    const answerCells = getAnswerCells(item);
-    for (const cell of answerCells) {
-      const key = `${cell.row},${cell.col}`;
-      if (clueCellPositions.has(key) && (item.startRow !== cell.row || item.startCol !== cell.col)) {
-        errors.push(
-          `Clue #${item.number} "${item.clue}" (${item.direction}): answer cell (${cell.row},${cell.col}) is a clue cell from another clue`
-        );
-      }
-    }
-  }
-
-  // Compute blocked cells: cells that are neither clue nor answer
-  const computedBlockedCells = new Set<string>();
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const key = `${r},${c}`;
-      if (!clueCellPositions.has(key) && !answerCellPositions.has(key)) {
-        computedBlockedCells.add(key);
-      }
-    }
-  }
-
-  for (const item of items) {
-    const answerCells = getAnswerCells(item);
-    if (answerCells.length === 0) continue;
-
-    const lastCell = answerCells[answerCells.length - 1];
-    const nextCellAfter = getNextCellAfterAnswer(item.direction, lastCell, rows, cols);
-
-    if (nextCellAfter === null) {
-      continue;
-    }
-
-    const nextCellKey = `${nextCellAfter.row},${nextCellAfter.col}`;
-
-    if (answerCellPositions.has(nextCellKey)) {
-      const conflictingClues: number[] = [];
-      for (const other of items) {
-        if (other.number === item.number) continue;
-        const otherCells = getAnswerCells(other);
-        for (const cell of otherCells) {
-          if (cell.row === nextCellAfter.row && cell.col === nextCellAfter.col) {
-            conflictingClues.push(other.number);
-            break;
-          }
-        }
-      }
-      errors.push(
-        `Clue #${item.number} "${item.clue}" (${item.direction}, answer="${item.answer}"): cell after last answer (${nextCellAfter.row},${nextCellAfter.col}) is an answer cell from clue(s) ${conflictingClues.join(', ')}`
-      );
-      continue;
-    }
-
-    if (!clueCellPositions.has(nextCellKey) && !blockedCellPositions.has(nextCellKey) && !computedBlockedCells.has(nextCellKey)) {
-      errors.push(
-        `Clue #${item.number} "${item.clue}" (${item.direction}): cell after last answer (${nextCellAfter.row},${nextCellAfter.col}) is not clue/block/boundary`
-      );
-    }
-  }
-
-  return errors;
-}
 
 // Gradient colors for packages
 const gradientPalette = [
@@ -130,7 +40,7 @@ const packageDefinitions: Array<{
   
   // First package of 10 puzzles
   packageDefinitions.push({
-    name: `Lets get started`,
+    name: `Getting creative`,
     description: 'Lets get started!',
     theme: 'Mixed',
     puzzleCount: 10,
@@ -138,15 +48,15 @@ const packageDefinitions: Array<{
     gradientColors: gradientPalette[gradientPalette.length]
   });
   
-  // // Second package of 10 puzzles
-  // packageDefinitions.push({
-  //   name: `Keeping it simple`,
-  //   description: '10 puzzles to solve',
-  //   theme: 'Mixed',
-  //   puzzleCount: 10,
-  //   iconName: iconNames[iconNames.length],
-  //   gradientColors: gradientPalette[gradientPalette.length]
-  // });
+  // // Second package of 20 puzzles
+  packageDefinitions.push({
+    name: `Genius level`,
+    description: '20 puzzles to solve',
+    theme: 'Mixed',
+    puzzleCount: 10,
+    iconName: iconNames[iconNames.length],
+    gradientColors: gradientPalette[gradientPalette.length]
+  });
   
   // // // Package of 20 puzzles
   // packageDefinitions.push({
@@ -241,12 +151,12 @@ const seedPackages = async () => {
     console.log('');
 
     // Clear existing packages
-    await PuzzlePackage.deleteMany({});
-    console.log('\n🗑️  Cleared existing packages');
+    // await PuzzlePackage.deleteMany({});
+    // console.log('\n🗑️  Cleared existing packages');
 
     // Clear packageId from all puzzles
-    await Puzzle.updateMany({}, { $unset: { packageId: 1 } });
-    console.log('🗑️  Cleared packageId from all puzzles\n');
+    // await Puzzle.updateMany({}, { $unset: { packageId: 1 } });
+    // console.log('🗑️  Cleared packageId from all puzzles\n');
 
     // Create all packages and generate puzzles with correct difficulty distribution
     console.log(`📦 Creating ${packageDefinitions.length} packages with difficulty distribution...\n`);

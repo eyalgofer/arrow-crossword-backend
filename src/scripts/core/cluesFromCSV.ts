@@ -209,6 +209,7 @@ function loadCluesFromCSVFile(csvPath: string, isSimpleCSV: boolean = false): Cl
 
 
 // Cache the loaded databases
+let cachedSynonymsDatabase: CluesDatabase | null = null;
 let cachedSimpleDatabase: CluesDatabase | null = null;
 let cachedTrainDatabase: CluesDatabase | null = null;
 let cachedCombinedDatabase: CluesDatabase | null = null;
@@ -218,14 +219,18 @@ let cachedCombinedDatabase: CluesDatabase | null = null;
  * Simple.csv is tried first, then train.csv as fallback
  */
 export function loadCluesFromCSV(): CluesDatabase {
+  const synonymsPath = path.join(__dirname, 'synonyms.csv');
   const simplePath = path.join(__dirname, 'simple.csv');
   const trainPath = path.join(__dirname, 'train.csv');
   
   // Load both databases
+  const synonymsDb = loadCluesFromCSVFile(synonymsPath, true);
   const simpleDb = loadCluesFromCSVFile(simplePath, true);
   const trainDb = loadCluesFromCSVFile(trainPath, false);
   
+  
   // Store separately for fallback logic
+  cachedSynonymsDatabase = synonymsDb;
   cachedSimpleDatabase = simpleDb;
   cachedTrainDatabase = trainDb;
   
@@ -291,6 +296,16 @@ export function getCluesDatabase(): CluesDatabase {
     loadCluesFromCSV();
   }
   return cachedCombinedDatabase!;
+}
+
+/**
+ * Get the simple database (preferred source)
+ */
+export function getSynonymsDatabase(): CluesDatabase {
+  if (!cachedSynonymsDatabase) {
+    loadCluesFromCSV();
+  }
+  return cachedSynonymsDatabase!;
 }
 
 /**
@@ -373,13 +388,16 @@ export function getClueForWord(
   };
   
   // Try simple.csv first (preferred)
+  const synonymsDb = getSynonymsDatabase();
+  const synonymsClue = getClueFromDb(synonymsDb);
+  if (synonymsClue) {
+    return synonymsClue;
+  }
   const simpleDb = getSimpleDatabase();
   const simpleClue = getClueFromDb(simpleDb);
   if (simpleClue) {
     return simpleClue;
   }
-  
-  // Fallback to train.csv
   const trainDb = getTrainDatabase();
   const trainClue = getClueFromDb(trainDb);
   if (trainClue) {
@@ -437,21 +455,26 @@ export function getWordsWithMaxDifficulty(maxDifficulty: ClueDifficulty): string
       }
     }
   };
-  
-  // Get words from simple.csv first (preferred)
+  // Get words from synonyms.csv first (preferred)
+  const synonymsDb = getSynonymsDatabase();
+  getWordsFromDb(synonymsDb, true);
+  // Get words from simple.csv as fallback
   const simpleDb = getSimpleDatabase();
   getWordsFromDb(simpleDb, true);
   
-  // Get words from train.csv as fallback (only words not in simple.csv)
+  // Get words from train.csv as fallback 
   const trainDb = getTrainDatabase();
   getWordsFromDb(trainDb, false);
   
   if (validWords.length === 0) {
+    const synonymsDb = getSynonymsDatabase();
     const simpleDb = getSimpleDatabase();
     const trainDb = getTrainDatabase();
+    const totalWordsInSynonyms = Object.keys(synonymsDb.byAnswer).length;
     const totalWordsInSimple = Object.keys(simpleDb.byAnswer).length;
     const totalWordsInTrain = Object.keys(trainDb.byAnswer).length;
     console.error(`❌ No words found for difficulty '${maxDifficulty}'. This is a critical error!`);
+    console.error(`   Total words in synonyms.csv: ${totalWordsInSynonyms}`);
     console.error(`   Total words in simple.csv: ${totalWordsInSimple}`);
     console.error(`   Total words in train.csv: ${totalWordsInTrain}`);
     console.error(`   Allowed difficulties: ${Array.from(allowedDifficulties).join(', ')}`);
