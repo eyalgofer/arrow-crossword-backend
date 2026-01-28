@@ -13,20 +13,10 @@ const router = Router();
 
 // Create a new invite
 router.post('/', authenticateToken, createInvite);
-
-// Get pending invites (received)
 router.get('/pending', authenticateToken, getPendingInvites);
-
-// Get sent invites
 router.get('/sent', authenticateToken, getSentInvites);
-
-// Accept an invite
 router.post('/:id/accept', authenticateToken, acceptInvite);
-
-// Decline an invite
 router.post('/:id/decline', authenticateToken, declineInvite);
-
-// Cancel a sent invite
 router.post('/:id/cancel', authenticateToken, cancelInvite);
 
 export default router;
