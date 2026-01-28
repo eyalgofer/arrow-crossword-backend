@@ -214,6 +214,7 @@ export class PuzzleGenerator {
       preferCommonWords: true,
       allowWordReuse: true,
       wordScorer: this.wordScorer,
+      quiet: opts?.quiet ?? false,
     });
     
     if (!result) {
@@ -228,7 +229,8 @@ export class PuzzleGenerator {
     const clueDb: ClueDatabase = {
       getClue: (word: string, difficulty: Difficulty) => getClue(word, difficulty),
       getAllClues: (word: string, difficulty: Difficulty) => getAllClues(word, difficulty),
-      tracker: clueSourceTracker
+      tracker: clueSourceTracker,
+      quiet: opts?.quiet ?? false
     };
     
     // Build the puzzle

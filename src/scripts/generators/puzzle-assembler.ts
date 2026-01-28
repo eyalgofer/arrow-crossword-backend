@@ -20,6 +20,7 @@ export interface ClueDatabase {
   getClue(word: string, difficulty: Difficulty): string;
   getAllClues?(word: string, difficulty: Difficulty): string[]; // Optional: get all available clues
   tracker?: ClueSourceTracker; // Optional: track which database was used
+  quiet?: boolean; // Optional: suppress statistics logging
 }
 
 const MAX_CLUE_LENGTH = 50;
@@ -258,8 +259,8 @@ export function generatePuzzleFromGrid(
   const estimatedTime = puzzleItems.length * 20 * difficultyNumber;
   const coinReward = Math.ceil(puzzleItems.length * difficultyNumber / 4);
   
-  // Log clue source statistics if tracker is available (order: synonyms → simple → train)
-  if (clueDb.tracker) {
+  // Log clue source statistics if tracker is available and not in quiet mode
+  if (clueDb.tracker && !clueDb.quiet) {
     const totalClues = clueDb.tracker.synonymsCount + clueDb.tracker.simpleCount + clueDb.tracker.trainCount;
     const synonymsPercent = totalClues > 0 ? ((clueDb.tracker.synonymsCount / totalClues) * 100).toFixed(1) : '0.0';
     const simplePercent = totalClues > 0 ? ((clueDb.tracker.simpleCount / totalClues) * 100).toFixed(1) : '0.0';

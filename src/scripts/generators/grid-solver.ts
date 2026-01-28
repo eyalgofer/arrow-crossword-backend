@@ -19,6 +19,7 @@ export interface SolverConfig {
   preferCommonWords: boolean;
   allowWordReuse?: boolean; // Allow words to be reused across slots
   wordScorer?: (word: string) => number;
+  quiet?: boolean; // Suppress progress and solve logs
 }
 
 const DEFAULT_SOLVER_CONFIG: SolverConfig = {
@@ -205,7 +206,7 @@ export function solveGrid(
       const placedSlots = totalSlots - remainingSlots.length;
       const progress = placedSlots / totalSlots;
       const nextMilestone = PROGRESS_MILESTONES.find(m => m > lastMilestone && progress >= m);
-      if (nextMilestone) {
+      if (nextMilestone && !config.quiet) {
         console.log(`  📊 Progress: ${(progress * 100).toFixed(0)}% (${placedSlots}/${totalSlots} slots, ${attempts} attempts)`);
         lastMilestone = nextMilestone;
       }
@@ -438,7 +439,9 @@ export function solveGrid(
         if (depth === 0) {
           const remainingCount = newRemaining.length;
           const totalSlots = template.slots.length;
-          console.log(`  ✅ Placed "${word}" (${remainingCount}/${totalSlots} remaining)`);
+          if (!config.quiet) {
+            console.log(`  ✅ Placed "${word}" (${remainingCount}/${totalSlots} remaining)`);
+          }
         }
         return result;
       }
@@ -477,7 +480,9 @@ export function solveGrid(
     return null; // No valid word found
   }
 
-  console.log(`  🧩 Solving template "${template.name}" with ${template.slots.length} slots...`);
+  if (!config.quiet) {
+    console.log(`  🧩 Solving template "${template.name}" with ${template.slots.length} slots...`);
+  }
   
   // Special optimization: if template has NO crossings, solve it greedily
   // Since slots are independent, we can just pick the first valid word for each
@@ -506,7 +511,9 @@ export function solveGrid(
       currentState = placeWord(currentState, slot.id, word, cells, rowDelta, colDelta);
       console.log(`  ✅ Slot ${i + 1}/${template.slots.length}: Placed "${word}"`);
     }
-    console.log(`  ✅ Solved template in ${attempts} attempts (greedy mode)`);
+    if (!config.quiet) {
+      console.log(`  ✅ Solved template in ${attempts} attempts (greedy mode)`);
+    }
     return currentState;
   }
   
@@ -518,7 +525,9 @@ export function solveGrid(
       console.log(`  ⏱️  Time limit reached (${config.maxSolveTimeMs / 1000}s) – will retry with a new template`);
     }
   } else {
-    console.log(`  ✅ Solved template in ${attempts} attempts (${(elapsed / 1000).toFixed(1)}s)`);
+    if (!config.quiet) {
+      console.log(`  ✅ Solved template in ${attempts} attempts (${(elapsed / 1000).toFixed(1)}s)`);
+    }
   }
   return result;
 }
