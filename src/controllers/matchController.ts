@@ -177,3 +177,76 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ error: 'Failed to get match' });
   }
 };
+
+export const leaveMatch = async (req: AuthRequest, res: Response) => {
+  try {
+    const { matchId } = req.params;
+
+    // Validate matchId
+    if (!matchId || matchId === 'undefined' || !mongoose.Types.ObjectId.isValid(matchId)) {
+      return res.status(400).json({ error: 'Invalid match ID' });
+    }
+
+    const user = await User.findOne({ firebaseUid: req.user!.uid });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const match = await Match.findById(matchId);
+    if (!match) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    // Verify user is part of this match
+    const isPlayer = match.players.some(
+      p => {
+        const playerUserId = (p.userId as any)?._id || p.userId;
+        return playerUserId.toString() === user._id.toString();
+      }
+    );
+
+    if (!isPlayer) {
+      return res.status(403).json({ error: 'Not authorized to leave this match' });
+    }
+
+    // Check if match is already completed or cancelled
+    if (match.status === MatchStatus.COMPLETED || match.status === MatchStatus.CANCELLED) {
+      return res.status(400).json({ error: 'Match is already completed or cancelled' });
+    }
+
+    // Handle leaving based on match status
+    if (match.status === MatchStatus.IN_PROGRESS) {
+      // Find the opponent
+      const opponent = match.players.find(
+        p => {
+          const playerUserId = (p.userId as any)?._id || p.userId;
+          return playerUserId.toString() !== user._id.toString();
+        }
+      );
+
+      if (opponent) {
+        // Mark opponent as winner
+        match.winnerId = (opponent.userId as any)?._id || opponent.userId;
+      }
+
+      // Complete the match
+      match.status = MatchStatus.COMPLETED;
+      match.completedAt = new Date();
+    } else if (match.status === MatchStatus.WAITING) {
+      // Cancel the match if it hasn't started yet
+      match.status = MatchStatus.CANCELLED;
+    }
+
+    await match.save();
+
+    // Return updated match
+    const updatedMatch = await Match.findById(matchId)
+      .populate('puzzleId', 'title difficulty')
+      .populate('players.userId', 'displayName photoURL');
+
+    res.json({ match: updatedMatch, message: 'Successfully left match' });
+  } catch (error) {
+    console.error('Leave match error:', error);
+    res.status(500).json({ error: 'Failed to leave match' });
+  }
+};

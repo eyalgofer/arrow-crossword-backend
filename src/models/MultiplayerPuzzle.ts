@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IMultiplayerPuzzle extends Document {
   puzzleId: mongoose.Types.ObjectId;
+  index: number; // 0-9 to identify which multiplayer puzzle this is
   createdAt: Date;
   updatedAt: Date;
 }
@@ -12,6 +13,13 @@ const multiplayerPuzzleSchema = new Schema<IMultiplayerPuzzle>({
     ref: 'Puzzle',
     required: true
   },
+  index: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 9,
+    unique: true // Ensure only one puzzle per index
+  }
 }, {
   timestamps: true
 });

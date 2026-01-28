@@ -9,7 +9,6 @@ firebase-service-account.json
 .vscode/
 .idea/
 train.csv
-simple.csv
 synonym-seed-words.csv
 synonyms.csv
 src/scripts/core/*

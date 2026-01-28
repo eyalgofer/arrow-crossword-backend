@@ -8,9 +8,10 @@ import { Puzzle, PuzzleItem, GridTemplate, Difficulty } from '../core/types';
 import { GridState } from './grid-state';
 import { getSlotCells } from './direction-utils';
 import { normalizeWord, validateWordBoundaries } from './validation-utils';
-import { getSimpleDatabase } from '../core/cluesFromCSV';
+import { getSynonymsDatabase } from '../core/cluesFromCSV';
 
 export interface ClueSourceTracker {
+  synonymsCount: number;
   simpleCount: number;
   trainCount: number;
 }
@@ -19,6 +20,91 @@ export interface ClueDatabase {
   getClue(word: string, difficulty: Difficulty): string;
   getAllClues?(word: string, difficulty: Difficulty): string[]; // Optional: get all available clues
   tracker?: ClueSourceTracker; // Optional: track which database was used
+}
+
+const MAX_CLUE_LENGTH = 50;
+
+/**
+ * Get clue text with proper length and uniqueness handling
+ */
+function getClueText(
+  word: string,
+  clueDb: ClueDatabase,
+  difficulty: Difficulty,
+  maxLength: number,
+  usedPuzzleItems: Set<string>
+): string {
+  const normalizedWord = normalizeWord(word);
+  const synonymsDb = getSynonymsDatabase();
+  const hasSynonymsClues = synonymsDb.byAnswer[normalizedWord]?.length > 0;
+
+  let clueText: string;
+
+  if (clueDb.getAllClues) {
+    const allClues = clueDb.getAllClues(word, difficulty);
+    const validClues = allClues.filter(clue => clue.length <= maxLength);
+
+    if (validClues.length === 0) {
+      const firstClue = allClues[0] || `[${word}]`;
+      clueText = firstClue.length <= maxLength 
+        ? firstClue 
+        : firstClue.substring(0, maxLength - 3) + '...';
+    } else {
+      const unusedClue = validClues.find(clue => !usedPuzzleItems.has(clue));
+      clueText = unusedClue || validClues[0];
+      if (clueText.length > maxLength) {
+        clueText = clueText.substring(0, maxLength - 3) + '...';
+      }
+    }
+
+    // Track database usage
+    if (clueDb.tracker && clueText && !clueText.startsWith('[')) {
+      if (hasSynonymsClues) {
+        clueDb.tracker.synonymsCount++;
+      } else {
+        clueDb.tracker.trainCount++;
+      }
+    }
+  } else {
+    // Fallback: try random clues up to 10 times
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    do {
+      clueText = clueDb.getClue(word, difficulty);
+      if (clueText.length > maxLength) {
+        clueText = clueText.substring(0, maxLength - 3) + '...';
+      }
+      attempts++;
+    } while (usedPuzzleItems.has(clueText) && attempts < maxAttempts);
+    
+    // If still duplicate, add word suffix
+    if (usedPuzzleItems.has(clueText)) {
+      const suffix = ` (${word})`;
+      if (clueText.length + suffix.length > maxLength) {
+        const availableSpace = maxLength - suffix.length;
+        clueText = clueText.substring(0, Math.max(0, availableSpace - 3)) + '...' + suffix;
+      } else {
+        clueText = `${clueText}${suffix}`;
+      }
+    }
+
+    // Track database usage
+    if (clueDb.tracker && clueText && !clueText.startsWith('[')) {
+      if (hasSynonymsClues) {
+        clueDb.tracker.synonymsCount++;
+      } else {
+        clueDb.tracker.trainCount++;
+      }
+    }
+  }
+
+  // Final safety check
+  if (clueText.length > maxLength) {
+    clueText = clueText.substring(0, maxLength - 3) + '...';
+  }
+
+  return clueText;
 }
 
 /**
@@ -39,8 +125,9 @@ export function generatePuzzleFromGrid(
   const usedPuzzleItems = new Set<string>(); // Track used puzzle item texts to prevent duplicates
   const usedAnswers = new Set<string>(); // Track used answers to prevent duplicates
   
-  // Initialize tracker if provided
+  // Initialize tracker if provided (order: synonyms → simple → train)
   if (clueDb.tracker) {
+    clueDb.tracker.synonymsCount = 0;
     clueDb.tracker.simpleCount = 0;
     clueDb.tracker.trainCount = 0;
   }
@@ -64,95 +151,8 @@ export function generatePuzzleFromGrid(
       continue; // Skip this slot and continue with the next one
     }
     
-    // Get clue, ensuring it's not a duplicate
-    let clueText: string;   
-    const MAX_CLUE_LENGTH = 50; 
-    
-    // Try to get all available clues if the database supports it
-    if (clueDb.getAllClues) {
-      // Check which database has clues for this word (for tracking)
-      const normalizedWordForTracking = normalizeWord(word);
-      const simpleDb = getSimpleDatabase();
-      const simpleEntries = simpleDb.byAnswer[normalizedWordForTracking];
-      const hasSimpleClues = simpleEntries && simpleEntries.length > 0;
-      
-      const allClues = clueDb.getAllClues(word, config.difficulty);
-      // Filter to only clues that fit (<= 20 characters)
-      const validClues = allClues.filter(clue => clue.length <= MAX_CLUE_LENGTH);
-      
-      if (validClues.length === 0) {
-        // No valid clues - truncate the first one
-        const firstClue = allClues[0] || `[${word}]`;
-        clueText = firstClue.length <= MAX_CLUE_LENGTH 
-          ? firstClue 
-          : firstClue.substring(0, MAX_CLUE_LENGTH - 3) + '...';
-      } else {
-        // Find the first valid clue that hasn't been used
-        const unusedClue = validClues.find(clue => !usedPuzzleItems.has(clue));
-        if (unusedClue) {
-          clueText = unusedClue;
-        } else {
-          // All valid clues for this word are used, truncate the first one if needed
-          const firstValid = validClues[0];
-          clueText = firstValid.length <= MAX_CLUE_LENGTH 
-            ? firstValid 
-            : firstValid.substring(0, MAX_CLUE_LENGTH - 3) + '...';
-        }
-      }
-      
-      // Track which database was used
-      // If simple.csv has clues for this word, we used simple.csv (since getAllClues tries simple first)
-      if (clueDb.tracker && clueText && !clueText.startsWith('[')) {
-        if (hasSimpleClues) {
-          clueDb.tracker.simpleCount++;
-        } else {
-          clueDb.tracker.trainCount++;
-        }
-      }
-    } else {
-      // Fallback: try random clues up to 10 times, ensuring they fit
-      let attempts = 0;
-      const maxClueAttempts = 10;
-      
-      do {
-        clueText = clueDb.getClue(word, config.difficulty);
-        // Truncate if too long
-        if (clueText.length > MAX_CLUE_LENGTH) {
-          clueText = clueText.substring(0, MAX_CLUE_LENGTH - 3) + '...';
-        }
-        attempts++;
-      } while (usedPuzzleItems.has(clueText) && attempts < maxClueAttempts);
-      
-      // If we still have a duplicate after max attempts, use a fallback
-      if (usedPuzzleItems.has(clueText)) {
-        // Truncate the word suffix if needed
-        const suffix = ` (${word})`;
-        if (clueText.length + suffix.length > MAX_CLUE_LENGTH) {
-          const availableSpace = MAX_CLUE_LENGTH - suffix.length;
-          clueText = clueText.substring(0, Math.max(0, availableSpace - 3)) + '...' + suffix;
-        } else {
-          clueText = `${clueText}${suffix}`; // Add word to make it unique
-        }
-      }
-      
-      // Track which database was used
-      // Check if simple.csv has clues for this word (since getClue tries simple first)
-      if (clueDb.tracker && clueText && !clueText.startsWith('[')) {
-        const normalizedWordForTracking = normalizeWord(word);
-        const simpleDb = getSimpleDatabase();
-        const simpleEntries = simpleDb.byAnswer[normalizedWordForTracking];
-        if (simpleEntries && simpleEntries.length > 0) {
-          clueDb.tracker.simpleCount++;
-        } else {
-          clueDb.tracker.trainCount++;
-        }
-      }
-    }
-    
-    // Final safety check - ensure it's still <= 20 characters
-    if (clueText.length > MAX_CLUE_LENGTH) {
-      clueText = clueText.substring(0, MAX_CLUE_LENGTH - 3) + '...';
-    }
+    // Get clue text with proper length and uniqueness handling
+    const clueText = getClueText(word, clueDb, config.difficulty, MAX_CLUE_LENGTH, usedPuzzleItems);
     
     usedPuzzleItems.add(clueText);
     usedAnswers.add(normalizedAnswer);
@@ -258,12 +258,14 @@ export function generatePuzzleFromGrid(
   const estimatedTime = puzzleItems.length * 20 * difficultyNumber;
   const coinReward = Math.ceil(puzzleItems.length * difficultyNumber / 4);
   
-  // Log clue source statistics if tracker is available
+  // Log clue source statistics if tracker is available (order: synonyms → simple → train)
   if (clueDb.tracker) {
-    const totalClues = clueDb.tracker.simpleCount + clueDb.tracker.trainCount;
+    const totalClues = clueDb.tracker.synonymsCount + clueDb.tracker.simpleCount + clueDb.tracker.trainCount;
+    const synonymsPercent = totalClues > 0 ? ((clueDb.tracker.synonymsCount / totalClues) * 100).toFixed(1) : '0.0';
     const simplePercent = totalClues > 0 ? ((clueDb.tracker.simpleCount / totalClues) * 100).toFixed(1) : '0.0';
     const trainPercent = totalClues > 0 ? ((clueDb.tracker.trainCount / totalClues) * 100).toFixed(1) : '0.0';
     console.log(`\n📊 Clue Source Statistics:`);
+    console.log(`   Synonyms.csv: ${clueDb.tracker.synonymsCount} clues (${synonymsPercent}%)`);
     console.log(`   Simple.csv: ${clueDb.tracker.simpleCount} clues (${simplePercent}%)`);
     console.log(`   Train.csv: ${clueDb.tracker.trainCount} clues (${trainPercent}%)`);
     console.log(`   Total clues: ${totalClues}`);

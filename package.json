@@ -8,11 +8,10 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "seed:packages": "ts-node src/scripts/seedPackages.ts",
+    "seed:multiplayer": "ts-node src/scripts/seedMultiplayer.ts",
     "seed:daily": "ts-node src/scripts/seedDaily.ts",
     "assign:daily": "ts-node src/scripts/assignDailyPuzzles.ts",
-    "check:apple": "node scripts/check-apple-config.js",
-    "test:improved": "ts-node src/scripts/generators/improvedPuzzlesGenerator.ts",
-    "generate:30": "ts-node src/scripts/generate30Puzzles.ts"
+    "check:apple": "node scripts/check-apple-config.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

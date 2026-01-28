@@ -38,7 +38,7 @@ const userSchema = new Schema<IUser>({
   },
   coins: {
     type: Number,
-    default: 0
+    default: 60
   },
   stats: {
     totalGames: { type: Number, default: 0 },

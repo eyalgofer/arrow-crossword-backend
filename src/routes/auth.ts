@@ -44,7 +44,7 @@ router.post('/google', async (req: Request, res: Response) => {
         email: googleUser.email,
         displayName: googleUser.name,
         photoURL: googleUser.picture,
-        coins: 0,
+        coins: 60,
       });
       await user.save();
       console.log('Created new user:', user.email);
@@ -136,7 +136,7 @@ router.post('/apple', async (req: Request, res: Response) => {
         email: appleUser.email,
         displayName: displayName,
         photoURL: undefined, // Apple doesn't provide profile pictures
-        coins: 0,
+        coins: 60,
       });
       await user.save();
       console.log('Created new Apple user:', user.email);

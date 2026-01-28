@@ -9,14 +9,13 @@ import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
 import { generateTemplate } from './template-generator';
 
-import { getClueForWord, getWordsWithMaxDifficulty, getSimpleDatabase, getTrainDatabase, getSynonymsDatabase } from '../core/cluesFromCSV';
+import { getClueForWord, getWordsWithMaxDifficulty, getTrainDatabase, getSynonymsDatabase } from '../core/cluesFromCSV';
 import { normalizeWord } from './validation-utils';
 
 export type ClueDifficulty = 'easy' | 'medium' | 'challenging' | 'hard' | 'expert';
 
 // Load clues databases (with difficulty classification)
 const SYNONYMS_DB = getSynonymsDatabase();
-const SIMPLE_DB = getSimpleDatabase();
 const TRAIN_DB = getTrainDatabase();
 
 /**
@@ -42,128 +41,88 @@ function mapDifficulty(difficulty: Difficulty): ClueDifficulty {
 
 /**
  * Get a clue for a word, filtered by difficulty
- * Uses max difficulty of 'challenging' (no hard/expert clues)
- * Tracks which database was used if tracker is provided
+ * Tries synonyms.csv first, then train.csv
  */
-function getClue(word: string, difficulty: Difficulty = Difficulty.EASY, tracker?: { simpleCount: number; trainCount: number }): string {
+function getClue(word: string, difficulty: Difficulty = Difficulty.EASY): string {
   const clueDifficulty = mapDifficulty(difficulty);
-  const normalizedWord = normalizeWord(word);
-
-    // Try synonyms.csv first
-    const synonymsEntries = SYNONYMS_DB.byAnswer[normalizedWord];
-    if (synonymsEntries && synonymsEntries.length > 0) {
-      const clue = getClueForWord(word, clueDifficulty);
-      if (clue) {
-        return clue;
-      }
-    }
-
-  const simpleEntries = SIMPLE_DB.byAnswer[normalizedWord];
-  if (simpleEntries && simpleEntries.length > 0) {
-    const clue = getClueForWord(word, clueDifficulty);
-    if (clue) {
-      return clue;
-    }
-  }
-  
-  // Fallback to train.csv
-  const trainEntries = TRAIN_DB.byAnswer[normalizedWord];
-  if (trainEntries && trainEntries.length > 0) {
-    const clue = getClueForWord(word, clueDifficulty);
-    if (clue) {
-      return clue;
-    }
-  }
-  
-  // Fallback
-  return `[${word}]`;
+  const clue = getClueForWord(word, clueDifficulty);
+  return clue || `[${word}]`;
 }
 
 /**
  * Get all available clues for a word, filtered by difficulty
- * Tries simple.csv first (preferred), then falls back to train.csv
- * Uses max difficulty of 'challenging' (no hard/expert clues)
- * Tracks which database was used if tracker is provided
+ * Tries synonyms.csv first, then train.csv
  */
-function getAllClues(word: string, difficulty: Difficulty = Difficulty.EASY, tracker?: { simpleCount: number; trainCount: number }): string[] {
+function getAllClues(word: string, difficulty: Difficulty = Difficulty.EASY): string[] {
   const clueDifficulty = mapDifficulty(difficulty);
   const normalizedWord = normalizeWord(word);
-  
-  // Build allowed difficulties up to max (challenging)
   const difficultyOrder: ClueDifficulty[] = ['easy', 'medium', 'challenging'];
   const preferredIndex = difficultyOrder.indexOf(clueDifficulty);
   const allowedDifficulties = new Set(difficultyOrder.slice(0, Math.max(preferredIndex + 1, 1)));
   
-  // Helper function to get clues from a database
-  const getCluesFromDb = (db: typeof SIMPLE_DB): string[] => {
+  const getCluesFromDb = (db: typeof SYNONYMS_DB): string[] => {
     const entries = db.byAnswer[normalizedWord];
-    if (!entries || entries.length === 0) {
-      return [];
-    }
+    if (!entries || entries.length === 0) return [];
     
-    const filteredClues = entries
+    const filtered = entries
       .filter(e => allowedDifficulties.has(e.difficulty))
       .map(e => e.clue);
     
-    if (filteredClues.length > 0) {
-      return filteredClues;
-    }
+    if (filtered.length > 0) return filtered;
     
-    // Fallback to all allowed difficulties if no clues match preferred difficulty
+    // Fallback to all allowed difficulties
     const allAllowed = new Set<ClueDifficulty>(['easy', 'medium', 'challenging', 'hard', 'expert']);
-    const fallbackClues = entries
+    return entries
       .filter(e => allAllowed.has(e.difficulty))
       .map(e => e.clue);
-    
-    return fallbackClues;
   };
   
-  // Try simple.csv first (preferred)
-  const simpleClues = getCluesFromDb(SIMPLE_DB);
-  if (simpleClues.length > 0) {
-    // Track that we used simple.csv (will be counted when clue is actually selected)
-    return simpleClues;
-  }
-  
-  // Fallback to train.csv
+  const synonymsClues = getCluesFromDb(SYNONYMS_DB);
+  if (synonymsClues.length > 0) return synonymsClues;
+
   const trainClues = getCluesFromDb(TRAIN_DB);
-  if (trainClues.length > 0) {
-    // Track that we used train.csv (will be counted when clue is actually selected)
-    return trainClues;
-  }
-  
-  // Last resort fallback
+  if (trainClues.length > 0) return trainClues;
+
   return [`[${word}]`];
 }
+
 export class PuzzleGenerator {
   private wordIndex: CrossingIndex;
   private templates: GridTemplate[] = [];
   private difficulty: Difficulty;
-  
+  /** Prefer synonyms (2) over simple (1) when solving so clues stay easier */
+  private wordScorer: (word: string) => number;
+
   constructor(difficulty: Difficulty = Difficulty.MEDIUM) {
     this.difficulty = difficulty;
-    
+
+    const synonymsWords = new Set(Object.keys(SYNONYMS_DB.byAnswer));
+    this.wordScorer = (word: string) => {
+      const n = normalizeWord(word);
+      if (synonymsWords.has(n)) return 2;
+      return 0;
+    };
+
     // Build word index for fast lookups. Use a broader pool for easy so the solver
     // has more words to fill templates; clues are still selected by difficulty when assembling.
+    // wordScorer will heavily prefer synonyms/simple words, but train words remain available as fallback.
     const clueDifficulty = mapDifficulty(difficulty);
     const indexDifficulty = difficulty === Difficulty.EASY ? 'medium' : clueDifficulty;
     let words = getWordsWithMaxDifficulty(indexDifficulty);
-    
+
     if (words.length === 0) {
       throw new Error(`No words available for difficulty '${clueDifficulty}'. This indicates a problem with the clues database or difficulty filtering.`);
     }
-    
+
     // For hard/expert puzzles, limit word pool to avoid stack overflow
-    // We don't need all 300k+ words - a subset is sufficient for generation
-    const MAX_WORDS_FOR_INDEX = 100000; // Limit to 100k words to prevent stack overflow
+    const MAX_WORDS_FOR_INDEX = 100000;
     if (words.length > MAX_WORDS_FOR_INDEX) {
-      // Sample evenly across the array to get variety without shuffling
       const step = Math.floor(words.length / MAX_WORDS_FOR_INDEX);
       words = words.filter((_, index) => index % step === 0).slice(0, MAX_WORDS_FOR_INDEX);
     }
 
     this.wordIndex = buildCrossingIndex(words.map(key => key.toUpperCase()));
-    
+
     // Verify word index was built correctly (use iterative approach to avoid stack overflow)
     let totalWordsInIndex = 0;
     for (const arr of this.wordIndex.byLength.values()) {
@@ -253,7 +212,8 @@ export class PuzzleGenerator {
       maxSolveTimeMs,
       shuffleWords: true,
       preferCommonWords: true,
-      allowWordReuse: true
+      allowWordReuse: true,
+      wordScorer: this.wordScorer,
     });
     
     if (!result) {
@@ -261,13 +221,13 @@ export class PuzzleGenerator {
       return null;
     }
     
-    // Create clue source tracker
-    const clueSourceTracker = { simpleCount: 0, trainCount: 0 };
+    // Create clue source tracker (order: synonyms → train)
+    const clueSourceTracker = { synonymsCount: 0, simpleCount: 0, trainCount: 0 };
     
     // Create clue database with tracker
     const clueDb: ClueDatabase = {
-      getClue: (word: string, difficulty: Difficulty) => getClue(word, difficulty, clueSourceTracker),
-      getAllClues: (word: string, difficulty: Difficulty) => getAllClues(word, difficulty, clueSourceTracker),
+      getClue: (word: string, difficulty: Difficulty) => getClue(word, difficulty),
+      getAllClues: (word: string, difficulty: Difficulty) => getAllClues(word, difficulty),
       tracker: clueSourceTracker
     };
     

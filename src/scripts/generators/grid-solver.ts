@@ -70,26 +70,26 @@ export function solveGrid(
   /**
    * Select the next slot using MRV (Minimum Remaining Values) heuristic
    * Returns the slot with the fewest valid placeable candidates
+   * OPTIMIZED: Limit candidates early and sample placeability checks for speed
    */
   function selectNextSlot(state: GridState, remainingSlots: ClueSlot[]): ClueSlot | null {
     let bestSlot: ClueSlot | null = null;
     let minCandidates = Infinity;
+    
+    // Pre-compute placed answers once
+    const placedAnswers = Array.from(state.placedWords.values());
+    const normalizedPlacedAnswers = new Set(
+      placedAnswers.map(w => normalizeWord(w))
+    );
+    const excludeWords = config.allowWordReuse === false 
+      ? new Set(placedAnswers)
+      : undefined;
     
     for (const slot of remainingSlots) {
       const cells = getSlotCells(slot);
       const constraints = getCrossingConstraints(state, cells);
       
       // Find matching words
-      // Always exclude duplicate answers (normalized: uppercase, no spaces)
-      const placedAnswers = Array.from(state.placedWords.values());
-      const normalizedPlacedAnswers = new Set(
-        placedAnswers.map(w => normalizeWord(w))
-      );
-      
-      // If allowWordReuse is false, also exclude exact word matches
-      const excludeWords = config.allowWordReuse === false 
-        ? new Set(placedAnswers)
-        : undefined;
       let candidates = findMatchingWords(wordIndex, slot.length, constraints, excludeWords);
       
       // Filter out duplicate answers (normalized comparison)
@@ -98,21 +98,41 @@ export function solveGrid(
         return !normalizedPlacedAnswers.has(normalized);
       });
       
+      // OPTIMIZATION: Limit candidates BEFORE expensive placeability checks
+      // For MRV selection, we only need an estimate, so sample if too many
+      const MAX_CANDIDATES_FOR_MRV = 200; // Sample up to 200 for MRV selection
+      if (candidates.length > MAX_CANDIDATES_FOR_MRV) {
+        // Sample candidates for faster MRV calculation
+        candidates = candidates.slice(0, MAX_CANDIDATES_FOR_MRV);
+      }
+      
       // Calculate direction deltas for validation
       const rowDelta = cells.length >= 2 ? cells[1].row - cells[0].row : 0;
       const colDelta = cells.length >= 2 ? cells[1].col - cells[0].col : 0;
       
-      // Pre-filter by placeability (key improvement from improved generator)
-      const validCandidates = candidates.filter(w => canPlaceWord(state, w, cells, rowDelta, colDelta));
+      // Sample placeability checks for speed (check first 50, estimate total)
+      const SAMPLE_SIZE = 50;
+      const sampleCandidates = candidates.slice(0, Math.min(SAMPLE_SIZE, candidates.length));
+      const validSample = sampleCandidates.filter(w => canPlaceWord(state, w, cells, rowDelta, colDelta));
       
-      // Fail fast - if a slot has no valid candidates, return it immediately
-      if (validCandidates.length === 0) {
+      // Estimate valid candidates count
+      let estimatedValidCount: number;
+      if (candidates.length <= SAMPLE_SIZE) {
+        estimatedValidCount = validSample.length;
+      } else {
+        // Estimate: (valid in sample / sample size) * total candidates
+        const validRatio = validSample.length / sampleCandidates.length;
+        estimatedValidCount = Math.floor(validRatio * candidates.length);
+      }
+      
+      // Fail fast - if estimated valid candidates is 0, return immediately
+      if (estimatedValidCount === 0) {
         return slot; // This will cause backtrack to fail fast
       }
       
-      // MRV: Select slot with fewest valid candidates
-      if (validCandidates.length < minCandidates) {
-        minCandidates = validCandidates.length;
+      // MRV: Select slot with fewest estimated valid candidates
+      if (estimatedValidCount < minCandidates) {
+        minCandidates = estimatedValidCount;
         bestSlot = slot;
       }
     }
@@ -123,8 +143,8 @@ export function solveGrid(
   function backtrack(state: GridState, remainingSlots: ClueSlot[], depth: number = 0): GridState | null {
     // Increment attempts to track exploration depth
     attempts++;
-    // Abort if time limit exceeded (check every 2k attempts to cap runtime without slowing tight loops)
-    if (config.maxSolveTimeMs && attempts % 2000 === 0 && (Date.now() - startTime > config.maxSolveTimeMs)) {
+    // Abort if time limit exceeded (check every 1k attempts for faster timeout detection)
+    if (config.maxSolveTimeMs && attempts % 1000 === 0 && (Date.now() - startTime > config.maxSolveTimeMs)) {
       return null;
     }
     
@@ -231,13 +251,19 @@ export function solveGrid(
     const rowDelta = cells.length >= 2 ? cells[1].row - cells[0].row : 0;
     const colDelta = cells.length >= 2 ? cells[1].col - cells[0].col : 0;
     
+    // OPTIMIZATION: Limit candidates BEFORE expensive placeability checks
+    // This dramatically speeds up the solver when there are many candidates
+    const maxCandidates = constraints.size > 7 ? 400 : constraints.size > 5 ? 300 : constraints.size > 3 ? 200 : 150;
+    if (candidates.length > maxCandidates * 2) {
+      // If we have way too many, sample first (wordScorer will prioritize good ones)
+      candidates = candidates.slice(0, maxCandidates * 2);
+    }
+    
     // CRITICAL IMPROVEMENT: Pre-filter candidates by placeability
     // This avoids wasting time trying words that can't be placed
     const placeableCandidates = candidates.filter(w => canPlaceWord(state, w, cells, rowDelta, colDelta));
     
-    // Limit candidates to balance exploration vs runtime. Use higher limits for constrained
-    // slots so we don't miss valid solutions (v2 templates often need more exploration).
-    const maxCandidates = constraints.size > 7 ? 400 : constraints.size > 5 ? 300 : constraints.size > 3 ? 200 : 150;
+    // Apply final limit after placeability filtering
     candidates = placeableCandidates.slice(0, maxCandidates);
     
     // Log first attempt for each slot (only at top level)
@@ -337,11 +363,22 @@ export function solveGrid(
       return null; // Dead end
     }
     
-    // Shuffle for variety
-    if (config.shuffleWords) {
+    // Prefer higher-scoring words (e.g. synonyms over simple) when wordScorer is provided
+    // OPTIMIZATION: Only sort if we have a reasonable number of candidates
+    if (config.wordScorer && candidates.length <= 500) {
+      // Use partial sort for large arrays - only sort top candidates
+      if (candidates.length > 200) {
+        // For large arrays, partition by score instead of full sort
+        const scored = candidates.map(w => ({ word: w, score: config.wordScorer!(w) }));
+        scored.sort((a, b) => b.score - a.score);
+        candidates = scored.map(s => s.word);
+      } else {
+        candidates.sort((a, b) => config.wordScorer!(b) - config.wordScorer!(a));
+      }
+    } else if (config.shuffleWords && candidates.length <= 500) {
       candidates = shuffleArray(candidates);
     }
-    
+
     // Early exit if no candidates at all (already filtered by placeability)
     if (candidates.length === 0) {
       if (depth === 0) {

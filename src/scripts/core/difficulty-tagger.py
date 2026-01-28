@@ -2,7 +2,7 @@ import pandas as pd
 from wordfreq import zipf_frequency
 
 # Load your CSV
-df = pd.read_csv('train.csv')
+df = pd.read_csv('synonyms.csv')
 
 def calculate_difficulty(row):
     answer = str(row['answer']).lower()
@@ -31,10 +31,8 @@ def calculate_difficulty(row):
         score -= 1
     elif len(answer) <= 4:
         pass  # Neutral for 4-letter words
-    elif len(answer) > 10:
+    elif len(answer) > 9:
         score += 1
-    elif len(answer) > 12:
-        score += 2
 
     # --- Factor C: Tricky letters ---
     tricky_letters = set('qxzjk')
@@ -49,7 +47,7 @@ def calculate_difficulty(row):
 df['difficulty'] = df.apply(calculate_difficulty, axis=1)
 
 # Save the tagged file
-df.to_csv('train_difficulty.csv', index=False)
+df.to_csv('synonyms_difficulty.csv', index=False)
 
 # Print distribution summary
 print("Finished tagging clues!")
