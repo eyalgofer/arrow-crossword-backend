@@ -26,13 +26,6 @@ def calculate_difficulty(row):
     else:
         score += 3  # Obscure/unknown word
         
-    # --- Factor B: Length ---
-    if len(answer) <= 3:
-        score -= 1
-    elif len(answer) <= 4:
-        pass  # Neutral for 4-letter words
-    elif len(answer) > 9:
-        score += 1
 
     # --- Factor C: Tricky letters ---
     tricky_letters = set('qxzjk')
