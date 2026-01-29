@@ -50,12 +50,19 @@ function getClue(word: string, difficulty: Difficulty = Difficulty.EASY): string
     const normalizedWord = normalizeWord(word);
     const entries = SYNONYMS_DB.byAnswer[normalizedWord];
     if (entries && entries.length > 0) {
-      // Filter to only easy/medium clues (no hard/expert)
-      const easyClues = entries
-        .filter(e => e.difficulty === 'easy' || e.difficulty === 'medium')
-        .map(e => e.clue);
-      if (easyClues.length > 0) {
-        return easyClues[Math.floor(Math.random() * easyClues.length)];
+      // Prefer easy/medium → challenging → hard/expert so we never show [answer] when a real clue exists
+      const easyMedium = entries.filter(e => e.difficulty === 'easy' || e.difficulty === 'medium').map(e => e.clue);
+      const challenging = entries.filter(e => e.difficulty === 'challenging').map(e => e.clue);
+      const hardExpert = entries.filter(e => e.difficulty === 'hard' || e.difficulty === 'expert').map(e => e.clue);
+      const pool = easyMedium.length > 0 ? easyMedium : challenging.length > 0 ? challenging : hardExpert;
+      // Exclude clues that are the answer (e.g. "aba" for answer "aba") or answer in brackets
+      const valid = pool.filter(c => {
+        if (c === `[${normalizedWord}]` || c === `[${word}]`) return false;
+        if (normalizeWord(c) === normalizedWord) return false;
+        return true;
+      });
+      if (valid.length > 0) {
+        return valid[Math.floor(Math.random() * valid.length)];
       }
     }
     return `[${word}]`;
@@ -75,17 +82,21 @@ function getClue(word: string, difficulty: Difficulty = Difficulty.EASY): string
 function getAllClues(word: string, difficulty: Difficulty = Difficulty.EASY): string[] {
   const normalizedWord = normalizeWord(word);
   
-  // For easy puzzles, only use synonyms database with easy/medium clues
+  // For easy puzzles, synonyms only: prefer easy/medium → challenging → hard/expert so we never show [answer]
   if (difficulty === Difficulty.EASY) {
     const entries = SYNONYMS_DB.byAnswer[normalizedWord];
     if (!entries || entries.length === 0) return [`[${word}]`];
     
-    // Only allow easy and medium clues (no challenging, hard, or expert)
-    const easyMediumClues = entries
-      .filter(e => e.difficulty === 'easy' || e.difficulty === 'medium')
-      .map(e => e.clue);
-    
-    return easyMediumClues.length > 0 ? easyMediumClues : [`[${word}]`];
+    const easyMediumClues = entries.filter(e => e.difficulty === 'easy' || e.difficulty === 'medium').map(e => e.clue);
+    const challengingClues = entries.filter(e => e.difficulty === 'challenging').map(e => e.clue);
+    const hardExpertClues = entries.filter(e => e.difficulty === 'hard' || e.difficulty === 'expert').map(e => e.clue);
+    const pool = easyMediumClues.length > 0 ? easyMediumClues : challengingClues.length > 0 ? challengingClues : hardExpertClues;
+    const valid = pool.filter(c => {
+      if (c === `[${normalizedWord}]` || c === `[${word}]`) return false;
+      if (normalizeWord(c) === normalizedWord) return false;
+      return true;
+    });
+    return valid.length > 0 ? valid : [`[${word}]`];
   }
   
   // For other difficulties, use the standard logic
@@ -143,8 +154,8 @@ export class PuzzleGenerator {
     const clueDifficulty = mapDifficulty(difficulty);
     let words: string[];
     if (difficulty === Difficulty.EASY) {
-      // For easy puzzles, only use synonyms words with easy/medium difficulty
-      words = getWordsWithMaxDifficultyFromPreferredSourcesOnly('medium');
+      // For easy puzzles, use synonyms words up to challenging so solver has enough candidates; clues still prefer easy/medium
+      words = getWordsWithMaxDifficultyFromPreferredSourcesOnly('challenging');
     } else {
       const indexDifficulty = clueDifficulty;
       words = getWordsWithMaxDifficulty(indexDifficulty);
@@ -195,7 +206,8 @@ export class PuzzleGenerator {
   }
 
   /**
-   * Build one template and solve it count times. Use for packages to avoid N template runs.
+   * Build templates and solve until we have count puzzles. If a template fails to solve
+   * (e.g. time limit), we try a new template instead of reusing the same one.
    */
   generateBatch(config: {
     count: number;
@@ -204,23 +216,30 @@ export class PuzzleGenerator {
     rows?: number;
     cols?: number;
   }): Puzzle[] {
-    this.templates = [];
-    const built = this.buildGeneratedTemplate(this.difficulty, {
-      quiet: true,
-      maxIterations: 25,
-      rows: config.rows,
-      cols: config.cols,
-    });
-    if (!built || this.templates.length === 0) return [];
-
     const puzzles: Puzzle[] = [];
-    for (let i = 0; i < config.count; i++) {
-      const p = this.solveTemplate(0, {
-        title: config.getTitle(i),
-        difficulty: this.difficulty,
-        category: config.category,
-      }, { quiet: true });
-      if (p) puzzles.push(p);
+    const maxTemplates = 10; // cap to avoid infinite loop if templates are often unsolvable
+    let templatesTried = 0;
+
+    while (puzzles.length < config.count && templatesTried < maxTemplates) {
+      templatesTried++;
+      this.templates = [];
+      const built = this.buildGeneratedTemplate(this.difficulty, {
+        quiet: true,
+        maxIterations: 25,
+        rows: config.rows,
+        cols: config.cols,
+      });
+      if (!built || this.templates.length === 0) continue;
+
+      const needed = config.count - puzzles.length;
+      for (let i = 0; i < needed; i++) {
+        const p = this.solveTemplate(0, {
+          title: config.getTitle(puzzles.length),
+          difficulty: this.difficulty,
+          category: config.category,
+        }, { quiet: true });
+        if (p) puzzles.push(p);
+      }
     }
     return puzzles;
   }
@@ -241,8 +260,8 @@ export class PuzzleGenerator {
     const template = this.templates[templateIndex];
 
     const slotCount = template.slots.length;
-    // Cap runtime so a single solve never hangs for minutes. Prefer failing fast and retrying.
-    const maxSolveTimeMs = 45 * 1000; // 45 seconds per solve
+    // Cap runtime so a single solve never hangs for minutes. Easy/small grids need more time to find a valid fill.
+    const maxSolveTimeMs = 90 * 1000; // 90 seconds per solve (was 45s; easy 8x8 often needed more)
     const baseAttempts = 100000;
     const attemptsPerSlot = 8000;
     const maxAttempts = Math.min(baseAttempts + (slotCount * attemptsPerSlot), 500000);

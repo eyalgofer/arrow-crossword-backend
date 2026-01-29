@@ -74,6 +74,9 @@ export function solveGrid(
    * OPTIMIZED: Limit candidates early and sample placeability checks for speed
    */
   function selectNextSlot(state: GridState, remainingSlots: ClueSlot[]): ClueSlot | null {
+    if (config.maxSolveTimeMs && (Date.now() - startTime > config.maxSolveTimeMs)) {
+      return null;
+    }
     let bestSlot: ClueSlot | null = null;
     let minCandidates = Infinity;
     
@@ -87,6 +90,9 @@ export function solveGrid(
       : undefined;
     
     for (const slot of remainingSlots) {
+      if (config.maxSolveTimeMs && (Date.now() - startTime > config.maxSolveTimeMs)) {
+        return null;
+      }
       const cells = getSlotCells(slot);
       const constraints = getCrossingConstraints(state, cells);
       
@@ -142,12 +148,12 @@ export function solveGrid(
   }
   
   function backtrack(state: GridState, remainingSlots: ClueSlot[], depth: number = 0): GridState | null {
-    // Increment attempts to track exploration depth
-    attempts++;
-    // Abort if time limit exceeded (check every 1k attempts for faster timeout detection)
-    if (config.maxSolveTimeMs && attempts % 1000 === 0 && (Date.now() - startTime > config.maxSolveTimeMs)) {
+    // Abort if time limit exceeded (check every call so we don't get stuck in slow single-frame work)
+    if (config.maxSolveTimeMs && (Date.now() - startTime > config.maxSolveTimeMs)) {
       return null;
     }
+    // Increment attempts to track exploration depth
+    attempts++;
     
     // Detect if we're stuck in a loop
     if (depth === 0 && remainingSlots.length > 0) {
@@ -394,6 +400,10 @@ export function solveGrid(
     
     // Try each candidate (already pre-filtered by placeability and limited to 100)
     for (let i = 0; i < candidates.length; i++) {
+      // Check time limit each iteration so we don't hang in a single frame
+      if (config.maxSolveTimeMs && (Date.now() - startTime > config.maxSolveTimeMs)) {
+        return null;
+      }
       const word = candidates[i];
       
       // Check if we've exceeded max attempts before trying this word

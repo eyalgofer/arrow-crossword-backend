@@ -9,8 +9,8 @@ import { connectToDatabase, closeDatabaseAndExit, handleScriptError, filterValid
 
 dotenv.config();
 
-const DAILY_GRID_ROWS = 11;
-const DAILY_GRID_COLS = 11;
+const DAILY_GRID_ROWS = 8;
+const DAILY_GRID_COLS = 8;
 const DAILY_PUZZLE_COUNT = 10;
 
 const seedDaily = async () => {
@@ -46,7 +46,7 @@ const seedDaily = async () => {
 
     console.log(`✅ Saved ${savedPuzzles.length} puzzles to Puzzles collection\n`);
 
-    // Start from today
+
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
 

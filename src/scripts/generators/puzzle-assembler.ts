@@ -43,10 +43,14 @@ function getClueText(
 
   if (clueDb.getAllClues) {
     const allClues = clueDb.getAllClues(word, difficulty);
-    const validClues = allClues.filter(clue => clue.length <= maxLength);
+    // Never use a clue that equals the answer (e.g. "aba" for "aba") or is answer in brackets
+    const answerBracket = `[${normalizedWord}]`;
+    const notAnswerAsClue = (clue: string) =>
+      clue !== answerBracket && clue !== `[${word}]` && normalizeWord(clue) !== normalizedWord;
+    const validClues = allClues.filter(clue => clue.length <= maxLength && notAnswerAsClue(clue));
 
     if (validClues.length === 0) {
-      const firstClue = allClues[0] || `[${word}]`;
+      const firstClue = allClues.find(notAnswerAsClue) || allClues[0] || `[${word}]`;
       clueText = firstClue.length <= maxLength 
         ? firstClue 
         : firstClue.substring(0, maxLength - 3) + '...';
