@@ -180,7 +180,7 @@ function getWordStartOffset(fieldType: FieldType): { dr: number; dc: number } | 
     case '3': return { dr: 0, dc: 1 };   // Right-down: vertical, starts in cell to the RIGHT of clue, then down
     case '4': return { dr: 0, dc: -1 };  // Left-down: vertical, starts in cell to the LEFT of clue, then down
     case '5': return { dr: 1, dc: 0 };   // Word starts below, then goes right (from bottom of def field)
-    case '6': return { dr: -1, dc: 1 };  // Word starts up-right, then goes right (from top of def field)
+    case '6': return { dr: -1, dc: 0 };  // Up-across: word starts directly above clue (r-1,c), then goes right
     default: return null;
   }
 }
