@@ -1363,9 +1363,13 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     strongBreakCondition = 10000,
     similarityThreshold = 0.1,
     minPopulation = 5,
-    maxIterations = 100,
+    maxIterations: maxIterationsOpt,
     quiet = false
   } = options;
+
+  // Larger grids need more memetic iterations to converge; default scales with cell count
+  const cells = rows * cols;
+  const maxIterations = maxIterationsOpt ?? (cells > 144 ? Math.min(200, 80 + Math.ceil(cells / 20)) : 100);
 
   // Scale break conditions based on grid size (larger grids need more iterations)
   const scaleFactor = Math.sqrt((rows * cols) / 400); // Normalized to 20x20
@@ -1380,7 +1384,7 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     strongBreakCondition: scaledStrongBreak,
     similarityThreshold,
     minPopulation,
-    maxIterations,
+    maxIterations, // scaled for large grids when not provided
     quiet,
     cutoutCells,
     weights: DEFAULT_CONFIG.weights!

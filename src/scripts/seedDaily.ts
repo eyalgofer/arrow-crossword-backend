@@ -9,9 +9,9 @@ import { connectToDatabase, closeDatabaseAndExit, handleScriptError, filterValid
 
 dotenv.config();
 
-const DAILY_GRID_ROWS = 12;
-const DAILY_GRID_COLS = 12;
-const DAILY_PUZZLE_COUNT = 10;
+const DAILY_GRID_ROWS = 13;
+const DAILY_GRID_COLS = 13;
+const DAILY_PUZZLE_COUNT = 3;
 
 const seedDaily = async () => {
   try {

@@ -223,11 +223,16 @@ export class PuzzleGenerator {
     while (puzzles.length < config.count && templatesTried < maxTemplates) {
       templatesTried++;
       this.templates = [];
+      // Scale iterations with grid size: 10x10 needs ~25; 13x13+ needs more to converge
+      const rows = config.rows ?? 10;
+      const cols = config.cols ?? 10;
+      const cells = rows * cols;
+      const maxIterations = Math.min(150, Math.max(25, Math.ceil(25 * (cells / 100))));
       const built = this.buildGeneratedTemplate(this.difficulty, {
         quiet: true,
-        maxIterations: 25,
-        rows: config.rows,
-        cols: config.cols,
+        maxIterations,
+        rows,
+        cols,
       });
       if (!built || this.templates.length === 0) continue;
 

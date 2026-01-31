@@ -80,18 +80,12 @@ function parseCSVLine(line: string): string[] {
   return parts;
 }
 
-/**
- * Validate and filter clue text
- */
 function isValidClue(clueText: string): boolean {
-  if (clueText.length > 50) return false;
+  if (clueText.length > 30) return false;
   const filters = ['___', '...'];
   return !filters.some(filter => clueText.includes(filter));
 }
 
-/**
- * Update database stats for a difficulty
- */
 function updateDifficultyStats(
   database: CluesDatabase,
   difficulty: ClueDifficulty,
@@ -124,7 +118,7 @@ function updateDifficultyStats(
  * CSV format: id,clue,answer,difficulty (for simple.csv) or id,clue,answer,empty,difficulty (for train.csv)
  * Groups clues by answer (word) in uppercase, removing spaces for matching
  */
-function loadCluesFromCSVFile(csvPath: string, isSimpleCSV: boolean = false): CluesDatabase {
+function loadCluesFromCSVFile(csvPath: string): CluesDatabase {
   const database: CluesDatabase = {
     byAnswer: {},
     originalAnswers: new Map(),
@@ -167,7 +161,7 @@ function loadCluesFromCSVFile(csvPath: string, isSimpleCSV: boolean = false): Cl
         
         if (!answer || !clueText || !isValidClue(clueText)) continue;
         
-        const difficultyIndex = isSimpleCSV ? 3 : 4;
+        const difficultyIndex = 4;
         const difficultyNum = parts.length > difficultyIndex ? parseInt(parts[difficultyIndex], 10) : 0;
         const difficulty = mapCsvDifficulty(difficultyNum);
         
@@ -298,8 +292,8 @@ function loadSynonymsFromCSV(csvPath: string): CluesDatabase {
 }
 
 /**
- * Load clues from both simple.csv (preferred) and train.csv (fallback)
- * Simple.csv is tried first, then train.csv as fallback
+ * Load clues from both synonyms.csv (preferred) and train.csv (fallback)
+ * synonyms.csv is tried first, then train.csv as fallback
  */
 export function loadCluesFromCSV(): CluesDatabase {
   const synonymsPath = path.join(__dirname, 'synonyms.csv');
@@ -307,18 +301,18 @@ export function loadCluesFromCSV(): CluesDatabase {
   
   // Load synonyms.csv with special handler
   const synonymsDb = loadSynonymsFromCSV(synonymsPath);
-  const trainDb = loadCluesFromCSVFile(trainPath, false);
+  const trainDb = loadCluesFromCSVFile(trainPath);
   
   
   // Store separately for fallback logic
   cachedSynonymsDatabase = synonymsDb;
   cachedTrainDatabase = trainDb;
   
-  // Create a combined database that prefers simple.csv but includes train.csv as fallback
+  // Create a combined database that prefers synonyms.csv but includes train.csv as fallback
   // Words from simple.csv take precedence, but we merge clues from train.csv for words not in simple.csv
   const combined: CluesDatabase = {
-    byAnswer: { ...synonymsDb.byAnswer }, // Start with simple.csv words
-    originalAnswers: new Map(synonymsDb.originalAnswers), // Start with simple.csv mappings
+    byAnswer: { ...synonymsDb.byAnswer }, // Start with synonyms.csv words
+    originalAnswers: new Map(synonymsDb.originalAnswers), // Start with synonyms.csv mappings
     easyWords: new Set(synonymsDb.easyWords),
     mediumWords: new Set(synonymsDb.mediumWords),
     challengingWords: new Set(synonymsDb.challengingWords),
