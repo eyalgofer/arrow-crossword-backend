@@ -1,10 +1,3 @@
-/**
- * Grid Solver for Swedish Arrow Crossword Puzzles
- * 
- * Uses constraint satisfaction with backtracking to fill puzzle grids
- * with valid words that satisfy all crossing constraints.
- */
-
 import { GridTemplate, ClueSlot } from '../core/types';
 import { GridState, createEmptyGridState, getLetterAt, placeWord, canPlaceWord, getCrossingConstraints } from './grid-state';
 import { CrossingIndex, findMatchingWords } from './word-index';

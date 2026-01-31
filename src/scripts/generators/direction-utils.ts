@@ -1,14 +1,5 @@
-/**
- * Direction Utilities for Swedish Arrow Crossword Puzzles
- * 
- * Handles direction-related calculations and conversions
- */
-
 import { PuzzleItem, Direction, ClueSlot } from '../core/types';
 
-/**
- * Get the cells that an answer occupies based on clue direction
- */
 export function getAnswerCells(
   puzzleItem: PuzzleItem
 ): Array<{ row: number; col: number }> {
@@ -72,9 +63,6 @@ export function getAnswerCells(
   return cells;
 }
 
-/**
- * Determine if a direction produces a horizontal or vertical answer
- */
 export function getAnswerOrientation(direction: Direction): 'horizontal' | 'vertical' {
   switch (direction) {
     case 'across':

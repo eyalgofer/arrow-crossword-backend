@@ -1387,11 +1387,22 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
   };
 
   // Adjust word length penalties based on difficulty
+  // IMPORTANT: Word list (synonyms.csv) has far more short words than 9+ letters. If templates
+  // create slots longer than 8, the solver often finds zero candidates and fails. So we heavily
+  // penalize slot length > 8 for easy/medium so grids of any size (e.g. 15x15) stay solvable.
   if (difficulty === 'easy') {
-    // Prefer shorter words (3-5 letters)
+    // Prefer shorter words (3-8 letters); strongly discourage 9+ so solver has enough words
     config.weights.wordLength = {
       ...config.weights.wordLength,
-      3: 50, 4: 0, 5: 0, 6: 20, 7: 100
+      3: 50, 4: 0, 5: 0, 6: 20, 7: 100,
+      8: 50,
+      9: 5000, 10: 5000, 11: 5000, 12: 5000, 13: 5000, 14: 5000, 15: 5000
+    };
+  } else if (difficulty === 'medium') {
+    // Allow up to 9 letters; discourage 10+ so large grids remain solvable
+    config.weights.wordLength = {
+      ...config.weights.wordLength,
+      9: 150, 10: 5000, 11: 5000, 12: 5000, 13: 5000, 14: 5000, 15: 5000
     };
   } else if (difficulty === 'hard' || difficulty === 'expert') {
     // Prefer longer words (5-8 letters)
