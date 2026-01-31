@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import mongoose from 'mongoose';
 import { Invite, InviteStatus } from '../models/Invite';
 import { User } from '../models/User';
 import { Match } from '../models/Match';
@@ -142,12 +143,32 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Inviter not found' });
     }
 
-    // Get a random active puzzle for the match
-    const multiplayerPuzzleIds = await MultiplayerPuzzle.find().select('_id');
-    const randomPuzzleId = multiplayerPuzzleIds[Math.floor(Math.random() * multiplayerPuzzleIds.length)]._id;
-    const puzzles = await Puzzle.find({ _id: randomPuzzleId });
-    if (puzzles.length === 0) {
-      return res.status(500).json({ error: 'No puzzles available' });
+    // Get active multiplayer puzzles and pick one whose Puzzle still exists
+    const multiplayerPuzzles = await MultiplayerPuzzle.find().select('puzzleId').lean();
+    if (!multiplayerPuzzles.length) {
+      return res.status(503).json({
+        error: 'No multiplayer puzzles configured',
+        hint: 'Run the seedMultiplayer script to assign puzzles for multiplayer matches'
+      });
+    }
+
+    // Shuffle and find a puzzle that exists (in case some refs are stale)
+    const shuffled = [...multiplayerPuzzles].sort(() => Math.random() - 0.5);
+    let puzzle = null;
+    let randomPuzzleId: mongoose.Types.ObjectId | null = null;
+    for (const mp of shuffled) {
+      const found = await Puzzle.findById(mp.puzzleId);
+      if (found) {
+        puzzle = found;
+        randomPuzzleId = mp.puzzleId;
+        break;
+      }
+    }
+    if (!puzzle || !randomPuzzleId) {
+      return res.status(503).json({
+        error: 'No valid multiplayer puzzles available',
+        hint: 'Multiplayer puzzle references may be stale; run seedMultiplayer to fix'
+      });
     }
 
     // Create the match
