@@ -9,7 +9,7 @@ import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
 import { generateTemplate } from './template-generator';
 
-import { getClueForWord, getWordsWithMaxDifficulty, getWordsWithMaxDifficultyFromPreferredSourcesOnly, getTrainDatabase, getSynonymsDatabase } from '../core/cluesFromCSV';
+import { getClueForWord, getWordsWithMaxDifficulty, getTrainDatabase, getSynonymsDatabase } from '../core/cluesFromCSV';
 import { normalizeWord } from './validation-utils';
 
 export type ClueDifficulty = 'easy' | 'medium' | 'challenging' | 'hard' | 'expert';
@@ -150,10 +150,7 @@ export class PuzzleGenerator {
 
     const clueDifficulty = mapDifficulty(difficulty);
     // EASY: use only words from synonyms.csv so every placed word has a real clue (no [answer] fallbacks)
-    let words: string[] =
-      difficulty === Difficulty.EASY
-        ? getWordsWithMaxDifficultyFromPreferredSourcesOnly(clueDifficulty)
-        : getWordsWithMaxDifficulty(clueDifficulty);
+    let words: string[] = getWordsWithMaxDifficulty(clueDifficulty);
 
     if (words.length === 0) {
       throw new Error(`No words available for difficulty '${clueDifficulty}'. This indicates a problem with the clues database or difficulty filtering.`);
