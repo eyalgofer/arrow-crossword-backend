@@ -490,9 +490,9 @@ export function getWordsWithMaxDifficulty(maxDifficulty: ClueDifficulty): string
   }
   
   const validWords: string[] = [];
-  const wordsFromPreferred = new Set<string>(); // Words already from synonyms or simple (order: synonyms → simple → train)
+  const wordsFromPreferred = new Set<string>(); // Words already from synonyms (order: synonyms → train)
 
-  // Helper: add words from a DB. For preferred sources (synonyms, simple) only add if not already added; mark as preferred. For train only add if not preferred.
+  // Helper: add words from a DB. For preferred sources (synonyms) only add if not already added; mark as preferred. For train only add if not preferred.
   const getWordsFromDb = (db: CluesDatabase, isPreferred: boolean): void => {
     for (const [word, entries] of Object.entries(db.byAnswer)) {
       const hasValidClue = entries.some(e => allowedDifficulties.has(e.difficulty));
@@ -511,7 +511,7 @@ export function getWordsWithMaxDifficulty(maxDifficulty: ClueDifficulty): string
       }
     }
   };
-  // Order: synonyms first, then simple, then train
+  // Order: synonyms first, then train
   const synonymsDb = getSynonymsDatabase();
   getWordsFromDb(synonymsDb, true);
   const trainDb = getTrainDatabase();
@@ -535,33 +535,5 @@ export function getWordsWithMaxDifficulty(maxDifficulty: ClueDifficulty): string
     }
   }
   
-  return validWords;
-}
-
-/**
- * Get words that have clues at or below the specified max difficulty,
- * from synonyms.csv only (no train.csv).
- * Use this for puzzle generation when we want to go heavy on easier clues.
- */
-export function getWordsWithMaxDifficultyFromPreferredSourcesOnly(maxDifficulty: ClueDifficulty): string[] {
-  const difficultyOrder: ClueDifficulty[] = ['easy', 'medium', 'challenging', 'hard', 'expert'];
-  const maxIndex = difficultyOrder.indexOf(maxDifficulty) + 1;
-  const allowedDifficulties =
-    maxDifficulty === 'easy'
-      ? new Set<ClueDifficulty>(['easy', 'medium'])
-      : new Set(difficultyOrder.slice(0, Math.max(maxIndex, 1) + 1));
-
-  const validWords: string[] = [];
-  const seen = new Set<string>();
-  const synonymsDb = getSynonymsDatabase();
-
-  for (const [word, entries] of Object.entries(synonymsDb.byAnswer)) {
-    const hasValidClue = entries.some(e => allowedDifficulties.has(e.difficulty));
-    if (hasValidClue && !seen.has(word)) {
-      seen.add(word);
-      validWords.push(synonymsDb.originalAnswers.get(word) || word);
-    }
-  }
-
   return validWords;
 }

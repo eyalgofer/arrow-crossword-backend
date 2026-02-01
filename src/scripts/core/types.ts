@@ -1,18 +1,6 @@
-/**
- * Type definitions for Swedish Arrow Crossword Puzzle Generator
- */
-
 import { Difficulty } from '../../types';
 
-// Re-export Difficulty for use in other modules
 export { Difficulty };
-
-// ============================================================================
-// BASIC TYPES
-// ============================================================================
-
-
-
 export interface GridCell {
   row: number;
   col: number;
@@ -25,11 +13,6 @@ export interface Grid {
   cols: number;
   cells: GridCell[][];
 }
-
-// ============================================================================
-// CLUE AND PUZZLE TYPES
-// ============================================================================
-
 export interface PuzzleItem {
   number: number;
   direction: Direction;
@@ -58,9 +41,6 @@ export interface Puzzle {
   };
 }
 
-// ============================================================================
-// TEMPLATE TYPES
-// ============================================================================
 
 export interface CrossingPoint {
   slotId: string;

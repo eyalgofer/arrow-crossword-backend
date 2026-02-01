@@ -148,18 +148,12 @@ export class PuzzleGenerator {
       return 0;
     };
 
-    // Build word index for fast lookups.
-    // For EASY puzzles: only use synonyms words (no train words) to ensure easier puzzles
-    // For other difficulties: use broader pool including train words as fallback
     const clueDifficulty = mapDifficulty(difficulty);
-    let words: string[];
-    if (difficulty === Difficulty.EASY) {
-      // For easy puzzles, use synonyms words up to challenging so solver has enough candidates; clues still prefer easy/medium
-      words = getWordsWithMaxDifficultyFromPreferredSourcesOnly('challenging');
-    } else {
-      const indexDifficulty = clueDifficulty;
-      words = getWordsWithMaxDifficulty(indexDifficulty);
-    }
+    // EASY: use only words from synonyms.csv so every placed word has a real clue (no [answer] fallbacks)
+    let words: string[] =
+      difficulty === Difficulty.EASY
+        ? getWordsWithMaxDifficultyFromPreferredSourcesOnly(clueDifficulty)
+        : getWordsWithMaxDifficulty(clueDifficulty);
 
     if (words.length === 0) {
       throw new Error(`No words available for difficulty '${clueDifficulty}'. This indicates a problem with the clues database or difficulty filtering.`);
@@ -205,10 +199,6 @@ export class PuzzleGenerator {
     }
   }
 
-  /**
-   * Build templates and solve until we have count puzzles. If a template fails to solve
-   * (e.g. time limit), we try a new template instead of reusing the same one.
-   */
   generateBatch(config: {
     count: number;
     category: string;
@@ -297,9 +287,7 @@ export class PuzzleGenerator {
       quiet: opts?.quiet ?? false
     };
     
-    // Build the puzzle
     try {
-
       const puzzle = generatePuzzleFromGrid(
         template,
         result,
