@@ -3,29 +3,17 @@ import * as path from 'path';
 
 export type ClueDifficulty = 'easy' | 'medium' | 'challenging' | 'hard' | 'expert';
 
-/**
- * Clue entry with difficulty classification
- */
 export interface ClueEntry {
   clue: string;
   difficulty: ClueDifficulty;
 }
 
-/**
- * Clues database organized by answer word
- */
 export interface CluesDatabase {
-  // All clues grouped by answer
   byAnswer: Record<string, ClueEntry[]>;
-  // Mapping from normalized answer (no spaces) to original answer (with spaces)
-  originalAnswers: Map<string, string>;
-  // Words that have easy clues available
+  originalAnswers: Map<string, string>; // with spaces
   easyWords: Set<string>;
-  // Words that have medium clues available
   mediumWords: Set<string>;
-  // Words that have challenging clues available
   challengingWords: Set<string>;
-  // Statistics
   stats: {
     totalWords: number;
     totalClues: number;
@@ -37,10 +25,6 @@ export interface CluesDatabase {
   };
 }
 
-/**
- * Map CSV difficulty number to ClueDifficulty
- * 1=easy, 2=medium, 3=challenging, 4=hard, 5=expert
- */
 function mapCsvDifficulty(difficultyNum: number): ClueDifficulty {
   const mapping: Record<number, ClueDifficulty> = {
     1: 'easy',
@@ -52,9 +36,6 @@ function mapCsvDifficulty(difficultyNum: number): ClueDifficulty {
   return mapping[difficultyNum] || 'medium';
 }
 
-/**
- * Parse CSV line handling quoted fields
- */
 function parseCSVLine(line: string): string[] {
   const parts: string[] = [];
   let current = '';
@@ -113,11 +94,6 @@ function updateDifficultyStats(
   }
 }
 
-/**
- * Load clues from a CSV file with difficulty from CSV column
- * CSV format: id,clue,answer,difficulty (for simple.csv) or id,clue,answer,empty,difficulty (for train.csv)
- * Groups clues by answer (word) in uppercase, removing spaces for matching
- */
 function loadCluesFromCSVFile(csvPath: string): CluesDatabase {
   const database: CluesDatabase = {
     byAnswer: {},
@@ -204,7 +180,6 @@ function loadCluesFromCSVFile(csvPath: string): CluesDatabase {
 
 // Cache the loaded databases
 let cachedSynonymsDatabase: CluesDatabase | null = null;
-let cachedSimpleDatabase: CluesDatabase | null = null;
 let cachedTrainDatabase: CluesDatabase | null = null;
 let cachedCombinedDatabase: CluesDatabase | null = null;
 
@@ -467,11 +442,6 @@ export function getClueForWord(
   return null;
 }
 
-/**
- * Get words that have clues at or below the specified max difficulty
- * This is used for puzzle generation to ensure all words have valid clues
- * Returns words from synonyms.csv first, then simple.csv, then train.csv (no duplicates)
- */
 export function getWordsWithMaxDifficulty(maxDifficulty: ClueDifficulty): string[] {
   const difficultyOrder: ClueDifficulty[] = ['easy', 'medium', 'challenging', 'hard', 'expert'];
   let maxIndex = difficultyOrder.indexOf(maxDifficulty) + 1;
