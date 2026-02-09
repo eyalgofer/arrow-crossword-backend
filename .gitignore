@@ -13,3 +13,4 @@ synonym-seed-words.csv
 synonyms.csv
 src/scripts/core/*
 /src/scripts/core
+src/scripts/core/synonyms.csv
