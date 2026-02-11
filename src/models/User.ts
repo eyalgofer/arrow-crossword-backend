@@ -51,7 +51,7 @@ const userSchema = new Schema<IUser>({
   preferences: {
     soundEnabled: { type: Boolean, default: true },
     vibrationEnabled: { type: Boolean, default: true },
-    narrationEnabled: { type: Boolean, default: true }  
+    narrationEnabled: { type: Boolean, default: false }  
   }
 }, {
   timestamps: true

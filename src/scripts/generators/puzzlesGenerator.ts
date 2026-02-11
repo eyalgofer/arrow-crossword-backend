@@ -176,8 +176,8 @@ export class PuzzleGenerator {
   }
 
   buildGeneratedTemplate(difficulty: Difficulty = Difficulty.MEDIUM, opts?: { quiet?: boolean; maxIterations?: number; rows?: number; cols?: number }): boolean {
-    const rows = opts?.rows ?? 10;
-    const cols = opts?.cols ?? 10;
+    const rows = opts?.rows ?? 8;
+    const cols = opts?.cols ?? 8;
     try {
       const template = generateTemplate({
         rows,
