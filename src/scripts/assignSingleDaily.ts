@@ -9,7 +9,7 @@ const assignSingleDaily = async () => {
   try {
     await connectDatabase();
 
-    const puzzleId = '697920dff7b3433dd7b17255';
+    const puzzleId = '697920dff7b3433dd7b17221';
     const today = new Date();
 
     const assignment = await assignPuzzleToDate(puzzleId, today);
