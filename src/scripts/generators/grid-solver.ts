@@ -53,8 +53,14 @@ export function solveGrid(
       Array.from(state.placedWords.values()).map(w => normalizeWord(w))
     );
 
+    // Cap early — large unconstrained pools are mostly interchangeable
     let candidates = findMatchingWords(wordIndex, slot.length, constraints)
       .filter(w => !placedAnswers.has(normalizeWord(w)));
+    if (candidates.length > limit * 4) {
+      candidates = shuffleArray(candidates).slice(0, limit * 4);
+    } else {
+      candidates = shuffleArray(candidates);
+    }
 
     const rowDelta = cells.length >= 2 ? cells[1].row - cells[0].row : 0;
     const colDelta = cells.length >= 2 ? cells[1].col - cells[0].col : 0;

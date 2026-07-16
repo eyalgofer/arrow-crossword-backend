@@ -1373,20 +1373,17 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
   const cells = rows * cols;
   const maxIterations = maxIterationsOpt ?? (cells > 144 ? Math.min(200, 80 + Math.ceil(cells / 20)) : 100);
 
-  // Scale break conditions based on grid size (larger grids need more iterations)
-  const scaleFactor = Math.sqrt((rows * cols) / 400); // Normalized to 20x20
-  const scaledWeakBreak = Math.round(weakBreakCondition * scaleFactor);
-  const scaledStrongBreak = Math.round(strongBreakCondition * scaleFactor);
-
+  // Do not scale break conditions up for large grids here — callers pass
+  // explicit budgets. Scaling them made 10x10 seeds take minutes.
   const config: GeneratorConfig = {
     rows,
     cols,
     populationSize,
-    weakBreakCondition: scaledWeakBreak,
-    strongBreakCondition: scaledStrongBreak,
+    weakBreakCondition,
+    strongBreakCondition,
     similarityThreshold,
     minPopulation,
-    maxIterations, // scaled for large grids when not provided
+    maxIterations,
     quiet,
     cutoutCells,
     weights: DEFAULT_CONFIG.weights!

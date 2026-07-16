@@ -92,6 +92,8 @@ const seedPackages = async () => {
           count,
           category: 'Misc',
           startIndex: globalPuzzleIndex,
+          rows: 10,
+          cols: 10,
         });
         const validPuzzles = filterValidPuzzles(batch, validatePuzzleBoundaries);
         generatedPuzzles.push(...validPuzzles);

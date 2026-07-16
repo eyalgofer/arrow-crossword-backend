@@ -8,6 +8,8 @@ firebase-service-account.json
 .DS_Store
 .vscode/
 .idea/
-# Large clue-source CSVs stay local
+# Large clue-source CSVs stay local (synonyms.csv + wordlist are tracked)
 src/scripts/core/train.csv
+train.csv
 synonym-seed-words.csv
+src/scripts/core/.clueCache.json

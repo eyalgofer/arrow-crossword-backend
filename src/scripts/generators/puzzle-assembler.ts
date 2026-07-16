@@ -12,9 +12,9 @@ import { getCluesForWord } from '../core/clueDatabase';
 const MAX_CLUE_LENGTH = 50;
 
 /**
- * Pick a clue for a word. Clues from the database are sorted best-first;
- * we choose randomly among the top few unused ones so puzzles stay varied
- * without sacrificing quality.
+ * Pick a clue for a word. Clues from the database are sorted best-first
+ * (definitional synonyms first). We choose randomly among the top few unused
+ * ones so puzzles stay varied without sacrificing quality.
  */
 function pickClue(word: string, usedClues: Set<string>): string {
   const clues = getCluesForWord(word).filter(c => c.length <= MAX_CLUE_LENGTH);
@@ -22,7 +22,8 @@ function pickClue(word: string, usedClues: Set<string>): string {
     throw new Error(`No clue available for word "${word}" - word pool and clue database are out of sync`);
   }
   const unused = clues.filter(c => !usedClues.has(c));
-  const pool = (unused.length > 0 ? unused : clues).slice(0, 5);
+  // Prefer the top 3 quality clues; fall back to unused or raw top list
+  const pool = (unused.length > 0 ? unused : clues).slice(0, 3);
   return pool[Math.floor(Math.random() * pool.length)];
 }
 

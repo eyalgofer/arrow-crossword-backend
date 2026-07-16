@@ -17,6 +17,8 @@ import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
 import { generatePuzzleFromGrid } from './puzzle-assembler';
 
+const MAX_GRID_SIZE = 10;
+
 export class PuzzleGenerator {
   private wordIndex: CrossingIndex;
   private difficulty: Difficulty;
@@ -37,6 +39,7 @@ export class PuzzleGenerator {
 
   /**
    * Generate `count` puzzles. Each puzzle gets a fresh template so grids vary.
+   * Grid size is capped at 10x10 for reliable fill quality.
    */
   generateBatch(config: {
     count: number;
@@ -45,10 +48,13 @@ export class PuzzleGenerator {
     rows?: number;
     cols?: number;
   }): Puzzle[] {
-    const rows = config.rows ?? 10;
-    const cols = config.cols ?? 10;
+    const rows = Math.min(config.rows ?? 8, MAX_GRID_SIZE);
+    const cols = Math.min(config.cols ?? 8, MAX_GRID_SIZE);
+    if ((config.rows ?? 0) > MAX_GRID_SIZE || (config.cols ?? 0) > MAX_GRID_SIZE) {
+      console.warn(`⚠️  Grid capped at ${MAX_GRID_SIZE}x${MAX_GRID_SIZE} (requested ${config.rows}x${config.cols})`);
+    }
     const puzzles: Puzzle[] = [];
-    const maxAttempts = config.count * 5; // each attempt = new template + solve
+    const maxAttempts = config.count * 15; // each attempt = new template + solve
 
     for (let attempt = 0; attempt < maxAttempts && puzzles.length < config.count; attempt++) {
       const template = this.buildTemplate(rows, cols);
@@ -71,9 +77,7 @@ export class PuzzleGenerator {
   }
 
   private buildTemplate(rows: number, cols: number): GridTemplate | null {
-    // Scale evolutionary iterations with grid size (10x10 -> 25, larger grids more)
-    const cells = rows * cols;
-    const maxIterations = Math.min(150, Math.max(25, Math.ceil(25 * (cells / 100))));
+    // Fast template search: word/clue quality matters more than mask perfection.
     try {
       return generateTemplate({
         rows,
@@ -81,8 +85,11 @@ export class PuzzleGenerator {
         difficulty: this.difficulty,
         name: `${rows}x${cols} arrow crossword`,
         quiet: true,
-        maxIterations,
-        minPopulation: 5,
+        maxIterations: 8,
+        minPopulation: 3,
+        populationSize: 5,
+        weakBreakCondition: 80,
+        strongBreakCondition: 250,
       });
     } catch {
       return null;
@@ -94,7 +101,10 @@ export class PuzzleGenerator {
     config: { title: string; category: string }
   ): Puzzle | null {
     const slotCount = template.slots.length;
-    const maxAttempts = Math.min(100000 + slotCount * 8000, 500000);
+    const maxAttempts = Math.min(80000 + slotCount * 5000, 300000);
+    // Short budget per template: solvable templates fill in a few seconds,
+    // and a fresh template is cheaper than grinding an unlucky one.
+    const maxSolveTimeMs = 15 * 1000;
 
     // Prefer more common words so grids feel familiar; jitter keeps puzzles varied.
     const jitter = new Map<string, number>();
@@ -110,7 +120,7 @@ export class PuzzleGenerator {
 
     const result = solveGrid(template, this.wordIndex, {
       maxAttempts,
-      maxSolveTimeMs: 90 * 1000,
+      maxSolveTimeMs,
       wordScorer,
       quiet: true,
     });

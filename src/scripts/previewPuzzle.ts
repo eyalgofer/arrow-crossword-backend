@@ -52,8 +52,8 @@ function printPuzzle(puzzle: Puzzle): void {
 }
 
 const difficulty = (process.argv[2] as Difficulty) || Difficulty.EASY;
-const rows = parseInt(process.argv[3] || '8', 10);
-const cols = parseInt(process.argv[4] || '8', 10);
+const rows = Math.min(parseInt(process.argv[3] || '8', 10), 10);
+const cols = Math.min(parseInt(process.argv[4] || '8', 10), 10);
 const count = parseInt(process.argv[5] || '1', 10);
 
 const puzzles = generatePuzzlesBatch({

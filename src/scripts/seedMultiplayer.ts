@@ -8,8 +8,8 @@ import { connectToDatabase, closeDatabaseAndExit, handleScriptError, filterValid
 
 dotenv.config();
 
-const MULTIPLAYER_GRID_ROWS = 12;
-const MULTIPLAYER_GRID_COLS = 12;
+const MULTIPLAYER_GRID_ROWS = 10;
+const MULTIPLAYER_GRID_COLS = 10;
 const MULTIPLAYER_PUZZLE_COUNT = 10;
 
 const seedMultiplayer = async () => {
