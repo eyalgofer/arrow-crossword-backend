@@ -90,10 +90,12 @@ const DEFAULT_CONFIG: Partial<GeneratorConfig> = {
     singleCoveredOpen: 200,
     doubleCoveredSameDirection: 600,
     // Table 3.1 - Word length penalties
+    // Length 2 is penalized far above the thesis value (650) because the word
+    // pool contains no 2-letter answers; templates with 2-letter slots are unsolvable.
     wordLength: {
       0: 1800,
       1: 1500,
-      2: 650,
+      2: 1800,
       3: 100,
       4: 10,
       5: 0,
@@ -601,8 +603,8 @@ function evaluateFitness(mask: Mask, config: GeneratorConfig): number {
     const defKey = `${word.definitionRow},${word.definitionCol}`;
     localPenalties.set(defKey, (localPenalties.get(defKey) ?? 0) + lengthPenalty);
 
-    // Validity constraint: words must have length >= 2
-    if (word.length < 2) {
+    // Validity constraint: words must have length >= 3 (word pool has no shorter answers)
+    if (word.length < 3) {
       validityPenalty += 1000;
       localPenalties.set(defKey, (localPenalties.get(defKey) ?? 0) + 1000);
     }

@@ -63,19 +63,6 @@ export function getAnswerCells(
   return cells;
 }
 
-export function getAnswerOrientation(direction: Direction): 'horizontal' | 'vertical' {
-  switch (direction) {
-    case 'across':
-    case 'down-across':
-    case 'up-across':
-      return 'horizontal';
-    case 'down':
-    case 'right-down':
-    case 'left-down':
-      return 'vertical';
-  }
-}
-
 /**
  * Convert a template slot to cells.
  * If slot.cells is provided (e.g. from  Engel geometry), use it.

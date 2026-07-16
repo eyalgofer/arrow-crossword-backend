@@ -1,124 +1,34 @@
 /**
- * Puzzle Assembler for Swedish Arrow Crossword Puzzles
- * 
- * Converts solved grid states into complete puzzles and creates templates from existing puzzles
+ * Converts a solved grid state into a complete puzzle with clues,
+ * and validates that every answer obeys the boundary rule.
  */
 
 import { Puzzle, PuzzleItem, GridTemplate, Difficulty } from '../core/types';
 import { GridState } from './grid-state';
 import { getSlotCells } from './direction-utils';
 import { normalizeWord, validateWordBoundaries } from './validation-utils';
-import { getSynonymsDatabase } from '../core/cluesFromCSV';
-
-export interface ClueSourceTracker {
-  synonymsCount: number;
-  simpleCount: number;
-  trainCount: number;
-}
-
-export interface ClueDatabase {
-  getClue(word: string, difficulty: Difficulty): string;
-  getAllClues?(word: string, difficulty: Difficulty): string[]; // Optional: get all available clues
-  tracker?: ClueSourceTracker; // Optional: track which database was used
-  quiet?: boolean; // Optional: suppress statistics logging
-}
+import { getCluesForWord } from '../core/clueDatabase';
 
 const MAX_CLUE_LENGTH = 50;
 
 /**
- * Get clue text with proper length and uniqueness handling
+ * Pick a clue for a word. Clues from the database are sorted best-first;
+ * we choose randomly among the top few unused ones so puzzles stay varied
+ * without sacrificing quality.
  */
-function getClueText(
-  word: string,
-  clueDb: ClueDatabase,
-  difficulty: Difficulty,
-  maxLength: number,
-  usedPuzzleItems: Set<string>
-): string {
-  const normalizedWord = normalizeWord(word);
-  const synonymsDb = getSynonymsDatabase();
-  const hasSynonymsClues = synonymsDb.byAnswer[normalizedWord]?.length > 0;
-
-  let clueText: string;
-
-  if (clueDb.getAllClues) {
-    const allClues = clueDb.getAllClues(word, difficulty);
-    // Never use a clue that equals the answer (e.g. "aba" for "aba") or is answer in brackets
-    const answerBracket = `[${normalizedWord}]`;
-    const notAnswerAsClue = (clue: string) =>
-      clue !== answerBracket && clue !== `[${word}]` && normalizeWord(clue) !== normalizedWord;
-    const validClues = allClues.filter(clue => clue.length <= maxLength && notAnswerAsClue(clue));
-
-    if (validClues.length === 0) {
-      const firstClue = allClues.find(notAnswerAsClue) || allClues[0] || `[${word}]`;
-      clueText = firstClue.length <= maxLength 
-        ? firstClue 
-        : firstClue.substring(0, maxLength - 3) + '...';
-    } else {
-      const unusedClue = validClues.find(clue => !usedPuzzleItems.has(clue));
-      clueText = unusedClue || validClues[0];
-      if (clueText.length > maxLength) {
-        clueText = clueText.substring(0, maxLength - 3) + '...';
-      }
-    }
-
-    // Track database usage
-    if (clueDb.tracker && clueText && !clueText.startsWith('[')) {
-      if (hasSynonymsClues) {
-        clueDb.tracker.synonymsCount++;
-      } else {
-        clueDb.tracker.trainCount++;
-      }
-    }
-  } else {
-    // Fallback: try random clues up to 10 times
-    let attempts = 0;
-    const maxAttempts = 10;
-    
-    do {
-      clueText = clueDb.getClue(word, difficulty);
-      if (clueText.length > maxLength) {
-        clueText = clueText.substring(0, maxLength - 3) + '...';
-      }
-      attempts++;
-    } while (usedPuzzleItems.has(clueText) && attempts < maxAttempts);
-    
-    // If still duplicate, add word suffix
-    if (usedPuzzleItems.has(clueText)) {
-      const suffix = ` (${word})`;
-      if (clueText.length + suffix.length > maxLength) {
-        const availableSpace = maxLength - suffix.length;
-        clueText = clueText.substring(0, Math.max(0, availableSpace - 3)) + '...' + suffix;
-      } else {
-        clueText = `${clueText}${suffix}`;
-      }
-    }
-
-    // Track database usage
-    if (clueDb.tracker && clueText && !clueText.startsWith('[')) {
-      if (hasSynonymsClues) {
-        clueDb.tracker.synonymsCount++;
-      } else {
-        clueDb.tracker.trainCount++;
-      }
-    }
+function pickClue(word: string, usedClues: Set<string>): string {
+  const clues = getCluesForWord(word).filter(c => c.length <= MAX_CLUE_LENGTH);
+  if (clues.length === 0) {
+    throw new Error(`No clue available for word "${word}" - word pool and clue database are out of sync`);
   }
-
-  // Final safety check
-  if (clueText.length > maxLength) {
-    clueText = clueText.substring(0, maxLength - 3) + '...';
-  }
-
-  return clueText;
+  const unused = clues.filter(c => !usedClues.has(c));
+  const pool = (unused.length > 0 ? unused : clues).slice(0, 5);
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
-/**
- * Generate a complete puzzle from a solved grid state
- */
 export function generatePuzzleFromGrid(
   template: GridTemplate,
   gridState: GridState,
-  clueDb: ClueDatabase,
   config: {
     title: string;
     difficulty: Difficulty;
@@ -126,78 +36,60 @@ export function generatePuzzleFromGrid(
   }
 ): Puzzle {
   const puzzleItems: PuzzleItem[] = [];
-  const slotIdToClueNumber = new Map<string, number>(); // slot.id -> puzzle item number (for validation errors)
-  const usedPuzzleItems = new Set<string>(); // Track used puzzle item texts to prevent duplicates
-  const usedAnswers = new Set<string>(); // Track used answers to prevent duplicates
-  
-  // Initialize tracker if provided (order: synonyms → simple → train)
-  if (clueDb.tracker) {
-    clueDb.tracker.synonymsCount = 0;
-    clueDb.tracker.simpleCount = 0;
-    clueDb.tracker.trainCount = 0;
-  }
-  
+  const slotIdToClueNumber = new Map<string, number>();
+  const usedClues = new Set<string>();
+  const usedAnswers = new Set<string>();
+
   let puzzleItemNumber = 1;
   for (const slot of template.slots) {
     const word = gridState.placedWords.get(slot.id);
     if (!word) {
       throw new Error(`No word placed for slot ${slot.id}`);
     }
-    
-    // Normalize answer for duplicate checking (uppercase, no spaces)
+
     const normalizedAnswer = normalizeWord(word);
-    
-    // Check if this answer is already used
-    // Note: Duplicate answers should be prevented during solving, but if one slips through,
-    // we'll skip it and continue (this should be extremely rare)
     if (usedAnswers.has(normalizedAnswer)) {
-      console.warn(`⚠️  Duplicate answer "${word}" detected - skipping this clue (should have been prevented during solving)`);
-      puzzleItemNumber++; // Increment puzzle item number to keep numbering sequential
-      continue; // Skip this slot and continue with the next one
+      // Duplicates are prevented during solving; skip defensively if one slips through
+      console.warn(`⚠️  Duplicate answer "${word}" detected - skipping clue`);
+      puzzleItemNumber++;
+      continue;
     }
-    
-    // Get clue text with proper length and uniqueness handling
-    const clueText = getClueText(word, clueDb, config.difficulty, MAX_CLUE_LENGTH, usedPuzzleItems);
-    
-    usedPuzzleItems.add(clueText);
+
+    const clueText = pickClue(word, usedClues);
+    usedClues.add(clueText);
     usedAnswers.add(normalizedAnswer);
-    
-    // Handle multi-word answers (e.g., "STAR WARS" -> [4, 4])
-    // Use original word (with spaces) to calculate enumeration
-    const words = word.split(' ');
-    const enumeration = words.map(w => w.length);
-    
+
+    // Multi-word answers (e.g. "STAR WARS" -> [4, 4])
+    const enumeration = word.split(' ').map(w => w.length);
+
     const clueNumber = puzzleItemNumber++;
     slotIdToClueNumber.set(slot.id, clueNumber);
     puzzleItems.push({
       number: clueNumber,
       direction: slot.direction,
       clue: clueText,
-      answer: normalizedAnswer, // Use normalized answer (no spaces) for crossword grid
-      enumeration: enumeration,
+      answer: normalizedAnswer,
+      enumeration,
       startRow: slot.startRow,
-      startCol: slot.startCol
+      startCol: slot.startCol,
     });
   }
 
   // --------------------------------------------------------------------------
-  // Ensure every clue's answer follows the boundary rule
-  // Use template slot geometry (getSlotCells) so we validate the same cells the solver filled.
+  // Boundary validation: the cell before/after every answer must be a clue
+  // cell, blocked cell, or the grid edge. Uses the same slot geometry the
+  // solver filled (getSlotCells).
   // --------------------------------------------------------------------------
-  // Build clue/answer sets from template slots (getSlotCells) so we validate the same geometry the solver used.
   const clueCellPositions = new Set<string>();
   const answerCellPositions = new Set<string>();
-  const cellToSlotId = new Map<string, string>();
   for (const slot of template.slots) {
     if (!gridState.placedWords.has(slot.id)) continue;
     clueCellPositions.add(`${slot.startRow},${slot.startCol}`);
     for (const c of getSlotCells(slot)) {
-      const key = `${c.row},${c.col}`;
-      answerCellPositions.add(key);
-      cellToSlotId.set(key, slot.id);
+      answerCellPositions.add(`${c.row},${c.col}`);
     }
   }
-  
+
   const blockedCellPositions = new Set<string>();
   for (let r = 0; r < template.rows; r++) {
     for (let c = 0; c < template.cols; c++) {
@@ -207,13 +99,13 @@ export function generatePuzzleFromGrid(
       }
     }
   }
-  
+
   const validationErrors: string[] = [];
   for (const slot of template.slots) {
     if (!gridState.placedWords.has(slot.id)) continue;
     const answerCells = getSlotCells(slot);
     if (answerCells.length === 0) continue;
-    
+
     const validation = validateWordBoundaries(
       slot.direction,
       answerCells,
@@ -223,70 +115,36 @@ export function generatePuzzleFromGrid(
       answerCellPositions,
       blockedCellPositions
     );
-    
+
     if (!validation.isValid) {
       const clueNumber = slotIdToClueNumber.get(slot.id);
-      const clue = puzzleItems.find(p => p.number === clueNumber);
-      const clueLabel = clue ? `Clue #${clueNumber} "${clue.clue}" (${slot.direction}, answer="${clue?.answer}")` : `Slot ${slot.id} (${slot.direction})`;
-      let conflictingClues: number[] = [];
-      if (validation.reason) {
-        const m = validation.reason.match(/\((\d+),(\d+)\)/);
-        if (m) {
-          const key = `${m[1]},${m[2]}`;
-          const otherSlotId = cellToSlotId.get(key);
-          if (otherSlotId) {
-            const n = slotIdToClueNumber.get(otherSlotId);
-            if (n != null) conflictingClues.push(n);
-          }
-        }
-      }
-      const conflictInfo = conflictingClues.length > 0 ? ` from clue(s) ${conflictingClues.join(', ')}` : '';
-      validationErrors.push(`${clueLabel}: ${validation.reason}${conflictInfo}`);
+      validationErrors.push(`Clue #${clueNumber} (${slot.direction}): ${validation.reason}`);
     }
   }
-  
+
   if (validationErrors.length > 0) {
-    console.error(`❌ Puzzle validation failed: ${validationErrors.length} clues violate boundary rule:`);
-    for (const error of validationErrors.slice(0, 10)) {
-      console.error(`   └─ ${error}`);
-    }
-    throw new Error(`Puzzle validation failed: ${validationErrors.length} clues violate boundary rule`);
+    throw new Error(
+      `Puzzle validation failed: ${validationErrors.length} clues violate boundary rule: ${validationErrors.slice(0, 5).join('; ')}`
+    );
   }
-  // Map difficulty to numeric value (1-5)
-  const difficultyNumber = config.difficulty === Difficulty.EASY ? 1 :
-                           config.difficulty === Difficulty.MEDIUM ? 2 :
-                           config.difficulty === Difficulty.CHALLENGING ? 3 :
-                           config.difficulty === Difficulty.HARD ? 4 :
-                           config.difficulty === Difficulty.EXPERT ? 5 :
-                           2; // Default to medium
-  
-  const estimatedTime = puzzleItems.length * 20 * difficultyNumber;
-  const coinReward = Math.ceil(puzzleItems.length * difficultyNumber / 4);
-  
-  // Log clue source statistics if tracker is available and not in quiet mode
-  if (clueDb.tracker && !clueDb.quiet) {
-    const totalClues = clueDb.tracker.synonymsCount + clueDb.tracker.simpleCount + clueDb.tracker.trainCount;
-    const synonymsPercent = totalClues > 0 ? ((clueDb.tracker.synonymsCount / totalClues) * 100).toFixed(1) : '0.0';
-    const simplePercent = totalClues > 0 ? ((clueDb.tracker.simpleCount / totalClues) * 100).toFixed(1) : '0.0';
-    const trainPercent = totalClues > 0 ? ((clueDb.tracker.trainCount / totalClues) * 100).toFixed(1) : '0.0';
-    console.log(`\n📊 Clue Source Statistics:`);
-    console.log(`   Synonyms.csv: ${clueDb.tracker.synonymsCount} clues (${synonymsPercent}%)`);
-    console.log(`   Simple.csv: ${clueDb.tracker.simpleCount} clues (${simplePercent}%)`);
-    console.log(`   Train.csv: ${clueDb.tracker.trainCount} clues (${trainPercent}%)`);
-    console.log(`   Total clues: ${totalClues}`);
-  }
-  
+
+  const difficultyNumber =
+    config.difficulty === Difficulty.EASY ? 1 :
+    config.difficulty === Difficulty.MEDIUM ? 2 :
+    config.difficulty === Difficulty.CHALLENGING ? 3 :
+    config.difficulty === Difficulty.HARD ? 4 : 5;
+
   return {
     title: config.title,
     difficulty: config.difficulty,
     category: config.category,
     grid: { rows: template.rows, cols: template.cols },
-    puzzleItems: puzzleItems,
-    estimatedTime: estimatedTime,
-    coinReward: coinReward,
+    puzzleItems,
+    estimatedTime: puzzleItems.length * 20 * difficultyNumber,
+    coinReward: Math.ceil((puzzleItems.length * difficultyNumber) / 4),
     metadata: {
       templateId: template.id,
-      generationMethod: 'algorithmic'
-    }
+      generationMethod: 'algorithmic',
+    },
   };
 }

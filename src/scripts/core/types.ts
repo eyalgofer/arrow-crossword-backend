@@ -1,18 +1,7 @@
 import { Difficulty } from '../../types';
 
 export { Difficulty };
-export interface GridCell {
-  row: number;
-  col: number;
-  letter?: string;
-  isClue?: boolean;
-}
 
-export interface Grid {
-  rows: number;
-  cols: number;
-  cells: GridCell[][];
-}
 export interface PuzzleItem {
   number: number;
   direction: Direction;
@@ -55,7 +44,7 @@ export interface ClueSlot {
   startCol: number;
   length: number;
   crossings: CrossingPoint[];
-  /** When set, solver uses these cells directly instead of deriving from startRow/startCol/direction. Used by template-generator-v2 for Engel geometry (types 3,4,6). */
+  /** When set, solver uses these cells directly instead of deriving from startRow/startCol/direction (needed for Engel geometry types 3,4,6). */
   cells?: Array<{ row: number; col: number }>;
 }
 
@@ -75,29 +64,4 @@ export interface GridTemplate {
     successRate?: number;
     [key: string]: any;
   };
-}
-
-// ============================================================================
-// WORD ENTRY AND GENERATION TYPES
-// ============================================================================
-
-export interface WordEntry {
-  word: string;
-  clues: string[];
-  frequency?: number;
-  difficulty?: Difficulty;
-}
-
-export interface GenerationConfig {
-  maxAttempts?: number;
-  shuffleWords?: boolean;
-  preferCommonWords?: boolean;
-  wordScorer?: (word: string) => number;
-}
-
-export interface GenerationResult {
-  success: boolean;
-  puzzle?: Puzzle;
-  attempts: number;
-  error?: string;
 }

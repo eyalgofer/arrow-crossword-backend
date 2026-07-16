@@ -63,8 +63,7 @@ export function buildCrossingIndex(words: string[]): CrossingIndex {
 export function findMatchingWords(
   index: CrossingIndex,
   length: number,
-  constraints: Map<number, string>, // position -> required letter
-  excludeWords?: Set<string>
+  constraints: Map<number, string> // position -> required letter
 ): string[] {
   // Start with all normalized words of the right length
   let normalizedCandidates = index.byLength.get(length) || [];
@@ -86,14 +85,6 @@ export function findMatchingWords(
     normalizedCandidates = wordsWithLetter.filter(w => 
       candidateSet.has(w) && w.length === length
     );
-  }
-  
-  // Remove excluded words (normalize excluded words for comparison)
-  if (excludeWords) {
-    const normalizedExcluded = new Set(
-      Array.from(excludeWords).map(w => normalizeWord(w))
-    );
-    normalizedCandidates = normalizedCandidates.filter(w => !normalizedExcluded.has(w));
   }
   
   // Convert normalized candidates back to original words (with spaces if applicable)

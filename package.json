@@ -11,6 +11,7 @@
     "seed:multiplayer": "ts-node src/scripts/seedMultiplayer.ts",
     "seed:daily": "ts-node src/scripts/seedDaily.ts",
     "assign:daily": "ts-node src/scripts/assignDailyPuzzles.ts",
+    "preview:puzzle": "ts-node src/scripts/previewPuzzle.ts",
     "check:apple": "node scripts/check-apple-config.js"
   },
   "dependencies": {
