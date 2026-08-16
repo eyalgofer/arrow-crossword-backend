@@ -5,6 +5,7 @@ import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { DailyPuzzle } from '../models/DailyPuzzle';
 import { User } from '../models/User';
 import { AuthRequest, ProgressSummary } from '../types';
+import { resolveLanguage, languageFilter } from '../utils/language';
 
 export const getPuzzles = async (req: AuthRequest, res: Response) => {
   try {
@@ -14,6 +15,13 @@ export const getPuzzles = async (req: AuthRequest, res: Response) => {
     const query: any = { isActive: { $ne: false } };
     if (difficulty) query.difficulty = difficulty;
     if (category) query.category = category;
+
+    // Serve content in the user's language (Hebrew for Israeli users).
+    // When a specific package is requested its puzzles already share the
+    // package's language, so no extra filter is applied there.
+    if (!packageId) {
+      query.language = languageFilter(resolveLanguage(req));
+    }
 
     // If packageId is provided, fetch puzzles in the order defined by the package
     if (packageId) {
@@ -63,16 +71,25 @@ export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
     const startOfYear = new Date(year, 0, 1);
     const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-    // Try to find the daily puzzle for today
-    let dailyPuzzle = await DailyPuzzle.findOne({ dayOfYear, year })
+    const language = resolveLanguage(req);
+
+    // Try to find the daily puzzle for today in the user's language
+    let dailyPuzzle = await DailyPuzzle.findOne({ dayOfYear, year, language: languageFilter(language) })
       .populate('puzzleId');
 
     // If no puzzle assigned for today, fallback to first available puzzle
+    // in the user's language, then to any active puzzle
     // (This handles cases where daily puzzles haven't been set up yet)
     if (!dailyPuzzle) {
-      const fallbackPuzzle = await Puzzle.findOne({ isActive: { $ne: false } })
+      let fallbackPuzzle = await Puzzle.findOne({ isActive: { $ne: false }, language: languageFilter(language) })
         .select('-clues.across.answer -clues.down.answer')
         .sort({ createdAt: 1 });
+
+      if (!fallbackPuzzle && language !== 'en') {
+        fallbackPuzzle = await Puzzle.findOne({ isActive: { $ne: false } })
+          .select('-clues.across.answer -clues.down.answer')
+          .sort({ createdAt: 1 });
+      }
 
       if (!fallbackPuzzle) {
         return res.status(404).json({ error: 'No daily puzzle available' });
@@ -108,8 +125,12 @@ export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
 
 export const getRandomPuzzle = async (req: AuthRequest, res: Response) => {
   try {
-    const randomPuzzle = await Puzzle.findOne({ isActive: { $ne: false } })
+    const language = resolveLanguage(req);
+    let randomPuzzle = await Puzzle.findOne({ isActive: { $ne: false }, language: languageFilter(language) })
         .sort({ createdAt: 1 });
+    if (!randomPuzzle && language !== 'en') {
+      randomPuzzle = await Puzzle.findOne({ isActive: { $ne: false } }).sort({ createdAt: 1 });
+    }
     console.log(`✅ Returning puzzle ID: ${randomPuzzle?._id.toString()}`);
     res.json({ puzzleId: randomPuzzle?._id.toString() });
   } catch (error) {

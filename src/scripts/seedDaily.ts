@@ -4,7 +4,7 @@ import { DailyPuzzle } from '../models/DailyPuzzle';
 import { generatePuzzlesBatch } from './generators/puzzlesGenerator';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import { assignPuzzlesToDateRange } from '../utils/dailyPuzzleUtils';
-import { Difficulty } from '../types';
+import { Difficulty, Language } from '../types';
 import { connectToDatabase, closeDatabaseAndExit, handleScriptError, filterValidPuzzles } from './utils/scriptUtils';
 
 dotenv.config();
@@ -13,18 +13,27 @@ const DAILY_GRID_ROWS = 8;
 const DAILY_GRID_COLS = 8;
 const DAILY_PUZZLE_COUNT = 3;
 
+// Usage: ts-node src/scripts/seedDaily.ts [--lang he]
+const langArgIndex = process.argv.indexOf('--lang');
+const language: Language = langArgIndex !== -1 && process.argv[langArgIndex + 1] === 'he' ? 'he' : 'en';
+
+// Hebrew users see Hebrew categories and titles
+const DAILY_CATEGORY = language === 'he' ? 'יומי' : 'Daily';
+const dailyTitle = (index: number) => language === 'he' ? `תשבץ יומי ${index + 1}` : `Daily Puzzle ${index + 1}`;
+
 const seedDaily = async () => {
   try {
     await connectToDatabase();
-    console.log(`📅 Generating ${DAILY_PUZZLE_COUNT} daily puzzles: easy ${DAILY_GRID_ROWS}x${DAILY_GRID_COLS}...\n`);
+    console.log(`📅 Generating ${DAILY_PUZZLE_COUNT} daily puzzles (${language}): easy ${DAILY_GRID_ROWS}x${DAILY_GRID_COLS}...\n`);
 
     const batch = generatePuzzlesBatch({
       difficulty: Difficulty.EASY,
       count: DAILY_PUZZLE_COUNT,
-      category: 'Daily',
+      category: DAILY_CATEGORY,
       startIndex: 0,
       rows: DAILY_GRID_ROWS,
       cols: DAILY_GRID_COLS,
+      language,
     });
 
     const validPuzzles = filterValidPuzzles(batch, validatePuzzleBoundaries);
@@ -40,7 +49,7 @@ const seedDaily = async () => {
     const savedPuzzles = await Puzzle.insertMany(
       validPuzzles.map((puzzle, index) => ({
         ...puzzle,
-        title: `Daily Puzzle ${index + 1}`
+        title: dailyTitle(index)
       }))
     );
 

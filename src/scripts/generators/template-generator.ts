@@ -1347,6 +1347,10 @@ export interface GenerateTemplateOptions {
   minPopulation?: number;         // floor for n to avoid collapse, default 5
   maxIterations?: number;         // cap iterations, default 100
   quiet?: boolean;               // suppress per-iteration logs
+  /** Slot lengths above this are treated as unfillable (penalty 5000). */
+  maxSlotLength?: number;
+  /** Allow more uncovered/blocked cells so a smaller word pool can fill the grid. */
+  sparse?: boolean;
 }
 
 /**
@@ -1366,7 +1370,9 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     similarityThreshold = 0.1,
     minPopulation = 5,
     maxIterations: maxIterationsOpt,
-    quiet = false
+    quiet = false,
+    maxSlotLength,
+    sparse = false
   } = options;
 
   // Larger grids need more memetic iterations to converge; default scales with cell count
@@ -1413,6 +1419,22 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
       ...config.weights.wordLength,
       3: 200, 4: 100, 5: 0, 6: 0, 7: 0, 8: 0, 9: 100
     };
+  }
+
+  if (maxSlotLength !== undefined) {
+    const capped: Record<number, number> = { ...config.weights.wordLength };
+    for (let len = maxSlotLength + 1; len <= 15; len++) {
+      capped[len] = 5000;
+    }
+    config.weights.wordLength = capped;
+  }
+
+  if (sparse) {
+    // Smaller dictionaries cannot fill a fully covered arrow grid; allow
+    // blocked cells instead of forcing every letter field to be used.
+    config.weights.uncoveredField = 700;
+    config.weights.singleCoveredEnclosed = 40;
+    config.weights.singleCoveredOpen = 100;
   }
 
   const maxBoundaryRetries = 3;

@@ -7,6 +7,11 @@ export interface AuthRequest extends Request {
   };
 }
 
+/** Content languages served by the API. Israeli users receive 'he'. */
+export type Language = 'en' | 'he';
+
+export const DEFAULT_LANGUAGE: Language = 'en';
+
 export interface UserStats {
   totalGames: number;
   gamesWon: number;

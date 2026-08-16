@@ -1,6 +1,6 @@
-import { Difficulty } from '../../types';
+import { Difficulty, Language } from '../../types';
 
-export { Difficulty };
+export { Difficulty, Language };
 
 export interface PuzzleItem {
   number: number;
@@ -16,6 +16,7 @@ export interface Puzzle {
   title: string;
   difficulty: Difficulty;
   category: string;
+  language: Language;
   grid: {
     rows: number;
     cols: number;

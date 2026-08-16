@@ -5,14 +5,16 @@
  */
 
 import { Direction, ClueSlot } from '../core/types';
+import { applyHebrewFinalForms } from '../core/hebrewOrthography';
 import { getSlotCells, getCellBeforeAnswer, getNextCellAfterAnswer } from './direction-utils';
 
 /**
- * Normalize a word by removing spaces and converting to uppercase
- * Used for grid placement and duplicate checking
+ * Normalize a word for grid placement, stored answers, and duplicate checking:
+ * strip spaces, uppercase (English), and apply Hebrew final letterforms
+ * (ך/ם/ן/ף/ץ) on the last letter so matching matches what players type.
  */
 export function normalizeWord(word: string): string {
-  return word.replace(/\s+/g, '').toUpperCase();
+  return applyHebrewFinalForms(word.replace(/\s+/g, '').toUpperCase());
 }
 
 /**

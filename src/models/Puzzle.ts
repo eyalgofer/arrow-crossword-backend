@@ -1,10 +1,11 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { PuzzleGrid, Difficulty, PuzzleItem } from '../types';
+import { PuzzleGrid, Difficulty, PuzzleItem, Language } from '../types';
 
 export interface IPuzzle extends Document {
   title: string;
   difficulty: Difficulty;
   category: string;
+  language: Language;
   grid: PuzzleGrid;
   puzzleItems: PuzzleItem[];
   estimatedTime: number;
@@ -39,6 +40,11 @@ const puzzleSchema = new Schema<IPuzzle>({
     type: String,
     required: true
   },
+  language: {
+    type: String,
+    enum: ['en', 'he'],
+    default: 'en'
+  },
   grid: {
     rows: { type: Number, required: true },
     cols: { type: Number, required: true }
@@ -71,5 +77,6 @@ const puzzleSchema = new Schema<IPuzzle>({
 puzzleSchema.index({ difficulty: 1, isActive: 1 });
 puzzleSchema.index({ category: 1, isActive: 1 });
 puzzleSchema.index({ packageId: 1 });
+puzzleSchema.index({ language: 1, isActive: 1 });
 
 export const Puzzle = mongoose.model<IPuzzle>('Puzzle', puzzleSchema);

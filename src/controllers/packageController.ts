@@ -4,6 +4,7 @@ import { PuzzlePackage } from '../models/PuzzlePackage';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { User } from '../models/User';
 import { AuthRequest } from '../types';
+import { resolveLanguage, languageFilter } from '../utils/language';
 
 /**
  * GET /api/packages
@@ -38,7 +39,8 @@ export const getPackages = async (req: AuthRequest, res: Response) => {
       console.log(`📚 Available collections: ${collections.map(c => c.name).join(', ')}`);
     }
 
-    const packages = await PuzzlePackage.find()
+    // Israeli users get Hebrew packages (names, themes, and puzzles in Hebrew)
+    const packages = await PuzzlePackage.find({ language: languageFilter(resolveLanguage(req)) })
       .sort({ order: 1 })
       .lean();
 
@@ -60,8 +62,8 @@ export const getPackagesProgress = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Get all packages ordered by display order
-    const packages = await PuzzlePackage.find()
+    // Get all packages in the user's language ordered by display order
+    const packages = await PuzzlePackage.find({ language: languageFilter(resolveLanguage(req)) })
       .sort({ order: 1 })
       .lean();
 

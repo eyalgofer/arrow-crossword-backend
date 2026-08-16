@@ -3,11 +3,15 @@ import mongoose from 'mongoose';
 import { Puzzle } from '../models/Puzzle';
 import { PuzzlePackage } from '../models/PuzzlePackage';
 import { generatePuzzlesBatch } from './generators/puzzlesGenerator';
-import { Difficulty } from '../types';
+import { Difficulty, Language } from '../types';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import { connectToDatabase, closeDatabaseAndExit, handleScriptError, filterValidPuzzles } from './utils/scriptUtils';
 
 dotenv.config();
+
+// Usage: ts-node src/scripts/seedPackages.ts [--lang he]
+const langArgIndex = process.argv.indexOf('--lang');
+const language: Language = langArgIndex !== -1 && process.argv[langArgIndex + 1] === 'he' ? 'he' : 'en';
 
 // Gradient colors for packages
 const gradientPalette = [
@@ -29,21 +33,48 @@ const iconNames = [
   'flask', 'sportscourt', 'music.note', 'clock', 'film'
 ];
 
-// Package definitions
-const packageDefinitions = [
-  {
-    name: 'Geek Savant Collection 1',
-    description: 'Lets get started!',
-    theme: 'Mixed',
-    puzzleCount: 10,
-  },
-  {
-    name: 'Geek Savant Collection 2',
-    description: '20 puzzles to solve',
-    theme: 'Mixed',
-    puzzleCount: 20,
-  },
-].map((def, index) => ({
+// Package definitions per language. Hebrew users see Hebrew package
+// names, descriptions, and themes.
+const packageDefinitionsByLanguage: Record<Language, Array<{
+  name: string;
+  description: string;
+  theme: string;
+  puzzleCount: number;
+}>> = {
+  en: [
+    {
+      name: 'Geek Savant Collection 1',
+      description: 'Lets get started!',
+      theme: 'Mixed',
+      puzzleCount: 10,
+    },
+    {
+      name: 'Geek Savant Collection 2',
+      description: '20 puzzles to solve',
+      theme: 'Mixed',
+      puzzleCount: 20,
+    },
+  ],
+  he: [
+    {
+      name: 'אוסף תשבצים 1',
+      description: 'בואו נתחיל!',
+      theme: 'מעורב',
+      puzzleCount: 10,
+    },
+    {
+      name: 'אוסף תשבצים 2',
+      description: '20 תשבצים לפתרון',
+      theme: 'מעורב',
+      puzzleCount: 20,
+    },
+  ],
+};
+
+const MISC_CATEGORY = language === 'he' ? 'כללי' : 'Misc';
+const puzzleTitle = (index: number) => language === 'he' ? `תשבץ #${index}` : `Puzzle #${index}`;
+
+const packageDefinitions = packageDefinitionsByLanguage[language].map((def, index) => ({
   ...def,
   iconName: iconNames[index % iconNames.length],
   gradientColors: gradientPalette[index % gradientPalette.length],
@@ -71,7 +102,7 @@ function getDifficultyDistribution(puzzleCount: number): Array<{ difficulty: Dif
 const seedPackages = async () => {
   try {
     await connectToDatabase();
-    console.log(`📦 Creating ${packageDefinitions.length} packages with difficulty distribution...\n`);
+    console.log(`📦 Creating ${packageDefinitions.length} packages (${language}) with difficulty distribution...\n`);
 
     let globalPuzzleIndex = 1;
     
@@ -90,10 +121,11 @@ const seedPackages = async () => {
         const batch = generatePuzzlesBatch({
           difficulty,
           count,
-          category: 'Misc',
+          category: MISC_CATEGORY,
           startIndex: globalPuzzleIndex,
           rows: 8,
           cols: 8,
+          language,
         });
         const validPuzzles = filterValidPuzzles(batch, validatePuzzleBoundaries);
         generatedPuzzles.push(...validPuzzles);
@@ -124,6 +156,7 @@ const seedPackages = async () => {
         name: def.name,
         description: def.description,
         theme: def.theme,
+        language,
         puzzleCount: puzzleIds.length,
         puzzleIds,
         order: i,
@@ -136,7 +169,7 @@ const seedPackages = async () => {
       await Promise.all(puzzleIds.map((id, j) =>
         Puzzle.updateOne(
           { _id: id },
-          { $set: { packageId: newPackage._id, title: `Puzzle #${j + 1}` } }
+          { $set: { packageId: newPackage._id, title: puzzleTitle(j + 1) } }
         )
       ));
     }
@@ -146,7 +179,7 @@ const seedPackages = async () => {
     console.log('📦 Package Summary:');
     console.log('='.repeat(60));
     
-    const allPackages = await PuzzlePackage.find().sort({ order: 1 }).lean();
+    const allPackages = await PuzzlePackage.find({ language }).sort({ order: 1 }).lean();
     const totalPuzzleSlots = allPackages.reduce((sum, pkg) => sum + pkg.puzzleCount, 0);
     
     for (const pkg of allPackages) {

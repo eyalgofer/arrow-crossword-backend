@@ -1,6 +1,7 @@
 import { DailyPuzzle, IDailyPuzzle } from '../models/DailyPuzzle';
 import { Puzzle } from '../models/Puzzle';
 import mongoose from 'mongoose';
+import { Language } from '../types';
 
 /**
  * Get day of year (1-365/366) from a date
@@ -37,12 +38,18 @@ export async function assignPuzzleToDate(
     throw new Error(`Puzzle with ID ${puzzleId} not found`);
   }
 
-  // Check if this date already has a puzzle assigned (using dayOfYear and year for reliable lookup)
-  const existing = await DailyPuzzle.findOne({ dayOfYear, year });
+  // Each language has its own daily puzzle per date
+  const language = puzzle.language ?? 'en';
+  const langFilter = language === 'en' ? { $in: ['en', null] } : language;
+
+  // Check if this date already has a puzzle assigned for this language
+  // (using dayOfYear and year for reliable lookup)
+  const existing = await DailyPuzzle.findOne({ dayOfYear, year, language: langFilter });
   if (existing) {
     // Update existing assignment
     existing.puzzleId = puzzle._id;
     existing.date = normalizedDate;
+    existing.language = language;
     await existing.save();
     return existing;
   }
@@ -52,7 +59,8 @@ export async function assignPuzzleToDate(
     puzzleId: puzzle._id,
     dayOfYear,
     year,
-    date: normalizedDate
+    date: normalizedDate,
+    language
   });
 
   await dailyPuzzle.save();
@@ -90,13 +98,15 @@ export async function assignPuzzlesToDateRange(
 }
 
 /**
- * Get the puzzle assigned to a specific date
+ * Get the puzzle assigned to a specific date for a given language.
+ * Documents created before localization have no `language` field and are English.
  */
-export async function getPuzzleForDate(date: Date) {
+export async function getPuzzleForDate(date: Date, language: Language = 'en') {
   const year = date.getFullYear();
   const dayOfYear = getDayOfYear(date);
+  const langFilter = language === 'en' ? { $in: ['en', null] } : language;
 
-  const dailyPuzzle = await DailyPuzzle.findOne({ dayOfYear, year })
+  const dailyPuzzle = await DailyPuzzle.findOne({ dayOfYear, year, language: langFilter })
     .populate('puzzleId');
 
   return dailyPuzzle;

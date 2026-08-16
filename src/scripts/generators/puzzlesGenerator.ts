@@ -9,9 +9,9 @@
  * clue, so generated puzzles never contain obscure fill or placeholder clues.
  */
 
-import { Difficulty } from '../../types';
+import { Difficulty, Language } from '../../types';
 import { Puzzle, GridTemplate } from '../core/types';
-import { getWordPool, getAnswerRank } from '../core/clueDatabase';
+import { getClueProvider, ClueProvider } from '../core/clueProvider';
 import { generateTemplate } from './template-generator';
 import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
@@ -19,21 +19,33 @@ import { generatePuzzleFromGrid } from './puzzle-assembler';
 
 const MAX_GRID_SIZE = 10;
 
+/** Minimum words of a given length before that slot size is considered fillable. */
+const MIN_WORDS_PER_LENGTH = 12;
+
 export class PuzzleGenerator {
   private wordIndex: CrossingIndex;
   private difficulty: Difficulty;
+  private language: Language;
+  private clueProvider: ClueProvider;
+  private maxSlotLength: number;
 
-  constructor(difficulty: Difficulty = Difficulty.MEDIUM) {
+  constructor(difficulty: Difficulty = Difficulty.MEDIUM, language: Language = 'en') {
     this.difficulty = difficulty;
+    this.language = language;
+    this.clueProvider = getClueProvider(language);
 
-    const words = getWordPool(difficulty);
+    const words = this.clueProvider.getWordPool(difficulty);
     if (words.length === 0) {
       throw new Error(
-        `Word pool for difficulty '${difficulty}' is empty. Check that ` +
-        `synonyms.csv / train.csv / wordlist-en-50k.txt exist in src/scripts/core.`
+        `Word pool for difficulty '${difficulty}' (${language}) is empty. Check that ` +
+        `the clue database sources exist in src/scripts/core.`
       );
     }
-    console.log(`🎯 Word pool for '${difficulty}': ${words.length.toLocaleString()} words`);
+    this.maxSlotLength = maxFillableSlotLength(words);
+    console.log(
+      `🎯 Word pool for '${difficulty}' (${language}): ${words.length.toLocaleString()} words ` +
+      `(max slot ${this.maxSlotLength})`
+    );
     this.wordIndex = buildCrossingIndex(words);
   }
 
@@ -54,11 +66,15 @@ export class PuzzleGenerator {
       console.warn(`⚠️  Grid capped at ${MAX_GRID_SIZE}x${MAX_GRID_SIZE} (requested ${config.rows}x${config.cols})`);
     }
     const puzzles: Puzzle[] = [];
-    const maxAttempts = config.count * 15; // each attempt = new template + solve
+    const attemptMultiplier = this.language === 'he' ? 40 : 15;
+    const maxAttempts = config.count * attemptMultiplier; // each attempt = new template + solve
 
     for (let attempt = 0; attempt < maxAttempts && puzzles.length < config.count; attempt++) {
       const template = this.buildTemplate(rows, cols);
       if (!template) continue;
+      if (template.slots.some(slot => slot.length > this.maxSlotLength || slot.length < 3)) {
+        continue;
+      }
 
       const puzzle = this.solveTemplate(template, {
         title: config.getTitle(puzzles.length),
@@ -85,11 +101,13 @@ export class PuzzleGenerator {
         difficulty: this.difficulty,
         name: `${rows}x${cols} arrow crossword`,
         quiet: true,
-        maxIterations: 8,
+        maxIterations: this.language === 'he' ? 20 : 8,
         minPopulation: 3,
-        populationSize: 5,
-        weakBreakCondition: 80,
-        strongBreakCondition: 250,
+        populationSize: this.language === 'he' ? 8 : 5,
+        weakBreakCondition: this.language === 'he' ? 150 : 80,
+        strongBreakCondition: this.language === 'he' ? 400 : 250,
+        maxSlotLength: this.maxSlotLength,
+        cutoutCells: this.language === 'he' ? randomCutouts(rows, cols) : undefined,
       });
     } catch {
       return null;
@@ -104,7 +122,7 @@ export class PuzzleGenerator {
     const maxAttempts = Math.min(80000 + slotCount * 5000, 300000);
     // Short budget per template: solvable templates fill in a few seconds,
     // and a fresh template is cheaper than grinding an unlucky one.
-    const maxSolveTimeMs = 15 * 1000;
+    const maxSolveTimeMs = (this.language === 'he' ? 20 : 15) * 1000;
 
     // Prefer more common words so grids feel familiar; jitter keeps puzzles varied.
     const jitter = new Map<string, number>();
@@ -114,7 +132,7 @@ export class PuzzleGenerator {
         j = Math.random();
         jitter.set(word, j);
       }
-      const rank = getAnswerRank(word);
+      const rank = this.clueProvider.getAnswerRank(word);
       return -Math.log(rank) + j;
     };
 
@@ -131,6 +149,7 @@ export class PuzzleGenerator {
         title: config.title,
         difficulty: this.difficulty,
         category: config.category,
+        language: this.language,
       });
     } catch (error) {
       if (error instanceof Error && error.message.includes('validation failed')) {
@@ -142,6 +161,35 @@ export class PuzzleGenerator {
   }
 }
 
+function maxFillableSlotLength(words: string[]): number {
+  const counts = new Map<number, number>();
+  for (const word of words) {
+    counts.set(word.length, (counts.get(word.length) ?? 0) + 1);
+  }
+  let max = 3;
+  for (const [len, count] of counts) {
+    if (count >= MIN_WORDS_PER_LENGTH && len > max) max = len;
+  }
+  return max;
+}
+
+/** Block ~20% of cells so Hebrew's smaller pool can fill the remaining slots. */
+function randomCutouts(rows: number, cols: number): Array<{ row: number; col: number }> {
+  const target = Math.max(8, Math.round(rows * cols * 0.22));
+  const cells: Array<{ row: number; col: number }> = [];
+  const used = new Set<string>();
+  let guard = 0;
+  while (cells.length < target && guard++ < target * 20) {
+    const row = Math.floor(Math.random() * rows);
+    const col = Math.floor(Math.random() * cols);
+    const key = `${row},${col}`;
+    if (used.has(key)) continue;
+    used.add(key);
+    cells.push({ row, col });
+  }
+  return cells;
+}
+
 export function generatePuzzlesBatch(config: {
   difficulty: Difficulty;
   count: number;
@@ -149,12 +197,16 @@ export function generatePuzzlesBatch(config: {
   startIndex: number;
   rows?: number;
   cols?: number;
+  language?: Language;
 }): Puzzle[] {
-  const generator = new PuzzleGenerator(config.difficulty);
+  const language = config.language ?? 'en';
+  const generator = new PuzzleGenerator(config.difficulty, language);
   return generator.generateBatch({
     count: config.count,
     category: config.category,
-    getTitle: (i) => `Puzzle ${config.startIndex + i}`,
+    getTitle: (i) => language === 'he'
+      ? `תשבץ ${config.startIndex + i}`
+      : `Puzzle ${config.startIndex + i}`,
     rows: config.rows,
     cols: config.cols,
   });

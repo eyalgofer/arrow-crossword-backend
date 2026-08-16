@@ -3,11 +3,11 @@
  * Useful for checking grid and clue quality before seeding.
  *
  * Usage:
- *   npx ts-node src/scripts/previewPuzzle.ts [difficulty] [rows] [cols] [count]
+ *   npx ts-node src/scripts/previewPuzzle.ts [difficulty] [rows] [cols] [count] [--lang he]
  *   npm run preview:puzzle
  */
 
-import { Difficulty } from '../types';
+import { Difficulty, Language } from '../types';
 import { Puzzle } from './core/types';
 import { generatePuzzlesBatch } from './generators/puzzlesGenerator';
 import { getAnswerCells } from './generators/direction-utils';
@@ -51,18 +51,23 @@ function printPuzzle(puzzle: Puzzle): void {
   }
 }
 
-const difficulty = (process.argv[2] as Difficulty) || Difficulty.EASY;
-const rows = Math.min(parseInt(process.argv[3] || '8', 10), 10);
-const cols = Math.min(parseInt(process.argv[4] || '8', 10), 10);
-const count = parseInt(process.argv[5] || '1', 10);
+const langArgIndex = process.argv.indexOf('--lang');
+const language: Language = langArgIndex !== -1 && process.argv[langArgIndex + 1] === 'he' ? 'he' : 'en';
+const positional = process.argv.slice(2).filter((arg, i, args) => arg !== '--lang' && args[i - 1] !== '--lang');
+
+const difficulty = (positional[0] as Difficulty) || Difficulty.EASY;
+const rows = Math.min(parseInt(positional[1] || '8', 10), 10);
+const cols = Math.min(parseInt(positional[2] || '8', 10), 10);
+const count = parseInt(positional[3] || '1', 10);
 
 const puzzles = generatePuzzlesBatch({
   difficulty,
   count,
-  category: 'Preview',
+  category: language === 'he' ? 'תצוגה' : 'Preview',
   startIndex: 1,
   rows,
   cols,
+  language,
 });
 
 for (const puzzle of puzzles) {

@@ -1,9 +1,11 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { Language } from '../types';
 
 export interface IPuzzlePackage extends Document {
   name: string;
   description?: string;
   theme: string;
+  language: Language;
   puzzleCount: number;
   puzzleIds: mongoose.Types.ObjectId[];
   order: number;
@@ -16,8 +18,7 @@ export interface IPuzzlePackage extends Document {
 const puzzlePackageSchema = new Schema<IPuzzlePackage>({
   name: {
     type: String,
-    required: true,
-    unique: true
+    required: true
   },
   description: {
     type: String,
@@ -26,6 +27,11 @@ const puzzlePackageSchema = new Schema<IPuzzlePackage>({
   theme: {
     type: String,
     required: true
+  },
+  language: {
+    type: String,
+    enum: ['en', 'he'],
+    default: 'en'
   },
   puzzleCount: {
     type: Number,
@@ -57,5 +63,7 @@ const puzzlePackageSchema = new Schema<IPuzzlePackage>({
 
 // Index for sorting by order
 puzzlePackageSchema.index({ order: 1 });
+puzzlePackageSchema.index({ language: 1, order: 1 });
+puzzlePackageSchema.index({ name: 1, language: 1 }, { unique: true });
 
 export const PuzzlePackage = mongoose.model<IPuzzlePackage>('PuzzlePackage', puzzlePackageSchema);

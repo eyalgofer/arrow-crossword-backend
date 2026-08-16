@@ -8,9 +8,12 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "seed:packages": "ts-node src/scripts/seedPackages.ts",
+    "seed:packages:he": "ts-node src/scripts/seedPackages.ts --lang he",
     "seed:multiplayer": "ts-node src/scripts/seedMultiplayer.ts",
     "seed:daily": "ts-node src/scripts/seedDaily.ts",
+    "seed:daily:he": "ts-node src/scripts/seedDaily.ts --lang he",
     "assign:daily": "ts-node src/scripts/assignDailyPuzzles.ts",
+    "sync:indexes": "ts-node src/scripts/syncIndexes.ts",
     "preview:puzzle": "ts-node src/scripts/previewPuzzle.ts",
     "check:apple": "node scripts/check-apple-config.js"
   },

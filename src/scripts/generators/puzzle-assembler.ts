@@ -3,11 +3,11 @@
  * and validates that every answer obeys the boundary rule.
  */
 
-import { Puzzle, PuzzleItem, GridTemplate, Difficulty } from '../core/types';
+import { Puzzle, PuzzleItem, GridTemplate, Difficulty, Language } from '../core/types';
 import { GridState } from './grid-state';
 import { getSlotCells } from './direction-utils';
 import { normalizeWord, validateWordBoundaries } from './validation-utils';
-import { getCluesForWord } from '../core/clueDatabase';
+import { getClueProvider, ClueProvider } from '../core/clueProvider';
 
 const MAX_CLUE_LENGTH = 50;
 
@@ -16,8 +16,8 @@ const MAX_CLUE_LENGTH = 50;
  * (definitional synonyms first). We choose randomly among the top few unused
  * ones so puzzles stay varied without sacrificing quality.
  */
-function pickClue(word: string, usedClues: Set<string>): string {
-  const clues = getCluesForWord(word).filter(c => c.length <= MAX_CLUE_LENGTH);
+function pickClue(word: string, usedClues: Set<string>, provider: ClueProvider): string {
+  const clues = provider.getCluesForWord(word).filter(c => c.length <= MAX_CLUE_LENGTH);
   if (clues.length === 0) {
     throw new Error(`No clue available for word "${word}" - word pool and clue database are out of sync`);
   }
@@ -34,8 +34,12 @@ export function generatePuzzleFromGrid(
     title: string;
     difficulty: Difficulty;
     category: string;
+    language?: Language;
   }
 ): Puzzle {
+  const language: Language = config.language ?? 'en';
+  const clueProvider = getClueProvider(language);
+
   const puzzleItems: PuzzleItem[] = [];
   const slotIdToClueNumber = new Map<string, number>();
   const usedClues = new Set<string>();
@@ -56,7 +60,7 @@ export function generatePuzzleFromGrid(
       continue;
     }
 
-    const clueText = pickClue(word, usedClues);
+    const clueText = pickClue(word, usedClues, clueProvider);
     usedClues.add(clueText);
     usedAnswers.add(normalizedAnswer);
 
@@ -139,6 +143,7 @@ export function generatePuzzleFromGrid(
     title: config.title,
     difficulty: config.difficulty,
     category: config.category,
+    language,
     grid: { rows: template.rows, cols: template.cols },
     puzzleItems,
     estimatedTime: puzzleItems.length * 20 * difficultyNumber,
