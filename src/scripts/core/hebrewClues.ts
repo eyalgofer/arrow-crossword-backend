@@ -2,7 +2,7 @@
  * Curated Hebrew answer/clue data for the puzzle generator.
  *
  * Conventions:
- *  - `a` (answer): a single Hebrew word, 3-8 letters. Final letterforms are
+ *  - `a` (answer): a single Hebrew word, 3-10 letters. Final letterforms are
  *    normalized automatically at load time (see hebrewClueDatabase.ts), so
  *    entries may be written with either regular or final forms.
  *  - `c` (clues): short definitional clues, best first. A clue must never

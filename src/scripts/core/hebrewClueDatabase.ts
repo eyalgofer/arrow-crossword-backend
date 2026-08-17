@@ -12,7 +12,10 @@
 
 import { Difficulty } from '../../types';
 import { applyHebrewFinalForms } from './hebrewOrthography';
-import { HEBREW_ENTRIES, RawHebrewEntry } from './hebrewClues';
+import { HEBREW_ENTRIES as BASE_ENTRIES, RawHebrewEntry } from './hebrewClues';
+import { HEBREW_ENTRIES_MORE } from './hebrewCluesMore';
+
+const HEBREW_ENTRIES: RawHebrewEntry[] = [...BASE_ENTRIES, ...HEBREW_ENTRIES_MORE];
 
 /** Hebrew letters (includes final forms, which sit inside the א-ת range). */
 const HEBREW_ANSWER_PATTERN = /^[\u05D0-\u05EA]{3,10}$/;
@@ -46,6 +49,16 @@ interface HebrewAnswerEntry {
 
 let cached: Map<string, HebrewAnswerEntry> | null = null;
 
+function isUsableClue(clue: string, answer: string): boolean {
+  if (!clue || !clue.trim()) return false;
+  const tokens = clue.split(/\s+/).filter(Boolean);
+  // A clue must never be/contain the answer as a whole word.
+  for (const token of tokens) {
+    if (normalizeHebrewAnswer(token) === answer) return false;
+  }
+  return true;
+}
+
 function buildDatabase(): Map<string, HebrewAnswerEntry> {
   const entries = new Map<string, HebrewAnswerEntry>();
 
@@ -59,11 +72,21 @@ function buildDatabase(): Map<string, HebrewAnswerEntry> {
       );
       return;
     }
+
+    const clues = (raw.c || []).filter(c => isUsableClue(c, answer));
+
     if (entries.has(answer)) {
-      console.warn(`⚠️  Hebrew clue database: duplicate answer "${answer}" - keeping first entry`);
+      const existing = entries.get(answer)!;
+      for (const clue of clues) {
+        if (!existing.clues.includes(clue)) existing.clues.push(clue);
+      }
+      if (raw.t !== undefined && raw.t > existing.tier) {
+        existing.tier = raw.t;
+        existing.rank = (raw.t - 1) * 10000 + index + 1;
+      }
       return;
     }
-    if (!raw.c || raw.c.length === 0) {
+    if (clues.length === 0) {
       console.warn(`⚠️  Hebrew clue database: "${answer}" has no clues - skipping`);
       return;
     }
@@ -75,7 +98,7 @@ function buildDatabase(): Map<string, HebrewAnswerEntry> {
       // prefers everyday words, mirroring the English frequency ranks.
       rank: (tier - 1) * 10000 + index + 1,
       tier,
-      clues: raw.c,
+      clues,
     });
   });
 

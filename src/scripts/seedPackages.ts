@@ -108,6 +108,11 @@ const seedPackages = async () => {
     
     for (let i = 0; i < packageDefinitions.length; i++) {
       const def = packageDefinitions[i];
+      const existing = await PuzzlePackage.findOne({ name: def.name, language });
+      if (existing) {
+        console.log(`\n📦 Skipping ${def.name} — already exists (${existing.puzzleCount} puzzles)`);
+        continue;
+      }
       const difficultyDistribution = getDifficultyDistribution(def.puzzleCount);
       
       console.log(`\n📦 Creating ${def.name} (${def.puzzleCount} puzzles)...`);

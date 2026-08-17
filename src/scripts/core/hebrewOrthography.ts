@@ -1,9 +1,9 @@
 /**
  * Hebrew letterform helpers.
  *
- * Players type final forms (ך/ם/ן/ף/ץ) at the end of a word and regular
- * forms (כ/מ/נ/פ/צ) everywhere else. Answer matching is per-character, so
- * stored answers and grid letters must use exactly those forms.
+ * Stored answers use final forms (ך/ם/ן/ף/ץ) on the last letter, because
+ * players type those forms. Grid *fill* folds finals back to regular forms
+ * (כ/מ/נ/פ/צ) so a word-final ם can still cross a mid-word מ.
  */
 
 const FINAL_FORMS: Record<string, string> = {
@@ -21,6 +21,11 @@ const REGULAR_FORMS: Record<string, string> = {
   'ף': 'פ',
   'ץ': 'צ',
 };
+
+/** Map ך/ם/ן/ף/ץ to כ/מ/נ/פ/צ so crossing cells can match. */
+export function foldHebrewLetter(ch: string): string {
+  return REGULAR_FORMS[ch] ?? ch;
+}
 
 /**
  * Regular forms inside the word, final form on the last letter.

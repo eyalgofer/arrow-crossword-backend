@@ -4,6 +4,7 @@
  * Handles grid state representation and manipulation
  */
 import { normalizeWord, checkAnswerBoundariesWithDeltas } from './validation-utils';
+import { foldHebrewLetter } from '../core/hebrewOrthography';
 
 export interface GridState {
   rows: number;
@@ -79,7 +80,7 @@ export function placeWord(
   // Only use exactly normalized.length cells to avoid leaving empty cells
   for (let i = 0; i < normalized.length && i < cells.length; i++) {
     const { row, col } = cells[i];
-    newCells[row][col] = normalized[i];
+    newCells[row][col] = foldHebrewLetter(normalized[i]);
     const cellKey = `${row},${col}`;
     newAnswerCells.add(cellKey);
     newAnswerCellToSlot.set(cellKey, slotId);
@@ -135,9 +136,9 @@ export function canPlaceWord(
       return false;
     }
     
-    // Check for letter conflicts (using normalized word)
+    // Check for letter conflicts. Fold Hebrew finals so ם matches מ.
     const existing = state.cells[row][col];
-    if (existing !== null && existing !== normalized[i]) {
+    if (existing !== null && existing !== foldHebrewLetter(normalized[i])) {
       return false;
     }
   }

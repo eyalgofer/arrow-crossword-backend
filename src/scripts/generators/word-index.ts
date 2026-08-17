@@ -5,6 +5,7 @@
  */
 
 import { normalizeWord } from './validation-utils';
+import { foldHebrewLetter } from '../core/hebrewOrthography';
 
 export interface CrossingIndex {
   // letter -> position -> list of words with that letter at that position (normalized, no spaces)
@@ -37,9 +38,10 @@ export function buildCrossingIndex(words: string[]): CrossingIndex {
     }
     byLength.get(normalized.length)!.push(normalized);
     
-    // Index by letter at each position (using normalized word)
+    // Index by letter at each position. Hebrew ך/ם/ן/ף/ץ fold to כ/מ/נ/פ/צ
+    // so a word-final ם can still cross a mid-word מ.
     for (let pos = 0; pos < normalized.length; pos++) {
-      const letter = normalized[pos];
+      const letter = foldHebrewLetter(normalized[pos]);
       
       if (!byLetterPosition.has(letter)) {
         byLetterPosition.set(letter, new Map());
@@ -70,7 +72,7 @@ export function findMatchingWords(
   
   // Filter by each constraint
   for (const [position, letter] of constraints.entries()) {
-    const posMap = index.byLetterPosition.get(letter);
+    const posMap = index.byLetterPosition.get(foldHebrewLetter(letter));
     if (!posMap) {
       return []; // No words have this letter
     }

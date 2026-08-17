@@ -42,6 +42,11 @@ export class PuzzleGenerator {
       );
     }
     this.maxSlotLength = maxFillableSlotLength(words);
+    // Hebrew still has far fewer long answers than English; 8+ letter slots
+    // starve the solver. Cap so every letter cell can actually be filled.
+    if (this.language === 'he') {
+      this.maxSlotLength = Math.min(this.maxSlotLength, 7);
+    }
     console.log(
       `🎯 Word pool for '${difficulty}' (${language}): ${words.length.toLocaleString()} words ` +
       `(max slot ${this.maxSlotLength})`
@@ -107,7 +112,6 @@ export class PuzzleGenerator {
         weakBreakCondition: this.language === 'he' ? 150 : 80,
         strongBreakCondition: this.language === 'he' ? 400 : 250,
         maxSlotLength: this.maxSlotLength,
-        cutoutCells: this.language === 'he' ? randomCutouts(rows, cols) : undefined,
       });
     } catch {
       return null;
@@ -171,23 +175,6 @@ function maxFillableSlotLength(words: string[]): number {
     if (count >= MIN_WORDS_PER_LENGTH && len > max) max = len;
   }
   return max;
-}
-
-/** Block ~20% of cells so Hebrew's smaller pool can fill the remaining slots. */
-function randomCutouts(rows: number, cols: number): Array<{ row: number; col: number }> {
-  const target = Math.max(8, Math.round(rows * cols * 0.22));
-  const cells: Array<{ row: number; col: number }> = [];
-  const used = new Set<string>();
-  let guard = 0;
-  while (cells.length < target && guard++ < target * 20) {
-    const row = Math.floor(Math.random() * rows);
-    const col = Math.floor(Math.random() * cols);
-    const key = `${row},${col}`;
-    if (used.has(key)) continue;
-    used.add(key);
-    cells.push({ row, col });
-  }
-  return cells;
 }
 
 export function generatePuzzlesBatch(config: {
