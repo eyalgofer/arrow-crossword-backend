@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { Language } from '../types';
 
 export enum InviteStatus {
   PENDING = 'pending',
@@ -11,6 +12,7 @@ export interface IInvite extends Document {
   from: mongoose.Types.ObjectId;
   to: mongoose.Types.ObjectId;
   status: InviteStatus;
+  language: Language;
   createdAt: Date;
   updatedAt: Date;
   respondedAt?: Date;
@@ -34,6 +36,11 @@ const inviteSchema = new Schema<IInvite>({
     enum: Object.values(InviteStatus),
     default: InviteStatus.PENDING,
     index: true
+  },
+  language: {
+    type: String,
+    enum: ['en', 'he'],
+    default: 'en'
   },
   respondedAt: {
     type: Date

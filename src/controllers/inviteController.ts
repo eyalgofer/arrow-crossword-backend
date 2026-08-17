@@ -1,13 +1,12 @@
 import { Response } from 'express';
-import mongoose from 'mongoose';
 import { Invite, InviteStatus } from '../models/Invite';
 import { User } from '../models/User';
 import { Match } from '../models/Match';
-import { Puzzle } from '../models/Puzzle';
 import { AuthRequest, MatchStatus } from '../types';
 import { io } from '../server';
 import { getUserActiveSockets } from '../sockets/gameHandler';
-import { MultiplayerPuzzle } from '../models/MultiplayerPuzzle';
+import { resolveLanguage } from '../utils/language';
+import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
 
 export const createInvite = async (req: AuthRequest, res: Response) => {
   try {
@@ -41,11 +40,14 @@ export const createInvite = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'An invite already exists between these users' });
     }
 
+    const language = resolveLanguage(req);
+
     // Create the invite
     const invite = new Invite({
       from: fromUser._id,
       to: toUser._id,
-      status: InviteStatus.PENDING
+      status: InviteStatus.PENDING,
+      language
     });
 
     await invite.save();
@@ -143,33 +145,16 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Inviter not found' });
     }
 
-    // Get active multiplayer puzzles and pick one whose Puzzle still exists
-    const multiplayerPuzzles = await MultiplayerPuzzle.find().select('puzzleId').lean();
-    if (!multiplayerPuzzles.length) {
+    // Get active multiplayer puzzles in the user's language and pick one
+    // Use the inviter's language so the creator gets the puzzle they expect
+    const picked = await pickMultiplayerPuzzle(invite.language ?? resolveLanguage(req));
+    if (!picked) {
       return res.status(503).json({
         error: 'No multiplayer puzzles configured',
         hint: 'Run the seedMultiplayer script to assign puzzles for multiplayer matches'
       });
     }
-
-    // Shuffle and find a puzzle that exists (in case some refs are stale)
-    const shuffled = [...multiplayerPuzzles].sort(() => Math.random() - 0.5);
-    let puzzle = null;
-    let randomPuzzleId: mongoose.Types.ObjectId | null = null;
-    for (const mp of shuffled) {
-      const found = await Puzzle.findById(mp.puzzleId);
-      if (found) {
-        puzzle = found;
-        randomPuzzleId = mp.puzzleId;
-        break;
-      }
-    }
-    if (!puzzle || !randomPuzzleId) {
-      return res.status(503).json({
-        error: 'No valid multiplayer puzzles available',
-        hint: 'Multiplayer puzzle references may be stale; run seedMultiplayer to fix'
-      });
-    }
+    const { puzzleId: randomPuzzleId } = picked;
 
     // Create the match
     const match = new Match({

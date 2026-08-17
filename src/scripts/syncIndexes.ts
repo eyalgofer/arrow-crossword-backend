@@ -5,6 +5,7 @@
  *  - DailyPuzzle unique indexes are now per-language ({ date, language },
  *    { dayOfYear, year, language }) so English and Hebrew dailies can coexist.
  *  - PuzzlePackage unique name is now { name, language }.
+ *  - MultiplayerPuzzle unique index is now { index, language }.
  *
  * syncIndexes drops indexes that no longer match the schema and creates the new ones.
  *
@@ -15,6 +16,7 @@ import dotenv from 'dotenv';
 import { Puzzle } from '../models/Puzzle';
 import { PuzzlePackage } from '../models/PuzzlePackage';
 import { DailyPuzzle } from '../models/DailyPuzzle';
+import { MultiplayerPuzzle } from '../models/MultiplayerPuzzle';
 import { connectToDatabase, closeDatabaseAndExit, handleScriptError } from './utils/scriptUtils';
 
 dotenv.config();
@@ -23,7 +25,7 @@ const syncIndexes = async () => {
   try {
     await connectToDatabase();
 
-    for (const model of [Puzzle, PuzzlePackage, DailyPuzzle]) {
+    for (const model of [Puzzle, PuzzlePackage, DailyPuzzle, MultiplayerPuzzle]) {
       const dropped = await model.syncIndexes();
       console.log(`✅ ${model.modelName}: indexes synced${dropped.length > 0 ? ` (dropped: ${dropped.join(', ')})` : ''}`);
     }

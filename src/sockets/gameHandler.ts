@@ -3,17 +3,19 @@ import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import { User } from '../models/User';
 import { Match } from '../models/Match';
-import { Puzzle } from '../models/Puzzle';
-import { MatchStatus, GameState } from '../types';
+import { MatchStatus, GameState, Language, DEFAULT_LANGUAGE } from '../types';
+import { resolveLanguageFromValues } from '../utils/language';
+import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
 
 interface SocketWithAuth extends Socket {
   userId?: string;
   matchId?: string;
+  language?: Language;
 }
 
 // Store active games in memory
 const activeGames = new Map<string, GameState>();
-const waitingPlayers = new Map<string, { userId: string; socketId: string; displayName: string }>();
+const waitingPlayers = new Map<string, { userId: string; socketId: string; displayName: string; language: Language }>();
 // Track active sockets by userId (firebaseUid)
 const userSockets = new Map<string, Set<string>>(); // userId -> Set of socketIds
 
@@ -34,8 +36,15 @@ export const setupSocketHandlers = (io: Server) => {
       // Verify JWT token (same as REST API)
       const payload = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
       socket.userId = payload.userId; // This is the firebaseUid
-      
-      console.log(`Socket authenticated for user: ${socket.userId}`);
+      const auth = socket.handshake.auth as { language?: string; country?: string };
+      const headers = socket.handshake.headers;
+      socket.language = resolveLanguageFromValues({
+        appLanguage: auth.language ?? (typeof headers['x-app-language'] === 'string' ? headers['x-app-language'] : undefined),
+        country: auth.country ?? (typeof headers['x-app-country'] === 'string' ? headers['x-app-country'] : undefined),
+        acceptLanguage: typeof headers['accept-language'] === 'string' ? headers['accept-language'] : undefined,
+      });
+
+      console.log(`Socket authenticated for user: ${socket.userId} (${socket.language})`);
       next();
     } catch (error) {
       console.error('Socket authentication error:', error);
@@ -77,27 +86,36 @@ export const setupSocketHandlers = (io: Server) => {
           return;
         }
 
+        const language: Language = socket.language ?? DEFAULT_LANGUAGE;
+
         // Add to waiting pool
         waitingPlayers.set(socket.userId!, {
           userId: user._id.toString(),
           socketId: socket.id,
-          displayName: user.displayName
+          displayName: user.displayName,
+          language
         });
 
-        // Try to match with another player
-        if (waitingPlayers.size >= 2) {
-          const players = Array.from(waitingPlayers.values()).slice(0, 2);
-          
-          // Remove matched players from queue
-          players.forEach(p => {
-            const uid = Array.from(waitingPlayers.entries())
-              .find(([_, v]) => v.socketId === p.socketId)?.[0];
-            if (uid) waitingPlayers.delete(uid);
-          });
+        // Match with another player who wants the same language
+        const opponentEntry = Array.from(waitingPlayers.entries()).find(
+          ([uid, waiting]) => uid !== socket.userId && waiting.language === language
+        );
 
-          // Get a random puzzle
-          const puzzles = await Puzzle.find({ isActive: true });
-          const randomPuzzle = puzzles[Math.floor(Math.random() * puzzles.length)];
+        if (opponentEntry) {
+          const [opponentUid, opponent] = opponentEntry;
+          const me = waitingPlayers.get(socket.userId!)!;
+          waitingPlayers.delete(socket.userId!);
+          waitingPlayers.delete(opponentUid);
+
+          const picked = await pickMultiplayerPuzzle(language);
+          if (!picked) {
+            waitingPlayers.set(opponentUid, opponent);
+            waitingPlayers.set(socket.userId!, me);
+            socket.emit('error', { message: 'No multiplayer puzzles configured' });
+            return;
+          }
+          const players = [opponent, me];
+          const randomPuzzle = picked.puzzle;
 
           // Create match
           const match = new Match({

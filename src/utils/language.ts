@@ -31,31 +31,45 @@ function normalizeCode(value: string | undefined): Language | null {
   return null;
 }
 
-export function resolveLanguage(req: Request): Language {
-  // 1. Explicit override (query param, then dedicated header)
-  const fromQuery = normalizeCode(
-    typeof req.query?.lang === 'string' ? req.query.lang : undefined
-  );
+export function resolveLanguageFromValues(opts: {
+  lang?: string;
+  appLanguage?: string;
+  country?: string;
+  acceptLanguage?: string;
+}): Language {
+  const fromQuery = normalizeCode(opts.lang);
   if (fromQuery) return fromQuery;
 
-  const fromHeader = normalizeCode(req.headers['x-app-language'] as string | undefined);
+  const fromHeader = normalizeCode(opts.appLanguage);
   if (fromHeader) return fromHeader;
 
-  // 2. Israeli users (app-reported country, then CDN / load-balancer geo)
-  for (const header of COUNTRY_HEADERS) {
-    const country = req.headers[header];
-    if (typeof country === 'string' && country.trim().toUpperCase() === 'IL') {
-      return 'he';
-    }
-  }
+  if (opts.country?.trim().toUpperCase() === 'IL') return 'he';
 
-  // 3. Device language (Hebrew speakers outside Israel)
-  const acceptLanguage = req.headers['accept-language'];
-  if (typeof acceptLanguage === 'string' && /(^|[,\s])(he|iw)(-[a-z]{2})?\s*(;|,|$)/i.test(acceptLanguage)) {
+  if (opts.acceptLanguage && /(^|[,\s])(he|iw)(-[a-z]{2})?\s*(;|,|$)/i.test(opts.acceptLanguage)) {
     return 'he';
   }
 
   return DEFAULT_LANGUAGE;
+}
+
+export function resolveLanguage(req: Request): Language {
+  let country: string | undefined;
+  for (const header of COUNTRY_HEADERS) {
+    const value = req.headers[header];
+    if (typeof value === 'string' && value.trim()) {
+      country = value;
+      break;
+    }
+  }
+
+  return resolveLanguageFromValues({
+    lang: typeof req.query?.lang === 'string' ? req.query.lang : undefined,
+    appLanguage: req.headers['x-app-language'] as string | undefined,
+    country,
+    acceptLanguage: typeof req.headers['accept-language'] === 'string'
+      ? req.headers['accept-language']
+      : undefined,
+  });
 }
 
 /**
