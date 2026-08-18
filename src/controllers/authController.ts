@@ -4,14 +4,15 @@ import { AuthRequest } from '../types';
 
 export const register = async (req: AuthRequest, res: Response) => {
   try {
-    const { displayName, email, photoURL } = req.body;
+    const { email, photoURL } = req.body;
     const firebaseUid = req.user!.uid;
 
     let user = await User.findOne({ firebaseUid });
 
     if (user) {
-      return res.status(200).json({ 
+      return res.status(200).json({
         message: 'User already exists',
+        isNewUser: false,
         user
       });
     }
@@ -19,7 +20,6 @@ export const register = async (req: AuthRequest, res: Response) => {
     user = new User({
       firebaseUid,
       email,
-      displayName,
       photoURL,
       coins: 60
     });
@@ -28,6 +28,7 @@ export const register = async (req: AuthRequest, res: Response) => {
 
     res.status(201).json({
       message: 'User registered successfully',
+      isNewUser: true,
       user
     });
   } catch (error) {

@@ -10,6 +10,26 @@ import { Invite } from '../models/Invite';
 
 const router = Router();
 
+function authPayload(user: InstanceType<typeof User>, isNewUser: boolean) {
+  const displayName = user.displayName ?? null;
+  return {
+    token: jwt.sign(
+      { userId: user.firebaseUid },
+      process.env.JWT_SECRET!,
+      { expiresIn: '7d' }
+    ),
+    isNewUser,
+    user: {
+      id: user.firebaseUid,
+      email: user.email,
+      name: displayName,
+      displayName,
+      avatar: user.photoURL,
+      coins: user.coins,
+    },
+  };
+}
+
 router.post('/google', async (req: Request, res: Response) => {
   try {
     const { idToken } = req.body;
@@ -38,41 +58,26 @@ router.post('/google', async (req: Request, res: Response) => {
     }
 
     if (!user) {
-      // Create new user
+      // New players pick a nickname after login — do not copy the Google name.
       user = new User({
         firebaseUid: googleUser.googleId,
         email: googleUser.email,
-        displayName: googleUser.name,
         photoURL: googleUser.picture,
         coins: 60,
       });
       await user.save();
       console.log('Created new user:', user.email);
-    } else {
-      // Update user info in case it changed
-      user.displayName = googleUser.name;
-      user.photoURL = googleUser.picture;
-      await user.save();
-      console.log('Existing user signed in:', user.email);
+      return res.json(authPayload(user, true));
     }
 
-    // Create JWT session token
-    const token = jwt.sign(
-      { userId: user.firebaseUid },
-      process.env.JWT_SECRET!,
-      { expiresIn: '7d' }
-    );
+    // Existing accounts keep their displayName (chosen nickname or original name).
+    if (googleUser.picture) {
+      user.photoURL = googleUser.picture;
+    }
+    await user.save();
+    console.log('Existing user signed in:', user.email);
 
-    res.json({
-      token,
-      user: {
-        id: user.firebaseUid,
-        email: user.email,
-        name: user.displayName,
-        avatar: user.photoURL,
-        coins: user.coins,
-      },
-    });
+    res.json(authPayload(user, false));
   } catch (error: any) {
     console.error('❌ Google auth error:', error?.message || error);
     console.error('   Full error:', JSON.stringify(error, null, 2));
@@ -111,9 +116,6 @@ router.post('/apple', async (req: Request, res: Response) => {
     const appleUser = await verifyAppleToken(identityToken);
     console.log('   ✅ Token verified. User:', appleUser.email);
 
-    // Use provided name (only available on first sign-in) or fallback
-    const displayName = name || appleUser.name || appleUser.email.split('@')[0];
-
     // Find user by firebaseUid (Apple ID) first
     let user = await User.findOne({ firebaseUid: appleUser.appleId });
 
@@ -130,43 +132,22 @@ router.post('/apple', async (req: Request, res: Response) => {
     }
 
     if (!user) {
-      // Create new user
+      // New players pick a nickname after login — do not copy the Apple name.
       user = new User({
         firebaseUid: appleUser.appleId,
         email: appleUser.email,
-        displayName: displayName,
-        photoURL: undefined, // Apple doesn't provide profile pictures
+        photoURL: undefined,
         coins: 60,
       });
       await user.save();
       console.log('Created new Apple user:', user.email);
-    } else {
-      // Update user info in case it changed
-      // Only update name if provided (first sign-in)
-      if (name) {
-        user.displayName = name;
-      }
-      await user.save();
-      console.log('Existing Apple user signed in:', user.email);
+      return res.json(authPayload(user, true));
     }
 
-    // Create JWT session token
-    const token = jwt.sign(
-      { userId: user.firebaseUid },
-      process.env.JWT_SECRET!,
-      { expiresIn: '7d' }
-    );
+    await user.save();
+    console.log('Existing Apple user signed in:', user.email);
 
-    res.json({
-      token,
-      user: {
-        id: user.firebaseUid,
-        email: user.email,
-        name: user.displayName,
-        avatar: user.photoURL,
-        coins: user.coins,
-      },
-    });
+    res.json(authPayload(user, false));
   } catch (error: any) {
     console.error('❌ Apple auth error:', error?.message || error);
     console.error('   Full error:', JSON.stringify(error, null, 2));

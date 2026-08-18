@@ -4,7 +4,10 @@ import { UserStats } from '../types';
 export interface IUser extends Document {
   firebaseUid: string;
   email: string;
-  displayName: string;
+  /** Chosen nickname. Null/missing for new users until they pick one. */
+  displayName?: string | null;
+  /** Lowercased unique key; only set when the user chooses a nickname. */
+  displayNameKey?: string | null;
   photoURL?: string;
   coins: number;
   stats: UserStats;
@@ -31,7 +34,10 @@ const userSchema = new Schema<IUser>({
   },
   displayName: {
     type: String,
-    required: true
+    default: null
+  },
+  displayNameKey: {
+    type: String
   },
   photoURL: {
     type: String
@@ -58,5 +64,7 @@ const userSchema = new Schema<IUser>({
 });
 
 userSchema.index({ coins: -1 });
+// Sparse so existing accounts with no chosen nickname (and duplicate Google names) are left alone.
+userSchema.index({ displayNameKey: 1 }, { unique: true, sparse: true });
 
 export const User = mongoose.model<IUser>('User', userSchema);

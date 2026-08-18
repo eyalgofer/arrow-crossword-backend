@@ -1,9 +1,11 @@
 import { Router } from 'express';
-import { updateProfile, getCoins, addCoins, spendCoins, searchByEmail, getReferralInfo } from '../controllers/userController';
+import { updateProfile, getCoins, addCoins, spendCoins, searchByEmail, getReferralInfo, checkDisplayNameAvailable, setDisplayName } from '../controllers/userController';
 import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
+router.get('/displayName/available', authenticateToken, checkDisplayNameAvailable);
+router.put('/displayName', authenticateToken, setDisplayName);
 router.get('/search', authenticateToken, searchByEmail);
 router.put('/profile', authenticateToken, updateProfile);
 router.get('/coins', authenticateToken, getCoins);

@@ -2,27 +2,88 @@ import { Response } from 'express';
 import { User } from '../models/User';
 import { Invite, InviteStatus } from '../models/Invite';
 import { AuthRequest } from '../types';
+import {
+  displayNameKey,
+  isDisplayNameTaken,
+  validateDisplayName,
+} from '../utils/displayName';
+
+export const checkDisplayNameAvailable = async (req: AuthRequest, res: Response) => {
+  try {
+    const raw = typeof req.query.displayName === 'string' ? req.query.displayName : '';
+    const parsed = validateDisplayName(raw);
+    if (!parsed.ok) {
+      return res.json({ available: false });
+    }
+
+    const currentUser = await User.findOne({ firebaseUid: req.user!.uid }).select('_id');
+    const taken = await isDisplayNameTaken(parsed.value, currentUser?._id);
+    res.json({ available: !taken });
+  } catch (error) {
+    console.error('Check displayName availability error:', error);
+    res.status(500).json({ error: 'Failed to check display name' });
+  }
+};
+
+export const setDisplayName = async (req: AuthRequest, res: Response) => {
+  try {
+    const parsed = validateDisplayName(req.body?.displayName);
+    if (!parsed.ok) {
+      return res.status(400).json({ error: parsed.error });
+    }
+
+    const user = await User.findOne({ firebaseUid: req.user!.uid });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (await isDisplayNameTaken(parsed.value, user._id)) {
+      return res.status(409).json({ error: 'Display name already taken' });
+    }
+
+    user.displayName = parsed.value;
+    user.displayNameKey = displayNameKey(parsed.value);
+    await user.save();
+
+    res.json({ user });
+  } catch (error: any) {
+    if (error?.code === 11000) {
+      return res.status(409).json({ error: 'Display name already taken' });
+    }
+    console.error('Set displayName error:', error);
+    res.status(500).json({ error: 'Failed to set display name' });
+  }
+};
 
 export const updateProfile = async (req: AuthRequest, res: Response) => {
   try {
     const { displayName, photoURL, preferences } = req.body;
 
-    const user = await User.findOneAndUpdate(
-      { firebaseUid: req.user!.uid },
-      { 
-        ...(displayName && { displayName }),
-        ...(photoURL && { photoURL }),
-        ...(preferences && { preferences })
-      },
-      { new: true }
-    );
-
+    const user = await User.findOne({ firebaseUid: req.user!.uid });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    if (displayName !== undefined) {
+      const parsed = validateDisplayName(displayName);
+      if (!parsed.ok) {
+        return res.status(400).json({ error: parsed.error });
+      }
+      if (await isDisplayNameTaken(parsed.value, user._id)) {
+        return res.status(409).json({ error: 'Display name already taken' });
+      }
+      user.displayName = parsed.value;
+      user.displayNameKey = displayNameKey(parsed.value);
+    }
+    if (photoURL) user.photoURL = photoURL;
+    if (preferences) user.preferences = { ...user.preferences, ...preferences };
+    await user.save();
+
     res.json({ user });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === 11000) {
+      return res.status(409).json({ error: 'Display name already taken' });
+    }
     console.error('Update profile error:', error);
     res.status(500).json({ error: 'Failed to update profile' });
   }
