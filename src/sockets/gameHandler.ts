@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import { User } from '../models/User';
 import { Match } from '../models/Match';
+import { Puzzle } from '../models/Puzzle';
 import { MatchStatus, GameState, Language, DEFAULT_LANGUAGE } from '../types';
 import { resolveLanguageFromValues } from '../utils/language';
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
@@ -83,6 +84,11 @@ export const setupSocketHandlers = (io: Server) => {
         // Check if already in queue
         if (waitingPlayers.has(socket.userId!)) {
           socket.emit('error', { message: 'Already in matchmaking queue' });
+          return;
+        }
+
+        if (!user.displayName) {
+          socket.emit('error', { message: 'Display name required' });
           return;
         }
 
