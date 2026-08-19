@@ -9,21 +9,24 @@ import { getSlotCells } from './direction-utils';
 import { normalizeWord, validateWordBoundaries } from './validation-utils';
 import { getClueProvider, ClueProvider } from '../core/clueProvider';
 
-const MAX_CLUE_LENGTH = 50;
+const MAX_CLUE_LENGTH_BY_LANG: Record<string, number> = {
+  he: 28,
+  en: 50,
+};
 
 /**
- * Pick a clue for a word. Clues from the database are sorted best-first
- * (definitional synonyms first). We choose randomly among the top few unused
- * ones so puzzles stay varied without sacrificing quality.
+ * Pick a clue for a word. Clues from the database are sorted best-first.
+ * Hebrew תשחץ cells only fit a short definition, so we keep that pool tight.
  */
-function pickClue(word: string, usedClues: Set<string>, provider: ClueProvider): string {
-  const clues = provider.getCluesForWord(word).filter(c => c.length <= MAX_CLUE_LENGTH);
+function pickClue(word: string, usedClues: Set<string>, provider: ClueProvider, language: Language): string {
+  const maxLen = MAX_CLUE_LENGTH_BY_LANG[language] ?? 50;
+  const clues = provider.getCluesForWord(word).filter(c => c.length <= maxLen);
   if (clues.length === 0) {
     throw new Error(`No clue available for word "${word}" - word pool and clue database are out of sync`);
   }
   const unused = clues.filter(c => !usedClues.has(c));
-  // Prefer the top 3 quality clues; fall back to unused or raw top list
-  const pool = (unused.length > 0 ? unused : clues).slice(0, 3);
+  const take = language === 'he' ? 2 : 3;
+  const pool = (unused.length > 0 ? unused : clues).slice(0, take);
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
@@ -60,7 +63,7 @@ export function generatePuzzleFromGrid(
       continue;
     }
 
-    const clueText = pickClue(word, usedClues, clueProvider);
+    const clueText = pickClue(word, usedClues, clueProvider, language);
     usedClues.add(clueText);
     usedAnswers.add(normalizedAnswer);
 

@@ -1,21 +1,23 @@
 /**
  * Curated Hebrew clue database for the puzzle generator.
  *
- * Exposes the same API as the English clueDatabase (getWordPool,
- * getCluesForWord, getAnswerRank) over the hand-curated dataset in
- * hebrewClues.ts.
- *
- * Final letterforms: answers are normalized so that כ/מ/נ/פ/צ appear as
- * ך/ם/ן/ף/ץ at the end of the word and as regular forms elsewhere — exactly
- * as players type them, since answer matching is per-character.
+ * Sources (first wins on clue order, then quality-sorted):
+ *  - hebrewCluesCrafted.ts  short תשחץ-style definitions
+ *  - hebrewClues.ts         core vocabulary
+ *  - hebrewCluesMore.ts     extra fill + culture
  */
 
 import { Difficulty } from '../../types';
 import { applyHebrewFinalForms } from './hebrewOrthography';
 import { HEBREW_ENTRIES as BASE_ENTRIES, RawHebrewEntry } from './hebrewClues';
+import { HEBREW_ENTRIES_CRAFTED } from './hebrewCluesCrafted';
 import { HEBREW_ENTRIES_MORE } from './hebrewCluesMore';
 
-const HEBREW_ENTRIES: RawHebrewEntry[] = [...BASE_ENTRIES, ...HEBREW_ENTRIES_MORE];
+const HEBREW_ENTRIES: RawHebrewEntry[] = [
+  ...HEBREW_ENTRIES_CRAFTED,
+  ...BASE_ENTRIES,
+  ...HEBREW_ENTRIES_MORE,
+];
 
 /** Hebrew letters (includes final forms, which sit inside the א-ת range). */
 const HEBREW_ANSWER_PATTERN = /^[\u05D0-\u05EA]{3,10}$/;
@@ -49,14 +51,39 @@ interface HebrewAnswerEntry {
 
 let cached: Map<string, HebrewAnswerEntry> | null = null;
 
+function hebrewLettersOnly(text: string): string {
+  return Array.from(text).filter(ch => ch >= '\u05D0' && ch <= '\u05EA').join('');
+}
+
 function isUsableClue(clue: string, answer: string): boolean {
   if (!clue || !clue.trim()) return false;
   const tokens = clue.split(/\s+/).filter(Boolean);
-  // A clue must never be/contain the answer as a whole word.
   for (const token of tokens) {
-    if (normalizeHebrewAnswer(token) === answer) return false;
+    const letters = hebrewLettersOnly(token);
+    if (letters && normalizeHebrewAnswer(letters) === answer) return false;
   }
   return true;
+}
+
+/** Higher = more like a real תשחץ cell clue. */
+function scoreClue(clue: string): number {
+  const words = clue.trim().split(/\s+/).filter(Boolean);
+  const len = clue.length;
+  let score = 10;
+  if (len >= 6 && len <= 22) score += 8;
+  else if (len <= 28) score += 4;
+  else if (len > 32) score -= 10;
+  if (words.length >= 2 && words.length <= 5) score += 5;
+  else if (words.length > 6) score -= 6;
+  if (/גם| או |\/|\?/.test(clue)) score += 6;
+  if (/פתגם|שחמט|מקרא|בירת|הפך|תרתי|סלנג/.test(clue)) score += 5;
+  if (/^יש ב/.test(clue) || /רהיט/.test(clue) || /מקום מגורים/.test(clue)) score -= 8;
+  if (/למשל$/.test(clue.trim())) score -= 2;
+  return score;
+}
+
+function sortClues(clues: string[]): string[] {
+  return [...clues].sort((a, b) => scoreClue(b) - scoreClue(a));
 }
 
 function buildDatabase(): Map<string, HebrewAnswerEntry> {
@@ -80,9 +107,9 @@ function buildDatabase(): Map<string, HebrewAnswerEntry> {
       for (const clue of clues) {
         if (!existing.clues.includes(clue)) existing.clues.push(clue);
       }
+      existing.clues = sortClues(existing.clues);
       if (raw.t !== undefined && raw.t > existing.tier) {
         existing.tier = raw.t;
-        existing.rank = (raw.t - 1) * 10000 + index + 1;
       }
       return;
     }
@@ -92,13 +119,15 @@ function buildDatabase(): Map<string, HebrewAnswerEntry> {
     }
 
     const tier = raw.t ?? 1;
+    const length = Array.from(answer).length;
+    // Flatten insertion order so late culture/GK words can actually fill grids.
+    // Jitter in the solver then picks among a mixed, interesting pool.
+    const lengthPenalty = length > 7 ? 140 : length < 4 ? 25 : 0;
     entries.set(answer, {
       answer,
-      // Higher tiers rank as less common so the solver's word scorer
-      // prefers everyday words, mirroring the English frequency ranks.
-      rank: (tier - 1) * 10000 + index + 1,
+      rank: (tier - 1) * 8000 + 80 + lengthPenalty + (index % 120),
       tier,
-      clues,
+      clues: sortClues(clues),
     });
   });
 
