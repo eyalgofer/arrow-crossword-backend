@@ -1,5 +1,11 @@
 import mongoose from 'mongoose';
 import { connectDatabase } from '../../config/database';
+import { Puzzle } from '../../models/Puzzle';
+import { PuzzlePackage } from '../../models/PuzzlePackage';
+import { DailyPuzzle } from '../../models/DailyPuzzle';
+import { MultiplayerPuzzle } from '../../models/MultiplayerPuzzle';
+import { UserPuzzleProgress } from '../../models/UserPuzzleProgress';
+import { Language } from '../../types';
 
 /**
  * Connect to MongoDB using the shared database utility
@@ -26,6 +32,29 @@ export async function handleScriptError(error: unknown): Promise<never> {
   }
   await mongoose.connection.close().catch(() => {});
   process.exit(1);
+}
+
+/**
+ * Delete one language's puzzles, packages, daily/multiplayer slots, and their progress.
+ */
+export async function clearPuzzlesForLanguage(language: Language): Promise<void> {
+  const puzzles = await Puzzle.find({ language }).select('_id');
+  const ids = puzzles.map(p => p._id);
+
+  const progress = ids.length
+    ? await UserPuzzleProgress.deleteMany({ puzzleId: { $in: ids } })
+    : { deletedCount: 0 };
+  const daily = await DailyPuzzle.deleteMany({ language });
+  const multiplayer = await MultiplayerPuzzle.deleteMany({ language });
+  const packages = await PuzzlePackage.deleteMany({ language });
+  const puzzleResult = await Puzzle.deleteMany({ language });
+
+  console.log(`🧹 Cleared ${language} puzzle content:`);
+  console.log(`   Puzzles: ${puzzleResult.deletedCount}`);
+  console.log(`   Packages: ${packages.deletedCount}`);
+  console.log(`   Daily: ${daily.deletedCount}`);
+  console.log(`   Multiplayer: ${multiplayer.deletedCount}`);
+  console.log(`   User progress: ${progress.deletedCount}`);
 }
 
 /**

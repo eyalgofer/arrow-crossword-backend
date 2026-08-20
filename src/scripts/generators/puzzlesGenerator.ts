@@ -16,8 +16,7 @@ import { generateTemplate } from './template-generator';
 import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
 import { generatePuzzleFromGrid } from './puzzle-assembler';
-
-const MAX_GRID_SIZE = 10;
+import { GridSize, MAX_GRID_SIZE, sizeFallbackChain } from '../utils/gridSizes';
 
 /** Minimum words of a given length before that slot size is considered fillable. */
 const MIN_WORDS_PER_LENGTH = 12;
@@ -42,10 +41,9 @@ export class PuzzleGenerator {
       );
     }
     this.maxSlotLength = maxFillableSlotLength(words);
-    // Hebrew still has far fewer long answers than English; 8+ letter slots
-    // starve the solver. Cap so every letter cell can actually be filled.
+    // Hebrew has fewer long answers than English; 9+ slots still starve the solver.
     if (this.language === 'he') {
-      this.maxSlotLength = Math.min(this.maxSlotLength, 7);
+      this.maxSlotLength = Math.min(this.maxSlotLength, 8);
     }
     console.log(
       `🎯 Word pool for '${difficulty}' (${language}): ${words.length.toLocaleString()} words ` +
@@ -56,7 +54,7 @@ export class PuzzleGenerator {
 
   /**
    * Generate `count` puzzles. Each puzzle gets a fresh template so grids vary.
-   * Grid size is capped at 10x10 for reliable fill quality.
+   * Grid size is capped at 12x12. Hebrew tries the requested size, then scales down toward 8x8.
    */
   generateBatch(config: {
     count: number;
@@ -64,41 +62,78 @@ export class PuzzleGenerator {
     getTitle: (index: number) => string;
     rows?: number;
     cols?: number;
+    sizes?: GridSize[];
+    /** If true, do not scale Hebrew grids down when the requested size fails. */
+    strictSize?: boolean;
   }): Puzzle[] {
-    const rows = Math.min(config.rows ?? 8, MAX_GRID_SIZE);
-    const cols = Math.min(config.cols ?? 8, MAX_GRID_SIZE);
-    if ((config.rows ?? 0) > MAX_GRID_SIZE || (config.cols ?? 0) > MAX_GRID_SIZE) {
-      console.warn(`⚠️  Grid capped at ${MAX_GRID_SIZE}x${MAX_GRID_SIZE} (requested ${config.rows}x${config.cols})`);
-    }
+    const defaultRows = Math.min(config.rows ?? 8, MAX_GRID_SIZE);
+    const defaultCols = Math.min(config.cols ?? 8, MAX_GRID_SIZE);
     const puzzles: Puzzle[] = [];
-    const attemptMultiplier = this.language === 'he' ? 40 : 15;
-    const maxAttempts = config.count * attemptMultiplier; // each attempt = new template + solve
 
-    for (let attempt = 0; attempt < maxAttempts && puzzles.length < config.count; attempt++) {
+    for (let i = 0; i < config.count; i++) {
+      const requested = config.sizes?.[i % config.sizes.length] ?? { rows: defaultRows, cols: defaultCols };
+      const chain = this.language === 'he' && !config.strictSize
+        ? sizeFallbackChain(requested.rows, requested.cols)
+        : [{ rows: Math.min(requested.rows, MAX_GRID_SIZE), cols: Math.min(requested.cols, MAX_GRID_SIZE) }];
+
+      let generated: Puzzle | null = null;
+      for (const size of chain) {
+        generated = this.tryGenerateOne(size.rows, size.cols, {
+          title: config.getTitle(puzzles.length),
+          category: config.category,
+        }, config.strictSize ? 24 : undefined);
+        if (generated) {
+          if (size.rows !== requested.rows || size.cols !== requested.cols) {
+            console.log(`   ↘️  ${requested.rows}x${requested.cols} too tight, using ${size.rows}x${size.cols}`);
+          }
+          break;
+        }
+        if (chain.length > 1) {
+          console.log(`   … ${size.rows}x${size.cols} did not fill, trying a smaller grid`);
+        }
+      }
+
+      if (generated) {
+        puzzles.push(generated);
+        console.log(
+          `✅ Puzzle ${puzzles.length}/${config.count}: ${generated.puzzleItems.length} clues ` +
+          `(${generated.grid.rows}x${generated.grid.cols})`
+        );
+      }
+    }
+
+    if (puzzles.length < config.count) {
+      console.warn(`⚠️  Generated ${puzzles.length}/${config.count} puzzles`);
+    }
+    return puzzles;
+  }
+
+  private tryGenerateOne(
+    rows: number,
+    cols: number,
+    meta: { title: string; category: string },
+    attemptOverride?: number
+  ): Puzzle | null {
+    const cells = rows * cols;
+    const attempts = attemptOverride ?? (this.language === 'he'
+      ? (cells >= 144 ? 6 : cells >= 121 ? 8 : cells >= 100 ? 12 : 18)
+      : 15);
+
+    for (let attempt = 0; attempt < attempts; attempt++) {
       const template = this.buildTemplate(rows, cols);
       if (!template) continue;
       if (template.slots.some(slot => slot.length > this.maxSlotLength || slot.length < 3)) {
         continue;
       }
-
-      const puzzle = this.solveTemplate(template, {
-        title: config.getTitle(puzzles.length),
-        category: config.category,
-      });
-      if (puzzle) {
-        puzzles.push(puzzle);
-        console.log(`✅ Puzzle ${puzzles.length}/${config.count}: ${puzzle.puzzleItems.length} clues (${rows}x${cols})`);
-      }
+      const puzzle = this.solveTemplate(template, meta);
+      if (puzzle) return puzzle;
     }
-
-    if (puzzles.length < config.count) {
-      console.warn(`⚠️  Generated ${puzzles.length}/${config.count} puzzles after ${maxAttempts} attempts`);
-    }
-    return puzzles;
+    return null;
   }
 
   private buildTemplate(rows: number, cols: number): GridTemplate | null {
-    // Fast template search: word/clue quality matters more than mask perfection.
+    const cells = rows * cols;
+    const large = cells >= 100;
     try {
       return generateTemplate({
         rows,
@@ -106,12 +141,13 @@ export class PuzzleGenerator {
         difficulty: this.difficulty,
         name: `${rows}x${cols} arrow crossword`,
         quiet: true,
-        maxIterations: this.language === 'he' ? 20 : 8,
+        maxIterations: this.language === 'he' ? (large ? 28 : 20) : 8,
         minPopulation: 3,
-        populationSize: this.language === 'he' ? 8 : 5,
-        weakBreakCondition: this.language === 'he' ? 150 : 80,
-        strongBreakCondition: this.language === 'he' ? 400 : 250,
+        populationSize: this.language === 'he' ? (large ? 10 : 8) : 5,
+        weakBreakCondition: this.language === 'he' ? (large ? 220 : 150) : 80,
+        strongBreakCondition: this.language === 'he' ? (large ? 550 : 400) : 250,
         maxSlotLength: this.maxSlotLength,
+        sparse: this.language === 'he' && cells >= 121,
       });
     } catch {
       return null;
@@ -124,9 +160,8 @@ export class PuzzleGenerator {
   ): Puzzle | null {
     const slotCount = template.slots.length;
     const maxAttempts = Math.min(80000 + slotCount * 5000, 300000);
-    // Short budget per template: solvable templates fill in a few seconds,
-    // and a fresh template is cheaper than grinding an unlucky one.
-    const maxSolveTimeMs = (this.language === 'he' ? 20 : 15) * 1000;
+    const cells = template.rows * template.cols;
+    const maxSolveTimeMs = ((this.language === 'he' ? 16 : 12) * 1000) + cells * 50;
 
     // Prefer more common words so grids feel familiar; jitter keeps puzzles varied.
     const jitter = new Map<string, number>();
@@ -184,7 +219,9 @@ export function generatePuzzlesBatch(config: {
   startIndex: number;
   rows?: number;
   cols?: number;
+  sizes?: GridSize[];
   language?: Language;
+  strictSize?: boolean;
 }): Puzzle[] {
   const language = config.language ?? 'en';
   const generator = new PuzzleGenerator(config.difficulty, language);
@@ -196,5 +233,7 @@ export function generatePuzzlesBatch(config: {
       : `Puzzle ${config.startIndex + i}`,
     rows: config.rows,
     cols: config.cols,
+    sizes: config.sizes,
+    strictSize: config.strictSize,
   });
 }

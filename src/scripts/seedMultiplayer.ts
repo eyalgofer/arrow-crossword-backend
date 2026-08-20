@@ -5,6 +5,7 @@ import { generatePuzzlesBatch } from './generators/puzzlesGenerator';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import { Difficulty, Language } from '../types';
 import { connectToDatabase, closeDatabaseAndExit, handleScriptError, filterValidPuzzles } from './utils/scriptUtils';
+import { mixSizes } from './utils/gridSizes';
 
 dotenv.config();
 
@@ -23,8 +24,16 @@ const multiplayerTitle = (index: number) =>
 const seedMultiplayer = async () => {
   try {
     await connectToDatabase();
+    const sizes = language === 'he'
+      ? mixSizes(MULTIPLAYER_PUZZLE_COUNT)
+      : Array.from({ length: MULTIPLAYER_PUZZLE_COUNT }, () => ({
+          rows: MULTIPLAYER_GRID_ROWS,
+          cols: MULTIPLAYER_GRID_COLS,
+        }));
+
+    const sizeLabel = language === 'he' ? 'easy, mixed 8–12 grids' : `easy ${MULTIPLAYER_GRID_ROWS}x${MULTIPLAYER_GRID_COLS}`;
     console.log(
-      `🎮 Generating ${MULTIPLAYER_PUZZLE_COUNT} multiplayer puzzles (${language}): easy ${MULTIPLAYER_GRID_ROWS}x${MULTIPLAYER_GRID_COLS}...\n`
+      `🎮 Generating ${MULTIPLAYER_PUZZLE_COUNT} multiplayer puzzles (${language}): ${sizeLabel}...\n`
     );
 
     const batch = generatePuzzlesBatch({
@@ -32,8 +41,7 @@ const seedMultiplayer = async () => {
       count: MULTIPLAYER_PUZZLE_COUNT,
       category: MULTIPLAYER_CATEGORY,
       startIndex: 0,
-      rows: MULTIPLAYER_GRID_ROWS,
-      cols: MULTIPLAYER_GRID_COLS,
+      sizes,
       language,
     });
 

@@ -6,6 +6,7 @@ import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import { assignPuzzlesToDateRange } from '../utils/dailyPuzzleUtils';
 import { Difficulty, Language } from '../types';
 import { connectToDatabase, closeDatabaseAndExit, handleScriptError, filterValidPuzzles } from './utils/scriptUtils';
+import { mixSizes } from './utils/gridSizes';
 
 dotenv.config();
 
@@ -24,15 +25,19 @@ const dailyTitle = (index: number) => language === 'he' ? `תשבץ יומי ${i
 const seedDaily = async () => {
   try {
     await connectToDatabase();
-    console.log(`📅 Generating ${DAILY_PUZZLE_COUNT} daily puzzles (${language}): easy ${DAILY_GRID_ROWS}x${DAILY_GRID_COLS}...\n`);
+    const sizeLabel = language === 'he' ? 'easy, mixed 8–12 grids' : `easy ${DAILY_GRID_ROWS}x${DAILY_GRID_COLS}`;
+    console.log(`📅 Generating ${DAILY_PUZZLE_COUNT} daily puzzles (${language}): ${sizeLabel}...\n`);
+
+    const sizes = language === 'he'
+      ? mixSizes(DAILY_PUZZLE_COUNT)
+      : Array.from({ length: DAILY_PUZZLE_COUNT }, () => ({ rows: DAILY_GRID_ROWS, cols: DAILY_GRID_COLS }));
 
     const batch = generatePuzzlesBatch({
       difficulty: Difficulty.EASY,
       count: DAILY_PUZZLE_COUNT,
       category: DAILY_CATEGORY,
       startIndex: 0,
-      rows: DAILY_GRID_ROWS,
-      cols: DAILY_GRID_COLS,
+      sizes,
       language,
     });
 

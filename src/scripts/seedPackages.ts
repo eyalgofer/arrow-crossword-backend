@@ -6,6 +6,7 @@ import { generatePuzzlesBatch } from './generators/puzzlesGenerator';
 import { Difficulty, Language } from '../types';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import { connectToDatabase, closeDatabaseAndExit, handleScriptError, filterValidPuzzles } from './utils/scriptUtils';
+import { mixSizes } from './utils/gridSizes';
 
 dotenv.config();
 
@@ -118,11 +119,15 @@ const seedPackages = async () => {
       console.log(`\n📦 Creating ${def.name} (${def.puzzleCount} puzzles)...`);
       
       const generatedPuzzles: any[] = [];
+      const packageSizes = language === 'he' ? mixSizes(def.puzzleCount) : undefined;
+      let sizeOffset = 0;
       
       // Generate puzzles for this package
       for (const { difficulty, count } of difficultyDistribution) {
         if (count === 0) continue;
         console.log(`   Generating ${count} ${difficulty} puzzle(s)...`);
+        const sizes = packageSizes?.slice(sizeOffset, sizeOffset + count);
+        sizeOffset += count;
         const batch = generatePuzzlesBatch({
           difficulty,
           count,
@@ -130,6 +135,7 @@ const seedPackages = async () => {
           startIndex: globalPuzzleIndex,
           rows: 8,
           cols: 8,
+          sizes,
           language,
         });
         const validPuzzles = filterValidPuzzles(batch, validatePuzzleBoundaries);

@@ -56,8 +56,8 @@ const language: Language = langArgIndex !== -1 && process.argv[langArgIndex + 1]
 const positional = process.argv.slice(2).filter((arg, i, args) => arg !== '--lang' && args[i - 1] !== '--lang');
 
 const difficulty = (positional[0] as Difficulty) || Difficulty.EASY;
-const rows = Math.min(parseInt(positional[1] || '8', 10), 10);
-const cols = Math.min(parseInt(positional[2] || '8', 10), 10);
+const rows = Math.min(parseInt(positional[1] || '8', 10), 12);
+const cols = Math.min(parseInt(positional[2] || '8', 10), 12);
 const count = parseInt(positional[3] || '1', 10);
 
 const puzzles = generatePuzzlesBatch({
