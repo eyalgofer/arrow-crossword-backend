@@ -3,6 +3,7 @@
  *
  * Sources (first wins on clue order, then quality-sorted):
  *  - hebrewCluesCrafted.ts  short תשחץ-style definitions
+ *  - hebrewCluesImported.ts real תשחץ vocab extracted from solved puzzles
  *  - hebrewClues.ts         core vocabulary
  *  - hebrewCluesMore.ts     extra fill + culture
  */
@@ -11,10 +12,12 @@ import { Difficulty } from '../../types';
 import { applyHebrewFinalForms } from './hebrewOrthography';
 import { HEBREW_ENTRIES as BASE_ENTRIES, RawHebrewEntry } from './hebrewClues';
 import { HEBREW_ENTRIES_CRAFTED } from './hebrewCluesCrafted';
+import { HEBREW_ENTRIES_IMPORTED } from './hebrewCluesImported';
 import { HEBREW_ENTRIES_MORE } from './hebrewCluesMore';
 
 const HEBREW_ENTRIES: RawHebrewEntry[] = [
   ...HEBREW_ENTRIES_CRAFTED,
+  ...HEBREW_ENTRIES_IMPORTED,
   ...BASE_ENTRIES,
   ...HEBREW_ENTRIES_MORE,
 ];
@@ -111,6 +114,9 @@ function buildDatabase(): Map<string, HebrewAnswerEntry> {
       if (raw.t !== undefined && raw.t > existing.tier) {
         existing.tier = raw.t;
       }
+      if (raw.prefer) {
+        existing.rank = Math.max(1, existing.rank - 70);
+      }
       return;
     }
     if (clues.length === 0) {
@@ -122,10 +128,11 @@ function buildDatabase(): Map<string, HebrewAnswerEntry> {
     const length = Array.from(answer).length;
     // Flatten insertion order so late culture/GK words can actually fill grids.
     // Jitter in the solver then picks among a mixed, interesting pool.
+    const preferBoost = raw.prefer ? -70 : 0;
     const lengthPenalty = length > 7 ? 140 : length < 4 ? 25 : 0;
     entries.set(answer, {
       answer,
-      rank: (tier - 1) * 8000 + 80 + lengthPenalty + (index % 120),
+      rank: Math.max(1, (tier - 1) * 8000 + 80 + lengthPenalty + (index % 120) + preferBoost),
       tier,
       clues: sortClues(clues),
     });

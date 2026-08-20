@@ -15,6 +15,8 @@ export interface RawHebrewEntry {
   a: string;
   c: string[];
   t?: 1 | 2 | 3;
+  /** Prefer this answer when filling grids (imported תשחץ vocab). */
+  prefer?: boolean;
 }
 
 export const HEBREW_ENTRIES: RawHebrewEntry[] = [
