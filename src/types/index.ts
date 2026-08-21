@@ -42,6 +42,12 @@ export enum MatchStatus {
   CANCELLED = 'cancelled'
 }
 
+export enum MatchCompletionReason {
+  COMPLETED = 'completed',
+  TIMEOUT = 'timeout',
+  FORFEIT = 'forfeit'
+}
+
 export interface PlayerMove {
   userId?: any; // Can be ObjectId or string
   row: number;
@@ -55,11 +61,14 @@ export interface GameState {
   players: {
     userId: string;
     displayName: string;
+    photoURL?: string;
     progress: number;
   }[];
   puzzleId: string;
   moves: PlayerMove[];
   startedAt?: Date;
+  durationSeconds?: number;
+  endsAt?: Date;
   completedAt?: Date;
 }
 

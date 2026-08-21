@@ -7,6 +7,7 @@ import { io } from '../server';
 import { getUserActiveSockets } from '../sockets/gameHandler';
 import { resolveLanguage } from '../utils/language';
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
+import { createMatchTiming } from '../utils/matchTiming';
 
 export const createInvite = async (req: AuthRequest, res: Response) => {
   try {
@@ -155,6 +156,7 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
       });
     }
     const { puzzleId: randomPuzzleId } = picked;
+    const timing = createMatchTiming();
 
     // Create the match
     const match = new Match({
@@ -172,7 +174,7 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
       ],
       puzzleId: randomPuzzleId,
       status: MatchStatus.IN_PROGRESS,
-      startedAt: new Date()
+      ...timing
     });
 
     await match.save();
@@ -191,7 +193,10 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
         userId: currentUser._id.toString(),
         displayName: currentUser.displayName,
         photoURL: currentUser.photoURL
-      }
+      },
+      startedAt: timing.startedAt.toISOString(),
+      durationSeconds: timing.durationSeconds,
+      endsAt: timing.endsAt.toISOString()
     };
     
     // Debug: Check active sockets for this user
@@ -211,7 +216,10 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
     res.json({ 
       success: true, 
       matchId: match._id.toString(), 
-      puzzleId: randomPuzzleId.toString() 
+      puzzleId: randomPuzzleId.toString(),
+      startedAt: timing.startedAt.toISOString(),
+      durationSeconds: timing.durationSeconds,
+      endsAt: timing.endsAt.toISOString()
     });
   } catch (error) {
     console.error('Accept invite error:', error);

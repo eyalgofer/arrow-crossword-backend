@@ -4,9 +4,17 @@ import mongoose from 'mongoose';
 import { User } from '../models/User';
 import { Match } from '../models/Match';
 import { Puzzle } from '../models/Puzzle';
-import { MatchStatus, GameState, Language, DEFAULT_LANGUAGE } from '../types';
+import { MatchStatus, GameState, Language, DEFAULT_LANGUAGE, MatchCompletionReason } from '../types';
 import { resolveLanguageFromValues } from '../utils/language';
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
+import { createMatchTiming, getMatchTimingFields } from '../utils/matchTiming';
+import { activeGames } from './activeGames';
+import {
+  buildMatchCompletedPayload,
+  completeMatch,
+  ensureMatchNotExpired,
+  getPlayableMatch
+} from '../services/matchCompletion';
 
 interface SocketWithAuth extends Socket {
   userId?: string;
@@ -14,8 +22,6 @@ interface SocketWithAuth extends Socket {
   language?: Language;
 }
 
-// Store active games in memory
-const activeGames = new Map<string, GameState>();
 const waitingPlayers = new Map<string, { userId: string; socketId: string; displayName: string; language: Language }>();
 // Track active sockets by userId (firebaseUid)
 const userSockets = new Map<string, Set<string>>(); // userId -> Set of socketIds
@@ -122,6 +128,7 @@ export const setupSocketHandlers = (io: Server) => {
           }
           const players = [opponent, me];
           const randomPuzzle = picked.puzzle;
+          const timing = createMatchTiming();
 
           // Create match
           const match = new Match({
@@ -132,7 +139,7 @@ export const setupSocketHandlers = (io: Server) => {
             })),
             puzzleId: randomPuzzle._id,
             status: MatchStatus.IN_PROGRESS,
-            startedAt: new Date()
+            ...timing
           });
 
           await match.save();
@@ -147,7 +154,7 @@ export const setupSocketHandlers = (io: Server) => {
             })),
             puzzleId: randomPuzzle._id.toString(),
             moves: [],
-            startedAt: new Date()
+            ...timing
           };
 
           activeGames.set(match._id.toString(), gameState);
@@ -160,7 +167,10 @@ export const setupSocketHandlers = (io: Server) => {
               playerSocket.emit('match_found', {
                 matchId: match._id,
                 puzzle: randomPuzzle,
-                opponent: players.find(pl => pl.userId !== p.userId)
+                opponent: players.find(pl => pl.userId !== p.userId),
+                startedAt: timing.startedAt,
+                durationSeconds: timing.durationSeconds,
+                endsAt: timing.endsAt
               });
             }
           });
@@ -188,11 +198,13 @@ export const setupSocketHandlers = (io: Server) => {
           return;
         }
 
-        const match = await Match.findById(matchId);
-        if (!match) {
+        const matchDoc = await Match.findById(matchId);
+        if (!matchDoc) {
           socket.emit('error', { message: 'Match not found' });
           return;
         }
+
+        const match = await ensureMatchNotExpired(io, matchDoc);
 
         const user = await User.findOne({ firebaseUid: socket.userId });
         if (!user) {
@@ -214,8 +226,10 @@ export const setupSocketHandlers = (io: Server) => {
         socket.join(matchId);
         socket.matchId = matchId;
 
-        // Initialize game state if not already present
-        if (!activeGames.has(matchId)) {
+        const timing = getMatchTimingFields(match);
+
+        // Initialize game state if not already present (only for in-progress matches)
+        if (match.status === MatchStatus.IN_PROGRESS && !activeGames.has(matchId)) {
           const gameState: GameState = {
             matchId,
             players: match.players.map(p => ({
@@ -226,7 +240,7 @@ export const setupSocketHandlers = (io: Server) => {
             })),
             puzzleId: match.puzzleId.toString(),
             moves: match.moves || [],
-            startedAt: match.startedAt
+            ...timing
           };
           activeGames.set(matchId, gameState);
         }
@@ -279,8 +293,20 @@ export const setupSocketHandlers = (io: Server) => {
           })),
           moves: allMoves,
           userMoves: userMoves,
-          startedAt: match.startedAt
+          startedAt: timing.startedAt,
+          durationSeconds: timing.durationSeconds,
+          endsAt: timing.endsAt
         });
+
+        if (match.status !== MatchStatus.IN_PROGRESS) {
+          socket.emit(
+            'match_completed',
+            buildMatchCompletedPayload(
+              match,
+              match.completionReason ?? MatchCompletionReason.COMPLETED
+            )
+          );
+        }
 
         console.log(`User ${user.displayName} joined match ${matchId}`);
       } catch (error) {
@@ -307,6 +333,12 @@ export const setupSocketHandlers = (io: Server) => {
           return;
         }
 
+        const { match, error } = await getPlayableMatch(io, matchId);
+        if (!match) {
+          socket.emit('error', { message: error || 'Match is over' });
+          return;
+        }
+
         const gameState = activeGames.get(matchId);
         
         const user = await User.findOne({ firebaseUid: socket.userId });
@@ -324,7 +356,7 @@ export const setupSocketHandlers = (io: Server) => {
 
         // Update progress in database
         await Match.updateOne(
-          { _id: matchId, 'players.userId': user._id },
+          { _id: matchId, status: MatchStatus.IN_PROGRESS, 'players.userId': user._id },
           { $set: { 'players.$.progress': progress } }
         );
 
@@ -346,6 +378,12 @@ export const setupSocketHandlers = (io: Server) => {
         // Validate matchId
         if (!matchId || matchId === 'undefined' || !mongoose.Types.ObjectId.isValid(matchId)) {
           socket.emit('error', { message: 'Invalid match ID' });
+          return;
+        }
+
+        const { match, error } = await getPlayableMatch(io, matchId);
+        if (!match) {
+          socket.emit('error', { message: error || 'Match is over' });
           return;
         }
 
@@ -371,9 +409,10 @@ export const setupSocketHandlers = (io: Server) => {
         gameState.moves.push(move);
 
         // Update match in database
-        await Match.findByIdAndUpdate(matchId, {
-          $push: { moves: move }
-        });
+        await Match.updateOne(
+          { _id: matchId, status: MatchStatus.IN_PROGRESS },
+          { $push: { moves: move } }
+        );
 
         // Broadcast move to all players in the match
         io.to(matchId).emit('opponent_move', {
@@ -391,7 +430,7 @@ export const setupSocketHandlers = (io: Server) => {
     // Player completes puzzle
     socket.on('puzzle_completed', async (data) => {
       try {
-        const { matchId, timeSpent } = data;
+        const { matchId } = data;
         
         // Validate matchId
         if (!matchId || matchId === 'undefined' || !mongoose.Types.ObjectId.isValid(matchId)) {
@@ -399,62 +438,35 @@ export const setupSocketHandlers = (io: Server) => {
           return;
         }
 
-        const gameState = activeGames.get(matchId);
-
-        if (!gameState) {
-          socket.emit('error', { message: 'Game not found' });
+        const { match, error } = await getPlayableMatch(io, matchId);
+        if (!match) {
+          socket.emit('error', { message: error || 'Match is over' });
           return;
         }
 
         const user = await User.findOne({ firebaseUid: socket.userId });
         if (!user) return;
 
-        // Update match
-        const match = await Match.findById(matchId);
-        if (!match) return;
-
-        const playerIndex = match.players.findIndex(
+        const isPlayer = match.players.some(
           p => p.userId.toString() === user._id.toString()
         );
+        if (!isPlayer) {
+          socket.emit('error', { message: 'Not authorized for this match' });
+          return;
+        }
 
-        if (playerIndex !== -1) {
-          match.players[playerIndex].completedAt = new Date();
-          match.players[playerIndex].progress = 100;
+        await Match.updateOne(
+          { _id: matchId, status: MatchStatus.IN_PROGRESS, 'players.userId': user._id },
+          { $set: { 'players.$.progress': 100, 'players.$.completedAt': new Date() } }
+        );
 
-          // Check if this is the first to complete
-          const otherPlayerCompleted = match.players.find(
-            (p, idx) => idx !== playerIndex && p.completedAt
-          );
+        const completed = await completeMatch(io, matchId, {
+          winnerId: user._id,
+          reason: MatchCompletionReason.COMPLETED
+        });
 
-          if (!otherPlayerCompleted) {
-            match.winnerId = user._id;
-            match.status = MatchStatus.COMPLETED;
-            match.completedAt = new Date();
-
-            // Update user stats
-            user.stats.totalGames += 1;
-            user.stats.gamesWon += 1;
-            await user.save();
-          } else {
-            match.status = MatchStatus.COMPLETED;
-            match.completedAt = new Date();
-
-            // Update loser stats
-            user.stats.totalGames += 1;
-            user.stats.gamesLost += 1;
-            await user.save();
-          }
-
-          await match.save();
-
-          // Notify all players
-          io.to(matchId).emit('match_completed', {
-            winnerId: match.winnerId,
-            match
-          });
-
-          // Clean up
-          activeGames.delete(matchId);
+        if (!completed) {
+          socket.emit('error', { message: 'Match is over' });
         }
       } catch (error) {
         console.error('Puzzle completed error:', error);

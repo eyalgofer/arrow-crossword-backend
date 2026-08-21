@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { MatchStatus, PlayerMove } from '../types';
+import { MatchCompletionReason, MatchStatus, PlayerMove } from '../types';
+import { MATCH_DURATION_SECONDS } from '../constants/match';
 
 export interface IMatch extends Document {
   players: {
@@ -12,9 +13,12 @@ export interface IMatch extends Document {
   puzzleId: mongoose.Types.ObjectId;
   status: MatchStatus;
   moves: PlayerMove[];
-  winnerId?: mongoose.Types.ObjectId;
+  winnerId?: mongoose.Types.ObjectId | null;
   startedAt?: Date;
+  durationSeconds: number;
+  endsAt?: Date;
   completedAt?: Date;
+  completionReason?: MatchCompletionReason;
   createdAt: Date;
 }
 
@@ -47,19 +51,32 @@ const matchSchema = new Schema<IMatch>({
   moves: [playerMoveSchema],
   winnerId: {
     type: Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'User',
+    default: null
   },
   startedAt: {
     type: Date
   },
+  durationSeconds: {
+    type: Number,
+    default: MATCH_DURATION_SECONDS
+  },
+  endsAt: {
+    type: Date
+  },
   completedAt: {
     type: Date
+  },
+  completionReason: {
+    type: String,
+    enum: Object.values(MatchCompletionReason)
   }
 }, {
   timestamps: true
 });
 
 matchSchema.index({ status: 1, createdAt: -1 });
+matchSchema.index({ status: 1, endsAt: 1 });
 matchSchema.index({ 'players.userId': 1, createdAt: -1 });
 
 export const Match = mongoose.model<IMatch>('Match', matchSchema);

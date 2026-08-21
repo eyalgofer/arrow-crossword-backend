@@ -1,11 +1,11 @@
 /**
  * Hebrew clue database for the puzzle generator.
- * Vocab is walked letter/clue pairs from solved תשחץ images (hebrewCluesImported.ts).
+ * Vocab is walked letter/clue pairs from solved תשחץ images (hebrewClues.ts).
  */
 
 import { Difficulty } from '../../types';
 import { applyHebrewFinalForms } from './hebrewOrthography';
-import { HEBREW_ENTRIES_IMPORTED, RawHebrewEntry } from './hebrewCluesImported';
+import { HEBREW_ENTRIES_IMPORTED, RawHebrewEntry } from './hebrewClues';
 
 const HEBREW_ENTRIES: RawHebrewEntry[] = HEBREW_ENTRIES_IMPORTED;
 

@@ -13,6 +13,7 @@ import packageRoutes from './routes/packages';
 import matchRoutes from './routes/matches';
 import inviteRoutes from './routes/invites';
 import { setupSocketHandlers } from './sockets/gameHandler';
+import { startMatchTimeoutJob } from './jobs/matchTimeoutJob';
 
 dotenv.config();
 
@@ -158,6 +159,9 @@ const startServer = async () => {
 
     setupSocketHandlers(io);
     console.log('✅ Socket.io configured');
+
+    startMatchTimeoutJob(io);
+    console.log('✅ Match timeout job started');
 
     const PORT = process.env.PORT || 3000;
     server.listen(PORT, () => {

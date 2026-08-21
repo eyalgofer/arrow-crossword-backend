@@ -58,16 +58,64 @@ const packageDefinitionsByLanguage: Record<Language, Array<{
   ],
   he: [
     {
-      name: 'אוסף תשבצים 1',
+      name: 'אוסף תשחצים 1',
       description: 'בואו נתחיל!',
       theme: 'מעורב',
       puzzleCount: 10,
     },
     {
-      name: 'אוסף תשבצים 2',
-      description: '20 תשבצים לפתרון',
+      name: 'אוסף תשחצים 2',
+      description: '20 תשחצים לפתרון',
       theme: 'מעורב',
       puzzleCount: 20,
+    },
+    {
+      name: 'אוסף תשחצים 3',
+      description: '10 תשחצים לפתרון',
+      theme: 'מעורב',
+      puzzleCount: 10,
+    },
+    {
+      name: 'אוסף תשחצים 4',
+      description: '10 תשחצים לפתרון',
+      theme: 'מעורב',
+      puzzleCount: 10,
+    },
+    {
+      name: 'אוסף תשחצים 5',
+      description: '10 תשחצים לפתרון',
+      theme: 'מעורב',
+      puzzleCount: 10,
+    },
+    {
+      name: 'אוסף תשחצים 6',
+      description: '10 תשחצים לפתרון',
+      theme: 'מעורב',
+      puzzleCount: 10,
+    },
+    {
+      name: 'אוסף תשחצים 7',
+      description: '10 תשחצים לפתרון',
+      theme: 'מעורב',
+      puzzleCount: 10,
+    },
+    {
+      name: 'אוסף תשחצים 8',
+      description: '10 תשחצים לפתרון',
+      theme: 'מעורב',
+      puzzleCount: 10,
+    },
+    {
+      name: 'אוסף תשחצים 9',
+      description: '10 תשחצים לפתרון',
+      theme: 'מעורב',
+      puzzleCount: 10,
+    },
+    {
+      name: 'אוסף תשחצים 10',
+      description: '10 תשחצים לפתרון',
+      theme: 'מעורב',
+      puzzleCount: 10,
     },
   ],
 };
@@ -80,6 +128,21 @@ const packageDefinitions = packageDefinitionsByLanguage[language].map((def, inde
   iconName: iconNames[index % iconNames.length],
   gradientColors: gradientPalette[index % gradientPalette.length],
 }));
+
+async function ensureMongoConnection(): Promise<void> {
+  try {
+    if (mongoose.connection.readyState === 1 && mongoose.connection.db) {
+      await mongoose.connection.db.admin().command({ ping: 1 });
+      return;
+    }
+  } catch {
+    // reconnect below
+  }
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.disconnect().catch(() => undefined);
+  }
+  await connectToDatabase();
+}
 
 function getDifficultyDistribution(puzzleCount: number): Array<{ difficulty: Difficulty; count: number }> {
   const easy = Math.round(puzzleCount * 0.6);
@@ -108,6 +171,7 @@ const seedPackages = async () => {
     let globalPuzzleIndex = 1;
     
     for (let i = 0; i < packageDefinitions.length; i++) {
+      await ensureMongoConnection();
       const def = packageDefinitions[i];
       const existing = await PuzzlePackage.findOne({ name: def.name, language });
       if (existing) {
@@ -152,7 +216,8 @@ const seedPackages = async () => {
         continue;
       }
       
-      // Save puzzles to database
+      // Save puzzles to database (reconnect first — generation can idle Atlas)
+      await ensureMongoConnection();
       const savedPuzzles = await Puzzle.insertMany(generatedPuzzles);
       const puzzleIds = savedPuzzles.map(p => p._id as mongoose.Types.ObjectId);
       

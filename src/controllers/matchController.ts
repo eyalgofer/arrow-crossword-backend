@@ -3,7 +3,11 @@ import mongoose from 'mongoose';
 import { Match } from '../models/Match';
 import { User } from '../models/User';
 import { AuthRequest } from '../types';
-import { MatchStatus } from '../types';
+import { MatchCompletionReason, MatchStatus } from '../types';
+import { io } from '../server';
+import { MATCH_DURATION_SECONDS } from '../constants/match';
+import { withMatchTiming } from '../utils/matchTiming';
+import { completeExpiredMatches, completeMatch, ensureMatchNotExpired } from '../services/matchCompletion';
 
 export const getMatchHistory = async (req: AuthRequest, res: Response) => {
   try {
@@ -36,9 +40,19 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    await completeExpiredMatches(io);
+
+    const now = new Date();
     const matches = await Match.find({
       'players.userId': user._id,
-      status: MatchStatus.IN_PROGRESS
+      status: MatchStatus.IN_PROGRESS,
+      $or: [
+        { endsAt: { $gt: now } },
+        {
+          endsAt: { $exists: false },
+          startedAt: { $gt: new Date(now.getTime() - MATCH_DURATION_SECONDS * 1000) }
+        }
+      ]
     })
       .populate('puzzleId', 'title difficulty')
       .populate('players.userId', 'displayName photoURL')
@@ -81,7 +95,7 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
       const opponentUserId = opponent ? ((opponent.userId as any)?._id || opponent.userId) : null;
       const opponentPopulated = opponent ? (opponent.userId as any) : null;
 
-      return {
+      return withMatchTiming({
         ...matchObj,
         players: enhancedPlayers,
         opponent: opponent ? {
@@ -92,7 +106,7 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
         } : null,
         currentUserPuzzleProgress: currentUserPlayer?.progress || 0,
         timeElapsed
-      };
+      });
     });
 
     res.json({ matches: enhancedMatches });
@@ -116,12 +130,25 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const match = await Match.findById(matchId)
+    const matchDoc = await Match.findById(matchId)
       .populate('puzzleId')
       .populate('players.userId', 'displayName photoURL');
 
-    if (!match) {
+    if (!matchDoc) {
       return res.status(404).json({ error: 'Match not found' });
+    }
+
+    let match = matchDoc;
+    if (match.status === MatchStatus.IN_PROGRESS) {
+      const maybeCompleted = await ensureMatchNotExpired(io, match);
+      if (maybeCompleted.status !== MatchStatus.IN_PROGRESS) {
+        const refreshed = await Match.findById(matchId)
+          .populate('puzzleId')
+          .populate('players.userId', 'displayName photoURL');
+        if (refreshed) {
+          match = refreshed;
+        }
+      }
     }
     console.log('user id', user._id);
     console.log('match players', match.players);
@@ -159,7 +186,7 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
     const opponentUserId = opponent ? ((opponent.userId as any)?._id || opponent.userId) : null;
     const opponentPopulated = opponent ? (opponent.userId as any) : null;
 
-    const enhancedMatch = {
+    const enhancedMatch = withMatchTiming({
       ...match.toObject(),
       opponent: opponent ? {
         userId: opponentUserId,
@@ -169,7 +196,7 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
       } : null,
       currentUserPuzzleProgress: currentUserPlayer?.progress || 0,
       timeElapsed
-    };
+    });
 
     res.json({ match: enhancedMatch });
   } catch (error) {
@@ -209,35 +236,33 @@ export const leaveMatch = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Not authorized to leave this match' });
     }
 
+    const current = await ensureMatchNotExpired(io, match);
+
     // Check if match is already completed or cancelled
-    if (match.status === MatchStatus.COMPLETED || match.status === MatchStatus.CANCELLED) {
+    if (current.status === MatchStatus.COMPLETED || current.status === MatchStatus.CANCELLED) {
       return res.status(400).json({ error: 'Match is already completed or cancelled' });
     }
 
     // Handle leaving based on match status
-    if (match.status === MatchStatus.IN_PROGRESS) {
-      // Find the opponent
-      const opponent = match.players.find(
+    if (current.status === MatchStatus.IN_PROGRESS) {
+      const opponent = current.players.find(
         p => {
           const playerUserId = (p.userId as any)?._id || p.userId;
           return playerUserId.toString() !== user._id.toString();
         }
       );
+      const opponentId = opponent
+        ? ((opponent.userId as any)?._id || opponent.userId)
+        : null;
 
-      if (opponent) {
-        // Mark opponent as winner
-        match.winnerId = (opponent.userId as any)?._id || opponent.userId;
-      }
-
-      // Complete the match
-      match.status = MatchStatus.COMPLETED;
-      match.completedAt = new Date();
-    } else if (match.status === MatchStatus.WAITING) {
-      // Cancel the match if it hasn't started yet
-      match.status = MatchStatus.CANCELLED;
+      await completeMatch(io, matchId, {
+        winnerId: opponentId,
+        reason: MatchCompletionReason.FORFEIT
+      });
+    } else if (current.status === MatchStatus.WAITING) {
+      current.status = MatchStatus.CANCELLED;
+      await current.save();
     }
-
-    await match.save();
 
     // Return updated match
     const updatedMatch = await Match.findById(matchId)
