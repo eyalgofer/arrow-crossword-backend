@@ -508,10 +508,9 @@ def extract_image(path: Path) -> list[Pair]:
 def load_known_answers(repo: Path) -> set[str]:
     known: set[str] = set()
     core = repo / "src" / "scripts" / "core"
-    for name in ("hebrewClues.ts", "hebrewCluesMore.ts", "hebrewCluesCrafted.ts"):
-        text = (core / name).read_text(encoding="utf-8")
-        for m in re.finditer(r"a:\s*'([^']+)'", text):
-            known.add(apply_final_forms(m.group(1)))
+    text = (core / "hebrewCluesImported.ts").read_text(encoding="utf-8")
+    for m in re.finditer(r'a:\s*["\']([^"\']+)["\']', text):
+        known.add(apply_final_forms(m.group(1)))
     return known
 
 
@@ -566,10 +565,16 @@ def ts_literal(entries: list[dict]) -> str:
         " * Clue/answer pairs walked from printed letters in solved תשחץ images.",
         " * Isolated definitions only — original grid layouts are not stored.",
         " * Answers are the letters in the grid, not model guesses from clue meaning.",
-        " * `prefer: true` ranks these answers ahead of curated fill when the solver can use them.",
+        " * This is the sole Hebrew vocab source for the puzzle generator.",
         " */",
         "",
-        "import { RawHebrewEntry } from './hebrewClues';",
+        "export interface RawHebrewEntry {",
+        "  a: string;",
+        "  c: string[];",
+        "  t?: 1 | 2 | 3;",
+        "  /** Prefer this answer when filling grids. */",
+        "  prefer?: boolean;",
+        "}",
         "",
         "export const HEBREW_ENTRIES_IMPORTED: RawHebrewEntry[] = [",
     ]

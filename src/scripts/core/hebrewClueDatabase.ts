@@ -1,26 +1,13 @@
 /**
- * Curated Hebrew clue database for the puzzle generator.
- *
- * Sources (first wins on clue order, then quality-sorted):
- *  - hebrewCluesCrafted.ts  short תשחץ-style definitions
- *  - hebrewCluesImported.ts real תשחץ vocab extracted from solved puzzles
- *  - hebrewClues.ts         core vocabulary
- *  - hebrewCluesMore.ts     extra fill + culture
+ * Hebrew clue database for the puzzle generator.
+ * Vocab is walked letter/clue pairs from solved תשחץ images (hebrewCluesImported.ts).
  */
 
 import { Difficulty } from '../../types';
 import { applyHebrewFinalForms } from './hebrewOrthography';
-import { HEBREW_ENTRIES as BASE_ENTRIES, RawHebrewEntry } from './hebrewClues';
-import { HEBREW_ENTRIES_CRAFTED } from './hebrewCluesCrafted';
-import { HEBREW_ENTRIES_IMPORTED } from './hebrewCluesImported';
-import { HEBREW_ENTRIES_MORE } from './hebrewCluesMore';
+import { HEBREW_ENTRIES_IMPORTED, RawHebrewEntry } from './hebrewCluesImported';
 
-const HEBREW_ENTRIES: RawHebrewEntry[] = [
-  ...HEBREW_ENTRIES_CRAFTED,
-  ...HEBREW_ENTRIES_IMPORTED,
-  ...BASE_ENTRIES,
-  ...HEBREW_ENTRIES_MORE,
-];
+const HEBREW_ENTRIES: RawHebrewEntry[] = HEBREW_ENTRIES_IMPORTED;
 
 /** Hebrew letters (includes final forms, which sit inside the א-ת range). */
 const HEBREW_ANSWER_PATTERN = /^[\u05D0-\u05EA]{3,10}$/;
@@ -28,7 +15,7 @@ const HEBREW_ANSWER_PATTERN = /^[\u05D0-\u05EA]{3,10}$/;
 const MIN_ANSWER_LENGTH = 3;
 const MAX_ANSWER_LENGTH = 10;
 
-/** Max entry tier usable per difficulty (the pool is curated, so easy is broad). */
+/** Max entry tier usable per difficulty (imported answers default to tier 1). */
 const MAX_TIER: Record<Difficulty, number> = {
   [Difficulty.EASY]: 1,
   [Difficulty.MEDIUM]: 2,
@@ -126,8 +113,6 @@ function buildDatabase(): Map<string, HebrewAnswerEntry> {
 
     const tier = raw.t ?? 1;
     const length = Array.from(answer).length;
-    // Flatten insertion order so late culture/GK words can actually fill grids.
-    // Jitter in the solver then picks among a mixed, interesting pool.
     const preferBoost = raw.prefer ? -70 : 0;
     const lengthPenalty = length > 7 ? 140 : length < 4 ? 25 : 0;
     entries.set(answer, {
