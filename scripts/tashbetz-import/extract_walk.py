@@ -80,7 +80,7 @@ def chat_json(api_key: str, prompt: str, user: str, data_url: str, model: str, m
     }
     payload_bytes = json.dumps(body).encode("utf-8")
     last_err: Exception | None = None
-    for attempt in range(5):
+    for attempt in range(8):
         req = urllib.request.Request(
             "https://api.openai.com/v1/chat/completions",
             data=payload_bytes,
@@ -97,7 +97,10 @@ def chat_json(api_key: str, prompt: str, user: str, data_url: str, model: str, m
             body_txt = exc.read().decode("utf-8", errors="replace")
             last_err = RuntimeError(f"HTTP {exc.code}: {body_txt[:240]}")
             if exc.code in (429, 500, 502, 503, 504):
-                time.sleep(min(45, 3 * (2 ** attempt)))
+                wait = 20 * (2 ** attempt)
+                if exc.code == 429:
+                    wait = max(wait, 75)
+                time.sleep(min(120, wait))
                 continue
             raise last_err from exc
         except Exception as exc:  # noqa: BLE001
@@ -422,7 +425,10 @@ def main() -> None:
         raise SystemExit("OPENAI_API_KEY missing")
 
     folder = Path(args.input)
-    images = sorted(p for p in folder.iterdir() if p.suffix.lower() in {".jpg", ".jpeg", ".png"})
+    images = sorted(
+        p for p in folder.iterdir()
+        if p.suffix.lower() in {".jpg", ".jpeg", ".png"} and " (1)" not in p.name
+    )
     if args.only:
         images = [p for p in images if p.name == args.only]
     if args.limit:
@@ -439,6 +445,9 @@ def main() -> None:
             print_validation(pairs, img.name)
         except Exception as exc:  # noqa: BLE001
             print(f"[{i}/{len(images)}] {img.name}: FAILED {exc}", flush=True)
+            if "429" in str(exc):
+                print("  rate-limited — waiting 90s", flush=True)
+                time.sleep(90)
 
     entries = merge_walked(all_pairs)
     Path(args.out).write_text(ts_literal(entries), encoding="utf-8")
