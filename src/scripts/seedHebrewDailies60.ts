@@ -1,5 +1,5 @@
 /**
- * Generate 60 Hebrew 10x10 daily puzzles and assign them from tomorrow
+ * Generate 60 Hebrew 10x10 daily puzzles and assign them from today
  * through ~two months so the app can serve them by date.
  *
  * Usage: npx ts-node src/scripts/seedHebrewDailies60.ts
@@ -32,18 +32,18 @@ const main = async () => {
   try {
     await connectToDatabase();
 
-    const tomorrow = addDays(new Date(), 1);
-    const lastDay = addDays(tomorrow, COUNT - 1);
+    const startDay = addDays(new Date(), 0);
+    const lastDay = addDays(startDay, COUNT - 1);
     console.log(
       `📅 Generating ${COUNT} Hebrew ${ROWS}x${COLS} dailies ` +
-      `${tomorrow.toLocaleDateString()} → ${lastDay.toLocaleDateString()}\n`
+      `${startDay.toLocaleDateString()} → ${lastDay.toLocaleDateString()}\n`
     );
 
     const generator = new PuzzleGenerator(Difficulty.EASY, 'he');
     const savedIds: string[] = [];
 
     for (let i = 0; i < COUNT; i++) {
-      const date = addDays(tomorrow, i);
+      const date = addDays(startDay, i);
       let saved = null;
       for (let attempt = 1; attempt <= 8 && !saved; attempt++) {
         const generated = generator.generateBatch({

@@ -12,11 +12,11 @@ import { connectToDatabase, handleScriptError, clearPuzzlesForLanguage } from '.
 
 dotenv.config();
 
-function runSeed(script: string): Promise<void> {
+function runScript(script: string, extraArgs: string[] = []): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(
       'npx',
-      ['ts-node', script, '--lang', 'he'],
+      ['ts-node', script, ...extraArgs],
       { stdio: 'inherit', cwd: process.cwd(), env: process.env }
     );
     child.on('exit', code => {
@@ -34,13 +34,13 @@ const main = async () => {
     await mongoose.connection.close();
 
     console.log('\n📦 Seeding Hebrew packages...\n');
-    await runSeed('src/scripts/seedPackages.ts');
+    await runScript('src/scripts/seedPackages.ts', ['--lang', 'he']);
 
-    console.log('\n📅 Seeding Hebrew dailies...\n');
-    await runSeed('src/scripts/seedDaily.ts');
+    console.log('\n📅 Seeding Hebrew dailies (60 days from today)...\n');
+    await runScript('src/scripts/seedHebrewDailies60.ts');
 
     console.log('\n🎮 Seeding Hebrew multiplayer...\n');
-    await runSeed('src/scripts/seedMultiplayer.ts');
+    await runScript('src/scripts/seedMultiplayer.ts', ['--lang', 'he']);
 
     console.log('\n✅ Hebrew puzzles recreated.');
     process.exit(0);

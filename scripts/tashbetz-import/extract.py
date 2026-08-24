@@ -580,7 +580,7 @@ def ts_literal(entries: list[dict]) -> str:
     ]
     for e in entries:
         clues = ", ".join(json.dumps(c, ensure_ascii=False) for c in e["c"])
-        lines.append(f"  {{ a: {json.dumps(e['a'], ensure_ascii=False)}, c: [{clues}], prefer: true }},")
+        lines.append(f"  {{ a: {json.dumps(e['a'], ensure_ascii=False)}, c: [{clues}]}},")
     lines.append("];")
     lines.append("")
     return "\n".join(lines)

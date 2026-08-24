@@ -1095,7 +1095,7 @@ function parseEntries(text) {
     const cre = /"((?:\\.|[^"\\])*)"/g;
     let cm;
     while ((cm = cre.exec(cRaw))) clues.push(JSON.parse(`"${cm[1]}"`));
-    entries.push({ a, c: clues, prefer: true });
+    entries.push({ a, c: clues});
   }
   return entries;
 }
@@ -1180,7 +1180,7 @@ function apply(entries) {
 function emit(entries) {
   const lines = entries.map((e) => {
     const clues = e.c.map((c) => JSON.stringify(c)).join(", ");
-    return `  { a: ${JSON.stringify(e.a)}, c: [${clues}], prefer: true },`;
+    return `  { a: ${JSON.stringify(e.a)}, c: [${clues}]},`;
   });
   return HEADER + lines.join("\n") + "\n];\n";
 }
