@@ -1,13 +1,15 @@
-/** Keep enumeration only for multi-word answers so the client does not render "clue ()". */
-export function publicEnumeration(enumeration?: number[] | null): number[] | undefined {
-  if (!enumeration || enumeration.length < 2) return undefined;
+/** Multi-word answers only. `[]` is truthy in the app and renders "תפסנו ()". */
+export function publicEnumeration(enumeration?: number[] | null): number[] | null {
+  if (!enumeration || enumeration.length < 2) return null;
   return enumeration;
 }
 
 export function withoutSingleWordEnumeration<T>(item: T): T {
-  const copy = { ...(item as Record<string, unknown>) };
-  const enumeration = publicEnumeration(copy.enumeration as number[] | undefined);
-  if (enumeration) copy.enumeration = enumeration;
-  else delete copy.enumeration;
+  const src =
+    item && typeof item === 'object' && typeof (item as { toObject?: () => unknown }).toObject === 'function'
+      ? (item as { toObject: () => Record<string, unknown> }).toObject()
+      : (item as Record<string, unknown>);
+  const copy = { ...src };
+  copy.enumeration = publicEnumeration(copy.enumeration as number[] | null | undefined);
   return copy as T;
 }

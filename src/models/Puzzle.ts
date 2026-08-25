@@ -18,9 +18,17 @@ export interface IPuzzle extends Document {
 }
 
 function omitSingleWordEnumeration(_doc: unknown, ret: Record<string, unknown>) {
-  const enumeration = publicEnumeration(ret.enumeration as number[] | undefined);
-  if (enumeration) ret.enumeration = enumeration;
-  else delete ret.enumeration;
+  ret.enumeration = publicEnumeration(ret.enumeration as number[] | undefined);
+  return ret;
+}
+
+function sanitizePuzzleEnumeration(_doc: unknown, ret: Record<string, unknown>) {
+  if (Array.isArray(ret.puzzleItems)) {
+    ret.puzzleItems = (ret.puzzleItems as Record<string, unknown>[]).map(item => {
+      item.enumeration = publicEnumeration(item.enumeration as number[] | undefined);
+      return item;
+    });
+  }
   return ret;
 }
 
@@ -31,7 +39,8 @@ const puzzleItemSchema = new Schema({
   answer: { type: String, required: true },
   startRow: { type: Number, required: true },
   startCol: { type: Number, required: true },
-  enumeration: { type: [Number], default: undefined },
+  // Mixed so mongoose does not coerce a missing value into [] (the app renders []).
+  enumeration: { type: Schema.Types.Mixed, default: null },
 }, {
   _id: false,
   toJSON: { transform: omitSingleWordEnumeration },
@@ -83,7 +92,9 @@ const puzzleSchema = new Schema<IPuzzle>({
     required: false
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { transform: sanitizePuzzleEnumeration },
+  toObject: { transform: sanitizePuzzleEnumeration },
 });
 
 puzzleSchema.index({ difficulty: 1, isActive: 1 });

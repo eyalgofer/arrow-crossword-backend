@@ -7,7 +7,7 @@ export interface PuzzleItem {
   direction: Direction;
   clue: string;
   answer: string;
-  enumeration?: number[];
+  enumeration?: number[] | null;
   startRow: number;
   startCol: number;
 }

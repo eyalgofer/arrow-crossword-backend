@@ -68,10 +68,9 @@ export function generatePuzzleFromGrid(
     usedClues.add(clueText);
     usedAnswers.add(normalizedAnswer);
 
-    // Multi-word only. An empty [] is truthy on the client and renders "תפסנו ()".
     const wordParts = word.split(/\s+/).filter(Boolean);
     const enumeration =
-      wordParts.length > 1 ? wordParts.map(part => Array.from(part).length) : undefined;
+      wordParts.length > 1 ? wordParts.map(part => Array.from(part).length) : null;
 
     const clueNumber = puzzleItemNumber++;
     slotIdToClueNumber.set(slot.id, clueNumber);
@@ -80,7 +79,7 @@ export function generatePuzzleFromGrid(
       direction: slot.direction,
       clue: clueText,
       answer: wordParts.length > 1 ? wordParts.join(' ') : normalizedAnswer,
-      ...(enumeration ? { enumeration } : {}),
+      enumeration,
       startRow: slot.startRow,
       startCol: slot.startCol,
     });

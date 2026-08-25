@@ -28,7 +28,7 @@ export interface PuzzleItem {
   answer: string;
   startRow: number;
   startCol: number;
-  enumeration?: number[];
+  enumeration?: number[] | null;
 }
 
 export interface PuzzleGrid {
