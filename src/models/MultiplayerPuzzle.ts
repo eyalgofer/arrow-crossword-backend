@@ -3,7 +3,7 @@ import { Language } from '../types';
 
 export interface IMultiplayerPuzzle extends Document {
   puzzleId: mongoose.Types.ObjectId;
-  index: number; // 0-9 to identify which multiplayer puzzle this is
+  index: number; // 0-19 to identify which multiplayer puzzle this is
   language: Language;
   createdAt: Date;
   updatedAt: Date;
@@ -19,7 +19,7 @@ const multiplayerPuzzleSchema = new Schema<IMultiplayerPuzzle>({
     type: Number,
     required: true,
     min: 0,
-    max: 9
+    max: 19
   },
   language: {
     type: String,
