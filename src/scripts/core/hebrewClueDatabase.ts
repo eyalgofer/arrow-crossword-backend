@@ -5,9 +5,9 @@
 
 import { Difficulty } from '../../types';
 import { applyHebrewFinalForms } from './hebrewOrthography';
-import { HEBREW_ENTRIES_IMPORTED, RawHebrewEntry } from './hebrewClues';
+import { HEBREW_CLUES, RawHebrewEntry } from './hebrewClues';
 
-const HEBREW_ENTRIES: RawHebrewEntry[] = HEBREW_ENTRIES_IMPORTED;
+const HEBREW_ENTRIES: RawHebrewEntry[] = HEBREW_CLUES;
 
 /** Hebrew letters (includes final forms, which sit inside the א-ת range). */
 const HEBREW_ANSWER_PATTERN = /^[\u05D0-\u05EA]{2,11}$/;
@@ -53,25 +53,25 @@ function preferSpacedDisplay(current: string, incoming: string): string {
 let cached: Map<string, HebrewAnswerEntry> | null = null;
 
 function curatedClues(raw: RawHebrewEntry): string[] {
-  return (raw.c || []).map(c => c.trim()).filter(Boolean);
+  return (raw.clues || []).map(c => c.trim()).filter(Boolean);
 }
 
 function buildDatabase(): Map<string, HebrewAnswerEntry> {
   const entries = new Map<string, HebrewAnswerEntry>();
 
   HEBREW_ENTRIES.forEach((raw: RawHebrewEntry, index: number) => {
-    const answer = normalizeHebrewAnswer(raw.a);
+    const answer = normalizeHebrewAnswer(raw.answer);
 
     if (!HEBREW_ANSWER_PATTERN.test(answer)) {
       console.warn(
-        `⚠️  Hebrew clue database: skipping "${raw.a}" - grid answers must be ` +
+        `⚠️  Hebrew clue database: skipping "${raw.answer}" - grid answers must be ` +
         `${MIN_ANSWER_LENGTH}-${MAX_ANSWER_LENGTH} Hebrew letters after spaces are removed`
       );
       return;
     }
 
     const clues = curatedClues(raw);
-    const display = displayForm(raw.a);
+    const display = displayForm(raw.answer);
 
     if (entries.has(answer)) {
       const existing = entries.get(answer)!;
@@ -79,8 +79,8 @@ function buildDatabase(): Map<string, HebrewAnswerEntry> {
         if (!existing.clues.includes(clue)) existing.clues.push(clue);
       }
       existing.display = preferSpacedDisplay(existing.display, display);
-      if (raw.t !== undefined && raw.t > existing.tier) {
-        existing.tier = raw.t;
+      if (raw.difficulty !== undefined && raw.difficulty > existing.tier) {
+        existing.tier = raw.difficulty;
       }
       return;
     }
@@ -89,7 +89,7 @@ function buildDatabase(): Map<string, HebrewAnswerEntry> {
       return;
     }
 
-    const tier = raw.t ?? 1;
+    const tier = raw.difficulty ?? 1;
     const length = Array.from(answer).length;
     const lengthPenalty = length > 7 ? 140 : length < 4 ? 25 : 0;
     entries.set(answer, {

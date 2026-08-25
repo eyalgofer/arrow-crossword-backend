@@ -5,10 +5,8 @@ export function publicEnumeration(enumeration?: number[] | null): number[] | nul
 }
 
 export function withoutSingleWordEnumeration<T>(item: T): T {
-  const src =
-    item && typeof item === 'object' && typeof (item as { toObject?: () => unknown }).toObject === 'function'
-      ? (item as { toObject: () => Record<string, unknown> }).toObject()
-      : (item as Record<string, unknown>);
+  const maybeDoc = item as unknown as { toObject?: () => Record<string, unknown> };
+  const src = typeof maybeDoc.toObject === 'function' ? maybeDoc.toObject() : (item as Record<string, unknown>);
   const copy = { ...src };
   copy.enumeration = publicEnumeration(copy.enumeration as number[] | null | undefined);
   return copy as T;

@@ -90,11 +90,11 @@ const DEFAULT_CONFIG: Partial<GeneratorConfig> = {
     singleCoveredOpen: 200,
     doubleCoveredSameDirection: 600,
     // Table 3.1 - Word length penalties
-    // Length 2 is allowed (word pool is 2-11 letters).
+    // Length 2 is rejected until the pool has enough 2-letter answers to fill them.
     wordLength: {
       0: 1800,
       1: 1500,
-      2: 100,
+      2: 1800,
       3: 100,
       4: 10,
       5: 0,
@@ -602,8 +602,8 @@ function evaluateFitness(mask: Mask, config: GeneratorConfig): number {
     const defKey = `${word.definitionRow},${word.definitionCol}`;
     localPenalties.set(defKey, (localPenalties.get(defKey) ?? 0) + lengthPenalty);
 
-    // Validity constraint: words must have length >= 2 (word pool is 2-11 letters)
-    if (word.length < 2) {
+    // Validity constraint: 2-letter slots are unfillable with the current Hebrew pool
+    if (word.length < 3) {
       validityPenalty += 1000;
       localPenalties.set(defKey, (localPenalties.get(defKey) ?? 0) + 1000);
     }
@@ -1232,10 +1232,10 @@ function maskToGridTemplate(mask: Mask, name: string, difficulty: Difficulty): G
   const slots: ClueSlot[] = [];
   const clueCells: Array<{ row: number; col: number; direction: Direction }> = [];
 
-  // Create slots from words with length >= 2
+  // Create slots from words with length >= 3
   let slotIndex = 0;
   for (const word of words) {
-    if (word.length < 2) continue;
+    if (word.length < 3) continue;
 
     const direction = fieldTypeToDirection(word.definitionType);
     if (!direction) continue;
@@ -1395,28 +1395,23 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
   };
 
   // Adjust word length penalties based on difficulty
-  // IMPORTANT: Word list (synonyms.csv) has far more short words than 9+ letters. If templates
-  // create slots longer than 8, the solver often finds zero candidates and fails. So we heavily
-  // penalize slot length > 8 for easy/medium so grids of any size (e.g. 15x15) stay solvable.
   if (difficulty === 'easy') {
-    // Prefer shorter words (2-8 letters); strongly discourage 12+ so solver has enough words
+    // Prefer 3-10 letters so 10x10 boards can use long answers already in the pool.
     config.weights.wordLength = {
       ...config.weights.wordLength,
-      2: 50, 3: 50, 4: 0, 5: 0, 6: 20, 7: 100,
-      8: 50,
-      9: 5000, 10: 5000, 11: 5000, 12: 5000, 13: 5000, 14: 5000, 15: 5000
+      2: 1800, 3: 50, 4: 0, 5: 0, 6: 20, 7: 100,
+      8: 50, 9: 150, 10: 250,
+      11: 5000, 12: 5000, 13: 5000, 14: 5000, 15: 5000
     };
   } else if (difficulty === 'medium') {
-    // Allow up to 9 letters; discourage 10+ so large grids remain solvable
     config.weights.wordLength = {
       ...config.weights.wordLength,
-      9: 150, 10: 5000, 11: 5000, 12: 5000, 13: 5000, 14: 5000, 15: 5000
+      2: 1800, 9: 150, 10: 250, 11: 5000, 12: 5000, 13: 5000, 14: 5000, 15: 5000
     };
   } else if (difficulty === 'hard' || difficulty === 'expert') {
-    // Prefer longer words (5-8 letters)
     config.weights.wordLength = {
       ...config.weights.wordLength,
-      3: 200, 4: 100, 5: 0, 6: 0, 7: 0, 8: 0, 9: 100
+      2: 1800, 3: 200, 4: 100, 5: 0, 6: 0, 7: 0, 8: 0, 9: 100
     };
   }
 

@@ -117,13 +117,13 @@ export class PuzzleGenerator {
   ): Puzzle | null {
     const cells = rows * cols;
     const attempts = attemptOverride ?? (this.language === 'he'
-      ? (cells >= 144 ? 6 : cells >= 121 ? 8 : cells >= 100 ? 12 : 18)
+      ? (cells >= 144 ? 24 : cells >= 121 ? 20 : cells >= 100 ? 18 : 16)
       : 15);
 
     for (let attempt = 0; attempt < attempts; attempt++) {
       const template = this.buildTemplate(rows, cols);
       if (!template) continue;
-      if (template.slots.some(slot => slot.length > this.maxSlotLength || slot.length < 2)) {
+      if (template.slots.some(slot => slot.length > this.maxSlotLength || slot.length < 3)) {
         continue;
       }
       const puzzle = this.solveTemplate(template, meta);
@@ -148,7 +148,7 @@ export class PuzzleGenerator {
         weakBreakCondition: this.language === 'he' ? (large ? 220 : 150) : 80,
         strongBreakCondition: this.language === 'he' ? (large ? 550 : 400) : 250,
         maxSlotLength: this.maxSlotLength,
-        sparse: this.language === 'he' && cells >= 121,
+        sparse: this.language === 'he' && cells >= 81,
       });
     } catch {
       return null;
