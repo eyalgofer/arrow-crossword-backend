@@ -2,7 +2,9 @@
  * Generate 60 Hebrew 10x10 daily puzzles and assign them from today
  * through ~two months so the app can serve them by date.
  *
- * Usage: npx ts-node src/scripts/seedHebrewDailies60.ts
+ * Usage:
+ *   npx ts-node src/scripts/seedHebrewDailies60.ts
+ *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 1
  */
 
 import dotenv from 'dotenv';
@@ -16,7 +18,8 @@ import { connectToDatabase, closeDatabaseAndExit, handleScriptError } from './ut
 
 dotenv.config();
 
-const COUNT = 60;
+const countArgIndex = process.argv.indexOf('--count');
+const COUNT = countArgIndex !== -1 ? Number(process.argv[countArgIndex + 1]) : 60;
 const ROWS = 10;
 const COLS = 10;
 const CATEGORY = 'יומי';
@@ -80,6 +83,14 @@ const main = async () => {
         `   ${assignment.date.toLocaleDateString()} → ${saved.title} ` +
         `(${saved.grid.rows}x${saved.grid.cols}, ${saved.puzzleItems.length} clues)`
       );
+      if (COUNT === 1) {
+        console.log(`   puzzleId: ${saved._id}`);
+        for (const item of saved.puzzleItems) {
+          const enumeration = item.enumeration;
+          const enumLabel = enumeration && enumeration.length > 1 ? ` (${enumeration.join(',')})` : '';
+          console.log(`   ${item.number}. ${item.clue}${enumLabel} = ${item.answer}`);
+        }
+      }
     }
 
     console.log(`\n✅ Assigned ${savedIds.length}/${COUNT} Hebrew 10x10 dailies`);

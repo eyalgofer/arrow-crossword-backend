@@ -90,12 +90,11 @@ const DEFAULT_CONFIG: Partial<GeneratorConfig> = {
     singleCoveredOpen: 200,
     doubleCoveredSameDirection: 600,
     // Table 3.1 - Word length penalties
-    // Length 2 is penalized far above the thesis value (650) because the word
-    // pool contains no 2-letter answers; templates with 2-letter slots are unsolvable.
+    // Length 2 is allowed (word pool is 2-11 letters).
     wordLength: {
       0: 1800,
       1: 1500,
-      2: 1800,
+      2: 100,
       3: 100,
       4: 10,
       5: 0,
@@ -603,8 +602,8 @@ function evaluateFitness(mask: Mask, config: GeneratorConfig): number {
     const defKey = `${word.definitionRow},${word.definitionCol}`;
     localPenalties.set(defKey, (localPenalties.get(defKey) ?? 0) + lengthPenalty);
 
-    // Validity constraint: words must have length >= 3 (word pool has no shorter answers)
-    if (word.length < 3) {
+    // Validity constraint: words must have length >= 2 (word pool is 2-11 letters)
+    if (word.length < 2) {
       validityPenalty += 1000;
       localPenalties.set(defKey, (localPenalties.get(defKey) ?? 0) + 1000);
     }
@@ -1400,10 +1399,10 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
   // create slots longer than 8, the solver often finds zero candidates and fails. So we heavily
   // penalize slot length > 8 for easy/medium so grids of any size (e.g. 15x15) stay solvable.
   if (difficulty === 'easy') {
-    // Prefer shorter words (3-8 letters); strongly discourage 9+ so solver has enough words
+    // Prefer shorter words (2-8 letters); strongly discourage 12+ so solver has enough words
     config.weights.wordLength = {
       ...config.weights.wordLength,
-      3: 50, 4: 0, 5: 0, 6: 20, 7: 100,
+      2: 50, 3: 50, 4: 0, 5: 0, 6: 20, 7: 100,
       8: 50,
       9: 5000, 10: 5000, 11: 5000, 12: 5000, 13: 5000, 14: 5000, 15: 5000
     };

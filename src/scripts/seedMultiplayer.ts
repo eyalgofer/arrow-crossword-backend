@@ -11,7 +11,7 @@ dotenv.config();
 
 const MULTIPLAYER_GRID_ROWS = 8;
 const MULTIPLAYER_GRID_COLS = 8;
-const MULTIPLAYER_PUZZLE_COUNT = 10;
+const MULTIPLAYER_PUZZLE_COUNT = 20;
 
 // Usage: ts-node src/scripts/seedMultiplayer.ts [--lang he]
 const langArgIndex = process.argv.indexOf('--lang');

@@ -47,7 +47,9 @@ function printPuzzle(puzzle: Puzzle): void {
   console.log('');
   for (const item of puzzle.puzzleItems) {
     const dir = `${item.number}${ARROWS[item.direction]}`.padEnd(4);
-    console.log(`  ${dir} ${item.clue.padEnd(40)} = ${item.answer}`);
+    const enumeration = item.enumeration;
+    const enumLabel = enumeration && enumeration.length > 1 ? ` (${enumeration.join(',')})` : '';
+    console.log(`  ${dir} ${(item.clue + enumLabel).padEnd(42)} = ${item.answer}`);
   }
 }
 

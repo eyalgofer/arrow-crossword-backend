@@ -60,8 +60,8 @@ const ANSWER_BLACKLIST = new Set([
   'PUSSY', 'HELL', 'CRAP', 'SEXY', 'NAKED', 'BOOB', 'BOOBS', 'HORNY',
 ]);
 
-const MIN_ANSWER_LENGTH = 3;
-const MAX_ANSWER_LENGTH = 10;
+const MIN_ANSWER_LENGTH = 2;
+const MAX_ANSWER_LENGTH = 11;
 const MIN_CLUE_LENGTH = 3;
 const MAX_CLUE_LENGTH = 32;
 const MAX_CLUE_WORDS = 4;
@@ -77,7 +77,7 @@ const BAD_CLUE_PATTERN =
 const TRIVIA_CLUE_PATTERN =
   /\b(biblical|bible|goddess|god of|greek|roman|latin|hebrew|french|dutch|italian|spanish|german|chinese|asian|african|egyptian|norse|opera|shakespeare|eliot|dickens|twain|poe|hemingway|painter|poet|author|novelist|composer|pianist|sculptor|actress|actor|singer|athlete|baseball|nfl|nba|mtv|tv show|sitcom|soap opera|cartoon|comic strip|river|capital of|island of|city in|town in|duke of|queen of|king of|prince|princess|saint |st\.|mrs\.|miss |mr\.|dr\.|nickname|famous|title of|hero of|heroine|character in|role in|star of|born|died|nobel|olympian|fraternity|sorority|chem\.|phys\.|biol\.|anat\.|mus\.|poet\.|abbr)\b/i;
 
-const ANSWER_PATTERN = /^[A-Z]{3,10}$/;
+const ANSWER_PATTERN = /^[A-Z]{2,11}$/;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -111,7 +111,7 @@ let cached: Database | null = null;
  * Bump this whenever the filters/tuning above change so the on-disk cache
  * (.clueCache.json) is rebuilt from the raw CSVs.
  */
-const CACHE_VERSION = 3;
+const CACHE_VERSION = 4;
 const CACHE_FILE = '.clueCache.json';
 
 // ---------------------------------------------------------------------------
@@ -231,7 +231,7 @@ function buildDatabase(): Database {
 
   const wordRank = loadWordRanks();
 
-  // Candidate answers: common single words, 3-10 letters
+  // Candidate answers: common single words, 2-11 letters
   const maxRank = Math.max(...Object.values(MAX_ANSWER_RANK));
   const candidates = new Map<string, number>(); // ANSWER -> rank
   for (const [word, rank] of wordRank) {
@@ -410,10 +410,10 @@ function getDatabase(): Database {
 // ---------------------------------------------------------------------------
 
 /**
- * All answers usable for the given difficulty (uppercase, 3-10 letters,
+ * All answers usable for the given difficulty (uppercase, 2-11 letters,
  * each guaranteed to have at least one quality clue).
  *
- * Short words (3-4 letters) get a relaxed rank ceiling: templates need many
+ * Short words (2-4 letters) get a relaxed rank ceiling: templates need many
  * of them and short common words are easy to guess from crossings anyway.
  */
 export function getWordPool(difficulty: Difficulty): string[] {

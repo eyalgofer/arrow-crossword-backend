@@ -6,6 +6,7 @@ import { DailyPuzzle } from '../models/DailyPuzzle';
 import { User } from '../models/User';
 import { AuthRequest, ProgressSummary } from '../types';
 import { resolveLanguage, languageFilter } from '../utils/language';
+import { withoutSingleWordEnumeration } from '../utils/enumeration';
 
 export const getPuzzles = async (req: AuthRequest, res: Response) => {
   try {
@@ -50,14 +51,25 @@ export const getPuzzles = async (req: AuthRequest, res: Response) => {
         return orderA - orderB;
       });
 
-      return res.json({ puzzles });
+      return res.json({
+        puzzles: puzzles.map(puzzle => ({
+          ...puzzle,
+          puzzleItems: (puzzle.puzzleItems || []).map(item => withoutSingleWordEnumeration(item)),
+        })),
+      });
     }
 
     const puzzles = await Puzzle.find(query)
       .select('-clues.across.answer -clues.down.answer')
       .limit(parseInt(limit as string));
 
-    res.json({ puzzles });
+    res.json({
+      puzzles: puzzles.map(puzzle => {
+        const data = puzzle.toObject();
+        data.puzzleItems = (data.puzzleItems || []).map(item => withoutSingleWordEnumeration(item));
+        return data;
+      }),
+    });
   } catch (error) {
     console.error('Get puzzles error:', error);
     res.status(500).json({ error: 'Failed to get puzzles' });
@@ -95,12 +107,9 @@ export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
         return res.status(404).json({ error: 'No daily puzzle available' });
       }
 
-      const puzzleData = {
-        ...fallbackPuzzle.toObject(),
-        puzzleItems: fallbackPuzzle.puzzleItems,
-      };
-
-      return res.json({ puzzle: puzzleData });
+      const data = fallbackPuzzle.toObject();
+      data.puzzleItems = (data.puzzleItems || []).map(item => withoutSingleWordEnumeration(item));
+      return res.json({ puzzle: data });
     }
 
     const puzzle = dailyPuzzle.puzzleId as any;
@@ -108,15 +117,18 @@ export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Daily puzzle reference is invalid' });
     }
 
-    const puzzleData = {
-      ...puzzle.toObject(),
-      clues: puzzle.clues,
-      // Optionally include daily puzzle metadata
-      dailyPuzzleDate: dailyPuzzle.date,
-      dayOfYear: dailyPuzzle.dayOfYear
-    };
-
-    res.json({ puzzle: puzzleData });
+    const data = puzzle.toObject();
+    data.puzzleItems = (data.puzzleItems || []).map((item: { enumeration?: number[] }) =>
+      withoutSingleWordEnumeration(item)
+    );
+    res.json({
+      puzzle: {
+        ...data,
+        clues: puzzle.clues,
+        dailyPuzzleDate: dailyPuzzle.date,
+        dayOfYear: dailyPuzzle.dayOfYear,
+      },
+    });
   } catch (error) {
     console.error('Get daily puzzle error:', error);
     res.status(500).json({ error: 'Failed to get daily puzzle' });
@@ -149,12 +161,9 @@ export const getPuzzle = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Puzzle not found' });
     }
 
-    const puzzleData = {
-      ...puzzle.toObject(),
-      puzzleItems: puzzle.puzzleItems,
-    };
-
-    res.json({ puzzle: puzzleData });
+    const data = puzzle.toObject();
+        data.puzzleItems = (data.puzzleItems || []).map(item => withoutSingleWordEnumeration(item));
+    res.json({ puzzle: data });
   } catch (error) {
     console.error('Get puzzle error:', error);
     res.status(500).json({ error: 'Failed to get puzzle' });

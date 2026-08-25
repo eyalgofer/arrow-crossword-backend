@@ -17,6 +17,7 @@ import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
 import { generatePuzzleFromGrid } from './puzzle-assembler';
 import { GridSize, MAX_GRID_SIZE, sizeFallbackChain } from '../utils/gridSizes';
+import { normalizeWord } from './validation-utils';
 
 /** Minimum words of a given length before that slot size is considered fillable. */
 const MIN_WORDS_PER_LENGTH = 12;
@@ -41,9 +42,9 @@ export class PuzzleGenerator {
       );
     }
     this.maxSlotLength = maxFillableSlotLength(words);
-    // Hebrew has fewer long answers than English; 9+ slots still starve the solver.
+    // Hebrew has fewer long answers than English; keep slots inside 2-11.
     if (this.language === 'he') {
-      this.maxSlotLength = Math.min(this.maxSlotLength, 8);
+      this.maxSlotLength = Math.min(this.maxSlotLength, 11);
     }
     console.log(
       `🎯 Word pool for '${difficulty}' (${language}): ${words.length.toLocaleString()} words ` +
@@ -122,7 +123,7 @@ export class PuzzleGenerator {
     for (let attempt = 0; attempt < attempts; attempt++) {
       const template = this.buildTemplate(rows, cols);
       if (!template) continue;
-      if (template.slots.some(slot => slot.length > this.maxSlotLength || slot.length < 3)) {
+      if (template.slots.some(slot => slot.length > this.maxSlotLength || slot.length < 2)) {
         continue;
       }
       const puzzle = this.solveTemplate(template, meta);
@@ -203,9 +204,10 @@ export class PuzzleGenerator {
 function maxFillableSlotLength(words: string[]): number {
   const counts = new Map<number, number>();
   for (const word of words) {
-    counts.set(word.length, (counts.get(word.length) ?? 0) + 1);
+    const length = Array.from(normalizeWord(word)).length;
+    counts.set(length, (counts.get(length) ?? 0) + 1);
   }
-  let max = 3;
+  let max = 2;
   for (const [len, count] of counts) {
     if (count >= MIN_WORDS_PER_LENGTH && len > max) max = len;
   }

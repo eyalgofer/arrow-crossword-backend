@@ -15,7 +15,8 @@ const MAX_CLUE_LENGTH_BY_LANG: Record<string, number> = {
 };
 
 /**
- * Pick a clue for a word. Clues from the database are sorted best-first.
+ * Pick a clue for a word. Hebrew clues stay in curated file order;
+ * English clues are already sorted best-first in the CSV database.
  * Hebrew תשחץ cells only fit a short definition, so we keep that pool tight.
  */
 function pickClue(word: string, usedClues: Set<string>, provider: ClueProvider, language: Language): string {
@@ -67,8 +68,10 @@ export function generatePuzzleFromGrid(
     usedClues.add(clueText);
     usedAnswers.add(normalizedAnswer);
 
-    // Multi-word answers (e.g. "STAR WARS" -> [4, 4])
-    const enumeration = word.split(' ').map(w => w.length);
+    // Multi-word only. An empty [] is truthy on the client and renders "תפסנו ()".
+    const wordParts = word.split(/\s+/).filter(Boolean);
+    const enumeration =
+      wordParts.length > 1 ? wordParts.map(part => Array.from(part).length) : undefined;
 
     const clueNumber = puzzleItemNumber++;
     slotIdToClueNumber.set(slot.id, clueNumber);
@@ -76,8 +79,8 @@ export function generatePuzzleFromGrid(
       number: clueNumber,
       direction: slot.direction,
       clue: clueText,
-      answer: normalizedAnswer,
-      enumeration,
+      answer: wordParts.length > 1 ? wordParts.join(' ') : normalizedAnswer,
+      ...(enumeration ? { enumeration } : {}),
       startRow: slot.startRow,
       startCol: slot.startCol,
     });

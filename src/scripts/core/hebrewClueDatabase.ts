@@ -1,6 +1,6 @@
 /**
  * Hebrew clue database for the puzzle generator.
- * Vocab is walked letter/clue pairs from solved תשחץ images (hebrewClues.ts).
+ * Vocab is the hand-curated list in hebrewClues.ts — used as written.
  */
 
 import { Difficulty } from '../../types';
@@ -10,10 +10,10 @@ import { HEBREW_ENTRIES_IMPORTED, RawHebrewEntry } from './hebrewClues';
 const HEBREW_ENTRIES: RawHebrewEntry[] = HEBREW_ENTRIES_IMPORTED;
 
 /** Hebrew letters (includes final forms, which sit inside the א-ת range). */
-const HEBREW_ANSWER_PATTERN = /^[\u05D0-\u05EA]{3,10}$/;
+const HEBREW_ANSWER_PATTERN = /^[\u05D0-\u05EA]{2,11}$/;
 
-const MIN_ANSWER_LENGTH = 3;
-const MAX_ANSWER_LENGTH = 10;
+const MIN_ANSWER_LENGTH = 2;
+const MAX_ANSWER_LENGTH = 11;
 
 /** Max entry tier usable per difficulty (imported answers default to tier 1). */
 const MAX_TIER: Record<Difficulty, number> = {
@@ -33,47 +33,27 @@ export function normalizeHebrewAnswer(word: string): string {
 }
 
 interface HebrewAnswerEntry {
-  answer: string; // normalized, final letterforms applied
+  answer: string; // normalized, final letterforms applied (map key / grid)
+  display: string; // original from hebrewClues.ts, spaces preserved for (3,4)
   rank: number; // lower = more common (tier-weighted position)
   tier: number;
   clues: string[];
 }
 
+function displayForm(raw: string): string {
+  return raw.replace(/\s+/g, ' ').trim();
+}
+
+function preferSpacedDisplay(current: string, incoming: string): string {
+  const currentParts = current.split(' ').length;
+  const incomingParts = incoming.split(' ').length;
+  return incomingParts > currentParts ? incoming : current;
+}
+
 let cached: Map<string, HebrewAnswerEntry> | null = null;
 
-function hebrewLettersOnly(text: string): string {
-  return Array.from(text).filter(ch => ch >= '\u05D0' && ch <= '\u05EA').join('');
-}
-
-function isUsableClue(clue: string, answer: string): boolean {
-  if (!clue || !clue.trim()) return false;
-  const tokens = clue.split(/\s+/).filter(Boolean);
-  for (const token of tokens) {
-    const letters = hebrewLettersOnly(token);
-    if (letters && normalizeHebrewAnswer(letters) === answer) return false;
-  }
-  return true;
-}
-
-/** Higher = more like a real תשחץ cell clue. */
-function scoreClue(clue: string): number {
-  const words = clue.trim().split(/\s+/).filter(Boolean);
-  const len = clue.length;
-  let score = 10;
-  if (len >= 6 && len <= 22) score += 8;
-  else if (len <= 28) score += 4;
-  else if (len > 32) score -= 10;
-  if (words.length >= 2 && words.length <= 5) score += 5;
-  else if (words.length > 6) score -= 6;
-  if (/גם| או |\/|\?/.test(clue)) score += 6;
-  if (/פתגם|שחמט|מקרא|בירת|הפך|תרתי|סלנג/.test(clue)) score += 5;
-  if (/^יש ב/.test(clue) || /רהיט/.test(clue) || /מקום מגורים/.test(clue)) score -= 8;
-  if (/למשל$/.test(clue.trim())) score -= 2;
-  return score;
-}
-
-function sortClues(clues: string[]): string[] {
-  return [...clues].sort((a, b) => scoreClue(b) - scoreClue(a));
+function curatedClues(raw: RawHebrewEntry): string[] {
+  return (raw.c || []).map(c => c.trim()).filter(Boolean);
 }
 
 function buildDatabase(): Map<string, HebrewAnswerEntry> {
@@ -84,25 +64,23 @@ function buildDatabase(): Map<string, HebrewAnswerEntry> {
 
     if (!HEBREW_ANSWER_PATTERN.test(answer)) {
       console.warn(
-        `⚠️  Hebrew clue database: skipping "${raw.a}" - answers must be a single Hebrew word, ` +
-        `${MIN_ANSWER_LENGTH}-${MAX_ANSWER_LENGTH} letters`
+        `⚠️  Hebrew clue database: skipping "${raw.a}" - grid answers must be ` +
+        `${MIN_ANSWER_LENGTH}-${MAX_ANSWER_LENGTH} Hebrew letters after spaces are removed`
       );
       return;
     }
 
-    const clues = (raw.c || []).filter(c => isUsableClue(c, answer));
+    const clues = curatedClues(raw);
+    const display = displayForm(raw.a);
 
     if (entries.has(answer)) {
       const existing = entries.get(answer)!;
       for (const clue of clues) {
         if (!existing.clues.includes(clue)) existing.clues.push(clue);
       }
-      existing.clues = sortClues(existing.clues);
+      existing.display = preferSpacedDisplay(existing.display, display);
       if (raw.t !== undefined && raw.t > existing.tier) {
         existing.tier = raw.t;
-      }
-      if (raw.prefer) {
-        existing.rank = Math.max(1, existing.rank - 70);
       }
       return;
     }
@@ -113,13 +91,13 @@ function buildDatabase(): Map<string, HebrewAnswerEntry> {
 
     const tier = raw.t ?? 1;
     const length = Array.from(answer).length;
-    const preferBoost = raw.prefer ? -70 : 0;
     const lengthPenalty = length > 7 ? 140 : length < 4 ? 25 : 0;
     entries.set(answer, {
       answer,
-      rank: Math.max(1, (tier - 1) * 8000 + 80 + lengthPenalty + (index % 120) + preferBoost),
+      display,
+      rank: Math.max(1, (tier - 1) * 8000 + 80 + lengthPenalty + (index % 120)),
       tier,
-      clues: sortClues(clues),
+      clues,
     });
   });
 
@@ -138,18 +116,18 @@ function getDatabase(): Map<string, HebrewAnswerEntry> {
 // Public API (mirrors clueDatabase.ts)
 // ---------------------------------------------------------------------------
 
-/** All Hebrew answers usable for the given difficulty. */
+/** All Hebrew answers usable for the given difficulty (spaces preserved). */
 export function getWordPool(difficulty: Difficulty): string[] {
   const db = getDatabase();
   const maxTier = MAX_TIER[difficulty];
   const pool: string[] = [];
   for (const entry of db.values()) {
-    if (entry.tier <= maxTier) pool.push(entry.answer);
+    if (entry.tier <= maxTier) pool.push(entry.display);
   }
   return pool;
 }
 
-/** All clues for an answer, best-first. Returns [] for unknown answers. */
+/** All clues for an answer, in file order. Returns [] for unknown answers. */
 export function getCluesForWord(word: string): string[] {
   const db = getDatabase();
   const entry = db.get(normalizeHebrewAnswer(word));

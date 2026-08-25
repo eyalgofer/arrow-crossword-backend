@@ -28,9 +28,13 @@ export function buildCrossingIndex(words: string[]): CrossingIndex {
   for (const originalWord of words) {
     // Normalize: remove spaces for grid placement (e.g., "TONY HAWK" -> "TONYHAWK")
     const normalized = normalizeWord(originalWord);
-    
-    // Store mapping from normalized to original
-    originalWords.set(normalized, originalWord);
+
+    const alreadyIndexed = originalWords.has(normalized);
+    const existingOriginal = originalWords.get(normalized);
+    if (!existingOriginal || (originalWord.includes(' ') && !existingOriginal.includes(' '))) {
+      originalWords.set(normalized, originalWord);
+    }
+    if (alreadyIndexed) continue;
     
     // Index by normalized length (without spaces)
     if (!byLength.has(normalized.length)) {

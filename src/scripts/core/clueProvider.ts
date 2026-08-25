@@ -1,7 +1,7 @@
 /**
  * Language-aware access to the clue databases.
  * English is backed by the CSV corpus (clueDatabase.ts),
- * Hebrew by walked תשחץ pairs (hebrewClueDatabase.ts).
+ * Hebrew by the curated list in hebrewClues.ts (hebrewClueDatabase.ts).
  */
 
 import { Difficulty, Language } from '../../types';

@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { PuzzleGrid, Difficulty, PuzzleItem, Language } from '../types';
+import { publicEnumeration } from '../utils/enumeration';
 
 export interface IPuzzle extends Document {
   title: string;
@@ -16,6 +17,13 @@ export interface IPuzzle extends Document {
   updatedAt: Date;
 }
 
+function omitSingleWordEnumeration(_doc: unknown, ret: Record<string, unknown>) {
+  const enumeration = publicEnumeration(ret.enumeration as number[] | undefined);
+  if (enumeration) ret.enumeration = enumeration;
+  else delete ret.enumeration;
+  return ret;
+}
+
 const puzzleItemSchema = new Schema({
   number: { type: Number, required: true },
   direction: { type: String, enum: ['across', 'down', 'right-down', 'left-down', 'down-across', 'up-across'], required: true },
@@ -23,8 +31,12 @@ const puzzleItemSchema = new Schema({
   answer: { type: String, required: true },
   startRow: { type: Number, required: true },
   startCol: { type: Number, required: true },
-  enumeration: { type: [Number], required: true},
-}, { _id: false });
+  enumeration: { type: [Number], default: undefined },
+}, {
+  _id: false,
+  toJSON: { transform: omitSingleWordEnumeration },
+  toObject: { transform: omitSingleWordEnumeration },
+});
 
 const puzzleSchema = new Schema<IPuzzle>({
   title: {
