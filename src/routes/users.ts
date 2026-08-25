@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { updateProfile, getCoins, addCoins, spendCoins, searchByEmail, getReferralInfo, checkDisplayNameAvailable, setDisplayName } from '../controllers/userController';
+import { updateProfile, getCoins, addCoins, spendCoins, searchByNameOrEmail, getReferralInfo, checkDisplayNameAvailable, setDisplayName } from '../controllers/userController';
 import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
 router.get('/displayName/available', authenticateToken, checkDisplayNameAvailable);
 router.put('/displayName', authenticateToken, setDisplayName);
-router.get('/search', authenticateToken, searchByEmail);
+router.get('/search', authenticateToken, searchByNameOrEmail);
 router.put('/profile', authenticateToken, updateProfile);
 router.get('/coins', authenticateToken, getCoins);
 router.post('/coins/add', authenticateToken, addCoins);

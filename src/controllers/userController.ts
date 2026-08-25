@@ -158,7 +158,7 @@ export const spendCoins = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const searchByEmail = async (req: AuthRequest, res: Response) => {
+export const searchByNameOrEmail = async (req: AuthRequest, res: Response) => {
   try {
     const { email } = req.query;
 
@@ -169,9 +169,14 @@ export const searchByEmail = async (req: AuthRequest, res: Response) => {
     // Get the current user to exclude from search results
     const currentUser = await User.findOne({ firebaseUid: req.user!.uid });
 
-    // Search for users by email (case-insensitive partial match)
+    const escaped = email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // Match email or displayName (case-insensitive partial)
     const users = await User.find({
-      email: { $regex: email, $options: 'i' },
+      $or: [
+        { email: { $regex: escaped, $options: 'i' } },
+        { displayName: { $regex: escaped, $options: 'i' } },
+      ],
       ...(currentUser && { _id: { $ne: currentUser._id } }) // Exclude current user
     })
       .select('_id displayName email photoURL')
@@ -179,7 +184,7 @@ export const searchByEmail = async (req: AuthRequest, res: Response) => {
 
     res.json({ users });
   } catch (error) {
-    console.error('Search by email error:', error);
+    console.error('Search users error:', error);
     res.status(500).json({ error: 'Failed to search users' });
   }
 };

@@ -65,9 +65,9 @@ const packageDefinitionsByLanguage: Record<Language, Array<{
     },
     {
       name: 'אוסף תשחצים 2',
-      description: '20 תשחצים לפתרון',
+      description: '10 תשחצים לפתרון',
       theme: 'מעורב',
-      puzzleCount: 20,
+      puzzleCount: 10,
     },
     {
       name: 'אוסף תשחצים 3',
