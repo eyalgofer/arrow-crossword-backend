@@ -38,6 +38,10 @@ interface HebrewAnswerEntry {
   rank: number; // lower = more common (tier-weighted position)
   tier: number;
   clues: string[];
+  /** Explicit `difficulty: 1` in hebrewClues.ts (everyday vocab, not תשחץ trivia). */
+  easyVocab: boolean;
+  /** Clues that came from tagged difficulty-1 rows; shown first. */
+  easyClues: string[];
 }
 
 function displayForm(raw: string): string {
@@ -73,6 +77,8 @@ function buildDatabase(): Map<string, HebrewAnswerEntry> {
     const clues = curatedClues(raw);
     const display = displayForm(raw.answer);
 
+    const isEasyRow = raw.difficulty === 1;
+
     if (entries.has(answer)) {
       const existing = entries.get(answer)!;
       for (const clue of clues) {
@@ -81,6 +87,12 @@ function buildDatabase(): Map<string, HebrewAnswerEntry> {
       existing.display = preferSpacedDisplay(existing.display, display);
       if (raw.difficulty !== undefined && raw.difficulty > existing.tier) {
         existing.tier = raw.difficulty;
+      }
+      if (isEasyRow) {
+        existing.easyVocab = true;
+        for (const clue of clues) {
+          if (!existing.easyClues.includes(clue)) existing.easyClues.push(clue);
+        }
       }
       return;
     }
@@ -98,6 +110,8 @@ function buildDatabase(): Map<string, HebrewAnswerEntry> {
       rank: Math.max(1, (tier - 1) * 8000 + 80 + lengthPenalty + (index % 120)),
       tier,
       clues,
+      easyVocab: isEasyRow,
+      easyClues: isEasyRow ? [...clues] : [],
     });
   });
 
@@ -127,11 +141,21 @@ export function getWordPool(difficulty: Difficulty): string[] {
   return pool;
 }
 
-/** All clues for an answer, in file order. Returns [] for unknown answers. */
+/** All clues for an answer. Easy-vocab definitions come first so pickClue uses them. */
 export function getCluesForWord(word: string): string[] {
   const db = getDatabase();
   const entry = db.get(normalizeHebrewAnswer(word));
-  return entry ? entry.clues : [];
+  if (!entry) return [];
+  if (entry.easyClues.length === 0) return entry.clues;
+  const rest = entry.clues.filter(c => !entry.easyClues.includes(c));
+  return [...entry.easyClues, ...rest];
+}
+
+/** True when this answer was explicitly tagged difficulty 1 (everyday vocab). */
+export function isEasyVocab(word: string): boolean {
+  const db = getDatabase();
+  const entry = db.get(normalizeHebrewAnswer(word));
+  return entry?.easyVocab === true;
 }
 
 /** Rank of an answer (lower = more common); Infinity if unknown. */

@@ -16,7 +16,7 @@ export interface SolverConfig {
   /** Abort after this many ms so a single solve never hangs. */
   maxSolveTimeMs?: number;
   /** Higher score = tried first. Candidates are shuffled before scoring, so equal scores stay random. */
-  wordScorer?: (word: string) => number;
+  wordScorer?: (word: string, placedWords: string[]) => number;
   quiet?: boolean;
 }
 
@@ -112,7 +112,8 @@ export function solveGrid(
     let candidates = shuffleArray(selection.candidates);
     if (config.wordScorer) {
       const scorer = config.wordScorer;
-      candidates.sort((a, b) => scorer(b) - scorer(a));
+      const placed = Array.from(state.placedWords.values());
+      candidates.sort((a, b) => scorer(b, placed) - scorer(a, placed));
     }
 
     const newRemaining = remainingSlots.filter(s => s.id !== slot.id);

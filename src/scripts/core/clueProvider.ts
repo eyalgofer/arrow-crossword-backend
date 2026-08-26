@@ -12,6 +12,8 @@ export interface ClueProvider {
   getWordPool(difficulty: Difficulty): string[];
   getCluesForWord(word: string): string[];
   getAnswerRank(word: string): number;
+  /** True when the answer was explicitly tagged difficulty 1 (everyday Hebrew vocab). */
+  isEasyVocab?(word: string): boolean;
 }
 
 export function getClueProvider(language: Language): ClueProvider {

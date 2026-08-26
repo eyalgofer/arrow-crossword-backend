@@ -2,17 +2,21 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { Puzzle } from '../models/Puzzle';
 import { PuzzlePackage } from '../models/PuzzlePackage';
+import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { generatePuzzlesBatch } from './generators/puzzlesGenerator';
 import { Difficulty, Language } from '../types';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import { connectToDatabase, closeDatabaseAndExit, handleScriptError, filterValidPuzzles } from './utils/scriptUtils';
 import { mixSizes } from './utils/gridSizes';
+import { isEasyVocab } from './core/hebrewClueDatabase';
 
 dotenv.config();
 
-// Usage: ts-node src/scripts/seedPackages.ts [--lang he]
+// Usage: ts-node src/scripts/seedPackages.ts [--lang he] [--package 1]
 const langArgIndex = process.argv.indexOf('--lang');
 const language: Language = langArgIndex !== -1 && process.argv[langArgIndex + 1] === 'he' ? 'he' : 'en';
+const packageArgIndex = process.argv.indexOf('--package');
+const packageNumber = packageArgIndex !== -1 ? parseInt(process.argv[packageArgIndex + 1], 10) : null;
 
 // Gradient colors for packages
 const gradientPalette = [
@@ -41,6 +45,7 @@ const packageDefinitionsByLanguage: Record<Language, Array<{
   description: string;
   theme: string;
   puzzleCount: number;
+  puzzleMix?: Array<{ difficulty: Difficulty; count: number }>;
 }>> = {
   en: [
     {
@@ -62,6 +67,11 @@ const packageDefinitionsByLanguage: Record<Language, Array<{
       description: 'בואו נתחיל!',
       theme: 'מעורב',
       puzzleCount: 10,
+      puzzleMix: [
+        { difficulty: Difficulty.EASY, count: 6 },
+        { difficulty: Difficulty.MEDIUM, count: 3 },
+        { difficulty: Difficulty.HARD, count: 1 },
+      ],
     },
     {
       name: 'אוסף תשחצים 2',
@@ -144,9 +154,13 @@ async function ensureMongoConnection(): Promise<void> {
   await connectToDatabase();
 }
 
-function getDifficultyDistribution(puzzleCount: number): Array<{ difficulty: Difficulty; count: number }> {
-  const easy = Math.round(puzzleCount * 0.6);
-  const medium = Math.round(puzzleCount * 0.4);
+function getDifficultyDistribution(
+  def: { puzzleCount: number; puzzleMix?: Array<{ difficulty: Difficulty; count: number }> }
+): Array<{ difficulty: Difficulty; count: number }> {
+  if (def.puzzleMix) return def.puzzleMix.filter(d => d.count > 0);
+
+  const easy = Math.round(def.puzzleCount * 0.6);
+  const medium = Math.round(def.puzzleCount * 0.4);
   
   const distribution = [
     { difficulty: Difficulty.EASY, count: easy },
@@ -155,7 +169,7 @@ function getDifficultyDistribution(puzzleCount: number): Array<{ difficulty: Dif
   
   // Adjust for rounding errors
   const total = easy + medium;
-  const diff = puzzleCount - total;
+  const diff = def.puzzleCount - total;
   if (diff !== 0) {
     distribution[0].count += diff;
   }
@@ -166,21 +180,31 @@ function getDifficultyDistribution(puzzleCount: number): Array<{ difficulty: Dif
 const seedPackages = async () => {
   try {
     await connectToDatabase();
-    console.log(`📦 Creating ${packageDefinitions.length} packages (${language}) with difficulty distribution...\n`);
+    if (packageNumber !== null) {
+      if (!Number.isInteger(packageNumber) || packageNumber < 1 || packageNumber > packageDefinitions.length) {
+        throw new Error(`--package must be 1..${packageDefinitions.length} for ${language}`);
+      }
+      console.log(`📦 Replacing package ${packageNumber} (${language}) only\n`);
+    } else {
+      console.log(`📦 Creating ${packageDefinitions.length} packages (${language}) with difficulty distribution...\n`);
+    }
 
     let globalPuzzleIndex = 1;
     
     for (let i = 0; i < packageDefinitions.length; i++) {
+      if (packageNumber !== null && i !== packageNumber - 1) continue;
+
       await ensureMongoConnection();
       const def = packageDefinitions[i];
       const existing = await PuzzlePackage.findOne({ name: def.name, language });
-      if (existing) {
+      const replacing = packageNumber !== null && !!existing;
+      if (existing && !replacing) {
         console.log(`\n📦 Skipping ${def.name} — already exists (${existing.puzzleCount} puzzles)`);
         continue;
       }
-      const difficultyDistribution = getDifficultyDistribution(def.puzzleCount);
+      const difficultyDistribution = getDifficultyDistribution(def);
       
-      console.log(`\n📦 Creating ${def.name} (${def.puzzleCount} puzzles)...`);
+      console.log(`\n📦 ${replacing ? 'Replacing' : 'Creating'} ${def.name} (${def.puzzleCount} puzzles)...`);
       
       const generatedPuzzles: any[] = [];
       const packageSizes = language === 'he' ? mixSizes(def.puzzleCount) : undefined;
@@ -218,6 +242,12 @@ const seedPackages = async () => {
       
       // Save puzzles to database (reconnect first — generation can idle Atlas)
       await ensureMongoConnection();
+
+      if (replacing && existing) {
+        await UserPuzzleProgress.deleteMany({ puzzleId: { $in: existing.puzzleIds } });
+        await Puzzle.deleteMany({ _id: { $in: existing.puzzleIds } });
+      }
+
       const savedPuzzles = await Puzzle.insertMany(generatedPuzzles);
       const puzzleIds = savedPuzzles.map(p => p._id as mongoose.Types.ObjectId);
       
@@ -227,25 +257,37 @@ const seedPackages = async () => {
         .join(', ');
       console.log(`   ✅ Generated ${generatedPuzzles.length}/${def.puzzleCount} puzzles (${difficultyBreakdown})`);
 
-      // Create package
-      const newPackage = new PuzzlePackage({
-        name: def.name,
-        description: def.description,
-        theme: def.theme,
-        language,
-        puzzleCount: puzzleIds.length,
-        puzzleIds,
-        order: i,
-        iconName: def.iconName,
-        gradientColors: def.gradientColors
-      });
-      await newPackage.save();
+      let packageId: mongoose.Types.ObjectId;
+      if (replacing && existing) {
+        existing.description = def.description;
+        existing.theme = def.theme;
+        existing.puzzleCount = puzzleIds.length;
+        existing.puzzleIds = puzzleIds;
+        existing.iconName = def.iconName;
+        existing.gradientColors = def.gradientColors as [string, string];
+        await existing.save();
+        packageId = existing._id as mongoose.Types.ObjectId;
+      } else {
+        const newPackage = new PuzzlePackage({
+          name: def.name,
+          description: def.description,
+          theme: def.theme,
+          language,
+          puzzleCount: puzzleIds.length,
+          puzzleIds,
+          order: i,
+          iconName: def.iconName,
+          gradientColors: def.gradientColors
+        });
+        await newPackage.save();
+        packageId = newPackage._id as mongoose.Types.ObjectId;
+      }
       
       // Update puzzles with packageId and renumber titles
       await Promise.all(puzzleIds.map((id, j) =>
         Puzzle.updateOne(
           { _id: id },
-          { $set: { packageId: newPackage._id, title: puzzleTitle(j + 1) } }
+          { $set: { packageId, title: puzzleTitle(j + 1) } }
         )
       ));
     }
@@ -271,6 +313,15 @@ const seedPackages = async () => {
         .join(', ');
       
       console.log(`   ${pkg.order}. ${pkg.name.padEnd(20)} | ${String(pkg.puzzleCount).padStart(2)} puzzles | ${difficultyStr}`);
+      if (language === 'he') {
+        const ordered = [...puzzles].sort((a, b) => String(a.title).localeCompare(String(b.title), 'he', { numeric: true }));
+        for (const p of ordered) {
+          const items = p.puzzleItems || [];
+          const easy = items.filter(item => isEasyVocab(item.answer)).length;
+          const pct = items.length === 0 ? 0 : Math.round((100 * easy) / items.length);
+          console.log(`      ${p.title} (${p.difficulty}): ${easy}/${items.length} tagged-easy clues (${pct}%)`);
+        }
+      }
     }
     
     console.log('='.repeat(60));

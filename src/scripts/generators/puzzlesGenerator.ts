@@ -19,6 +19,24 @@ import { generatePuzzleFromGrid } from './puzzle-assembler';
 import { GridSize, MAX_GRID_SIZE, sizeFallbackChain } from '../utils/gridSizes';
 import { normalizeWord } from './validation-utils';
 
+/** Share of answers that should come from tagged difficulty-1 (everyday) Hebrew vocab. */
+const EASY_VOCAB_TARGET: Record<Difficulty, number> = {
+  [Difficulty.EASY]: 0.5,
+  [Difficulty.MEDIUM]: 0.3,
+  [Difficulty.CHALLENGING]: 0.1,
+  [Difficulty.HARD]: 0.1,
+  [Difficulty.EXPERT]: 0.1,
+};
+
+/** Accept a fill if |ratio - target| is within this window. */
+const EASY_VOCAB_TOLERANCE: Record<Difficulty, number> = {
+  [Difficulty.EASY]: 0.15,
+  [Difficulty.MEDIUM]: 0.12,
+  [Difficulty.CHALLENGING]: 0.1,
+  [Difficulty.HARD]: 0.1,
+  [Difficulty.EXPERT]: 0.1,
+};
+
 /** Minimum words of a given length before that slot size is considered fillable. */
 const MIN_WORDS_PER_LENGTH = 12;
 
@@ -96,9 +114,10 @@ export class PuzzleGenerator {
 
       if (generated) {
         puzzles.push(generated);
+        const mix = this.easyVocabMixLabel(generated);
         console.log(
           `✅ Puzzle ${puzzles.length}/${config.count}: ${generated.puzzleItems.length} clues ` +
-          `(${generated.grid.rows}x${generated.grid.cols})`
+          `(${generated.grid.rows}x${generated.grid.cols}${mix})`
         );
       }
     }
@@ -120,6 +139,12 @@ export class PuzzleGenerator {
       ? (cells >= 144 ? 24 : cells >= 121 ? 20 : cells >= 100 ? 18 : 16)
       : 15);
 
+    const useMix = this.language === 'he' && !!this.clueProvider.isEasyVocab;
+    const target = EASY_VOCAB_TARGET[this.difficulty];
+    const tolerance = EASY_VOCAB_TOLERANCE[this.difficulty];
+    let best: Puzzle | null = null;
+    let bestError = Infinity;
+
     for (let attempt = 0; attempt < attempts; attempt++) {
       const template = this.buildTemplate(rows, cols);
       if (!template) continue;
@@ -127,9 +152,32 @@ export class PuzzleGenerator {
         continue;
       }
       const puzzle = this.solveTemplate(template, meta);
-      if (puzzle) return puzzle;
+      if (!puzzle) continue;
+      if (!useMix) return puzzle;
+
+      const error = Math.abs(this.easyVocabRatio(puzzle) - target);
+      if (error < bestError) {
+        best = puzzle;
+        bestError = error;
+      }
+      if (error <= tolerance) return puzzle;
     }
-    return null;
+    return best;
+  }
+
+  private easyVocabRatio(puzzle: Puzzle): number {
+    const items = puzzle.puzzleItems;
+    if (items.length === 0 || !this.clueProvider.isEasyVocab) return 0;
+    const easy = items.filter(item => this.clueProvider.isEasyVocab!(item.answer)).length;
+    return easy / items.length;
+  }
+
+  private easyVocabMixLabel(puzzle: Puzzle): string {
+    if (this.language !== 'he' || !this.clueProvider.isEasyVocab) return '';
+    const items = puzzle.puzzleItems;
+    const easy = items.filter(item => this.clueProvider.isEasyVocab!(item.answer)).length;
+    const pct = items.length === 0 ? 0 : Math.round((100 * easy) / items.length);
+    return `, ${easy}/${items.length} easy-vocab ${pct}%`;
   }
 
   private buildTemplate(rows: number, cols: number): GridTemplate | null {
@@ -165,15 +213,26 @@ export class PuzzleGenerator {
     const maxSolveTimeMs = ((this.language === 'he' ? 16 : 12) * 1000) + cells * 50;
 
     // Prefer more common words so grids feel familiar; jitter keeps puzzles varied.
+    // Hebrew also steers toward a target share of tagged difficulty-1 (everyday) answers.
     const jitter = new Map<string, number>();
-    const wordScorer = (word: string) => {
+    const target = EASY_VOCAB_TARGET[this.difficulty];
+    const isEasy = (w: string) => this.clueProvider.isEasyVocab?.(w) === true;
+    const wordScorer = (word: string, placedWords: string[]) => {
       let j = jitter.get(word);
       if (j === undefined) {
         j = Math.random();
         jitter.set(word, j);
       }
       const rank = this.clueProvider.getAnswerRank(word);
-      return -Math.log(rank) + j;
+      const rankScore = -Math.log(Math.max(rank, 1)) + j;
+      if (this.language !== 'he' || !this.clueProvider.isEasyVocab) return rankScore;
+
+      const n = placedWords.length;
+      const placedEasy = placedWords.filter(isEasy).length;
+      const currentErr = n === 0 ? 0 : Math.abs(placedEasy / n - target);
+      const nextEasy = placedEasy + (isEasy(word) ? 1 : 0);
+      const nextErr = Math.abs(nextEasy / (n + 1) - target);
+      return rankScore + (currentErr - nextErr) * 12;
     };
 
     const result = solveGrid(template, this.wordIndex, {
