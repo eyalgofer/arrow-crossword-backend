@@ -131,7 +131,7 @@ const packageDefinitionsByLanguage: Record<Language, Array<{
 };
 
 const MISC_CATEGORY = language === 'he' ? 'כללי' : 'Misc';
-const puzzleTitle = (index: number) => language === 'he' ? `תשבץ #${index}` : `Puzzle #${index}`;
+const puzzleTitle = (index: number) => language === 'he' ? `#${index}` : `Puzzle #${index}`;
 
 const packageDefinitions = packageDefinitionsByLanguage[language].map((def, index) => ({
   ...def,

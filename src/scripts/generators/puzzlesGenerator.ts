@@ -290,8 +290,8 @@ export function generatePuzzlesBatch(config: {
     count: config.count,
     category: config.category,
     getTitle: (i) => language === 'he'
-      ? `תשבץ ${config.startIndex + i}`
-      : `Puzzle ${config.startIndex + i}`,
+      ? `${config.startIndex + i}`
+      : `${config.startIndex + i}`,
     rows: config.rows,
     cols: config.cols,
     sizes: config.sizes,
