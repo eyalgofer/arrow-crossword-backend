@@ -5139,4 +5139,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "תשמיד", clues: ["תחסל"]},
   { answer: "תשר", clues: ["טיפ"]},
   { answer: "תת תזונה", clues: ["מצב רפואי הנובע מרעב ממושך"]},
+  // TODO: add easy clues here - make generating script mix more easy clues, than play aroaund with puzzles until they get easy enough
+  { answer: "אבא", clues: ["מבני המשפחה"], difficulty: 1},
+  
 ];
