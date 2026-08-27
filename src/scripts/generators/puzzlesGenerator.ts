@@ -40,14 +40,25 @@ const EASY_VOCAB_TOLERANCE: Record<Difficulty, number> = {
 /** Minimum words of a given length before that slot size is considered fillable. */
 const MIN_WORDS_PER_LENGTH = 12;
 
+export interface EasyVocabRange {
+  min: number;
+  max: number;
+}
+
 export class PuzzleGenerator {
   private wordIndex: CrossingIndex;
   private difficulty: Difficulty;
   private language: Language;
   private clueProvider: ClueProvider;
   private maxSlotLength: number;
+  private easyVocabTarget: number;
+  private easyVocabTolerance: number;
 
-  constructor(difficulty: Difficulty = Difficulty.MEDIUM, language: Language = 'en') {
+  constructor(
+    difficulty: Difficulty = Difficulty.MEDIUM,
+    language: Language = 'en',
+    options?: { easyVocabRange?: EasyVocabRange }
+  ) {
     this.difficulty = difficulty;
     this.language = language;
     this.clueProvider = getClueProvider(language);
@@ -63,6 +74,14 @@ export class PuzzleGenerator {
     // Hebrew has fewer long answers than English; keep slots inside 2-11.
     if (this.language === 'he') {
       this.maxSlotLength = Math.min(this.maxSlotLength, 11);
+    }
+    if (options?.easyVocabRange) {
+      const { min, max } = options.easyVocabRange;
+      this.easyVocabTarget = (min + max) / 2;
+      this.easyVocabTolerance = (max - min) / 2;
+    } else {
+      this.easyVocabTarget = EASY_VOCAB_TARGET[difficulty];
+      this.easyVocabTolerance = EASY_VOCAB_TOLERANCE[difficulty];
     }
     console.log(
       `🎯 Word pool for '${difficulty}' (${language}): ${words.length.toLocaleString()} words ` +
@@ -140,8 +159,8 @@ export class PuzzleGenerator {
       : 15);
 
     const useMix = this.language === 'he' && !!this.clueProvider.isEasyVocab;
-    const target = EASY_VOCAB_TARGET[this.difficulty];
-    const tolerance = EASY_VOCAB_TOLERANCE[this.difficulty];
+    const target = this.easyVocabTarget;
+    const tolerance = this.easyVocabTolerance;
     let best: Puzzle | null = null;
     let bestError = Infinity;
 
@@ -215,7 +234,7 @@ export class PuzzleGenerator {
     // Prefer more common words so grids feel familiar; jitter keeps puzzles varied.
     // Hebrew also steers toward a target share of tagged difficulty-1 (everyday) answers.
     const jitter = new Map<string, number>();
-    const target = EASY_VOCAB_TARGET[this.difficulty];
+    const target = this.easyVocabTarget;
     const isEasy = (w: string) => this.clueProvider.isEasyVocab?.(w) === true;
     const wordScorer = (word: string, placedWords: string[]) => {
       let j = jitter.get(word);

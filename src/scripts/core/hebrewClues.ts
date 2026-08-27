@@ -6226,7 +6226,7 @@ const HEBREW_EASY_CLUES: RawHebrewEntry[] = [
   { answer: "אי", clues: ["אדמה מוקפת מים"], difficulty: 1},
   { answer: "תריסר", clues: ["שתיים עשרה"], difficulty: 1},
   { answer: "מיליארד", clues: ["אלף מיליון"], difficulty: 1},
-  { answer: "לבשה", clues: ["שמה עליה בגד"], difficulty: 1},,
+  { answer: "לבשה", clues: ["שמה עליה בגד"], difficulty: 1},
   { answer: "רקדה", clues: ["זזה לפי מוזיקה"], difficulty: 1},
   { answer: "צחקה", clues: ["הביעה שמחה בקול"], difficulty: 1},
   { answer: "קנבס", clues: ["בד שציירים מציירים עליו"], difficulty: 1},

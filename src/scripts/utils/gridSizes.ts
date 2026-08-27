@@ -17,7 +17,7 @@ export const HEBREW_GRID_SIZE_MIX: GridSize[] = [
   { rows: 10, cols: 12 },
   { rows: 11, cols: 11 },
   { rows: 8, cols: 9 },
-  { rows: 12, cols: 12 },
+  { rows: 10, cols: 10 },
 ];
 
 export function mixSizes(count: number, mix: GridSize[] = HEBREW_GRID_SIZE_MIX): GridSize[] {

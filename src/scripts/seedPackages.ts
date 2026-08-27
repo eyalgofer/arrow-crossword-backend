@@ -214,8 +214,12 @@ const seedPackages = async () => {
       for (const { difficulty, count } of difficultyDistribution) {
         if (count === 0) continue;
         console.log(`   Generating ${count} ${difficulty} puzzle(s)...`);
-        const sizes = packageSizes?.slice(sizeOffset, sizeOffset + count);
+        let sizes = packageSizes?.slice(sizeOffset, sizeOffset + count);
         sizeOffset += count;
+        // Hard Hebrew fills stall on 12×12; keep those grids at 10×10.
+        if (language === 'he' && difficulty === Difficulty.HARD && sizes) {
+          sizes = sizes.map(() => ({ rows: 10, cols: 10 }));
+        }
         const batch = generatePuzzlesBatch({
           difficulty,
           count,
