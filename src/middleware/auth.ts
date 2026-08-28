@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { isAccessTokenExpiredError, verifyAccessToken } from '../services/authTokens';
 
 export interface AuthRequest extends Request {
   userId?: string;
@@ -17,15 +17,18 @@ export function authenticateToken(
   const token = authHeader?.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
-    return res.status(401).json({ error: 'No token provided' });
+    return res.status(401).json({ error: 'No token provided', code: 'NO_TOKEN' });
   }
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+    const payload = verifyAccessToken(token);
     req.userId = payload.userId;
     req.user = { uid: payload.userId };
     next();
   } catch (error) {
-    return res.status(401).json({ error: 'Invalid token' });
+    if (isAccessTokenExpiredError(error)) {
+      return res.status(401).json({ error: 'Token expired', code: 'TOKEN_EXPIRED' });
+    }
+    return res.status(401).json({ error: 'Invalid token', code: 'INVALID_TOKEN' });
   }
 }

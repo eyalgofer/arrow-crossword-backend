@@ -98,6 +98,9 @@ app.use('/api/auth', (req, res, next) => {
     if (bodyCopy.idToken) {
       bodyCopy.idToken = bodyCopy.idToken.substring(0, 20) + '...';
     }
+    if (bodyCopy.refreshToken) {
+      bodyCopy.refreshToken = bodyCopy.refreshToken.substring(0, 8) + '...';
+    }
     console.log('   Body:', JSON.stringify(bodyCopy, null, 2));
   }
   next();

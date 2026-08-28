@@ -1,7 +1,12 @@
 import { Router, Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
 import { verifyGoogleToken } from '../services/google';
 import { verifyAppleToken } from '../services/apple';
+import {
+  AuthTokenError,
+  issueAuthTokens,
+  rotateRefreshToken,
+  revokeAllRefreshTokens
+} from '../services/authTokens';
 import { User } from '../models/User';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
@@ -10,23 +15,24 @@ import { Invite } from '../models/Invite';
 
 const router = Router();
 
-function authPayload(user: InstanceType<typeof User>, isNewUser: boolean) {
+function userPayload(user: InstanceType<typeof User>) {
   const displayName = user.displayName ?? null;
   return {
-    token: jwt.sign(
-      { userId: user.firebaseUid },
-      process.env.JWT_SECRET!,
-      { expiresIn: '7d' }
-    ),
+    id: user.firebaseUid,
+    email: user.email,
+    name: displayName,
+    displayName,
+    avatar: user.photoURL,
+    coins: user.coins,
+  };
+}
+
+async function authPayload(user: InstanceType<typeof User>, isNewUser: boolean) {
+  const { userId: _userId, ...tokens } = await issueAuthTokens(user.firebaseUid);
+  return {
+    ...tokens,
     isNewUser,
-    user: {
-      id: user.firebaseUid,
-      email: user.email,
-      name: displayName,
-      displayName,
-      avatar: user.photoURL,
-      coins: user.coins,
-    },
+    user: userPayload(user),
   };
 }
 
@@ -67,7 +73,7 @@ router.post('/google', async (req: Request, res: Response) => {
       });
       await user.save();
       console.log('Created new user:', user.email);
-      return res.json(authPayload(user, true));
+      return res.json(await authPayload(user, true));
     }
 
     // Existing accounts keep their displayName (chosen nickname or original name).
@@ -77,7 +83,7 @@ router.post('/google', async (req: Request, res: Response) => {
     await user.save();
     console.log('Existing user signed in:', user.email);
 
-    res.json(authPayload(user, false));
+    res.json(await authPayload(user, false));
   } catch (error: any) {
     console.error('❌ Google auth error:', error?.message || error);
     console.error('   Full error:', JSON.stringify(error, null, 2));
@@ -141,13 +147,13 @@ router.post('/apple', async (req: Request, res: Response) => {
       });
       await user.save();
       console.log('Created new Apple user:', user.email);
-      return res.json(authPayload(user, true));
+      return res.json(await authPayload(user, true));
     }
 
     await user.save();
     console.log('Existing Apple user signed in:', user.email);
 
-    res.json(authPayload(user, false));
+    res.json(await authPayload(user, false));
   } catch (error: any) {
     console.error('❌ Apple auth error:', error?.message || error);
     console.error('   Full error:', JSON.stringify(error, null, 2));
@@ -165,6 +171,48 @@ router.post('/apple', async (req: Request, res: Response) => {
   }
 });
 
+router.post('/refresh', async (req: Request, res: Response) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken || typeof refreshToken !== 'string') {
+      return res.status(400).json({
+        error: 'refreshToken is required',
+        code: 'REFRESH_TOKEN_REQUIRED'
+      });
+    }
+
+    const tokens = await rotateRefreshToken(refreshToken);
+    const user = await User.findOne({ firebaseUid: tokens.userId });
+
+    if (!user) {
+      await revokeAllRefreshTokens(tokens.userId);
+      return res.status(401).json({
+        error: 'User not found',
+        code: 'USER_NOT_FOUND'
+      });
+    }
+
+    const { userId: _userId, ...authTokens } = tokens;
+    res.json({
+      ...authTokens,
+      user: userPayload(user),
+    });
+  } catch (error: any) {
+    if (error instanceof AuthTokenError) {
+      return res.status(401).json({
+        error: error.message,
+        code: error.code
+      });
+    }
+
+    console.error('❌ Refresh token error:', error?.message || error);
+    res.status(401).json({
+      error: 'Failed to refresh token',
+      code: 'INVALID_REFRESH_TOKEN'
+    });
+  }
+});
 
 router.delete('/delete-account', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
@@ -185,24 +233,20 @@ router.delete('/delete-account', authenticateToken, async (req: AuthRequest, res
 
     // Delete all associated data in parallel for better performance
     await Promise.all([
-      // Delete all puzzle progress for this user
       UserPuzzleProgress.deleteMany({ userId: userObjectId }),
-      
-      // Delete all matches where user is a player or winner
       Match.deleteMany({
         $or: [
           { 'players.userId': userObjectId },
           { winnerId: userObjectId }
         ]
       }),
-      
-      // Delete all invites where user is sender or recipient
       Invite.deleteMany({
         $or: [
           { from: userObjectId },
           { to: userObjectId }
         ]
-      })
+      }),
+      revokeAllRefreshTokens(userId)
     ]);
 
     // Finally, delete the user account itself

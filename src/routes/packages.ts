@@ -8,9 +8,8 @@ import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
-// Get all packages
-router.get('/', authenticateToken, getPackages);
+router.get('/', getPackages);
 router.get('/progress', authenticateToken, getPackagesProgress);
-router.get('/:packageId', authenticateToken, getPackage);
+router.get('/:packageId', getPackage);
 
 export default router;

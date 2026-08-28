@@ -1,6 +1,6 @@
 import { Server, Socket } from 'socket.io';
-import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
+import { isAccessTokenExpiredError, verifyAccessToken } from '../services/authTokens';
 import { User } from '../models/User';
 import { Match } from '../models/Match';
 import { Puzzle } from '../models/Puzzle';
@@ -40,8 +40,7 @@ export const setupSocketHandlers = (io: Server) => {
         return next(new Error('Authentication error: No token provided'));
       }
 
-      // Verify JWT token (same as REST API)
-      const payload = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+      const payload = verifyAccessToken(token);
       socket.userId = payload.userId; // This is the firebaseUid
       const auth = socket.handshake.auth as { language?: string; country?: string };
       const headers = socket.handshake.headers;
@@ -55,6 +54,9 @@ export const setupSocketHandlers = (io: Server) => {
       next();
     } catch (error) {
       console.error('Socket authentication error:', error);
+      if (isAccessTokenExpiredError(error)) {
+        return next(new Error('Authentication error: Token expired'));
+      }
       next(new Error('Authentication error: Invalid token'));
     }
   });
