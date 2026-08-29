@@ -3,6 +3,7 @@ import {
   getPuzzles, 
   getPuzzle, 
   getDailyPuzzle,
+  getDailyPuzzleSolvedCount,
   getRandomPuzzle,
   saveProgress, 
   getProgress,
@@ -17,6 +18,7 @@ const router = Router();
 
 router.get('/', authenticateToken, getPuzzles);
 router.get('/daily', authenticateToken, getDailyPuzzle);
+router.get('/daily/solved-count', authenticateToken, getDailyPuzzleSolvedCount);
 router.get('/random', authenticateToken, getRandomPuzzle); 
 router.get('/progress', authenticateToken, getAllProgress);
 router.get('/:id', authenticateToken, getPuzzle);

@@ -19,7 +19,7 @@ const language: Language = langArgIndex !== -1 && process.argv[langArgIndex + 1]
 
 const MULTIPLAYER_CATEGORY = language === 'he' ? 'רב־משתתפים' : 'Multiplayer';
 const multiplayerTitle = (index: number) =>
-  language === 'he' ? `תשבץ קרב ${index + 1}` : `Multiplayer Puzzle ${index + 1}`;
+  language === 'he' ? `תשחץ קרב ${index + 1}` : `Multiplayer Puzzle ${index + 1}`;
 
 const seedMultiplayer = async () => {
   try {

@@ -7,6 +7,7 @@ import { User } from '../models/User';
 import { AuthRequest, ProgressSummary } from '../types';
 import { resolveLanguage, languageFilter } from '../utils/language';
 import { withoutSingleWordEnumeration } from '../utils/enumeration';
+import { getDayOfYear } from '../utils/dailyPuzzleUtils';
 
 export const getPuzzles = async (req: AuthRequest, res: Response) => {
   try {
@@ -132,6 +133,38 @@ export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Get daily puzzle error:', error);
     res.status(500).json({ error: 'Failed to get daily puzzle' });
+  }
+};
+
+/**
+ * GET /api/puzzles/daily/solved-count
+ * How many distinct players have completed today's daily puzzle
+ * (the assignment for the request language).
+ */
+export const getDailyPuzzleSolvedCount = async (req: AuthRequest, res: Response) => {
+  try {
+    const now = new Date();
+    const language = resolveLanguage(req);
+
+    const dailyPuzzle = await DailyPuzzle.findOne({
+      dayOfYear: getDayOfYear(now),
+      year: now.getFullYear(),
+      language: languageFilter(language),
+    }).select('puzzleId').lean();
+
+    if (!dailyPuzzle) {
+      return res.json({ solvedCount: 0 });
+    }
+
+    const solvedCount = await UserPuzzleProgress.countDocuments({
+      puzzleId: dailyPuzzle.puzzleId,
+      isCompleted: true,
+    });
+
+    res.json({ solvedCount });
+  } catch (error) {
+    console.error('Get daily puzzle solved count error:', error);
+    res.status(500).json({ error: 'Failed to get daily puzzle solved count' });
   }
 };
 

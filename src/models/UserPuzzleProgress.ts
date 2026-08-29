@@ -59,5 +59,6 @@ const userPuzzleProgressSchema = new Schema<IUserPuzzleProgress>({
 
 userPuzzleProgressSchema.index({ userId: 1, puzzleId: 1 }, { unique: true });
 userPuzzleProgressSchema.index({ userId: 1 });
+userPuzzleProgressSchema.index({ puzzleId: 1, isCompleted: 1 });
 
 export const UserPuzzleProgress = mongoose.model<IUserPuzzleProgress>('UserPuzzleProgress', userPuzzleProgressSchema);

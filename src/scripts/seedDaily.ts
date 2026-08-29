@@ -20,7 +20,7 @@ const language: Language = langArgIndex !== -1 && process.argv[langArgIndex + 1]
 
 // Hebrew users see Hebrew categories and titles
 const DAILY_CATEGORY = language === 'he' ? 'יומי' : 'Daily';
-const dailyTitle = (index: number) => language === 'he' ? `תשבץ יומי ${index + 1}` : `Daily Puzzle ${index + 1}`;
+const dailyTitle = (index: number) => language === 'he' ? `תשחץ יומי ${index + 1}` : `Daily Puzzle ${index + 1}`;
 
 const seedDaily = async () => {
   try {
