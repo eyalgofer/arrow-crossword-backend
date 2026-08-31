@@ -4,17 +4,26 @@ import { isAccessTokenExpiredError, verifyAccessToken } from '../services/authTo
 import { User } from '../models/User';
 import { Match } from '../models/Match';
 import { Puzzle } from '../models/Puzzle';
-import { MatchStatus, GameState, Language, DEFAULT_LANGUAGE, MatchCompletionReason } from '../types';
+import { MatchStatus, GameState, Language, DEFAULT_LANGUAGE, MatchCompletionReason, MatchMode } from '../types';
+import { IMatch } from '../models/Match';
 import { resolveLanguageFromValues } from '../utils/language';
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
 import { createMatchTiming, getMatchTimingFields } from '../utils/matchTiming';
+import { isQuickMatch, matchSettingsKey, parseMatchSettings } from '../utils/matchSettings';
 import { activeGames } from './activeGames';
 import {
   buildMatchCompletedPayload,
   completeMatch,
+  completeMatchIfBoardClaimed,
   ensureMatchNotExpired,
   getPlayableMatch
 } from '../services/matchCompletion';
+import {
+  playerClaimScores,
+  recomputeMatchScores,
+  serializeClaimedWords,
+  tryClaimWord
+} from '../services/wordClaims';
 
 interface SocketWithAuth extends Socket {
   userId?: string;
@@ -22,7 +31,14 @@ interface SocketWithAuth extends Socket {
   language?: Language;
 }
 
-const waitingPlayers = new Map<string, { userId: string; socketId: string; displayName: string; language: Language }>();
+const waitingPlayers = new Map<string, {
+  userId: string;
+  socketId: string;
+  displayName: string;
+  language: Language;
+  mode: MatchMode;
+  timed: boolean;
+}>();
 // Track active sockets by userId (firebaseUid)
 const userSockets = new Map<string, Set<string>>(); // userId -> Set of socketIds
 
@@ -101,18 +117,25 @@ export const setupSocketHandlers = (io: Server) => {
         }
 
         const language: Language = socket.language ?? DEFAULT_LANGUAGE;
+        const settings = parseMatchSettings(data);
+        const queueKey = matchSettingsKey(settings);
 
         // Add to waiting pool
         waitingPlayers.set(socket.userId!, {
           userId: user._id.toString(),
           socketId: socket.id,
           displayName: user.displayName,
-          language
+          language,
+          mode: settings.mode,
+          timed: settings.timed
         });
 
-        // Match with another player who wants the same language
+        // Match with another player who wants the same language, mode, and timer
         const opponentEntry = Array.from(waitingPlayers.entries()).find(
-          ([uid, waiting]) => uid !== socket.userId && waiting.language === language
+          ([uid, waiting]) =>
+            uid !== socket.userId
+            && waiting.language === language
+            && matchSettingsKey(waiting) === queueKey
         );
 
         if (opponentEntry) {
@@ -130,16 +153,19 @@ export const setupSocketHandlers = (io: Server) => {
           }
           const players = [opponent, me];
           const randomPuzzle = picked.puzzle;
-          const timing = createMatchTiming();
+          const timing = createMatchTiming(settings);
 
           // Create match
           const match = new Match({
             players: players.map(p => ({
               userId: p.userId,
               displayName: p.displayName,
-              progress: 0
+              progress: 0,
+              claimedCount: 0
             })),
             puzzleId: randomPuzzle._id,
+            claimedWords: [],
+            mode: settings.mode,
             status: MatchStatus.IN_PROGRESS,
             ...timing
           });
@@ -152,10 +178,13 @@ export const setupSocketHandlers = (io: Server) => {
             players: players.map(p => ({
               userId: p.userId,
               displayName: p.displayName,
-              progress: 0
+              progress: 0,
+              claimedCount: 0
             })),
             puzzleId: randomPuzzle._id.toString(),
             moves: [],
+            claimedWords: [],
+            mode: settings.mode,
             ...timing
           };
 
@@ -170,6 +199,8 @@ export const setupSocketHandlers = (io: Server) => {
                 matchId: match._id,
                 puzzle: randomPuzzle,
                 opponent: players.find(pl => pl.userId !== p.userId),
+                mode: settings.mode,
+                timed: timing.timed,
                 startedAt: timing.startedAt,
                 durationSeconds: timing.durationSeconds,
                 endsAt: timing.endsAt
@@ -229,6 +260,7 @@ export const setupSocketHandlers = (io: Server) => {
         socket.matchId = matchId;
 
         const timing = getMatchTimingFields(match);
+        const mode = isQuickMatch(match) ? MatchMode.QUICK : MatchMode.NORMAL;
 
         // Initialize game state if not already present (only for in-progress matches)
         if (match.status === MatchStatus.IN_PROGRESS && !activeGames.has(matchId)) {
@@ -238,10 +270,13 @@ export const setupSocketHandlers = (io: Server) => {
               userId: p.userId.toString(),
               displayName: p.displayName,
               photoURL: p.photoURL,
-              progress: p.progress
+              progress: p.progress,
+              claimedCount: p.claimedCount ?? 0
             })),
             puzzleId: match.puzzleId.toString(),
             moves: match.moves || [],
+            claimedWords: match.claimedWords || [],
+            mode,
             ...timing
           };
           activeGames.set(matchId, gameState);
@@ -285,16 +320,21 @@ export const setupSocketHandlers = (io: Server) => {
             userId: opponent.userId.toString(),
             displayName: opponent.displayName,
             photoURL: opponent.photoURL,
-            progress: opponent.progress
+            progress: opponent.progress,
+            claimedCount: opponent.claimedCount ?? 0
           } : null,
-          players: gameState?.players || match.players.map(p => ({
+          players: (gameState?.players || match.players).map(p => ({
             userId: p.userId.toString(),
             displayName: p.displayName,
             photoURL: p.photoURL,
-            progress: p.progress
+            progress: p.progress,
+            claimedCount: p.claimedCount ?? 0
           })),
+          claimedWords: serializeClaimedWords(gameState?.claimedWords || match.claimedWords),
           moves: allMoves,
           userMoves: userMoves,
+          mode,
+          timed: timing.timed,
           startedAt: timing.startedAt,
           durationSeconds: timing.durationSeconds,
           endsAt: timing.endsAt
@@ -346,7 +386,6 @@ export const setupSocketHandlers = (io: Server) => {
         const user = await User.findOne({ firebaseUid: socket.userId });
         if (!user) return;
 
-        // Update progress in game state if it exists
         if (gameState) {
           const player = gameState.players.find(
             p => p.userId === user._id.toString()
@@ -356,11 +395,13 @@ export const setupSocketHandlers = (io: Server) => {
           }
         }
 
-        // Update progress in database
-        await Match.updateOne(
-          { _id: matchId, status: MatchStatus.IN_PROGRESS, 'players.userId': user._id },
-          { $set: { 'players.$.progress': progress } }
-        );
+        // Normal mode: persist personal fill. Quick mode: list cards use claimedCount.
+        if (!isQuickMatch(match)) {
+          await Match.updateOne(
+            { _id: matchId, status: MatchStatus.IN_PROGRESS, 'players.userId': user._id },
+            { $set: { 'players.$.progress': progress } }
+          );
+        }
 
         // Broadcast to other players in the match
         socket.to(matchId).emit('opponent_progress', {
@@ -429,12 +470,112 @@ export const setupSocketHandlers = (io: Server) => {
       }
     });
 
-    // Player completes puzzle
+    // Shared-board word claim. First correct write wins; last clue ends the match.
+    socket.on('claim_word', async (data) => {
+      try {
+        const { matchId, clueId, answer } = data ?? {};
+
+        if (!matchId || matchId === 'undefined' || !mongoose.Types.ObjectId.isValid(matchId)) {
+          socket.emit('error', { message: 'Invalid match ID' });
+          return;
+        }
+
+        if (typeof clueId !== 'string' || !clueId.includes('|')) {
+          socket.emit('error', { message: 'Invalid clue' });
+          return;
+        }
+
+        if (typeof answer !== 'string' || answer.trim().length === 0) {
+          socket.emit('error', { message: 'Answer is required' });
+          return;
+        }
+
+        const { match, error } = await getPlayableMatch(io, matchId);
+        if (!match) {
+          socket.emit('error', { message: error || 'Match is over' });
+          return;
+        }
+
+        const user = await User.findOne({ firebaseUid: socket.userId });
+        if (!user) {
+          socket.emit('error', { message: 'User not found' });
+          return;
+        }
+
+        const isPlayer = match.players.some(
+          p => p.userId.toString() === user._id.toString()
+        );
+        if (!isPlayer) {
+          socket.emit('error', { message: 'Not authorized for this match' });
+          return;
+        }
+
+        if (!isQuickMatch(match)) {
+          socket.emit('error', { message: 'Word claims are only used in quick games' });
+          return;
+        }
+
+        const puzzle = await Puzzle.findById(match.puzzleId);
+        if (!puzzle) {
+          socket.emit('error', { message: 'Puzzle not found' });
+          return;
+        }
+
+        const result = await tryClaimWord({
+          match,
+          puzzle,
+          userId: user._id,
+          displayName: user.displayName || 'Player',
+          clueId,
+          answer
+        });
+
+        if (!result.ok) {
+          socket.emit('error', { message: result.error });
+          return;
+        }
+
+        syncGameStateClaims(result.match, puzzle.puzzleItems.length);
+
+        const scores = playerClaimScores(result.match.players, puzzle.puzzleItems.length);
+        const claimedWords = serializeClaimedWords(result.match.claimedWords);
+
+        const wordClaimedPayload = {
+          clueId: result.claim.clueId,
+          answer: result.claim.answer,
+          userId: result.claim.userId,
+          displayName: result.claim.displayName,
+          scores,
+          claimedWords
+        };
+        io.to(matchId).emit('word_claimed', wordClaimedPayload);
+        if (!socket.rooms.has(matchId)) {
+          socket.emit('word_claimed', wordClaimedPayload);
+        }
+
+        await completeMatchIfBoardClaimed(io, result.match, puzzle.puzzleItems.length);
+      } catch (error) {
+        console.error('Claim word error:', error);
+        socket.emit('error', { message: 'Failed to claim word' });
+      }
+    });
+
+    // Client thinks the shared board is full. Recompute from stored claims only.
+    socket.on('board_completed', async (data) => {
+      try {
+        await handleBoardCompletedHint(io, socket, data?.matchId);
+      } catch (error) {
+        console.error('Board completed error:', error);
+        socket.emit('error', { message: 'Failed to complete match' });
+      }
+    });
+
+    // Normal mode: first to finish their own board wins.
+    // Quick mode: personal finish is only a hint to recompute claims.
     socket.on('puzzle_completed', async (data) => {
       try {
-        const { matchId } = data;
-        
-        // Validate matchId
+        const { matchId } = data ?? {};
+
         if (!matchId || matchId === 'undefined' || !mongoose.Types.ObjectId.isValid(matchId)) {
           socket.emit('error', { message: 'Invalid match ID' });
           return;
@@ -443,6 +584,11 @@ export const setupSocketHandlers = (io: Server) => {
         const { match, error } = await getPlayableMatch(io, matchId);
         if (!match) {
           socket.emit('error', { message: error || 'Match is over' });
+          return;
+        }
+
+        if (isQuickMatch(match)) {
+          await handleBoardCompletedHint(io, socket, matchId);
           return;
         }
 
@@ -492,3 +638,67 @@ export const setupSocketHandlers = (io: Server) => {
     });
   });
 };
+
+async function handleBoardCompletedHint(
+  io: Server,
+  socket: SocketWithAuth,
+  matchId: unknown
+): Promise<void> {
+  if (!matchId || matchId === 'undefined' || !mongoose.Types.ObjectId.isValid(String(matchId))) {
+    socket.emit('error', { message: 'Invalid match ID' });
+    return;
+  }
+
+  const id = String(matchId);
+  const { match, error } = await getPlayableMatch(io, id);
+  if (!match) {
+    socket.emit('error', { message: error || 'Match is over' });
+    return;
+  }
+
+  const user = await User.findOne({ firebaseUid: socket.userId });
+  if (!user) {
+    return;
+  }
+
+  const isPlayer = match.players.some(
+    p => p.userId.toString() === user._id.toString()
+  );
+  if (!isPlayer) {
+    socket.emit('error', { message: 'Not authorized for this match' });
+    return;
+  }
+
+  if (!isQuickMatch(match)) {
+    socket.emit('error', { message: 'Board completion is only used in quick games' });
+    return;
+  }
+
+  const puzzle = await Puzzle.findById(match.puzzleId);
+  if (!puzzle) {
+    socket.emit('error', { message: 'Puzzle not found' });
+    return;
+  }
+
+  const current = await recomputeMatchScores(match, puzzle.puzzleItems.length);
+  syncGameStateClaims(current, puzzle.puzzleItems.length);
+  await completeMatchIfBoardClaimed(io, current, puzzle.puzzleItems.length);
+}
+
+function syncGameStateClaims(match: IMatch, totalClues: number): void {
+  const gameState = activeGames.get(match._id.toString());
+  if (!gameState) {
+    return;
+  }
+
+  const scores = playerClaimScores(match.players, totalClues);
+  gameState.claimedWords = match.claimedWords || [];
+  gameState.players = gameState.players.map(player => {
+    const score = scores.find(s => s.userId === player.userId);
+    return {
+      ...player,
+      claimedCount: score?.claimedCount ?? player.claimedCount ?? 0,
+      progress: score?.progress ?? player.progress
+    };
+  });
+}

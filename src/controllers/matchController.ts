@@ -5,9 +5,10 @@ import { User } from '../models/User';
 import { AuthRequest } from '../types';
 import { MatchCompletionReason, MatchStatus } from '../types';
 import { io } from '../server';
-import { MATCH_DURATION_SECONDS } from '../constants/match';
 import { withMatchTiming } from '../utils/matchTiming';
+import { resolveMatchMode } from '../utils/matchSettings';
 import { completeExpiredMatches, completeMatch, ensureMatchNotExpired } from '../services/matchCompletion';
+import { serializeClaimedWords } from '../services/wordClaims';
 
 export const getMatchHistory = async (req: AuthRequest, res: Response) => {
   try {
@@ -42,17 +43,9 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
 
     await completeExpiredMatches(io);
 
-    const now = new Date();
     const matches = await Match.find({
       'players.userId': user._id,
-      status: MatchStatus.IN_PROGRESS,
-      $or: [
-        { endsAt: { $gt: now } },
-        {
-          endsAt: { $exists: false },
-          startedAt: { $gt: new Date(now.getTime() - MATCH_DURATION_SECONDS * 1000) }
-        }
-      ]
+      status: MatchStatus.IN_PROGRESS
     })
       .populate('puzzleId', 'title difficulty')
       .populate('players.userId', 'displayName photoURL')
@@ -70,6 +63,7 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
           displayName: p.displayName || populatedUser.displayName,
           photoURL: p.photoURL || populatedUser.photoURL,
           progress: p.progress,
+          claimedCount: p.claimedCount ?? 0,
           completedAt: p.completedAt
         };
       });
@@ -97,12 +91,15 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
 
       return withMatchTiming({
         ...matchObj,
+        mode: resolveMatchMode(match),
+        claimedWords: serializeClaimedWords(match.claimedWords),
         players: enhancedPlayers,
         opponent: opponent ? {
           userId: opponentUserId,
           displayName: opponent.displayName || opponentPopulated?.displayName,
           photoURL: opponent.photoURL || opponentPopulated?.photoURL,
-          progress: opponent.progress
+          progress: opponent.progress,
+          claimedCount: opponent.claimedCount ?? 0
         } : null,
         currentUserPuzzleProgress: currentUserPlayer?.progress || 0,
         timeElapsed
@@ -188,11 +185,14 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
 
     const enhancedMatch = withMatchTiming({
       ...match.toObject(),
+      mode: resolveMatchMode(match),
+      claimedWords: serializeClaimedWords(match.claimedWords),
       opponent: opponent ? {
         userId: opponentUserId,
         displayName: opponent.displayName || opponentPopulated?.displayName,
         photoURL: opponent.photoURL || opponentPopulated?.photoURL,
-        progress: opponent.progress
+        progress: opponent.progress,
+        claimedCount: opponent.claimedCount ?? 0
       } : null,
       currentUserPuzzleProgress: currentUserPlayer?.progress || 0,
       timeElapsed

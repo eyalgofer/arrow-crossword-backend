@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { Language } from '../types';
+import { Language, MatchMode } from '../types';
 
 export enum InviteStatus {
   PENDING = 'pending',
@@ -13,6 +13,8 @@ export interface IInvite extends Document {
   to: mongoose.Types.ObjectId;
   status: InviteStatus;
   language: Language;
+  mode: MatchMode;
+  timed: boolean;
   createdAt: Date;
   updatedAt: Date;
   respondedAt?: Date;
@@ -41,6 +43,15 @@ const inviteSchema = new Schema<IInvite>({
     type: String,
     enum: ['en', 'he'],
     default: 'en'
+  },
+  mode: {
+    type: String,
+    enum: Object.values(MatchMode),
+    default: MatchMode.NORMAL
+  },
+  timed: {
+    type: Boolean,
+    default: true
   },
   respondedAt: {
     type: Date

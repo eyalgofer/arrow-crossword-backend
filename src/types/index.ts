@@ -43,10 +43,24 @@ export enum MatchStatus {
   CANCELLED = 'cancelled'
 }
 
+export enum MatchMode {
+  QUICK = 'quick',
+  NORMAL = 'normal'
+}
+
 export enum MatchCompletionReason {
   COMPLETED = 'completed',
+  BOARD_COMPLETED = 'board_completed',
   TIMEOUT = 'timeout',
   FORFEIT = 'forfeit'
+}
+
+export interface ClaimedWord {
+  clueId: string;
+  answer: string;
+  userId?: any; // Can be ObjectId or string
+  displayName: string;
+  claimedAt: Date;
 }
 
 export interface PlayerMove {
@@ -64,12 +78,16 @@ export interface GameState {
     displayName: string;
     photoURL?: string;
     progress: number;
+    claimedCount: number;
   }[];
   puzzleId: string;
   moves: PlayerMove[];
+  claimedWords: ClaimedWord[];
+  mode: MatchMode;
+  timed: boolean;
   startedAt?: Date;
-  durationSeconds?: number;
-  endsAt?: Date;
+  durationSeconds?: number | null;
+  endsAt?: Date | null;
   completedAt?: Date;
 }
 

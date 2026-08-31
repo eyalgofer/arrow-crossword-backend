@@ -14,6 +14,7 @@ import matchRoutes from './routes/matches';
 import inviteRoutes from './routes/invites';
 import { setupSocketHandlers } from './sockets/gameHandler';
 import { startMatchTimeoutJob } from './jobs/matchTimeoutJob';
+import './models/MatchWordClaim';
 
 dotenv.config();
 

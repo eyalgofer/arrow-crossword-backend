@@ -8,10 +8,12 @@ import { getUserActiveSockets } from '../sockets/gameHandler';
 import { resolveLanguage } from '../utils/language';
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
 import { createMatchTiming } from '../utils/matchTiming';
+import { parseMatchSettings } from '../utils/matchSettings';
 
 export const createInvite = async (req: AuthRequest, res: Response) => {
   try {
-    const { friendId } = req.body;
+    const { friendId, mode, timed, timeLimit } = req.body;
+    const settings = parseMatchSettings({ mode, timed, timeLimit });
 
     if (!friendId) {
       return res.status(400).json({ error: 'friendId is required' });
@@ -48,7 +50,9 @@ export const createInvite = async (req: AuthRequest, res: Response) => {
       from: fromUser._id,
       to: toUser._id,
       status: InviteStatus.PENDING,
-      language
+      language,
+      mode: settings.mode,
+      timed: settings.timed
     });
 
     await invite.save();
@@ -156,7 +160,11 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
       });
     }
     const { puzzleId: randomPuzzleId } = picked;
-    const timing = createMatchTiming();
+    const settings = parseMatchSettings({
+      mode: invite.mode,
+      timed: invite.timed
+    });
+    const timing = createMatchTiming(settings);
 
     // Create the match
     const match = new Match({
@@ -164,15 +172,19 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
         {
           userId: fromUser._id,
           displayName: fromUser.displayName,
-          progress: 0
+          progress: 0,
+          claimedCount: 0
         },
         {
           userId: currentUser._id,
           displayName: currentUser.displayName,
-          progress: 0
+          progress: 0,
+          claimedCount: 0
         }
       ],
       puzzleId: randomPuzzleId,
+      claimedWords: [],
+      mode: settings.mode,
       status: MatchStatus.IN_PROGRESS,
       ...timing
     });
@@ -194,9 +206,11 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
         displayName: currentUser.displayName,
         photoURL: currentUser.photoURL
       },
+      mode: settings.mode,
+      timed: timing.timed,
       startedAt: timing.startedAt.toISOString(),
       durationSeconds: timing.durationSeconds,
-      endsAt: timing.endsAt.toISOString()
+      endsAt: timing.endsAt ? timing.endsAt.toISOString() : null
     };
     
     // Debug: Check active sockets for this user
@@ -213,13 +227,15 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
     if (socketsInRoom.length === 0 && activeSocketCount > 0) {
       console.warn(`[INVITE] WARNING: User has ${activeSocketCount} active socket(s) but 0 in room! This suggests a room joining issue.`);
     }
-    res.json({ 
-      success: true, 
-      matchId: match._id.toString(), 
+    res.json({
+      success: true,
+      matchId: match._id.toString(),
       puzzleId: randomPuzzleId.toString(),
+      mode: settings.mode,
+      timed: timing.timed,
       startedAt: timing.startedAt.toISOString(),
       durationSeconds: timing.durationSeconds,
-      endsAt: timing.endsAt.toISOString()
+      endsAt: timing.endsAt ? timing.endsAt.toISOString() : null
     });
   } catch (error) {
     console.error('Accept invite error:', error);

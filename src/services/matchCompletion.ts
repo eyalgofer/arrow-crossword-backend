@@ -2,26 +2,33 @@ import { Server } from 'socket.io';
 import mongoose from 'mongoose';
 import { Match, IMatch } from '../models/Match';
 import { User } from '../models/User';
-import { MatchCompletionReason, MatchStatus } from '../types';
+import { MatchCompletionReason, MatchMode, MatchStatus } from '../types';
 import { MATCH_REWARD_COINS } from '../constants/match';
 import { isMatchTimedOut } from '../utils/matchTiming';
 import { removeActiveGame } from '../sockets/activeGames';
+import { isBoardFullyClaimed, winnerIdFromClaimedCount } from './wordClaims';
+import { isQuickMatch } from '../utils/matchSettings';
 
 export interface MatchCompletedPlayer {
   userId: string;
   displayName: string;
   progress: number;
+  claimedCount: number;
 }
 
 export interface MatchCompletedPayload {
   winnerId: string | null;
   reason: MatchCompletionReason;
+  mode: MatchMode;
   match: {
     _id: string;
     winnerId: string | null;
+    mode: MatchMode;
     players: MatchCompletedPlayer[];
   };
 }
+
+export { winnerIdFromClaimedCount };
 
 export function winnerIdFromProgress(
   players: IMatch['players']
@@ -48,22 +55,32 @@ export function winnerIdFromProgress(
   return tied ? null : toObjectId(best.userId);
 }
 
+export function winnerIdForMatch(match: IMatch): mongoose.Types.ObjectId | null {
+  return isQuickMatch(match)
+    ? winnerIdFromClaimedCount(match.players)
+    : winnerIdFromProgress(match.players);
+}
+
 export function buildMatchCompletedPayload(
   match: IMatch,
   reason: MatchCompletionReason
 ): MatchCompletedPayload {
   const winnerId = toIdString(match.winnerId);
+  const mode = isQuickMatch(match) ? MatchMode.QUICK : MatchMode.NORMAL;
 
   return {
     winnerId,
     reason,
+    mode,
     match: {
       _id: match._id.toString(),
       winnerId,
+      mode,
       players: match.players.map(player => ({
         userId: toIdString(player.userId) ?? '',
         displayName: player.displayName,
-        progress: player.progress ?? 0
+        progress: player.progress ?? 0,
+        claimedCount: player.claimedCount ?? 0
       }))
     }
   };
@@ -110,8 +127,23 @@ export async function completeMatchByTimeout(
   match: IMatch
 ): Promise<IMatch | null> {
   return completeMatch(io, match._id, {
-    winnerId: winnerIdFromProgress(match.players),
+    winnerId: winnerIdForMatch(match),
     reason: MatchCompletionReason.TIMEOUT
+  });
+}
+
+export async function completeMatchIfBoardClaimed(
+  io: Server,
+  match: IMatch,
+  totalClues: number
+): Promise<IMatch | null> {
+  if (!isQuickMatch(match) || !isBoardFullyClaimed(match, totalClues)) {
+    return null;
+  }
+
+  return completeMatch(io, match._id, {
+    winnerId: winnerIdFromClaimedCount(match.players),
+    reason: MatchCompletionReason.BOARD_COMPLETED
   });
 }
 
