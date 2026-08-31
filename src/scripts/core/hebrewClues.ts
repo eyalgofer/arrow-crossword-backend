@@ -1,7 +1,7 @@
 export interface RawHebrewEntry {
   answer: string;
   clues: string[];
-  difficulty?: 1 | 2 | 3;
+  difficulty?: 1 | 2 | 3; // easy medium hard
 }
 
 const HEBREW_CLUES_BASE: RawHebrewEntry[] = [
@@ -1347,7 +1347,7 @@ const HEBREW_CLUES_BASE: RawHebrewEntry[] = [
   { answer: "ויד", clues: ["כפר בהונגריה", "כפר במערב הונגריה"]},
   { answer: "וידאו", clues: ["מכשיר להקרנת סרטים", "סרטון קליפ", "קליפ סרטון"]},
   { answer: "תור", clues: ["אל נורדי"]},
-  { answer: "ויה", clues: ["דרך לעז"]},
+  { answer: "ויה", clues: ["דרך בלעז"]},
   { answer: "דני דה ויטו", clues: ["שחקן קולנוע אמריקאי"]},
   { answer: "ויולה", clues: ["מכלי הנגינה"]},
   { answer: "ויזל", clues: ["סופר יהודי שורד שואה ש\"מ"]},
@@ -1860,8 +1860,7 @@ const HEBREW_CLUES_BASE: RawHebrewEntry[] = [
   { answer: "יואב גלנט", clues: ["משרי הביטחון"]},
   { answer: "יינ", clues: ["משקה עליו מברכים"]},
   { answer: "יובל דיין", clues: ["זמרת ישראלית"]},
-  { answer: "יודעת", clues: ["מכירה בקיאה"]},
-  { answer: "ויה", clues: ["דרך לעז"]},
+  { answer: "יודעת", clues: ["מכירה, בקיאה"]},
   { answer: "ייחל", clues: ["יצפה לטוב"]},
   { answer: "ייטמן", clues: ["יונח באדמה"]},
   { answer: "יישומי", clues: ["ניתן לביצוע"]},
@@ -1910,7 +1909,7 @@ const HEBREW_CLUES_BASE: RawHebrewEntry[] = [
   { answer: "ינסו", clues: ["יבצעו בדיקה"]},
   { answer: "ינעים", clues: ["יעשה טוב"]},
   { answer: "ינקב", clues: ["יחורר"]},
-  { answer: "יסלים", clues: ["יחריף יקצין"]},
+  { answer: "יסלים", clues: ["יחריף, יקצין"]},
   { answer: "יסם", clues: ["יחידת סיור מיוחדת ר\"ת"]},
   { answer: "יסמין", clues: ["שיר של להקת \"הפיל הכחול\"", "ספר מאת אלי עמיר", "דמות ב\"אלדין\""]},
   { answer: "יסעור", clues: ["מסוק תוצרת ארה\"ב"]},
@@ -2170,7 +2169,6 @@ const HEBREW_CLUES_BASE: RawHebrewEntry[] = [
   { answer: "להיט", clues: ["שלאגר"]},
   { answer: "להימרח", clues: ["להתרחב להתפשט"]},
   { answer: "להיקנס", clues: ["לקבל עונש כספי"]},
-  { answer: "להכשיר", clues: ["יסוד"]},
   { answer: "לה לה לנד", clues: ["סרט בכיכובה של אמה סטון"]},
   { answer: "להלן", clues: ["בהמשך אחרי כן"]},
   { answer: "להם", clues: ["עבורם"]},
@@ -3746,7 +3744,7 @@ const HEBREW_CLUES_BASE: RawHebrewEntry[] = [
   { answer: "עוגת דבש", clues: ["ממאכלי ראש השנה"]},
   { answer: "עוד", clues: ["בנוסף"]},
   { answer: "עידד", clues: ["דחף דרבן"]},
-  { answer: "עידן", clues: ["תקופה עת"]},
+  { answer: "עידן", clues: ["תקופה ,עת"]},
   { answer: "עידנ ורד", clues: ["כדורגלן ישראלי"]},
   { answer: "עיטור העוז", clues: ["גבורה או מעשה גבורה"]},
   { answer: "עילי", clues: ["מוזיקאי ישראלי בוטנר"]},
@@ -4591,7 +4589,7 @@ const HEBREW_CLUES_BASE: RawHebrewEntry[] = [
   { answer: "רנה זליוגר", clues: ["שחקנית קולנוע אמריקאית"]},
   { answer: "רנו", clues: ["יצרנית רכב צרפתית"]},
   { answer: "רנואר", clues: ["צייר צרפתי ש\"מ"]},
-  { answer: "רנט", clues: ["זמר ויוצר ישראלי ש\"מ"]},
+  { answer: "רנד", clues: ["זמר ויוצר ישראלי ש\"מ"]},
   { answer: "רנ כהן", clues: ["משרי התעשייה והמסחר"]},
   { answer: "רסיטל", clues: ["הופעה מוזיקלית"]},
   { answer: "רסלמניה", clues: ["אירוע היאבקות אמריקאי"]},
@@ -6430,7 +6428,6 @@ const HEBREW_EASY_CLUES: RawHebrewEntry[] = [
   { answer: "אספרסו", clues: ["קפה קצר וחזק"], difficulty: 1},
   { answer: "קפוצינו", clues: ["קפה עם קצף חלב"], difficulty: 1},
   { answer: "לאטה", clues: ["קפה עם הרבה חלב"], difficulty: 1},
-  { answer: "תה נענע", clues: ["תה עם עלי נענע"], difficulty: 1},
   { answer: "קוגל", clues: ["מאפה אטריות לשבת"], difficulty: 1},
   { answer: "טרנינג", clues: ["חליפת ספורט נוחה"], difficulty: 1},
   { answer: "סווטשירט", clues: ["חולצה חמה עם שרוול"], difficulty: 1},
@@ -6497,7 +6494,7 @@ const HEBREW_EASY_CLUES: RawHebrewEntry[] = [
   { answer: "סגנית", clues: ["מחליפה של המנהלת"], difficulty: 1},
   { answer: "טוויסטר", clues: ["משחק על מחצלת צבעונית"], difficulty: 1},
   { answer: "מונופול", clues: ["משחק לוח של נכסים"], difficulty: 1},
-  { answer: "נארוטו", clues: ["נינגה מצויר יפני"], difficulty: 1},
+  { answer: "נארוטו", clues: ["נינג'ה מצויר יפני"], difficulty: 1},
   { answer: "דורה", clues: ["ילדה מצוירת שמטיילת"], difficulty: 1},
   { answer: "בדמינטון", clues: ["משחק עם נוצה ומחבט"], difficulty: 1},
   { answer: "הוקי", clues: ["משחק עם מקל על קרח"], difficulty: 1},
@@ -6507,6 +6504,10 @@ const HEBREW_EASY_CLUES: RawHebrewEntry[] = [
   { answer: "שדרנית", clues: ["מדברת ברדיו או בטלוויזיה"], difficulty: 1},
   { answer: "במאית", clues: ["מביימת סרט או הצגה"], difficulty: 1},
   { answer: "תסריטאי", clues: ["כותב סיפור לסרט"], difficulty: 1},
+];
+
+const NOA_CLUES: RawHebrewEntry[] = [
+  { answer: "תינוק", clues: ["ילד קטן מאוד", "רך נולד"], difficulty: 3}
 ];
 
 export const HEBREW_CLUES: RawHebrewEntry[] = HEBREW_CLUES_BASE.concat(HEBREW_EASY_CLUES);
