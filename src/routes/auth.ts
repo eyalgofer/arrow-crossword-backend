@@ -171,6 +171,37 @@ router.post('/apple', async (req: Request, res: Response) => {
   }
 });
 
+const DEMO_FIREBASE_UID = 'demo-user';
+const DEMO_EMAIL = 'demo@arrowcrossword.app';
+
+router.post('/demo', async (req: Request, res: Response) => {
+  try {
+    let user = await User.findOne({ firebaseUid: DEMO_FIREBASE_UID });
+    if (!user) {
+      user = await User.findOne({ email: DEMO_EMAIL });
+    }
+    if (!user) {
+      user = new User({
+        firebaseUid: DEMO_FIREBASE_UID,
+        email: DEMO_EMAIL,
+        displayName: 'Demo User',
+        coins: 1000,
+      });
+      await user.save();
+      console.log('Created demo user:', user.email);
+    }
+
+    console.log('Demo user signed in:', user.email);
+    res.json(await authPayload(user, false));
+  } catch (error: any) {
+    console.error('❌ Demo auth error:', error?.message || error);
+    res.status(500).json({
+      error: 'Demo authentication failed',
+      message: error?.message || 'Unknown error',
+    });
+  }
+});
+
 router.post('/refresh', async (req: Request, res: Response) => {
   try {
     const { refreshToken } = req.body;
