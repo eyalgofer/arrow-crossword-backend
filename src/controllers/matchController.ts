@@ -27,7 +27,14 @@ export const getMatchHistory = async (req: AuthRequest, res: Response) => {
       .sort({ completedAt: -1 })
       .limit(limit);
 
-    res.json({ matches });
+    res.json({
+      matches: matches.map((match) =>
+        withMatchTiming({
+          ...match.toObject(),
+          mode: resolveMatchMode(match),
+        })
+      ),
+    });
   } catch (error) {
     console.error('Get match history error:', error);
     res.status(500).json({ error: 'Failed to get match history' });
