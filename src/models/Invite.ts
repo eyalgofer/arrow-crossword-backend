@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { Language, MatchMode } from '../types';
+import { durationSecondsForSettings, parseMatchSettings } from '../utils/matchSettings';
 
 export enum InviteStatus {
   PENDING = 'pending',
@@ -15,6 +16,7 @@ export interface IInvite extends Document {
   language: Language;
   mode: MatchMode;
   timed: boolean;
+  durationSeconds?: number | null;
   createdAt: Date;
   updatedAt: Date;
   respondedAt?: Date;
@@ -53,15 +55,37 @@ const inviteSchema = new Schema<IInvite>({
     type: Boolean,
     default: true
   },
+  durationSeconds: {
+    type: Number,
+    default: null
+  },
   respondedAt: {
     type: Date
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { transform: attachInviteTiming },
+  toObject: { transform: attachInviteTiming }
 });
 
 // Compound index for efficient queries
 inviteSchema.index({ to: 1, status: 1 });
-inviteSchema.index({ from: 1, to: 1 }, { unique: true });
+inviteSchema.index(
+  { from: 1, to: 1 },
+  { unique: true, partialFilterExpression: { status: InviteStatus.PENDING } }
+);
+
+function attachInviteTiming(_doc: unknown, ret: Record<string, unknown>) {
+  const settings = parseMatchSettings({
+    mode: ret.mode,
+    timed: ret.timed
+  });
+  ret.mode = settings.mode;
+  ret.timed = settings.timed;
+  if (ret.durationSeconds == null) {
+    ret.durationSeconds = durationSecondsForSettings(settings);
+  }
+  return ret;
+}
 
 export const Invite = mongoose.model<IInvite>('Invite', inviteSchema);

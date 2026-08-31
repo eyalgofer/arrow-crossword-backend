@@ -4,7 +4,7 @@ export const MATCH_QUICK_DURATION_SECONDS = Number.parseInt(
 ) || 300;
 
 export const MATCH_NORMAL_DURATION_SECONDS = Number.parseInt(
-  process.env.MATCH_NORMAL_DURATION_SECONDS || process.env.MATCH_DURATION_SECONDS || '600',
+  process.env.MATCH_NORMAL_DURATION_SECONDS || '600',
   10
 ) || 600;
 

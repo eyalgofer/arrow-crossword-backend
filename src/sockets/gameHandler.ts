@@ -8,7 +8,7 @@ import { MatchStatus, GameState, Language, DEFAULT_LANGUAGE, MatchCompletionReas
 import { IMatch } from '../models/Match';
 import { resolveLanguageFromValues } from '../utils/language';
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
-import { createMatchTiming, getMatchTimingFields } from '../utils/matchTiming';
+import { createMatchTiming, getMatchTimingFields, serializeTimingFields } from '../utils/matchTiming';
 import { isQuickMatch, matchSettingsKey, parseMatchSettings } from '../utils/matchSettings';
 import { activeGames } from './activeGames';
 import {
@@ -166,8 +166,11 @@ export const setupSocketHandlers = (io: Server) => {
             puzzleId: randomPuzzle._id,
             claimedWords: [],
             mode: settings.mode,
-            status: MatchStatus.IN_PROGRESS,
-            ...timing
+            timed: timing.timed,
+            startedAt: timing.startedAt,
+            durationSeconds: timing.durationSeconds,
+            endsAt: timing.endsAt,
+            status: MatchStatus.IN_PROGRESS
           });
 
           await match.save();
@@ -200,10 +203,7 @@ export const setupSocketHandlers = (io: Server) => {
                 puzzle: randomPuzzle,
                 opponent: players.find(pl => pl.userId !== p.userId),
                 mode: settings.mode,
-                timed: timing.timed,
-                startedAt: timing.startedAt,
-                durationSeconds: timing.durationSeconds,
-                endsAt: timing.endsAt
+                ...serializeTimingFields(timing)
               });
             }
           });
@@ -334,10 +334,7 @@ export const setupSocketHandlers = (io: Server) => {
           moves: allMoves,
           userMoves: userMoves,
           mode,
-          timed: timing.timed,
-          startedAt: timing.startedAt,
-          durationSeconds: timing.durationSeconds,
-          endsAt: timing.endsAt
+          ...serializeTimingFields(timing)
         });
 
         if (match.status !== MatchStatus.IN_PROGRESS) {

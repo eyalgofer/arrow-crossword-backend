@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import mongoose from 'mongoose';
 import { Invite, InviteStatus } from '../models/Invite';
 import { User } from '../models/User';
 import { Match } from '../models/Match';
@@ -7,13 +8,13 @@ import { io } from '../server';
 import { getUserActiveSockets } from '../sockets/gameHandler';
 import { resolveLanguage } from '../utils/language';
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
-import { createMatchTiming } from '../utils/matchTiming';
-import { parseMatchSettings } from '../utils/matchSettings';
+import { createMatchTiming, serializeTimingFields } from '../utils/matchTiming';
+import { durationSecondsForSettings, parseMatchSettings } from '../utils/matchSettings';
 
 export const createInvite = async (req: AuthRequest, res: Response) => {
   try {
-    const { friendId, mode, timed, timeLimit } = req.body;
-    const settings = parseMatchSettings({ mode, timed, timeLimit });
+    const { friendId } = req.body;
+    const settings = parseMatchSettings(req.body);
 
     if (!friendId) {
       return res.status(400).json({ error: 'friendId is required' });
@@ -44,21 +45,38 @@ export const createInvite = async (req: AuthRequest, res: Response) => {
     }
 
     const language = resolveLanguage(req);
-
-    // Create the invite
-    const invite = new Invite({
+    const inviteFields = {
       from: fromUser._id,
       to: toUser._id,
       status: InviteStatus.PENDING,
       language,
       mode: settings.mode,
-      timed: settings.timed
+      timed: settings.timed,
+      durationSeconds: durationSecondsForSettings(settings)
+    };
+
+    // An accepted/declined invite used to block rematches because of a unique
+    // (from, to) index. Reuse that row until the partial pending index is in place.
+    const previousInvite = await Invite.findOne({
+      from: fromUser._id,
+      to: toUser._id,
+      status: { $ne: InviteStatus.PENDING }
     });
 
-    await invite.save();
+    let inviteId: mongoose.Types.ObjectId;
+    if (previousInvite) {
+      await Invite.updateOne(
+        { _id: previousInvite._id },
+        { $set: inviteFields, $unset: { respondedAt: 1 } }
+      );
+      inviteId = previousInvite._id;
+    } else {
+      const invite = new Invite(inviteFields);
+      await invite.save();
+      inviteId = invite._id;
+    }
 
-    // Populate and return the invite
-    const populatedInvite = await Invite.findById(invite._id)
+    const populatedInvite = await Invite.findById(inviteId)
       .populate('from', 'displayName email photoURL')
       .populate('to', 'displayName email photoURL');
 
@@ -165,6 +183,15 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
       timed: invite.timed
     });
     const timing = createMatchTiming(settings);
+    if (typeof invite.durationSeconds === 'number' && invite.durationSeconds > 0) {
+      timing.durationSeconds = invite.durationSeconds;
+      timing.timed = true;
+      timing.endsAt = new Date(timing.startedAt.getTime() + invite.durationSeconds * 1000);
+    } else if (invite.timed === false) {
+      timing.durationSeconds = null;
+      timing.timed = false;
+      timing.endsAt = null;
+    }
 
     // Create the match
     const match = new Match({
@@ -185,8 +212,11 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
       puzzleId: randomPuzzleId,
       claimedWords: [],
       mode: settings.mode,
-      status: MatchStatus.IN_PROGRESS,
-      ...timing
+      timed: timing.timed,
+      startedAt: timing.startedAt,
+      durationSeconds: timing.durationSeconds,
+      endsAt: timing.endsAt,
+      status: MatchStatus.IN_PROGRESS
     });
 
     await match.save();
@@ -207,10 +237,7 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
         photoURL: currentUser.photoURL
       },
       mode: settings.mode,
-      timed: timing.timed,
-      startedAt: timing.startedAt.toISOString(),
-      durationSeconds: timing.durationSeconds,
-      endsAt: timing.endsAt ? timing.endsAt.toISOString() : null
+      ...serializeTimingFields(timing)
     };
     
     // Debug: Check active sockets for this user
@@ -232,10 +259,7 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
       matchId: match._id.toString(),
       puzzleId: randomPuzzleId.toString(),
       mode: settings.mode,
-      timed: timing.timed,
-      startedAt: timing.startedAt.toISOString(),
-      durationSeconds: timing.durationSeconds,
-      endsAt: timing.endsAt ? timing.endsAt.toISOString() : null
+      ...serializeTimingFields(timing)
     });
   } catch (error) {
     console.error('Accept invite error:', error);

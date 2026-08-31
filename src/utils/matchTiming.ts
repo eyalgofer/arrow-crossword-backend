@@ -3,7 +3,11 @@ import {
   MATCH_QUICK_DURATION_SECONDS
 } from '../constants/match';
 import { MatchMode } from '../types';
-import { MatchSettings, resolveMatchMode } from './matchSettings';
+import {
+  durationSecondsForSettings,
+  MatchSettings,
+  resolveMatchMode
+} from './matchSettings';
 
 export interface MatchTiming {
   startedAt: Date;
@@ -12,31 +16,28 @@ export interface MatchTiming {
   timed: boolean;
 }
 
+export interface SerializedMatchTiming {
+  timed: boolean;
+  startedAt: string;
+  durationSeconds: number | null;
+  endsAt: string | null;
+}
+
 export function createMatchTiming(
   settings: MatchSettings,
   from: Date = new Date()
 ): MatchTiming {
   const startedAt = from;
-  const timed = settings.mode === MatchMode.QUICK ? true : settings.timed;
-
-  if (!timed) {
-    return {
-      startedAt,
-      durationSeconds: null,
-      endsAt: null,
-      timed: false
-    };
-  }
-
-  const durationSeconds = settings.mode === MatchMode.QUICK
-    ? MATCH_QUICK_DURATION_SECONDS
-    : MATCH_NORMAL_DURATION_SECONDS;
+  const durationSeconds = durationSecondsForSettings(settings);
+  const timed = durationSeconds != null;
 
   return {
     startedAt,
     durationSeconds,
-    endsAt: new Date(startedAt.getTime() + durationSeconds * 1000),
-    timed: true
+    endsAt: timed && durationSeconds != null
+      ? new Date(startedAt.getTime() + durationSeconds * 1000)
+      : null,
+    timed
   };
 }
 
@@ -60,30 +61,31 @@ export function getMatchTimingFields(match: {
     };
   }
 
-  const mode = resolveMatchMode(match);
-  const fallbackDuration = mode === MatchMode.QUICK
-    ? MATCH_QUICK_DURATION_SECONDS
-    : MATCH_NORMAL_DURATION_SECONDS;
-  const durationSeconds = match.durationSeconds && match.durationSeconds > 0
-    ? match.durationSeconds
-    : fallbackDuration;
+  const storedDuration = Number(match.durationSeconds);
+  const durationSeconds = Number.isFinite(storedDuration) && storedDuration > 0
+    ? storedDuration
+    : (resolveMatchMode(match) === MatchMode.QUICK
+      ? MATCH_QUICK_DURATION_SECONDS
+      : MATCH_NORMAL_DURATION_SECONDS);
   const endsAt = toDate(match.endsAt) ?? new Date(startedAt.getTime() + durationSeconds * 1000);
 
   return { startedAt, durationSeconds, endsAt, timed: true };
 }
 
+export function serializeTimingFields(timing: MatchTiming): SerializedMatchTiming {
+  return {
+    timed: timing.timed,
+    startedAt: timing.startedAt.toISOString(),
+    durationSeconds: timing.durationSeconds,
+    endsAt: timing.endsAt ? timing.endsAt.toISOString() : null
+  };
+}
+
+/** Untimed only when timed is explicitly false. Missing fields mean a timed game. */
 export function isTimedMatch(match: {
   timed?: boolean;
-  endsAt?: Date | string | null;
-  durationSeconds?: number | null;
 }): boolean {
-  if (match.timed === false) {
-    return false;
-  }
-  if (match.timed === true) {
-    return true;
-  }
-  return match.endsAt != null || (match.durationSeconds != null && match.durationSeconds > 0);
+  return match.timed !== false;
 }
 
 export function isMatchTimedOut(

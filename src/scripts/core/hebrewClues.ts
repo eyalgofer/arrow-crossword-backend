@@ -2276,7 +2276,6 @@ const HEBREW_CLUES_BASE: RawHebrewEntry[] = [
   { answer: "לימור", clues: ["עיתונאי ישראלי"]},
   { answer: "לימן", clues: ["מושב בגליל המערבי"]},
   { answer: "לימסול", clues: ["עיר בקפריסין"]},
-  { answer: "לינגו", clues: ["שעשועון בעבר בערוץ"]},
   { answer: "ליפה", clues: ["מין ספוג לניקוי"]},
   { answer: "ליפול", clues: ["למעוד"]},
   { answer: "ליצי", clues: ["עץ פרי טרופי"]},
