@@ -1,10 +1,11 @@
 export interface RawHebrewEntry {
   answer: string;
   clues: string[];
-  difficulty?: 1 | 2 | 3; // easy medium hard
+  difficulty?: 1 | 2 | 3; // easy medium hard; omitted defaults to 1
 }
 
-const HEBREW_CLUES_BASE: RawHebrewEntry[] = [
+// @ts-expect-error TS2590: this object-literal list is too large for TypeScript to infer
+export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "אב", clues: ["מבני המשפחה"]},
   { answer: "אבא", clues: ["מבני המשפחה"]},
   { answer: "אבן גיר", clues: ["מין סלע משקע"]},
@@ -3617,7 +3618,7 @@ const HEBREW_CLUES_BASE: RawHebrewEntry[] = [
   { answer: "סנגל", clues: ["מדינה באפריקה"]},
   { answer: "סנדי בר", clues: ["שחקנית ישראלית"]},
   { answer: "סנדרסון", clues: ["זמר ישראלי ש\"מ"]},
-  { answer: "סנו", clues: ["חברת מוצרי ניקיון ישראלית", "חברה ישראלית למוצרי ניקיון", "חברת חומרי ניקוי ישראלית"]},
+  { answer: "סנו", clues: ["חברת מוצרי ניקיון ישראלית", "חברה ישראלית למוצרי ניקיון"]},
   { answer: "סנט", clues: ["מאית הדולר"]},
   { answer: "סנטימטר", clues: ["מין יחידת אורך"]},
   { answer: "סנדל", clues: ["מין נעל פתוחה"]},
@@ -3724,7 +3725,7 @@ const HEBREW_CLUES_BASE: RawHebrewEntry[] = [
   { answer: "עליז", clues: ["שמח"]},
   { answer: "עלי כותרת", clues: ["חלק בולט במיני פרחים"]},
   { answer: "עלילה", clues: ["מהלך אירועים בסרט או ספר"]},
-  { answer: "עלם", clues: ["איש צעיר", "צל\"י דמות שייקספירית", "אדם צעיר", "נער איש צעיר"]},
+  { answer: "עלם", clues: ["איש צעיר", "צל\"י דמות שייקספירית", "אדם צעיר", "נער, איש צעיר"]},
   { answer: "עלץ", clues: ["שמח, צהל"]},
   { answer: "עמדי", clues: ["זמר ישראלי ש\"מ"]},
   { answer: "עמוד ענן", clues: ["מבצע צבאי של צה\"ל"]},
@@ -4978,10 +4979,6 @@ const HEBREW_CLUES_BASE: RawHebrewEntry[] = [
   { answer: "תשמיד", clues: ["תחסל"]},
   { answer: "תשר", clues: ["טיפ"]},
   { answer: "תת תזונה", clues: ["מצב רפואי הנובע מרעב ממושך"]},
-];
-
-/** Everyday vocab with direct clues so easy puzzles can use common words. */
-const HEBREW_EASY_CLUES: RawHebrewEntry[] = [
   { answer: "תינוק", clues: ["ילד קטן מאוד", "רך נולד"], difficulty: 1},
   { answer: "ילדה", clues: ["ילד ממין נקבה"], difficulty: 1},
   { answer: "הורה", clues: ["אבא או אמא"], difficulty: 1},
@@ -6449,10 +6446,6 @@ const HEBREW_EASY_CLUES: RawHebrewEntry[] = [
   { answer: "שדרנית", clues: ["מדברת ברדיו או בטלוויזיה"], difficulty: 1},
   { answer: "במאית", clues: ["מביימת סרט או הצגה"], difficulty: 1},
   { answer: "תסריטאי", clues: ["כותב סיפור לסרט"], difficulty: 1},
-];
-
-
-const AI_CLUES_FOR_VERIFICATION: RawHebrewEntry[] = [
   { answer: "אבוב", clues: ["כלי נשיפה עם צליל מקונן"], difficulty: 3},
   { answer: "אבוקדו", clues: ["פרי ירוק שמועכים לכריך"], difficulty: 1},
   { answer: "אגריטק", clues: ["טכנולוגיה לחקלאות"], difficulty: 3},
@@ -6614,7 +6607,6 @@ const AI_CLUES_FOR_VERIFICATION: RawHebrewEntry[] = [
   { answer: "חור שחור", clues: ["בולע אור בחלל"], difficulty: 2},
   { answer: "חלבונים", clues: ["אבני בניין מהמזון"], difficulty: 2},
   { answer: "חלומי", clues: ["גבינה קפריסאית לקלייה"], difficulty: 2},
-  // TODO keep on verifying from here
   { answer: "לחמניה", clues: ["לחם מתוק עם שומשום"], difficulty: 1},
   { answer: "חמסה", clues: ["יד נגד עין הרע"], difficulty: 1},
   { answer: "חפיף", clues: ["לא מדויק, ככה ככה"], difficulty: 2},
@@ -6807,7 +6799,5 @@ const AI_CLUES_FOR_VERIFICATION: RawHebrewEntry[] = [
   { answer: "קורנפלקס", clues: ["דגני בוקר מתירס בקערה"], difficulty: 1},
   { answer: "קטאיף", clues: ["כיס ממולא לארוחת רמדאן"], difficulty: 3},
   { answer: "קיגל", clues: ["אטריות אפויות לשבת"], difficulty: 2},
-  { answer: "קינדל", clues: ["קורא ספרים אלקטרוני"], difficulty: 2},
+  { answer: "קינדל", clues: ["קורא ספרים אלקטרוני"], difficulty: 2}
 ];
-
-export const HEBREW_CLUES: RawHebrewEntry[] = HEBREW_CLUES_BASE.concat(HEBREW_EASY_CLUES);
