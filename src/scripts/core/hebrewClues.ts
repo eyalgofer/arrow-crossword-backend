@@ -6451,9 +6451,6 @@ const HEBREW_EASY_CLUES: RawHebrewEntry[] = [
   { answer: "תסריטאי", clues: ["כותב סיפור לסרט"], difficulty: 1},
 ];
 
-const NOA_CLUES: RawHebrewEntry[] = [
-  { answer: "תינוק", clues: ["ילד קטן מאוד", "רך נולד"], difficulty: 3}
-];
 
 const AI_CLUES_FOR_VERIFICATION: RawHebrewEntry[] = [
   { answer: "אבוב", clues: ["כלי נשיפה עם צליל מקונן"], difficulty: 3},
