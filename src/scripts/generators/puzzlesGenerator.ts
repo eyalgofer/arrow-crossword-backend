@@ -17,7 +17,6 @@ import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
 import { generatePuzzleFromGrid } from './puzzle-assembler';
 import { GridSize, MAX_GRID_SIZE, sizeFallbackChain } from '../utils/gridSizes';
-import { normalizeWord } from './validation-utils';
 
 export class PuzzleGenerator {
   private wordIndex: CrossingIndex;
@@ -54,12 +53,15 @@ export class PuzzleGenerator {
     /** If true, do not scale Hebrew grids down when the requested size fails. */
     strictSize?: boolean;
   }): Puzzle[] {
-    const defaultRows = 13 //Math.min(config.rows ?? 8, MAX_GRID_SIZE);
-    const defaultCols = 13 //Math.min(config.cols ?? 8, MAX_GRID_SIZE);
+    const defaultRows = Math.min(config.rows ?? 12, MAX_GRID_SIZE);
+    const defaultCols = Math.min(config.cols ?? 12, MAX_GRID_SIZE);
     const puzzles: Puzzle[] = [];
 
     for (let i = 0; i < config.count; i++) {
-      const requested = config.sizes?.[i % config.sizes.length] ?? { rows: defaultRows, cols: defaultCols };
+      const requested = config.sizes?.[i % (config.sizes?.length ?? 1)] ?? {
+        rows: defaultRows,
+        cols: defaultCols,
+      };
       const chain = this.language === 'he' && !config.strictSize
         ? sizeFallbackChain(requested.rows, requested.cols)
         : [{ rows: Math.min(requested.rows, MAX_GRID_SIZE), cols: Math.min(requested.cols, MAX_GRID_SIZE) }];
@@ -104,7 +106,7 @@ export class PuzzleGenerator {
   ): Puzzle | null {
     const cells = rows * cols;
     const attempts = attemptOverride ?? (this.language === 'he'
-      ? (cells >= 144 ? 24 : cells >= 121 ? 20 : cells >= 100 ? 18 : 16)
+      ? (cells >= 144 ? 18 : cells >= 121 ? 16 : cells >= 100 ? 14 : 12)
       : 15);
 
     for (let attempt = 0; attempt < attempts; attempt++) {
@@ -131,11 +133,11 @@ export class PuzzleGenerator {
         cols,
         name: `${rows}x${cols} arrow crossword`,
         quiet: true,
-        maxIterations: this.language === 'he' ? (large ? 28 : 20) : 8,
+        maxIterations: this.language === 'he' ? (large ? 22 : 18) : 8,
         minPopulation: 3,
-        populationSize: this.language === 'he' ? (large ? 10 : 8) : 5,
-        weakBreakCondition: this.language === 'he' ? (large ? 220 : 150) : 80,
-        strongBreakCondition: this.language === 'he' ? (large ? 550 : 400) : 250,
+        populationSize: this.language === 'he' ? (large ? 8 : 6) : 5,
+        weakBreakCondition: this.language === 'he' ? (large ? 180 : 130) : 80,
+        strongBreakCondition: this.language === 'he' ? (large ? 450 : 350) : 250,
         sparse: this.language === 'he' && cells >= 81,
       });
     } catch {

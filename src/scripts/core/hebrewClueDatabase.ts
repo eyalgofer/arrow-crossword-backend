@@ -3,7 +3,6 @@
  * Vocab is the hand-curated list in hebrewClues.ts — used as written.
  */
 
-import { Difficulty } from '../../types';
 import { applyHebrewFinalForms } from './hebrewOrthography';
 import { HEBREW_CLUES, RawHebrewEntry } from './hebrewClues';
 
@@ -11,18 +10,6 @@ const HEBREW_ENTRIES: RawHebrewEntry[] = HEBREW_CLUES;
 
 /** Hebrew letters (includes final forms, which sit inside the א-ת range). */
 const HEBREW_ANSWER_PATTERN = /^[\u05D0-\u05EA]{2,11}$/;
-
-const MIN_ANSWER_LENGTH = 2;
-const MAX_ANSWER_LENGTH = 11;
-
-/** Max entry tier usable per difficulty (imported answers default to tier 1). */
-const MAX_TIER: Record<Difficulty, number> = {
-  [Difficulty.EASY]: 1,
-  [Difficulty.MEDIUM]: 2,
-  [Difficulty.CHALLENGING]: 3,
-  [Difficulty.HARD]: 3,
-  [Difficulty.EXPERT]: 3,
-};
 
 /**
  * Normalize a Hebrew answer to the form stored in the grid and sent to clients:
@@ -64,8 +51,7 @@ function buildDatabase(): Map<string, HebrewAnswerEntry> {
 
     if (!HEBREW_ANSWER_PATTERN.test(answer)) {
       console.warn(
-        `⚠️  Hebrew clue database: skipping "${raw.answer}" - grid answers must be ` +
-        `${MIN_ANSWER_LENGTH}-${MAX_ANSWER_LENGTH} Hebrew letters after spaces are removed`
+        `⚠️  Hebrew clue database: skipping "${raw.answer}" - grid answers must be `
       );
       return;
     }

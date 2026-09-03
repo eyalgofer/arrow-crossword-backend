@@ -42,7 +42,7 @@ function defaultCount(): number {
 }
 
 const COUNT = countArgIndex !== -1 ? Number(process.argv[countArgIndex + 1]) : defaultCount();
-  
+
 async function ensureMongoConnection(): Promise<void> {
   try {
     if (mongoose.connection.readyState === 1 && mongoose.connection.db) {
@@ -112,10 +112,6 @@ const main = async () => {
         const errors = validatePuzzleBoundaries(puzzle);
         if (errors.length > 0) {
           console.warn(`   ⚠️  Puzzle ${i + 1} failed validation (try ${attempt})`);
-          continue;
-        }
-        if (puzzle.grid.rows !== ROWS || puzzle.grid.cols !== COLS) {
-          console.warn(`   ⚠️  Got ${puzzle.grid.rows}x${puzzle.grid.cols} (try ${attempt})`);
           continue;
         }
        

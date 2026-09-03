@@ -320,6 +320,9 @@ const seedPackages = async () => {
         const ordered = [...puzzles].sort((a, b) => String(a.title).localeCompare(String(b.title), 'he', { numeric: true }));
         for (const p of ordered) {
           const items = p.puzzleItems || [];
+          const easy = items.filter(item => isEasyVocab(item.answer)).length;
+          const pct = items.length === 0 ? 0 : Math.round((100 * easy) / items.length);
+          console.log(`      ${p.title} (${p.difficulty}): ${easy}/${items.length} tagged-easy clues (${pct}%)`);
         }
       }
     }
