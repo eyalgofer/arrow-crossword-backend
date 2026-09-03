@@ -61,7 +61,6 @@ const ANSWER_BLACKLIST = new Set([
 ]);
 
 const MIN_ANSWER_LENGTH = 2;
-const MAX_ANSWER_LENGTH = 11;
 const MIN_CLUE_LENGTH = 3;
 const MAX_CLUE_LENGTH = 32;
 const MAX_CLUE_WORDS = 4;
@@ -409,23 +408,9 @@ function getDatabase(): Database {
 // Public API
 // ---------------------------------------------------------------------------
 
-/**
- * All answers usable for the given difficulty (uppercase, 2-11 letters,
- * each guaranteed to have at least one quality clue).
- *
- * Short words (2-4 letters) get a relaxed rank ceiling: templates need many
- * of them and short common words are easy to guess from crossings anyway.
- */
-export function getWordPool(difficulty: Difficulty): string[] {
+export function getWordPool(): string[] {
   const db = getDatabase();
-  const maxRank = MAX_ANSWER_RANK[difficulty];
-  const shortWordMaxRank = maxRank * 2;
-  const pool: string[] = [];
-  for (const entry of db.entries.values()) {
-    const limit = entry.answer.length <= 4 ? shortWordMaxRank : maxRank;
-    if (entry.rank <= limit) pool.push(entry.answer);
-  }
-  return pool;
+  return Array.from(db.entries.values()).map(e => e.answer);
 }
 
 /**

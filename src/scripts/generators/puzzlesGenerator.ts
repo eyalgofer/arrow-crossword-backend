@@ -19,74 +19,24 @@ import { generatePuzzleFromGrid } from './puzzle-assembler';
 import { GridSize, MAX_GRID_SIZE, sizeFallbackChain } from '../utils/gridSizes';
 import { normalizeWord } from './validation-utils';
 
-/** Share of answers that should come from tagged difficulty-1 (everyday) Hebrew vocab. */
-const EASY_VOCAB_TARGET: Record<Difficulty, number> = {
-  [Difficulty.EASY]: 0.5,
-  [Difficulty.MEDIUM]: 0.3,
-  [Difficulty.CHALLENGING]: 0.1,
-  [Difficulty.HARD]: 0.1,
-  [Difficulty.EXPERT]: 0.1,
-};
-
-/** Accept a fill if |ratio - target| is within this window. */
-const EASY_VOCAB_TOLERANCE: Record<Difficulty, number> = {
-  [Difficulty.EASY]: 0.15,
-  [Difficulty.MEDIUM]: 0.12,
-  [Difficulty.CHALLENGING]: 0.1,
-  [Difficulty.HARD]: 0.1,
-  [Difficulty.EXPERT]: 0.1,
-};
-
-/** Minimum words of a given length before that slot size is considered fillable. */
-const MIN_WORDS_PER_LENGTH = 12;
-
-export interface EasyVocabRange {
-  min: number;
-  max: number;
-}
-
 export class PuzzleGenerator {
   private wordIndex: CrossingIndex;
-  private difficulty: Difficulty;
   private language: Language;
   private clueProvider: ClueProvider;
-  private maxSlotLength: number;
-  private easyVocabTarget: number;
-  private easyVocabTolerance: number;
 
   constructor(
-    difficulty: Difficulty = Difficulty.MEDIUM,
     language: Language = 'en',
-    options?: { easyVocabRange?: EasyVocabRange }
   ) {
-    this.difficulty = difficulty;
     this.language = language;
     this.clueProvider = getClueProvider(language);
 
-    const words = this.clueProvider.getWordPool(difficulty);
+    const words = this.clueProvider.getWordPool();
     if (words.length === 0) {
       throw new Error(
-        `Word pool for difficulty '${difficulty}' (${language}) is empty. Check that ` +
+        `(${language}) is empty. Check that ` +
         `the clue database sources exist in src/scripts/core.`
       );
     }
-    this.maxSlotLength = maxFillableSlotLength(words);
-    // Hebrew has fewer long answers than English; keep slots inside 2-11.
-    if (this.language === 'he') {
-      this.maxSlotLength = Math.min(this.maxSlotLength, 11);
-    }
-    if (options?.easyVocabRange) {
-      const { min, max } = options.easyVocabRange;
-      this.easyVocabTarget = (min + max) / 2;
-      this.easyVocabTolerance = (max - min) / 2;
-    } else {
-      this.easyVocabTarget = EASY_VOCAB_TARGET[difficulty];
-      this.easyVocabTolerance = EASY_VOCAB_TOLERANCE[difficulty];
-    }
-    console.log(
-      `🎯 Word pool for '${difficulty}' (${language}): ${words.length.toLocaleString()} words ` +
-      `(max slot ${this.maxSlotLength})`
-    );
     this.wordIndex = buildCrossingIndex(words);
   }
 
@@ -104,8 +54,8 @@ export class PuzzleGenerator {
     /** If true, do not scale Hebrew grids down when the requested size fails. */
     strictSize?: boolean;
   }): Puzzle[] {
-    const defaultRows = Math.min(config.rows ?? 8, MAX_GRID_SIZE);
-    const defaultCols = Math.min(config.cols ?? 8, MAX_GRID_SIZE);
+    const defaultRows = 13 //Math.min(config.rows ?? 8, MAX_GRID_SIZE);
+    const defaultCols = 13 //Math.min(config.cols ?? 8, MAX_GRID_SIZE);
     const puzzles: Puzzle[] = [];
 
     for (let i = 0; i < config.count; i++) {
@@ -133,10 +83,9 @@ export class PuzzleGenerator {
 
       if (generated) {
         puzzles.push(generated);
-        const mix = this.easyVocabMixLabel(generated);
         console.log(
           `✅ Puzzle ${puzzles.length}/${config.count}: ${generated.puzzleItems.length} clues ` +
-          `(${generated.grid.rows}x${generated.grid.cols}${mix})`
+          `(${generated.grid.rows}x${generated.grid.cols})`
         );
       }
     }
@@ -158,46 +107,20 @@ export class PuzzleGenerator {
       ? (cells >= 144 ? 24 : cells >= 121 ? 20 : cells >= 100 ? 18 : 16)
       : 15);
 
-    const useMix = this.language === 'he' && !!this.clueProvider.isEasyVocab;
-    const target = this.easyVocabTarget;
-    const tolerance = this.easyVocabTolerance;
-    let best: Puzzle | null = null;
-    let bestError = Infinity;
-
     for (let attempt = 0; attempt < attempts; attempt++) {
       const template = this.buildTemplate(rows, cols);
       if (!template) continue;
-      if (template.slots.some(slot => slot.length > this.maxSlotLength || slot.length < 3)) {
+      if (template.slots.some(slot => slot.length > 13 || slot.length < 3)) {
         continue;
       }
       const puzzle = this.solveTemplate(template, meta);
       if (!puzzle) continue;
-      if (!useMix) return puzzle;
-
-      const error = Math.abs(this.easyVocabRatio(puzzle) - target);
-      if (error < bestError) {
-        best = puzzle;
-        bestError = error;
-      }
-      if (error <= tolerance) return puzzle;
+      return puzzle;
     }
-    return best;
+    return null;
   }
 
-  private easyVocabRatio(puzzle: Puzzle): number {
-    const items = puzzle.puzzleItems;
-    if (items.length === 0 || !this.clueProvider.isEasyVocab) return 0;
-    const easy = items.filter(item => this.clueProvider.isEasyVocab!(item.answer)).length;
-    return easy / items.length;
-  }
-
-  private easyVocabMixLabel(puzzle: Puzzle): string {
-    if (this.language !== 'he' || !this.clueProvider.isEasyVocab) return '';
-    const items = puzzle.puzzleItems;
-    const easy = items.filter(item => this.clueProvider.isEasyVocab!(item.answer)).length;
-    const pct = items.length === 0 ? 0 : Math.round((100 * easy) / items.length);
-    return `, ${easy}/${items.length} easy-vocab ${pct}%`;
-  }
+ 
 
   private buildTemplate(rows: number, cols: number): GridTemplate | null {
     const cells = rows * cols;
@@ -206,7 +129,6 @@ export class PuzzleGenerator {
       return generateTemplate({
         rows,
         cols,
-        difficulty: this.difficulty,
         name: `${rows}x${cols} arrow crossword`,
         quiet: true,
         maxIterations: this.language === 'he' ? (large ? 28 : 20) : 8,
@@ -214,7 +136,6 @@ export class PuzzleGenerator {
         populationSize: this.language === 'he' ? (large ? 10 : 8) : 5,
         weakBreakCondition: this.language === 'he' ? (large ? 220 : 150) : 80,
         strongBreakCondition: this.language === 'he' ? (large ? 550 : 400) : 250,
-        maxSlotLength: this.maxSlotLength,
         sparse: this.language === 'he' && cells >= 81,
       });
     } catch {
@@ -234,8 +155,6 @@ export class PuzzleGenerator {
     // Prefer more common words so grids feel familiar; jitter keeps puzzles varied.
     // Hebrew also steers toward a target share of tagged difficulty-1 (everyday) answers.
     const jitter = new Map<string, number>();
-    const target = this.easyVocabTarget;
-    const isEasy = (w: string) => this.clueProvider.isEasyVocab?.(w) === true;
     const wordScorer = (word: string, placedWords: string[]) => {
       let j = jitter.get(word);
       if (j === undefined) {
@@ -244,14 +163,7 @@ export class PuzzleGenerator {
       }
       const rank = this.clueProvider.getAnswerRank(word);
       const rankScore = -Math.log(Math.max(rank, 1)) + j;
-      if (this.language !== 'he' || !this.clueProvider.isEasyVocab) return rankScore;
-
-      const n = placedWords.length;
-      const placedEasy = placedWords.filter(isEasy).length;
-      const currentErr = n === 0 ? 0 : Math.abs(placedEasy / n - target);
-      const nextEasy = placedEasy + (isEasy(word) ? 1 : 0);
-      const nextErr = Math.abs(nextEasy / (n + 1) - target);
-      return rankScore + (currentErr - nextErr) * 12;
+      return rankScore;
     };
 
     const result = solveGrid(template, this.wordIndex, {
@@ -265,7 +177,6 @@ export class PuzzleGenerator {
     try {
       return generatePuzzleFromGrid(template, result, {
         title: config.title,
-        difficulty: this.difficulty,
         category: config.category,
         language: this.language,
       });
@@ -277,19 +188,6 @@ export class PuzzleGenerator {
       throw error;
     }
   }
-}
-
-function maxFillableSlotLength(words: string[]): number {
-  const counts = new Map<number, number>();
-  for (const word of words) {
-    const length = Array.from(normalizeWord(word)).length;
-    counts.set(length, (counts.get(length) ?? 0) + 1);
-  }
-  let max = 2;
-  for (const [len, count] of counts) {
-    if (count >= MIN_WORDS_PER_LENGTH && len > max) max = len;
-  }
-  return max;
 }
 
 export function generatePuzzlesBatch(config: {
@@ -304,7 +202,7 @@ export function generatePuzzlesBatch(config: {
   strictSize?: boolean;
 }): Puzzle[] {
   const language = config.language ?? 'en';
-  const generator = new PuzzleGenerator(config.difficulty, language);
+  const generator = new PuzzleGenerator(language);
   return generator.generateBatch({
     count: config.count,
     category: config.category,

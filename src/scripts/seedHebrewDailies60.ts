@@ -17,18 +17,14 @@ import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { PuzzleGenerator } from './generators/puzzlesGenerator';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import { assignPuzzleToDate, getDayOfYear } from '../utils/dailyPuzzleUtils';
-import { Difficulty } from '../types';
 import { connectToDatabase, closeDatabaseAndExit, handleScriptError } from './utils/scriptUtils';
-import { isEasyVocab } from './core/hebrewClueDatabase';
 
 dotenv.config();
 
 const countArgIndex = process.argv.indexOf('--count');
-const ROWS = 10;
-const COLS = 10;
+const ROWS = 13;
+const COLS = 13;
 const CATEGORY = 'יומי';
-const EASY_VOCAB_MIN = 0.25;
-const EASY_VOCAB_MAX = 0.5;
 const LANGUAGE = 'he' as const;
 
 function addDays(date: Date, days: number): Date {
@@ -46,13 +42,7 @@ function defaultCount(): number {
 }
 
 const COUNT = countArgIndex !== -1 ? Number(process.argv[countArgIndex + 1]) : defaultCount();
-
-function easyVocabRatio(answers: string[]): number {
-  if (answers.length === 0) return 0;
-  const easy = answers.filter(a => isEasyVocab(a)).length;
-  return easy / answers.length;
-}
-
+  
 async function ensureMongoConnection(): Promise<void> {
   try {
     if (mongoose.connection.readyState === 1 && mongoose.connection.db) {
@@ -97,13 +87,10 @@ const main = async () => {
     const lastDay = addDays(startDay, COUNT - 1);
     console.log(
       `📅 Generating ${COUNT} Hebrew ${ROWS}x${COLS} dailies ` +
-      `${startDay.toLocaleDateString()} → ${lastDay.toLocaleDateString()}\n` +
-      `   Easy-vocab mix: ${Math.round(EASY_VOCAB_MIN * 100)}–${Math.round(EASY_VOCAB_MAX * 100)}%\n`
+      `${startDay.toLocaleDateString()} → ${lastDay.toLocaleDateString()}\n`
     );
 
-    const generator = new PuzzleGenerator(Difficulty.EASY, LANGUAGE, {
-      easyVocabRange: { min: EASY_VOCAB_MIN, max: EASY_VOCAB_MAX },
-    });
+    const generator = new PuzzleGenerator(LANGUAGE);
     const savedIds: string[] = [];
     let mixSum = 0;
 
@@ -131,19 +118,10 @@ const main = async () => {
           console.warn(`   ⚠️  Got ${puzzle.grid.rows}x${puzzle.grid.cols} (try ${attempt})`);
           continue;
         }
-        const ratio = easyVocabRatio(puzzle.puzzleItems.map(item => item.answer));
-        if (ratio < EASY_VOCAB_MIN || ratio > EASY_VOCAB_MAX) {
-          console.warn(
-            `   ⚠️  Mix ${Math.round(ratio * 100)}% outside ${Math.round(EASY_VOCAB_MIN * 100)}–${Math.round(EASY_VOCAB_MAX * 100)}% (try ${attempt})`
-          );
-          continue;
-        }
+       
         await ensureMongoConnection();
         const inserted = await Puzzle.insertMany([{ ...puzzle, title: `תשחץ יומי ${i + 1}` }]);
         saved = inserted[0];
-        const easy = puzzle.puzzleItems.filter(item => isEasyVocab(item.answer)).length;
-        mixLabel = `${easy}/${puzzle.puzzleItems.length} easy-vocab ${Math.round(ratio * 100)}%`;
-        mixSum += ratio;
       }
 
       if (!saved) {

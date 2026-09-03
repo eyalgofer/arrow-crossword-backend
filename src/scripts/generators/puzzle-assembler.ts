@@ -36,7 +36,6 @@ export function generatePuzzleFromGrid(
   gridState: GridState,
   config: {
     title: string;
-    difficulty: Difficulty;
     category: string;
     language?: Language;
   }
@@ -138,21 +137,15 @@ export function generatePuzzleFromGrid(
     );
   }
 
-  const difficultyNumber =
-    config.difficulty === Difficulty.EASY ? 1 :
-    config.difficulty === Difficulty.MEDIUM ? 2 :
-    config.difficulty === Difficulty.CHALLENGING ? 3 :
-    config.difficulty === Difficulty.HARD ? 4 : 5;
-
   return {
+    difficulty: Difficulty.MEDIUM,
     title: config.title,
-    difficulty: config.difficulty,
     category: config.category,
     language,
     grid: { rows: template.rows, cols: template.cols },
     puzzleItems,
-    estimatedTime: puzzleItems.length * 20 * difficultyNumber,
-    coinReward: Math.ceil((puzzleItems.length * difficultyNumber) / 4),
+    estimatedTime: puzzleItems.length * 20,
+    coinReward: Math.ceil(puzzleItems.length / 4),
     metadata: {
       templateId: template.id,
       generationMethod: 'algorithmic',

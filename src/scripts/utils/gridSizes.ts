@@ -1,5 +1,5 @@
-export const MAX_GRID_SIZE = 12;
-export const MIN_GRID_SIZE = 8;
+export const MAX_GRID_SIZE = 14;
+export const MIN_GRID_SIZE = 10;
 
 export interface GridSize {
   rows: number;

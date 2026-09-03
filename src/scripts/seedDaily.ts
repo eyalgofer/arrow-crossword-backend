@@ -10,8 +10,8 @@ import { mixSizes } from './utils/gridSizes';
 
 dotenv.config();
 
-const DAILY_GRID_ROWS = 8;
-const DAILY_GRID_COLS = 8;
+const DAILY_GRID_ROWS = 13;
+const DAILY_GRID_COLS = 13;
 const DAILY_PUZZLE_COUNT = 3;
 
 // Usage: ts-node src/scripts/seedDaily.ts [--lang he]
@@ -25,7 +25,7 @@ const dailyTitle = (index: number) => language === 'he' ? `תשחץ יומי ${i
 const seedDaily = async () => {
   try {
     await connectToDatabase();
-    const sizeLabel = language === 'he' ? 'easy, mixed 8–12 grids' : `easy ${DAILY_GRID_ROWS}x${DAILY_GRID_COLS}`;
+    const sizeLabel = language === 'he' ? 'easy, mixed 13-13 grids' : `easy ${DAILY_GRID_ROWS}x${DAILY_GRID_COLS}`;
     console.log(`📅 Generating ${DAILY_PUZZLE_COUNT} daily puzzles (${language}): ${sizeLabel}...\n`);
 
     const sizes = language === 'he'
@@ -40,7 +40,7 @@ const seedDaily = async () => {
       sizes,
       language,
     });
-
+    
     const validPuzzles = filterValidPuzzles(batch, validatePuzzleBoundaries);
 
     if (validPuzzles.length === 0) {
