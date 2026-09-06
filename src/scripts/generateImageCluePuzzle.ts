@@ -4,6 +4,7 @@
  */
 import { Difficulty } from '../types';
 import { generatePuzzlesBatch } from './generators/puzzlesGenerator';
+import { loadGeneratedImageClueCatalog } from './generators/imageClueCatalog';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -14,7 +15,19 @@ const IMAGE_CLUE_COUNT = 3;
 const OUT = path.join(__dirname, '../../tmp-image-clue-puzzle.json');
 
 async function main() {
-  console.log(`Generating Hebrew ${ROWS}x${COLS} with ${IMAGE_CLUE_COUNT} images...`);
+  const catalog = loadGeneratedImageClueCatalog();
+  if (catalog.length < IMAGE_CLUE_COUNT) {
+    console.error(
+      `Need ${IMAGE_CLUE_COUNT} processed image clues, found ${catalog.length}. ` +
+        `Run scripts/arrow-image-pipeline \`npm run process\` first.`
+    );
+    process.exit(1);
+  }
+
+  console.log(
+    `Generating Hebrew ${ROWS}x${COLS} with ${IMAGE_CLUE_COUNT} images ` +
+      `(catalog ${catalog.length})...`
+  );
   const t0 = Date.now();
   const puzzles = generatePuzzlesBatch({
     difficulty: Difficulty.MEDIUM,
@@ -26,6 +39,7 @@ async function main() {
     language: 'he',
     strictSize: true,
     imageClueCount: IMAGE_CLUE_COUNT,
+    imageClueCatalog: catalog,
   });
   console.log(`elapsed ${Date.now() - t0}ms`);
 
@@ -47,7 +61,8 @@ async function main() {
   );
   for (const img of images) {
     console.log(
-      `  #${img.number} ${img.direction} ${img.answer} block(${img.startRow},${img.startCol}) exit(${img.exitRow},${img.exitCol})`
+      `  #${img.number} ${img.direction} ${img.answer} block(${img.startRow},${img.startCol}) exit(${img.exitRow},${img.exitCol})` +
+        (img.imageUrl ? `\n    ${img.imageUrl}` : '')
     );
   }
 

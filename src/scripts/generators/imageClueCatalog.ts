@@ -1,22 +1,45 @@
+import fs from 'fs';
+import path from 'path';
 import { Direction } from '../core/types';
-
-export const IMAGE_CLUE_PLACEHOLDER_URL =
-  'https://premierpups.com/azure/premierphotos/pups/french-bulldog-puppies-637637524473115475.jpg?w=557&h=557&mode=crop&autorotate=1';
+import { normalizeWord } from './validation-utils';
 
 export interface ImageClueCatalogEntry {
+  id?: string;
   answer: string;
-  clue: string;
   imageUrl: string;
+  subject?: string;
+  type?: string;
+  letterLength?: number;
 }
 
-export const IMAGE_CLUE_CATALOG: ImageClueCatalogEntry[] = [
-  { answer: 'ZORBAX', clue: 'IMAGE', imageUrl: IMAGE_CLUE_PLACEHOLDER_URL },
-  { answer: 'QUIMPL', clue: 'IMAGE', imageUrl: IMAGE_CLUE_PLACEHOLDER_URL },
-  { answer: 'FLEXTOR', clue: 'IMAGE', imageUrl: IMAGE_CLUE_PLACEHOLDER_URL },
-  { answer: 'MIBRUK', clue: 'IMAGE', imageUrl: IMAGE_CLUE_PLACEHOLDER_URL },
-  { answer: 'PLONDAK', clue: 'IMAGE', imageUrl: IMAGE_CLUE_PLACEHOLDER_URL },
-  { answer: 'VEXTRI', clue: 'IMAGE', imageUrl: IMAGE_CLUE_PLACEHOLDER_URL },
-];
+const GENERATED_CATALOG = path.join(__dirname, 'imageClues.generated.json');
+
+export function catalogLetterLength(entry: ImageClueCatalogEntry): number {
+  return entry.letterLength ?? normalizeWord(entry.answer).length;
+}
+
+export function loadGeneratedImageClueCatalog(): ImageClueCatalogEntry[] {
+  if (!fs.existsSync(GENERATED_CATALOG)) return [];
+  const raw = JSON.parse(fs.readFileSync(GENERATED_CATALOG, 'utf8')) as ImageClueCatalogEntry[];
+  return raw.filter((entry) => entry.answer && entry.imageUrl);
+}
+
+export async function loadImageClueCatalogFromMongo(): Promise<ImageClueCatalogEntry[]> {
+  const { ImageClue } = await import('../../models/ImageClue');
+  const docs = await ImageClue.find({
+    active: true,
+    image_url: { $exists: true, $nin: [null, ''] },
+    answer_hebrew: { $exists: true, $nin: [null, ''] },
+  }).lean();
+  return docs.map((doc) => ({
+    id: doc.id,
+    answer: doc.answer_hebrew,
+    imageUrl: doc.image_url,
+    subject: doc.subject,
+    type: doc.type,
+    letterLength: doc.letter_length ?? normalizeWord(doc.answer_hebrew).length,
+  }));
+}
 
 export type ImageExitFieldType = '1' | '2' | '3' | '4' | '5' | '6';
 
@@ -27,7 +50,6 @@ export interface PlannedImageClue {
   exitCol: number;
   direction: Direction;
   fieldType: ImageExitFieldType;
-  imageUrl: string;
 }
 
 export function directionToFieldType(direction: Direction): ImageExitFieldType {
@@ -160,12 +182,10 @@ function exitOptions(
 export function planImageClues(
   rows: number,
   cols: number,
-  count: number = 3,
-  catalog: ImageClueCatalogEntry[] = IMAGE_CLUE_CATALOG
+  count: number = 3
 ): PlannedImageClue[] {
   const placed: PlannedImageClue[] = [];
   const occupied = new Set<string>();
-  const shuffled = [...catalog].sort(() => Math.random() - 0.5);
 
   const candidates: Array<{ startRow: number; startCol: number }> = [];
   // Margin so exits + 3-letter corridors stay in-bounds
@@ -234,7 +254,6 @@ export function planImageClues(
       occupied.add(`${start.row + i * start.flowRow},${start.col + i * start.flowCol}`);
     }
 
-    const entry = shuffled[placed.length % shuffled.length];
     placed.push({
       startRow: block.startRow,
       startCol: block.startCol,
@@ -242,7 +261,6 @@ export function planImageClues(
       exitCol: chosen.exitCol,
       direction: chosen.direction,
       fieldType: directionToFieldType(chosen.direction),
-      imageUrl: entry.imageUrl,
     });
   }
 
