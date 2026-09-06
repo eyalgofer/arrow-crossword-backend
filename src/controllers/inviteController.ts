@@ -10,6 +10,7 @@ import { resolveLanguage } from '../utils/language';
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
 import { createMatchTiming, serializeTimingFields } from '../utils/matchTiming';
 import { durationSecondsForSettings, parseMatchSettings } from '../utils/matchSettings';
+import { sendGameInvitePush } from '../services/onesignal';
 
 export const createInvite = async (req: AuthRequest, res: Response) => {
   try {
@@ -79,6 +80,21 @@ export const createInvite = async (req: AuthRequest, res: Response) => {
     const populatedInvite = await Invite.findById(inviteId)
       .populate('from', 'displayName email photoURL')
       .populate('to', 'displayName email photoURL');
+
+    // Fire-and-forget push so invite creation is not blocked by OneSignal.
+    const fromDisplayName =
+      fromUser.displayName?.trim() ||
+      fromUser.email?.split('@')[0] ||
+      'Someone';
+    void sendGameInvitePush({
+      toUserId: toUser._id.toString(),
+      fromDisplayName,
+      inviteId: inviteId.toString(),
+      mode: settings.mode,
+      timed: settings.timed,
+    }).catch((err) => {
+      console.error('[OneSignal] Game invite push failed', err);
+    });
 
     res.status(201).json({ invite: populatedInvite });
   } catch (error: any) {

@@ -27,6 +27,10 @@
         {
           "name": "PORT",
           "value": "3000"
+        },
+        {
+          "name": "ONESIGNAL_APP_ID",
+          "value": "f73ae244-daa1-46ec-8835-3e40b6269d4d"
         }
       ],
       "secrets": [
