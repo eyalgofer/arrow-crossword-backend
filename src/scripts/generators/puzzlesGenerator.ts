@@ -284,7 +284,7 @@ export class PuzzleGenerator {
               ? 450
               : 350
           : 250,
-        // Image boards need some blocked/uncovered slack around cutouts
+        // Image boards: a little uncovered slack helps the GA around cutouts
         sparse: this.language === 'he' && (cells >= 81 || withImages),
         cutoutCells,
         lockedCells,

@@ -28,7 +28,21 @@ function printPuzzle(puzzle: Puzzle): void {
   // Build display grid: letters, clue numbers, blocked cells
   const display: string[][] = Array.from({ length: rows }, () => Array(cols).fill('███'));
   for (const item of puzzle.puzzleItems) {
-    display[item.startRow][item.startCol] = `${String(item.number).padStart(2)}${ARROWS[item.direction] || '?'}`;
+    if (item.clueType === 'image' && item.exitRow != null && item.exitCol != null) {
+      for (let dr = 0; dr < 3; dr++) {
+        for (let dc = 0; dc < 3; dc++) {
+          const r = item.startRow + dr;
+          const c = item.startCol + dc;
+          if (r === item.exitRow && c === item.exitCol) {
+            display[r][c] = `${String(item.number).padStart(2)}${ARROWS[item.direction] || '?'}`;
+          } else {
+            display[r][c] = 'IMG';
+          }
+        }
+      }
+    } else {
+      display[item.startRow][item.startCol] = `${String(item.number).padStart(2)}${ARROWS[item.direction] || '?'}`;
+    }
   }
   for (const item of puzzle.puzzleItems) {
     const cells = getAnswerCells(item);
