@@ -1,0 +1,25 @@
+{
+  "name": "arrow-image-clue-pipeline",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "discover": "tsx src/discover.ts",
+    "serve": "tsx src/server.ts",
+    "process": "tsx src/process-approved.ts",
+    "validate": "tsx src/validate.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.883.0",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "mongodb": "^6.19.0",
+    "sharp": "^0.34.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.3.1",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}

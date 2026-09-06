@@ -1,0 +1,637 @@
+[
+  {
+    "clueId": "img_0001",
+    "candidateId": "img_0001:50367214",
+    "approvedAt": "2026-09-06T11:41:48.338Z"
+  },
+  {
+    "clueId": "img_0006",
+    "candidateId": "img_0006:34360350",
+    "approvedAt": "2026-09-06T11:42:24.459Z"
+  },
+  {
+    "clueId": "img_0007",
+    "candidateId": "img_0007:16470597",
+    "approvedAt": "2026-09-06T11:42:32.464Z"
+  },
+  {
+    "clueId": "img_0008",
+    "candidateId": "img_0008:6608902",
+    "approvedAt": "2026-09-06T11:42:36.542Z"
+  },
+  {
+    "clueId": "img_0009",
+    "candidateId": "img_0009:51832915",
+    "approvedAt": "2026-09-06T11:42:42.027Z"
+  },
+  {
+    "clueId": "img_0010",
+    "candidateId": "img_0010:29875109",
+    "approvedAt": "2026-09-06T11:42:50.744Z"
+  },
+  {
+    "clueId": "img_0011",
+    "candidateId": "img_0011:67246533",
+    "approvedAt": "2026-09-06T11:42:54.946Z"
+  },
+  {
+    "clueId": "img_0012",
+    "candidateId": "img_0012:91439920",
+    "approvedAt": "2026-09-06T11:43:01.627Z"
+  },
+  {
+    "clueId": "img_0014",
+    "candidateId": "img_0014:45260351",
+    "approvedAt": "2026-09-06T11:43:11.742Z"
+  },
+  {
+    "clueId": "img_0015",
+    "candidateId": "img_0015:186571273",
+    "approvedAt": "2026-09-06T11:43:17.010Z"
+  },
+  {
+    "clueId": "img_0016",
+    "candidateId": "img_0016:27931153",
+    "approvedAt": "2026-09-06T11:43:22.575Z"
+  },
+  {
+    "clueId": "img_0020",
+    "candidateId": "img_0020:5528749",
+    "approvedAt": "2026-09-06T11:43:34.042Z"
+  },
+  {
+    "clueId": "img_0021",
+    "candidateId": "img_0021:14299647",
+    "approvedAt": "2026-09-06T11:43:38.844Z"
+  },
+  {
+    "clueId": "img_0022",
+    "candidateId": "img_0022:70689160",
+    "approvedAt": "2026-09-06T11:43:45.962Z"
+  },
+  {
+    "clueId": "img_0025",
+    "candidateId": "img_0025:97152778",
+    "approvedAt": "2026-09-06T11:43:52.461Z"
+  },
+  {
+    "clueId": "img_0027",
+    "candidateId": "img_0027:16295724",
+    "approvedAt": "2026-09-06T11:43:58.544Z"
+  },
+  {
+    "clueId": "img_0028",
+    "candidateId": "img_0028:82155628",
+    "approvedAt": "2026-09-06T11:44:02.892Z"
+  },
+  {
+    "clueId": "img_0029",
+    "candidateId": "img_0029:14798841",
+    "approvedAt": "2026-09-06T11:44:07.775Z"
+  },
+  {
+    "clueId": "img_0030",
+    "candidateId": "img_0030:52449241",
+    "approvedAt": "2026-09-06T11:44:12.426Z"
+  },
+  {
+    "clueId": "img_0033",
+    "candidateId": "img_0033:44033144",
+    "approvedAt": "2026-09-06T11:44:27.211Z"
+  },
+  {
+    "clueId": "img_0034",
+    "candidateId": "img_0034:12442066",
+    "approvedAt": "2026-09-06T11:44:32.175Z"
+  },
+  {
+    "clueId": "img_0035",
+    "candidateId": "img_0035:142020615",
+    "approvedAt": "2026-09-06T11:44:36.076Z"
+  },
+  {
+    "clueId": "img_0036",
+    "candidateId": "img_0036:159459025",
+    "approvedAt": "2026-09-06T11:44:46.591Z"
+  },
+  {
+    "clueId": "img_0037",
+    "candidateId": "img_0037:83482553",
+    "approvedAt": "2026-09-06T11:44:50.509Z"
+  },
+  {
+    "clueId": "img_0038",
+    "candidateId": "img_0038:71359952",
+    "approvedAt": "2026-09-06T11:44:54.959Z"
+  },
+  {
+    "clueId": "img_0040",
+    "candidateId": "img_0040:4930218",
+    "approvedAt": "2026-09-06T11:45:00.642Z"
+  },
+  {
+    "clueId": "img_0043",
+    "candidateId": "img_0043:89451955",
+    "approvedAt": "2026-09-06T11:45:09.492Z"
+  },
+  {
+    "clueId": "img_0045",
+    "candidateId": "img_0045:108224605",
+    "approvedAt": "2026-09-06T11:45:22.877Z"
+  },
+  {
+    "clueId": "img_0046",
+    "candidateId": "img_0046:11523022",
+    "approvedAt": "2026-09-06T11:45:26.926Z"
+  },
+  {
+    "clueId": "img_0047",
+    "candidateId": "img_0047:31334902",
+    "approvedAt": "2026-09-06T11:45:30.658Z"
+  },
+  {
+    "clueId": "img_0048",
+    "candidateId": "img_0048:9528097",
+    "approvedAt": "2026-09-06T11:45:38.126Z"
+  },
+  {
+    "clueId": "img_0049",
+    "candidateId": "img_0049:64301886",
+    "approvedAt": "2026-09-06T11:45:42.259Z"
+  },
+  {
+    "clueId": "img_0051",
+    "candidateId": "img_0051:152169728",
+    "approvedAt": "2026-09-06T11:45:47.174Z"
+  },
+  {
+    "clueId": "img_0054",
+    "candidateId": "img_0054:22808448",
+    "approvedAt": "2026-09-06T11:46:12.296Z"
+  },
+  {
+    "clueId": "img_0076",
+    "candidateId": "img_0076:117275953",
+    "approvedAt": "2026-09-06T11:47:16.431Z"
+  },
+  {
+    "clueId": "img_0077",
+    "candidateId": "img_0077:69069494",
+    "approvedAt": "2026-09-06T11:47:20.640Z"
+  },
+  {
+    "clueId": "img_0078",
+    "candidateId": "img_0078:107315896",
+    "approvedAt": "2026-09-06T11:47:28.372Z"
+  },
+  {
+    "clueId": "img_0079",
+    "candidateId": "img_0079:23199514",
+    "approvedAt": "2026-09-06T11:47:31.474Z"
+  },
+  {
+    "clueId": "img_0080",
+    "candidateId": "img_0080:49622626",
+    "approvedAt": "2026-09-06T11:47:34.523Z"
+  },
+  {
+    "clueId": "img_0081",
+    "candidateId": "img_0081:1544945",
+    "approvedAt": "2026-09-06T11:47:36.740Z"
+  },
+  {
+    "clueId": "img_0082",
+    "candidateId": "img_0082:115073929",
+    "approvedAt": "2026-09-06T11:47:39.640Z"
+  },
+  {
+    "clueId": "img_0084",
+    "candidateId": "img_0084:3187916",
+    "approvedAt": "2026-09-06T11:47:45.007Z"
+  },
+  {
+    "clueId": "img_0095",
+    "candidateId": "img_0095:19484165",
+    "approvedAt": "2026-09-06T11:48:14.161Z"
+  },
+  {
+    "clueId": "img_0096",
+    "candidateId": "img_0096:112226021",
+    "approvedAt": "2026-09-06T11:48:17.205Z"
+  },
+  {
+    "clueId": "img_0098",
+    "candidateId": "img_0098:10016572",
+    "approvedAt": "2026-09-06T11:48:26.873Z"
+  },
+  {
+    "clueId": "img_0099",
+    "candidateId": "img_0099:10436664",
+    "approvedAt": "2026-09-06T11:48:30.088Z"
+  },
+  {
+    "clueId": "img_0100",
+    "candidateId": "img_0100:2560297",
+    "approvedAt": "2026-09-06T11:48:34.804Z"
+  },
+  {
+    "clueId": "img_0103",
+    "candidateId": "img_0103:1830792",
+    "approvedAt": "2026-09-06T11:48:40.772Z"
+  },
+  {
+    "clueId": "img_0104",
+    "candidateId": "img_0104:70276827",
+    "approvedAt": "2026-09-06T11:48:45.139Z"
+  },
+  {
+    "clueId": "img_0105",
+    "candidateId": "img_0105:69972366",
+    "approvedAt": "2026-09-06T11:48:48.205Z"
+  },
+  {
+    "clueId": "img_0106",
+    "candidateId": "img_0106:70895596",
+    "approvedAt": "2026-09-06T11:48:50.590Z"
+  },
+  {
+    "clueId": "img_0107",
+    "candidateId": "img_0107:69853869",
+    "approvedAt": "2026-09-06T11:48:52.506Z"
+  },
+  {
+    "clueId": "img_0108",
+    "candidateId": "img_0108:19858570",
+    "approvedAt": "2026-09-06T11:48:57.056Z"
+  },
+  {
+    "clueId": "img_0109",
+    "candidateId": "img_0109:29840387",
+    "approvedAt": "2026-09-06T11:49:01.189Z"
+  },
+  {
+    "clueId": "img_0111",
+    "candidateId": "img_0111:145654077",
+    "approvedAt": "2026-09-06T11:49:10.509Z"
+  },
+  {
+    "clueId": "img_0112",
+    "candidateId": "img_0112:19888830",
+    "approvedAt": "2026-09-06T11:49:14.141Z"
+  },
+  {
+    "clueId": "img_0114",
+    "candidateId": "img_0114:1678741",
+    "approvedAt": "2026-09-06T11:49:20.922Z"
+  },
+  {
+    "clueId": "img_0116",
+    "candidateId": "img_0116:1578631",
+    "approvedAt": "2026-09-06T11:49:26.089Z"
+  },
+  {
+    "clueId": "img_0117",
+    "candidateId": "img_0117:117547905",
+    "approvedAt": "2026-09-06T11:49:29.271Z"
+  },
+  {
+    "clueId": "img_0118",
+    "candidateId": "img_0118:37278765",
+    "approvedAt": "2026-09-06T11:49:33.054Z"
+  },
+  {
+    "clueId": "img_0119",
+    "candidateId": "img_0119:32037975",
+    "approvedAt": "2026-09-06T11:49:36.321Z"
+  },
+  {
+    "clueId": "img_0120",
+    "candidateId": "img_0120:17620128",
+    "approvedAt": "2026-09-06T11:49:41.571Z"
+  },
+  {
+    "clueId": "img_0121",
+    "candidateId": "img_0121:4536627",
+    "approvedAt": "2026-09-06T11:49:44.924Z"
+  },
+  {
+    "clueId": "img_0122",
+    "candidateId": "img_0122:25472056",
+    "approvedAt": "2026-09-06T11:49:48.705Z"
+  },
+  {
+    "clueId": "img_0124",
+    "candidateId": "img_0124:38137080",
+    "approvedAt": "2026-09-06T11:49:53.254Z"
+  },
+  {
+    "clueId": "img_0132",
+    "candidateId": "img_0132:84773232",
+    "approvedAt": "2026-09-06T11:50:08.643Z"
+  },
+  {
+    "clueId": "img_0133",
+    "candidateId": "img_0133:15742413",
+    "approvedAt": "2026-09-06T11:50:13.256Z"
+  },
+  {
+    "clueId": "img_0134",
+    "candidateId": "img_0134:80216009",
+    "approvedAt": "2026-09-06T11:50:17.603Z"
+  },
+  {
+    "clueId": "img_0136",
+    "candidateId": "img_0136:371039",
+    "approvedAt": "2026-09-06T11:50:26.192Z"
+  },
+  {
+    "clueId": "img_0138",
+    "candidateId": "img_0138:11770935",
+    "approvedAt": "2026-09-06T11:50:34.578Z"
+  },
+  {
+    "clueId": "img_0139",
+    "candidateId": "img_0139:88009757",
+    "approvedAt": "2026-09-06T11:50:37.162Z"
+  },
+  {
+    "clueId": "img_0140",
+    "candidateId": "img_0140:78761717",
+    "approvedAt": "2026-09-06T11:50:42.445Z"
+  },
+  {
+    "clueId": "img_0141",
+    "candidateId": "img_0141:83677272",
+    "approvedAt": "2026-09-06T11:50:45.513Z"
+  },
+  {
+    "clueId": "img_0145",
+    "candidateId": "img_0145:48546468",
+    "approvedAt": "2026-09-06T11:50:51.364Z"
+  },
+  {
+    "clueId": "img_0146",
+    "candidateId": "img_0146:50303466",
+    "approvedAt": "2026-09-06T11:50:55.647Z"
+  },
+  {
+    "clueId": "img_0148",
+    "candidateId": "img_0148:33239863",
+    "approvedAt": "2026-09-06T11:51:02.666Z"
+  },
+  {
+    "clueId": "img_0149",
+    "candidateId": "img_0149:7335421",
+    "approvedAt": "2026-09-06T11:51:06.332Z"
+  },
+  {
+    "clueId": "img_0150",
+    "candidateId": "img_0150:80902460",
+    "approvedAt": "2026-09-06T11:51:08.947Z"
+  },
+  {
+    "clueId": "img_0151",
+    "candidateId": "img_0151:95361806",
+    "approvedAt": "2026-09-06T11:51:13.198Z"
+  },
+  {
+    "clueId": "img_0152",
+    "candidateId": "img_0152:32545721",
+    "approvedAt": "2026-09-06T11:51:16.096Z"
+  },
+  {
+    "clueId": "img_0153",
+    "candidateId": "img_0153:67338780",
+    "approvedAt": "2026-09-06T11:51:19.231Z"
+  },
+  {
+    "clueId": "img_0154",
+    "candidateId": "img_0154:80710685",
+    "approvedAt": "2026-09-06T11:51:22.181Z"
+  },
+  {
+    "clueId": "img_0155",
+    "candidateId": "img_0155:23247503",
+    "approvedAt": "2026-09-06T11:51:25.263Z"
+  },
+  {
+    "clueId": "img_0156",
+    "candidateId": "img_0156:26459865",
+    "approvedAt": "2026-09-06T11:51:29.198Z"
+  },
+  {
+    "clueId": "img_0157",
+    "candidateId": "img_0157:25135388",
+    "approvedAt": "2026-09-06T11:51:33.230Z"
+  },
+  {
+    "clueId": "img_0184",
+    "candidateId": "img_0184:92008259",
+    "approvedAt": "2026-09-06T11:51:40.084Z"
+  },
+  {
+    "clueId": "img_0185",
+    "candidateId": "img_0185:149024940",
+    "approvedAt": "2026-09-06T11:51:42.664Z"
+  },
+  {
+    "clueId": "img_0186",
+    "candidateId": "img_0186:925243",
+    "approvedAt": "2026-09-06T11:51:44.762Z"
+  },
+  {
+    "clueId": "img_0194",
+    "candidateId": "img_0194:59529703",
+    "approvedAt": "2026-09-06T11:52:02.733Z"
+  },
+  {
+    "clueId": "img_0195",
+    "candidateId": "img_0195:5767332",
+    "approvedAt": "2026-09-06T11:52:05.064Z"
+  },
+  {
+    "clueId": "img_0196",
+    "candidateId": "img_0196:4614989",
+    "approvedAt": "2026-09-06T11:52:07.230Z"
+  },
+  {
+    "clueId": "img_0197",
+    "candidateId": "img_0197:19375625",
+    "approvedAt": "2026-09-06T11:52:09.762Z"
+  },
+  {
+    "clueId": "img_0198",
+    "candidateId": "img_0198:65357911",
+    "approvedAt": "2026-09-06T11:52:11.947Z"
+  },
+  {
+    "clueId": "img_0199",
+    "candidateId": "img_0199:4136838",
+    "approvedAt": "2026-09-06T11:52:14.865Z"
+  },
+  {
+    "clueId": "img_0201",
+    "candidateId": "img_0201:74768082",
+    "approvedAt": "2026-09-06T11:52:24.415Z"
+  },
+  {
+    "clueId": "img_0203",
+    "candidateId": "img_0203:2694860",
+    "approvedAt": "2026-09-06T11:52:28.749Z"
+  },
+  {
+    "clueId": "img_0204",
+    "candidateId": "img_0204:85061623",
+    "approvedAt": "2026-09-06T11:52:32.999Z"
+  },
+  {
+    "clueId": "img_0205",
+    "candidateId": "img_0205:119755768",
+    "approvedAt": "2026-09-06T11:52:38.332Z"
+  },
+  {
+    "clueId": "img_0206",
+    "candidateId": "img_0206:17218777",
+    "approvedAt": "2026-09-06T11:52:42.696Z"
+  },
+  {
+    "clueId": "img_0208",
+    "candidateId": "img_0208:17511101",
+    "approvedAt": "2026-09-06T11:52:49.447Z"
+  },
+  {
+    "clueId": "img_0209",
+    "candidateId": "img_0209:61325043",
+    "approvedAt": "2026-09-06T11:52:52.881Z"
+  },
+  {
+    "clueId": "img_0210",
+    "candidateId": "img_0210:26638522",
+    "approvedAt": "2026-09-06T11:52:56.630Z"
+  },
+  {
+    "clueId": "img_0211",
+    "candidateId": "img_0211:65001758",
+    "approvedAt": "2026-09-06T11:53:00.080Z"
+  },
+  {
+    "clueId": "img_0212",
+    "candidateId": "img_0212:2542517",
+    "approvedAt": "2026-09-06T11:53:02.149Z"
+  },
+  {
+    "clueId": "img_0213",
+    "candidateId": "img_0213:45044905",
+    "approvedAt": "2026-09-06T11:53:06.398Z"
+  },
+  {
+    "clueId": "img_0214",
+    "candidateId": "img_0214:21454515",
+    "approvedAt": "2026-09-06T11:53:12.130Z"
+  },
+  {
+    "clueId": "img_0215",
+    "candidateId": "img_0215:1437966",
+    "approvedAt": "2026-09-06T11:53:14.931Z"
+  },
+  {
+    "clueId": "img_0216",
+    "candidateId": "img_0216:15164977",
+    "approvedAt": "2026-09-06T11:53:18.379Z"
+  },
+  {
+    "clueId": "img_0217",
+    "candidateId": "img_0217:77262110",
+    "approvedAt": "2026-09-06T11:53:22.682Z"
+  },
+  {
+    "clueId": "img_0221",
+    "candidateId": "img_0221:74000059",
+    "approvedAt": "2026-09-06T11:53:33.550Z"
+  },
+  {
+    "clueId": "img_0232",
+    "candidateId": "img_0232:25569135",
+    "approvedAt": "2026-09-06T11:53:59.899Z"
+  },
+  {
+    "clueId": "img_0235",
+    "candidateId": "img_0235:8156145",
+    "approvedAt": "2026-09-06T11:54:12.164Z"
+  },
+  {
+    "clueId": "img_0237",
+    "candidateId": "img_0237:6926930",
+    "approvedAt": "2026-09-06T11:54:18.930Z"
+  },
+  {
+    "clueId": "img_0238",
+    "candidateId": "img_0238:4800579",
+    "approvedAt": "2026-09-06T11:54:25.814Z"
+  },
+  {
+    "clueId": "img_0245",
+    "candidateId": "img_0245:3668596",
+    "approvedAt": "2026-09-06T11:54:41.198Z"
+  },
+  {
+    "clueId": "img_0249",
+    "candidateId": "img_0249:6909926",
+    "approvedAt": "2026-09-06T11:54:51.297Z"
+  },
+  {
+    "clueId": "img_0252",
+    "candidateId": "img_0252:24697664",
+    "approvedAt": "2026-09-06T11:55:08.711Z"
+  },
+  {
+    "clueId": "img_0253",
+    "candidateId": "img_0253:28295331",
+    "approvedAt": "2026-09-06T11:55:13.296Z"
+  },
+  {
+    "clueId": "img_0255",
+    "candidateId": "img_0255:8914480",
+    "approvedAt": "2026-09-06T11:55:17.944Z"
+  },
+  {
+    "clueId": "img_0256",
+    "candidateId": "img_0256:88114952",
+    "approvedAt": "2026-09-06T11:55:22.715Z"
+  },
+  {
+    "clueId": "img_0264",
+    "candidateId": "img_0264:89975936",
+    "approvedAt": "2026-09-06T11:55:38.915Z"
+  },
+  {
+    "clueId": "img_0265",
+    "candidateId": "img_0265:8124183",
+    "approvedAt": "2026-09-06T11:55:45.045Z"
+  },
+  {
+    "clueId": "img_0270",
+    "candidateId": "img_0270:834203",
+    "approvedAt": "2026-09-06T11:55:53.668Z"
+  },
+  {
+    "clueId": "img_0274",
+    "candidateId": "img_0274:8759284",
+    "approvedAt": "2026-09-06T11:56:02.680Z"
+  },
+  {
+    "clueId": "img_0275",
+    "candidateId": "img_0275:11950175",
+    "approvedAt": "2026-09-06T11:56:04.176Z"
+  },
+  {
+    "clueId": "img_0276",
+    "candidateId": "img_0276:35323156",
+    "approvedAt": "2026-09-06T11:56:07.678Z"
+  },
+  {
+    "clueId": "img_0277",
+    "candidateId": "img_0277:29651325",
+    "approvedAt": "2026-09-06T11:56:10.095Z"
+  }
+]

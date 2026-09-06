@@ -109,26 +109,49 @@ function firstAnswerCell(
   }
 }
 
-/** Prefer simple across/down exits — they bind and fill more reliably. */
+function isInsideBlock(
+  row: number,
+  col: number,
+  startRow: number,
+  startCol: number
+): boolean {
+  return (
+    row >= startRow &&
+    row <= startRow + 2 &&
+    col >= startCol &&
+    col <= startCol + 2
+  );
+}
+
+/**
+ * Every perimeter cell of the 3×3 × every direction whose first answer
+ * lands on a neighbor *outside* the image (same geometry as text clues).
+ * Across/down listed first so the planner prefers simple exits.
+ */
 function exitOptions(
   startRow: number,
   startCol: number
 ): Array<{ exitRow: number; exitCol: number; direction: Direction }> {
-  return [
-    // Primary: down from bottom edge
-    { exitRow: startRow + 2, exitCol: startCol + 1, direction: 'down' },
-    { exitRow: startRow + 2, exitCol: startCol, direction: 'down' },
-    { exitRow: startRow + 2, exitCol: startCol + 2, direction: 'down' },
-    // Primary: across from right edge
-    { exitRow: startRow + 1, exitCol: startCol + 2, direction: 'across' },
-    { exitRow: startRow, exitCol: startCol + 2, direction: 'across' },
-    { exitRow: startRow + 2, exitCol: startCol + 2, direction: 'across' },
-    // Secondary angled exits
-    { exitRow: startRow + 1, exitCol: startCol + 2, direction: 'right-down' },
-    { exitRow: startRow + 2, exitCol: startCol + 1, direction: 'down-across' },
-    { exitRow: startRow, exitCol: startCol + 1, direction: 'up-across' },
-    { exitRow: startRow + 1, exitCol: startCol, direction: 'left-down' },
-  ];
+  const perimeter: Array<{ row: number; col: number }> = [];
+  for (let dc = 0; dc < 3; dc++) {
+    perimeter.push({ row: startRow, col: startCol + dc });
+    perimeter.push({ row: startRow + 2, col: startCol + dc });
+  }
+  perimeter.push({ row: startRow + 1, col: startCol });
+  perimeter.push({ row: startRow + 1, col: startCol + 2 });
+
+  const preferred: Direction[] = ['across', 'down'];
+  const angled: Direction[] = ['right-down', 'left-down', 'down-across', 'up-across'];
+  const out: Array<{ exitRow: number; exitCol: number; direction: Direction }> = [];
+
+  for (const direction of [...preferred, ...angled]) {
+    for (const { row, col } of perimeter) {
+      const first = firstAnswerCell(row, col, direction);
+      if (isInsideBlock(first.row, first.col, startRow, startCol)) continue;
+      out.push({ exitRow: row, exitCol: col, direction });
+    }
+  }
+  return out;
 }
 
 /**
@@ -183,21 +206,17 @@ export function planImageClues(
     }
     if (overlaps) continue;
 
-    // Keep options in preferred order, with light shuffle inside tiers
-    const options = [...exitOptions(block.startRow, block.startCol)];
-    const primary = options.slice(0, 6).sort(() => Math.random() - 0.5);
-    const secondary = options.slice(6).sort(() => Math.random() - 0.5);
+    // Prefer across/down (first N options); light shuffle within tiers
+    const options = exitOptions(block.startRow, block.startCol);
+    // 2 dirs × 8 perimeter = 16 preferred, then angled
+    const primary = options.slice(0, 16).sort(() => Math.random() - 0.5);
+    const secondary = options.slice(16).sort(() => Math.random() - 0.5);
     const ordered = [...primary, ...secondary];
 
     let chosen: (typeof options)[0] | null = null;
     for (const opt of ordered) {
       const first = firstAnswerCell(opt.exitRow, opt.exitCol, opt.direction);
-      const inside =
-        first.row >= block.startRow &&
-        first.row <= block.startRow + 2 &&
-        first.col >= block.startCol &&
-        first.col <= block.startCol + 2;
-      if (inside) continue;
+      if (isInsideBlock(first.row, first.col, block.startRow, block.startCol)) continue;
       if (runFits(opt.exitRow, opt.exitCol, opt.direction, 3)) {
         chosen = opt;
         break;
