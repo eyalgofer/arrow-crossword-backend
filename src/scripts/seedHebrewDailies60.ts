@@ -1,12 +1,13 @@
 /**
- * Generate Hebrew 10x10 daily puzzles and assign them from today
+ * Generate Hebrew 13x13 daily puzzles and assign them from today
  * through the next three months (unless --count is set).
  *
- * About 25–50% of each puzzle's answers come from tagged difficulty-1 vocab.
+ * Tries 13x13 first; falls back to smaller grids if the generator cannot fill it.
  *
  * Usage:
  *   npx ts-node src/scripts/seedHebrewDailies60.ts
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 1
+ *   npx ts-node src/scripts/seedHebrewDailies60.ts --strict   # require exact 13x13
  */
 
 import dotenv from 'dotenv';
@@ -22,6 +23,7 @@ import { connectToDatabase, closeDatabaseAndExit, handleScriptError } from './ut
 dotenv.config();
 
 const countArgIndex = process.argv.indexOf('--count');
+const STRICT_SIZE = process.argv.includes('--strict');
 const ROWS = 13;
 const COLS = 13;
 const CATEGORY = 'יומי';
@@ -85,27 +87,26 @@ const main = async () => {
 
     const startDay = addDays(new Date(), 0);
     const lastDay = addDays(startDay, COUNT - 1);
+    const sizeMode = STRICT_SIZE ? 'strict 13x13' : '13x13 with fallback';
     console.log(
-      `📅 Generating ${COUNT} Hebrew ${ROWS}x${COLS} dailies ` +
+      `📅 Generating ${COUNT} Hebrew dailies (${sizeMode}) ` +
       `${startDay.toLocaleDateString()} → ${lastDay.toLocaleDateString()}\n`
     );
 
     const generator = new PuzzleGenerator(LANGUAGE);
     const savedIds: string[] = [];
-    let mixSum = 0;
 
     for (let i = 0; i < COUNT; i++) {
       const date = addDays(startDay, i);
       let saved = null;
-      let mixLabel = '';
-      for (let attempt = 1; attempt <= 4 && !saved; attempt++) {
+      for (let attempt = 1; attempt <= 2 && !saved; attempt++) {
         const generated = generator.generateBatch({
           count: 1,
           category: CATEGORY,
           getTitle: () => `תשחץ יומי ${i + 1}`,
           rows: ROWS,
           cols: COLS,
-          strictSize: true,
+          strictSize: STRICT_SIZE,
         });
         const puzzle = generated[0];
         if (!puzzle) continue;
@@ -114,14 +115,22 @@ const main = async () => {
           console.warn(`   ⚠️  Puzzle ${i + 1} failed validation (try ${attempt})`);
           continue;
         }
-       
+        if (STRICT_SIZE && (puzzle.grid.rows !== ROWS || puzzle.grid.cols !== COLS)) {
+          console.warn(
+            `   ⚠️  Got ${puzzle.grid.rows}x${puzzle.grid.cols}, wanted ${ROWS}x${COLS} (try ${attempt})`
+          );
+          continue;
+        }
+
         await ensureMongoConnection();
         const inserted = await Puzzle.insertMany([{ ...puzzle, title: `תשחץ יומי ${i + 1}` }]);
         saved = inserted[0];
       }
 
       if (!saved) {
-        console.error(`❌ Could not generate a valid 10x10 for day ${i + 1} (${date.toLocaleDateString()})`);
+        console.error(
+          `❌ Could not generate a valid puzzle for day ${i + 1} (${date.toLocaleDateString()})`
+        );
         continue;
       }
 
@@ -130,7 +139,7 @@ const main = async () => {
       savedIds.push(String(saved._id));
       console.log(
         `   ${date.toLocaleDateString()} → ${saved.title} ` +
-        `(${saved.grid.rows}x${saved.grid.cols}, ${saved.puzzleItems.length} clues, ${mixLabel})`
+        `(${saved.grid.rows}x${saved.grid.cols}, ${saved.puzzleItems.length} clues)`
       );
       if (COUNT === 1) {
         console.log(`   puzzleId: ${saved._id}`);
@@ -142,8 +151,7 @@ const main = async () => {
       }
     }
 
-    const avg = savedIds.length === 0 ? 0 : Math.round((100 * mixSum) / savedIds.length);
-    console.log(`\n✅ Assigned ${savedIds.length}/${COUNT} Hebrew 10x10 dailies (avg easy-vocab ${avg}%)`);
+    console.log(`\n✅ Assigned ${savedIds.length}/${COUNT} Hebrew dailies`);
     console.log(`📊 Total daily assignments: ${await DailyPuzzle.countDocuments()}`);
     await closeDatabaseAndExit(savedIds.length === COUNT ? 0 : 1);
   } catch (error) {

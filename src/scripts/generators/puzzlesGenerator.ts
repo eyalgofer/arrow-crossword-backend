@@ -152,7 +152,7 @@ export class PuzzleGenerator {
     const slotCount = template.slots.length;
     const maxAttempts = Math.min(80000 + slotCount * 5000, 300000);
     const cells = template.rows * template.cols;
-    const maxSolveTimeMs = ((this.language === 'he' ? 16 : 12) * 1000) + cells * 50;
+    const maxSolveTimeMs = ((this.language === 'he' ? 12 : 12) * 1000) + cells * 40;
 
     // Prefer more common words so grids feel familiar; jitter keeps puzzles varied.
     // Hebrew also steers toward a target share of tagged difficulty-1 (everyday) answers.
