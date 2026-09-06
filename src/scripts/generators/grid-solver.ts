@@ -61,6 +61,13 @@ export function solveGrid(
       }
     }
 
+    if (slot.clueType === 'image' && !slot.fixedAnswer) {
+      if (!config.quiet) {
+        console.log(`  ❌ Image slot ${slot.id} has no bound answer`);
+      }
+      return null;
+    }
+
     if (slot.fixedAnswer) {
       const cells = getSlotCells(slot);
       const rowDelta = cells.length >= 2 ? cells[1].row - cells[0].row : 0;

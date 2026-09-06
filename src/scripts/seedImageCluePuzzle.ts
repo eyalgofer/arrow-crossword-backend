@@ -19,6 +19,7 @@ import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { Difficulty } from '../types';
 import { Puzzle as GeneratedPuzzle } from './core/types';
 import { generatePuzzlesBatch } from './generators/puzzlesGenerator';
+import { loadImageClueCatalogFromMongo } from './generators/imageClueCatalog';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import { connectToDatabase } from './utils/scriptUtils';
 
@@ -29,14 +30,34 @@ const ROWS = 13;
 const COLS = 13;
 const CACHED = path.join(__dirname, '../../tmp-image-clue-puzzle.json');
 
-function loadOrGenerate(): GeneratedPuzzle {
-  if (fs.existsSync(CACHED)) {
-    console.log('Loading cached puzzle from', CACHED);
-    return JSON.parse(fs.readFileSync(CACHED, 'utf8')) as GeneratedPuzzle;
-  }
+function cachedPuzzleIsReady(): GeneratedPuzzle | null {
+  if (!fs.existsSync(CACHED)) return null;
+  const cached = JSON.parse(fs.readFileSync(CACHED, 'utf8')) as GeneratedPuzzle;
+  const images = cached.puzzleItems.filter((item) => item.clueType === 'image');
+  const ready =
+    images.length >= IMAGE_CLUE_COUNT &&
+    images.every(
+      (item) =>
+        item.imageUrl &&
+        item.answer &&
+        /[\u0590-\u05FF]/.test(item.answer) &&
+        !item.imageUrl.includes('premierpups')
+    );
+  return ready ? cached : null;
+}
 
+async function generateFresh(): Promise<GeneratedPuzzle> {
+  await connectToDatabase();
+  const catalog = await loadImageClueCatalogFromMongo();
+  if (catalog.length < IMAGE_CLUE_COUNT) {
+    throw new Error(
+      `Need ${IMAGE_CLUE_COUNT} image clues in Mongo, found ${catalog.length}. ` +
+        `Run scripts/arrow-image-pipeline \`npm run process\` first.`
+    );
+  }
   console.log(
-    `Generating Hebrew ${ROWS}x${COLS} with ${IMAGE_CLUE_COUNT} image clues...`
+    `Generating Hebrew ${ROWS}x${COLS} with ${IMAGE_CLUE_COUNT} image clues ` +
+      `(catalog ${catalog.length})...`
   );
   const puzzles = generatePuzzlesBatch({
     difficulty: Difficulty.MEDIUM,
@@ -48,6 +69,7 @@ function loadOrGenerate(): GeneratedPuzzle {
     language: 'he',
     strictSize: true,
     imageClueCount: IMAGE_CLUE_COUNT,
+    imageClueCatalog: catalog,
   });
   if (puzzles.length === 0) {
     throw new Error('Failed to generate Hebrew image-clue puzzle');
@@ -63,20 +85,26 @@ async function main() {
     process.exit(1);
   }
 
-  const generated = loadOrGenerate();
-  const boundaryErrors = validatePuzzleBoundaries(generated);
+  const generated = cachedPuzzleIsReady();
+  if (generated) {
+    console.log('Loading cached puzzle from', CACHED);
+  }
+  const puzzle = generated ?? (await generateFresh());
+  const boundaryErrors = validatePuzzleBoundaries(puzzle);
   if (boundaryErrors.length > 0) {
     throw new Error(`Boundary validation failed:\n${boundaryErrors.join('\n')}`);
   }
 
-  const imageItems = generated.puzzleItems.filter((i) => i.clueType === 'image');
+  const imageItems = puzzle.puzzleItems.filter((i) => i.clueType === 'image');
   if (imageItems.length < IMAGE_CLUE_COUNT) {
     throw new Error(
       `Expected ${IMAGE_CLUE_COUNT} image clues, got ${imageItems.length}`
     );
   }
 
-  await connectToDatabase();
+  if (mongoose.connection.readyState !== 1) {
+    await connectToDatabase();
+  }
   console.log('Connected to', mongoose.connection.db?.databaseName);
 
   let pkg = await PuzzlePackage.findOne({ language: 'he', order: PACKAGE_ORDER });
@@ -109,19 +137,19 @@ async function main() {
 
   console.log(
     `Replacing ${target.title} (${target._id}) ` +
-      `${target.grid.rows}x${target.grid.cols} → ${generated.grid.rows}x${generated.grid.cols}`
+      `${target.grid.rows}x${target.grid.cols} → ${puzzle.grid.rows}x${puzzle.grid.cols}`
   );
 
   await UserPuzzleProgress.deleteMany({ puzzleId: target._id });
 
   target.title = PUZZLE_TITLE;
   target.difficulty = Difficulty.MEDIUM;
-  target.category = generated.category;
+  target.category = puzzle.category;
   target.language = 'he';
-  target.grid = generated.grid;
-  target.puzzleItems = generated.puzzleItems as typeof target.puzzleItems;
-  target.estimatedTime = generated.estimatedTime ?? 30;
-  target.coinReward = generated.coinReward ?? 50;
+  target.grid = puzzle.grid;
+  target.puzzleItems = puzzle.puzzleItems as typeof target.puzzleItems;
+  target.estimatedTime = puzzle.estimatedTime ?? 30;
+  target.coinReward = puzzle.coinReward ?? 50;
   target.isActive = true;
   target.packageId = pkg._id as mongoose.Types.ObjectId;
   await target.save();
@@ -133,8 +161,9 @@ async function main() {
   );
   for (const img of imageItems) {
     console.log(
-      `  image #${img.number} @ (${img.startRow},${img.startCol}) ` +
-        `exit (${img.exitRow},${img.exitCol}) ${img.direction} → ${img.answer}`
+        `  image #${img.number} @ (${img.startRow},${img.startCol}) ` +
+        `exit (${img.exitRow},${img.exitCol}) ${img.direction} → ${img.answer}` +
+        (img.imageUrl ? `\n       ${img.imageUrl}` : '')
     );
   }
 

@@ -7,8 +7,11 @@ import { buildCrossingIndex, CrossingIndex } from './word-index';
 import { generatePuzzleFromGrid } from './puzzle-assembler';
 import { GridSize, MAX_GRID_SIZE, sizeFallbackChain } from '../utils/gridSizes';
 import {
+  catalogLetterLength,
   imageBlockCutouts,
   imageExitLocks,
+  ImageClueCatalogEntry,
+  loadGeneratedImageClueCatalog,
   planImageClues,
   PlannedImageClue,
 } from './imageClueCatalog';
@@ -17,10 +20,15 @@ export class PuzzleGenerator {
   private wordIndex: CrossingIndex;
   private language: Language;
   private clueProvider: ClueProvider;
+  private imageClueCatalog: ImageClueCatalogEntry[];
 
-  constructor(language: Language = 'en') {
+  constructor(
+    language: Language = 'en',
+    imageClueCatalog?: ImageClueCatalogEntry[]
+  ) {
     this.language = language;
     this.clueProvider = getClueProvider(language);
+    this.imageClueCatalog = imageClueCatalog ?? loadGeneratedImageClueCatalog();
 
     const words = this.clueProvider.getWordPool();
     if (words.length === 0) {
@@ -64,7 +72,7 @@ export class PuzzleGenerator {
       let generated: Puzzle | null = null;
       for (const size of chain) {
         const attempts = config.imageClueCount
-          ? 20
+          ? 40
           : config.strictSize
             ? 24
             : undefined;
@@ -135,6 +143,13 @@ export class PuzzleGenerator {
     // Image clues: Hebrew only, and only when explicitly requested.
     const wantImages =
       this.language === 'he' ? (meta.imageClueCount ?? 0) : 0;
+    if (wantImages > 0 && this.imageClueCatalog.length < wantImages) {
+      console.error(
+        `Image-clue catalog has ${this.imageClueCatalog.length} entries, need ${wantImages}. ` +
+          `Run scripts/arrow-image-pipeline \`npm run process\` first.`
+      );
+      return null;
+    }
 
     for (let attempt = 0; attempt < attempts; attempt++) {
       const imagePlan =
@@ -156,7 +171,7 @@ export class PuzzleGenerator {
       const t0 = Date.now();
       const template = this.buildTemplate(rows, cols, cutoutCells, lockedCells);
       if (!template) {
-        if (wantImages > 0 && attempt < 5) {
+        if (wantImages > 0 && attempt < 8) {
           console.log(
             `   … image attempt ${attempt + 1}: template failed (${Date.now() - t0}ms)`
           );
@@ -164,7 +179,7 @@ export class PuzzleGenerator {
         continue;
       }
 
-      if (!this.bindImageClues(template, imagePlan)) {
+      if (!this.bindImageClues(template, imagePlan, this.imageClueCatalog)) {
         if (wantImages > 0 && attempt < 5) {
           console.log(
             `   … image attempt ${attempt + 1}: bind failed (${template.slots.length} slots, ${Date.now() - t0}ms)`
@@ -196,15 +211,17 @@ export class PuzzleGenerator {
 
   private bindImageClues(
     template: GridTemplate,
-    imagePlan: PlannedImageClue[]
+    imagePlan: PlannedImageClue[],
+    catalog: ImageClueCatalogEntry[]
   ): boolean {
     if (imagePlan.length === 0) return true;
 
-    const used = new Set<string>();
+    const unused = [...catalog].sort(() => Math.random() - 0.5);
+    const usedSlots = new Set<string>();
     for (const img of imagePlan) {
       let slot = template.slots.find(
         (s) =>
-          !used.has(s.id) &&
+          !usedSlots.has(s.id) &&
           s.startRow === img.exitRow &&
           s.startCol === img.exitCol &&
           s.direction === img.direction &&
@@ -214,7 +231,7 @@ export class PuzzleGenerator {
       if (!slot) {
         slot = template.slots.find(
           (s) =>
-            !used.has(s.id) &&
+            !usedSlots.has(s.id) &&
             s.startRow === img.exitRow &&
             s.startCol === img.exitCol &&
             s.length >= 3
@@ -222,9 +239,29 @@ export class PuzzleGenerator {
       }
       if (!slot) return false;
 
-      used.add(slot.id);
+      const matchIndex = unused.findIndex(
+        (entry) => catalogLetterLength(entry) === slot!.length
+      );
+      if (matchIndex < 0) {
+        if (usedSlots.size === 0) {
+          const available = [...new Set(unused.map(catalogLetterLength))].sort(
+            (a, b) => a - b
+          );
+          console.log(
+            `   … no image answer of length ${slot.length} (have ${available.join(',')})`
+          );
+        }
+        return false;
+      }
+      const [entry] = unused.splice(matchIndex, 1);
+
+      usedSlots.add(slot.id);
+      const parts = entry.answer.split(/\s+/).filter(Boolean);
       slot.clueType = 'image';
-      slot.imageUrl = img.imageUrl;
+      slot.imageUrl = entry.imageUrl;
+      slot.fixedAnswer = entry.answer;
+      slot.fixedEnumeration =
+        parts.length > 1 ? parts.map((part) => Array.from(part).length) : null;
       slot.exitRow = img.exitRow;
       slot.exitCol = img.exitCol;
       slot.startRow = img.startRow;
@@ -256,8 +293,8 @@ export class PuzzleGenerator {
         maxIterations: this.language === 'he'
           ? withImages
             ? large
-              ? 10
-              : 8
+              ? 18
+              : 14
             : large
               ? 22
               : 18
@@ -265,21 +302,21 @@ export class PuzzleGenerator {
         minPopulation: 3,
         populationSize: this.language === 'he'
           ? withImages
-            ? 4
+            ? 6
             : large
               ? 8
               : 6
           : 5,
         weakBreakCondition: this.language === 'he'
           ? withImages
-            ? 40
+            ? 80
             : large
               ? 180
               : 130
           : 80,
         strongBreakCondition: this.language === 'he'
           ? withImages
-            ? 100
+            ? 200
             : large
               ? 450
               : 350
@@ -350,9 +387,10 @@ export function generatePuzzlesBatch(config: {
   language?: Language;
   strictSize?: boolean;
   imageClueCount?: number;
+  imageClueCatalog?: ImageClueCatalogEntry[];
 }): Puzzle[] {
   const language = config.language ?? 'en';
-  const generator = new PuzzleGenerator(language);
+  const generator = new PuzzleGenerator(language, config.imageClueCatalog);
   return generator.generateBatch({
     count: config.count,
     category: config.category,
