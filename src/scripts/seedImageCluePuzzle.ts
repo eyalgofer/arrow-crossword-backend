@@ -18,16 +18,15 @@ import { PuzzlePackage } from '../models/PuzzlePackage';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { Difficulty } from '../types';
 import { Puzzle as GeneratedPuzzle } from './core/types';
-import { generatePuzzlesBatch } from './generators/puzzlesGenerator';
+import { generateLargestImageCluePuzzle } from './generators/puzzlesGenerator';
 import { loadImageClueCatalogFromMongo } from './generators/imageClueCatalog';
+import { getUncoveredCells } from './generators/direction-utils';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import { connectToDatabase } from './utils/scriptUtils';
 
 const PACKAGE_ORDER = 0;
 const PUZZLE_TITLE = '#9';
-const IMAGE_CLUE_COUNT = 3;
-const ROWS = 13;
-const COLS = 13;
+const MIN_IMAGE_CLUES = 2;
 const CACHED = path.join(__dirname, '../../tmp-image-clue-puzzle.json');
 
 function cachedPuzzleIsReady(): GeneratedPuzzle | null {
@@ -35,7 +34,10 @@ function cachedPuzzleIsReady(): GeneratedPuzzle | null {
   const cached = JSON.parse(fs.readFileSync(CACHED, 'utf8')) as GeneratedPuzzle;
   const images = cached.puzzleItems.filter((item) => item.clueType === 'image');
   const ready =
-    images.length >= IMAGE_CLUE_COUNT &&
+    images.length >= MIN_IMAGE_CLUES &&
+    cached.grid?.rows === 17 &&
+    cached.grid?.cols === 17 &&
+    getUncoveredCells(cached).length === 0 &&
     images.every(
       (item) =>
         item.imageUrl &&
@@ -49,34 +51,27 @@ function cachedPuzzleIsReady(): GeneratedPuzzle | null {
 async function generateFresh(): Promise<GeneratedPuzzle> {
   await connectToDatabase();
   const catalog = await loadImageClueCatalogFromMongo();
-  if (catalog.length < IMAGE_CLUE_COUNT) {
+  if (catalog.length < MIN_IMAGE_CLUES) {
     throw new Error(
-      `Need ${IMAGE_CLUE_COUNT} image clues in Mongo, found ${catalog.length}. ` +
+      `Need image clues in Mongo, found ${catalog.length}. ` +
         `Run scripts/arrow-image-pipeline \`npm run process\` first.`
     );
   }
   console.log(
-    `Generating Hebrew ${ROWS}x${COLS} with ${IMAGE_CLUE_COUNT} image clues ` +
-      `(catalog ${catalog.length})...`
+    `Generating 17x17 with 2 image clues and no empty cells (catalog ${catalog.length})...`
   );
-  const puzzles = generatePuzzlesBatch({
-    difficulty: Difficulty.MEDIUM,
-    count: 1,
+  const puzzle = generateLargestImageCluePuzzle({
     category: 'כללי',
     startIndex: 9,
-    rows: ROWS,
-    cols: COLS,
-    language: 'he',
-    strictSize: true,
-    imageClueCount: IMAGE_CLUE_COUNT,
+    imageClueCount: 2,
     imageClueCatalog: catalog,
   });
-  if (puzzles.length === 0) {
+  if (!puzzle) {
     throw new Error('Failed to generate Hebrew image-clue puzzle');
   }
-  fs.writeFileSync(CACHED, JSON.stringify(puzzles[0], null, 2));
+  fs.writeFileSync(CACHED, JSON.stringify(puzzle, null, 2));
   console.log('Cached to', CACHED);
-  return puzzles[0];
+  return puzzle;
 }
 
 async function main() {
@@ -96,9 +91,9 @@ async function main() {
   }
 
   const imageItems = puzzle.puzzleItems.filter((i) => i.clueType === 'image');
-  if (imageItems.length < IMAGE_CLUE_COUNT) {
+  if (imageItems.length < MIN_IMAGE_CLUES) {
     throw new Error(
-      `Expected ${IMAGE_CLUE_COUNT} image clues, got ${imageItems.length}`
+      `Expected at least ${MIN_IMAGE_CLUES} image clue, got ${imageItems.length}`
     );
   }
 

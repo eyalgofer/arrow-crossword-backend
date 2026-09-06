@@ -1,4 +1,4 @@
-import { PuzzleItem, Direction, ClueSlot } from '../core/types';
+import { Puzzle, PuzzleItem, Direction, ClueSlot } from '../core/types';
 
 /** Virtual clue cell for answer/arrow geometry (exit for image clues). */
 export function getClueAnchor(item: Pick<PuzzleItem, 'startRow' | 'startCol' | 'exitRow' | 'exitCol' | 'clueType'>): {
@@ -84,6 +84,35 @@ export function getAnswerCells(
   }
   
   return cells;
+}
+
+/** Cells that are neither a clue, an answer letter, nor part of a 3×3 image block. */
+export function getUncoveredCells(puzzle: Puzzle): Array<{ row: number; col: number }> {
+  const covered = new Set<string>();
+  const cover = (row: number, col: number) => {
+    if (row >= 0 && row < puzzle.grid.rows && col >= 0 && col < puzzle.grid.cols) {
+      covered.add(`${row},${col}`);
+    }
+  };
+  for (const item of puzzle.puzzleItems) {
+    if (item.clueType === 'image' && item.exitRow != null && item.exitCol != null) {
+      for (const cell of getImageBlockCells(item.startRow, item.startCol)) {
+        cover(cell.row, cell.col);
+      }
+    } else {
+      cover(item.startRow, item.startCol);
+    }
+    for (const cell of getAnswerCells(item)) {
+      cover(cell.row, cell.col);
+    }
+  }
+  const empty: Array<{ row: number; col: number }> = [];
+  for (let row = 0; row < puzzle.grid.rows; row++) {
+    for (let col = 0; col < puzzle.grid.cols; col++) {
+      if (!covered.has(`${row},${col}`)) empty.push({ row, col });
+    }
+  }
+  return empty;
 }
 
 /**

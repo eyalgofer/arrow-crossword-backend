@@ -5,11 +5,13 @@ import { generateTemplate } from './template-generator';
 import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
 import { generatePuzzleFromGrid } from './puzzle-assembler';
-import { GridSize, MAX_GRID_SIZE, sizeFallbackChain } from '../utils/gridSizes';
+import { getSlotCells, getUncoveredCells } from './direction-utils';
+import { GridSize, IMAGE_CLUE_SIZE_LADDER, MAX_GRID_SIZE, sizeFallbackChain } from '../utils/gridSizes';
 import {
   catalogLetterLength,
   imageBlockCutouts,
   imageExitLocks,
+  packedBorderLocks,
   ImageClueCatalogEntry,
   loadGeneratedImageClueCatalog,
   planImageClues,
@@ -49,6 +51,7 @@ export class PuzzleGenerator {
     sizes?: GridSize[];
     strictSize?: boolean;
     imageClueCount?: number;
+    imageClueAttempts?: number;
   }): Puzzle[] {
     const defaultRows = Math.min(config.rows ?? 12, MAX_GRID_SIZE);
     const defaultCols = Math.min(config.cols ?? 12, MAX_GRID_SIZE);
@@ -72,7 +75,7 @@ export class PuzzleGenerator {
       let generated: Puzzle | null = null;
       for (const size of chain) {
         const attempts = config.imageClueCount
-          ? 40
+          ? (config.imageClueAttempts ?? 40)
           : config.strictSize
             ? 24
             : undefined;
@@ -165,11 +168,14 @@ export class PuzzleGenerator {
 
       const cutoutCells =
         imagePlan.length > 0 ? imageBlockCutouts(imagePlan) : undefined;
-      const lockedCells =
-        imagePlan.length > 0 ? imageExitLocks(imagePlan) : undefined;
+      const imageLocks = imagePlan.length > 0 ? imageExitLocks(imagePlan) : [];
+      const lockedCells = [
+        ...(wantImages > 0 ? packedBorderLocks(rows, cols) : []),
+        ...imageLocks,
+      ];
 
       const t0 = Date.now();
-      const template = this.buildTemplate(rows, cols, cutoutCells, lockedCells);
+      const template = this.buildTemplate(rows, cols, cutoutCells, lockedCells, imageLocks);
       if (!template) {
         if (wantImages > 0 && attempt < 8) {
           console.log(
@@ -188,7 +194,29 @@ export class PuzzleGenerator {
         continue;
       }
 
-      if (template.slots.some((slot) => slot.length > 13 || slot.length < 3)) {
+      if (wantImages > 0) {
+        const covered = new Set<string>();
+        for (const clue of template.clueCells) covered.add(`${clue.row},${clue.col}`);
+        for (const slot of template.slots) {
+          for (const cell of getSlotCells(slot)) covered.add(`${cell.row},${cell.col}`);
+        }
+        for (const cut of cutoutCells ?? []) covered.add(`${cut.row},${cut.col}`);
+        const holes = rows * cols - covered.size;
+        if (holes > 0) {
+          if (attempt < 8) {
+            console.log(`   … image attempt ${attempt + 1}: ${holes} empty cells, retrying`);
+          }
+          continue;
+        }
+      }
+
+      if (template.slots.some((slot) => slot.length > 11 || slot.length < 3)) {
+        if (wantImages > 0 && attempt < 8) {
+          const bad = template.slots.filter((slot) => slot.length > 11 || slot.length < 3);
+          console.log(
+            `   … image attempt ${attempt + 1}: unfillable slot lengths ${bad.map((s) => s.length).join(',')}`
+          );
+        }
         continue;
       }
 
@@ -199,8 +227,17 @@ export class PuzzleGenerator {
       }
       const puzzle = this.solveTemplate(template, meta);
       if (!puzzle) {
-        if (wantImages > 0 && attempt < 8) {
+        if (wantImages > 0) {
           console.log(`   … image attempt ${attempt + 1}: solve/validate failed`);
+        }
+        continue;
+      }
+      const empty = getUncoveredCells(puzzle);
+      if (empty.length > 0) {
+        if (wantImages > 0 && attempt < 8) {
+          console.log(
+            `   … image attempt ${attempt + 1}: puzzle has ${empty.length} empty cells`
+          );
         }
         continue;
       }
@@ -279,6 +316,11 @@ export class PuzzleGenerator {
       row: number;
       col: number;
       type: '0' | '1' | '2' | '3' | '4' | '5' | '6';
+    }>,
+    protectedCells?: Array<{
+      row: number;
+      col: number;
+      type: '0' | '1' | '2' | '3' | '4' | '5' | '6';
     }>
   ): GridTemplate | null {
     const cells = rows * cols;
@@ -290,43 +332,24 @@ export class PuzzleGenerator {
         cols,
         name: `${rows}x${cols} arrow crossword`,
         quiet: true,
-        maxIterations: this.language === 'he'
-          ? withImages
-            ? large
-              ? 18
-              : 14
-            : large
-              ? 22
-              : 18
-          : 8,
-        minPopulation: 3,
-        populationSize: this.language === 'he'
-          ? withImages
-            ? 6
-            : large
-              ? 8
-              : 6
-          : 5,
-        weakBreakCondition: this.language === 'he'
-          ? withImages
-            ? 80
-            : large
-              ? 180
-              : 130
-          : 80,
-        strongBreakCondition: this.language === 'he'
-          ? withImages
-            ? 200
-            : large
-              ? 450
-              : 350
-          : 250,
-        // Image boards: a little uncovered slack helps the GA around cutouts
-        sparse: this.language === 'he' && (cells >= 81 || withImages),
+        maxIterations: withImages ? 1 : this.language === 'he' ? (large ? 22 : 18) : 8,
+        minPopulation: withImages ? 1 : 3,
+        populationSize: withImages ? 1 : this.language === 'he' ? (large ? 8 : 6) : 5,
+        weakBreakCondition: withImages ? 1 : this.language === 'he' ? (large ? 180 : 130) : 80,
+        strongBreakCondition: withImages ? 1 : this.language === 'he' ? (large ? 450 : 350) : 250,
+        maxBoundaryRetries: withImages ? 1 : 2,
+        maxSlotLength: withImages ? 11 : undefined,
+        sparse: this.language === 'he' && cells >= 81 && !withImages,
+        simpleArrows: withImages,
         cutoutCells,
         lockedCells,
+        protectedCells,
       });
-    } catch {
+    } catch (error) {
+      if (withImages) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.log(`   … template error: ${message.slice(0, 120)}`);
+      }
       return null;
     }
   }
@@ -338,7 +361,10 @@ export class PuzzleGenerator {
     const slotCount = template.slots.length;
     const maxAttempts = Math.min(80000 + slotCount * 5000, 300000);
     const cells = template.rows * template.cols;
-    const maxSolveTimeMs = ((this.language === 'he' ? 12 : 12) * 1000) + cells * 40;
+    const hasImages = template.slots.some((slot) => slot.clueType === 'image');
+    const maxSolveTimeMs = hasImages
+      ? 90000
+      : (this.language === 'he' ? 20 : 12) * 1000 + cells * (cells >= 256 ? 80 : 40);
     const jitter = new Map<string, number>();
     const wordScorer = (word: string, _placedWords: string[]) => {
       let j = jitter.get(word);
@@ -350,13 +376,19 @@ export class PuzzleGenerator {
       return -Math.log(Math.max(rank, 1)) + j;
     };
 
+    const tSolve = Date.now();
     const result = solveGrid(template, this.wordIndex, {
       maxAttempts,
       maxSolveTimeMs,
       wordScorer,
       quiet: true,
     });
-    if (!result) return null;
+    if (!result) {
+      if (hasImages) {
+        console.log(`   … solver empty after ${Date.now() - tSolve}ms`);
+      }
+      return null;
+    }
 
     try {
       return generatePuzzleFromGrid(template, result, {
@@ -386,6 +418,7 @@ export function generatePuzzlesBatch(config: {
   strictSize?: boolean;
   imageClueCount?: number;
   imageClueCatalog?: ImageClueCatalogEntry[];
+  imageClueAttempts?: number;
 }): Puzzle[] {
   const language = config.language ?? 'en';
   const generator = new PuzzleGenerator(language, config.imageClueCatalog);
@@ -398,5 +431,44 @@ export function generatePuzzlesBatch(config: {
     sizes: config.sizes,
     strictSize: config.strictSize,
     imageClueCount: config.imageClueCount,
+    imageClueAttempts: config.imageClueAttempts,
   });
+}
+
+/** Try 17×17 with two image clues and no empty cells. */
+export function generateLargestImageCluePuzzle(config: {
+  category: string;
+  startIndex: number;
+  imageClueCount?: number;
+  imageClueCatalog: ImageClueCatalogEntry[];
+}): Puzzle | null {
+  const generator = new PuzzleGenerator('he', config.imageClueCatalog);
+  const counts = config.imageClueCount
+    ? [config.imageClueCount]
+    : [2];
+  for (const size of IMAGE_CLUE_SIZE_LADDER) {
+    for (const imageCount of counts) {
+      const attempts = 40;
+      console.log(
+        `\n—— Trying ${size.rows}x${size.cols} with ${imageCount} image${imageCount === 1 ? '' : 's'} (${attempts} attempts, no empty cells) ——`
+      );
+      const t0 = Date.now();
+      const puzzles = generator.generateBatch({
+        count: 1,
+        category: config.category,
+        getTitle: () => `${config.startIndex}`,
+        rows: size.rows,
+        cols: size.cols,
+        strictSize: true,
+        imageClueCount: imageCount,
+        imageClueAttempts: attempts,
+      });
+      console.log(
+        `   ${size.rows}x${size.cols} / ${imageCount} image(s) elapsed ${Date.now() - t0}ms`
+      );
+      if (puzzles[0]) return puzzles[0];
+      console.log(`   did not fill`);
+    }
+  }
+  return null;
 }

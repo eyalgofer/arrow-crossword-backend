@@ -80,7 +80,7 @@ npm run process
 The processor:
 - downloads the original file,
 - auto-rotates it,
-- resizes it to fit inside 800×800,
+- stretches it to exactly 800×800 (aspect ratio is not preserved),
 - outputs JPEG quality 86,
 - uploads it under `image-clues/<type>/...`,
 - writes the final S3 key and attribution/license metadata into Mongo.

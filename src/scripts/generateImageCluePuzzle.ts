@@ -1,57 +1,52 @@
 /**
- * Generate a Hebrew image-clue puzzle and write it to disk (no DB required).
+ * Generate the largest Hebrew image-clue puzzle that will fill, and write it to disk.
  * Usage: npx ts-node src/scripts/generateImageCluePuzzle.ts
  */
-import { Difficulty } from '../types';
-import { generatePuzzlesBatch } from './generators/puzzlesGenerator';
+import { generateLargestImageCluePuzzle } from './generators/puzzlesGenerator';
 import { loadGeneratedImageClueCatalog } from './generators/imageClueCatalog';
+import { getUncoveredCells } from './generators/direction-utils';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const ROWS = 13;
-const COLS = 13;
-const IMAGE_CLUE_COUNT = 3;
 const OUT = path.join(__dirname, '../../tmp-image-clue-puzzle.json');
 
 async function main() {
   const catalog = loadGeneratedImageClueCatalog();
-  if (catalog.length < IMAGE_CLUE_COUNT) {
+  if (catalog.length < 1) {
     console.error(
-      `Need ${IMAGE_CLUE_COUNT} processed image clues, found ${catalog.length}. ` +
+      `Need processed image clues, found ${catalog.length}. ` +
         `Run scripts/arrow-image-pipeline \`npm run process\` first.`
     );
     process.exit(1);
   }
 
   console.log(
-    `Generating Hebrew ${ROWS}x${COLS} with ${IMAGE_CLUE_COUNT} images ` +
-      `(catalog ${catalog.length})...`
+    `Generating 17x17 with 2 image clues and no empty cells (catalog ${catalog.length})...`
   );
   const t0 = Date.now();
-  const puzzles = generatePuzzlesBatch({
-    difficulty: Difficulty.MEDIUM,
-    count: 1,
+  const p = generateLargestImageCluePuzzle({
     category: 'כללי',
     startIndex: 9,
-    rows: ROWS,
-    cols: COLS,
-    language: 'he',
-    strictSize: true,
-    imageClueCount: IMAGE_CLUE_COUNT,
+    imageClueCount: 2,
     imageClueCatalog: catalog,
   });
   console.log(`elapsed ${Date.now() - t0}ms`);
 
-  if (!puzzles.length) {
+  if (!p) {
     console.error('NO PUZZLE');
     process.exit(1);
   }
 
-  const p = puzzles[0];
   const errs = validatePuzzleBoundaries(p);
   if (errs.length) {
     console.error('Boundary errors:', errs);
+    process.exit(1);
+  }
+
+  const empty = getUncoveredCells(p);
+  if (empty.length) {
+    console.error(`Empty cells (${empty.length}):`, empty.slice(0, 8));
     process.exit(1);
   }
 

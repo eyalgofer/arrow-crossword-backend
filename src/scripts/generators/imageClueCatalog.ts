@@ -87,6 +87,55 @@ export function imageBlockCutouts(
   return cells;
 }
 
+/**
+ * Packed →↓ skeleton: every cell is a clue or a letter of a 3–6 letter word.
+ * Images punch 3×3 holes on top of this; cutouts must be applied last.
+ */
+export function packedBorderLocks(
+  rows: number,
+  cols: number
+): Array<{ row: number; col: number; type: '0' | '1' | '2' }> {
+  const hClueCols: number[] = [];
+  for (let c = 0; c + 3 < cols; c += 5) hClueCols.push(c);
+
+  const vClueRows: number[] = [];
+  for (let r = 0; r + 3 < rows; r += 4) vClueRows.push(r);
+
+  const vClueCols = new Set<number>();
+  const assigned = new Set<number>();
+  for (const c of hClueCols) {
+    assigned.add(c);
+    assigned.add(c + 1);
+    assigned.add(c + 2);
+    assigned.add(c + 3);
+    if (c + 4 < cols) {
+      vClueCols.add(c + 4);
+      assigned.add(c + 4);
+    }
+  }
+  for (let c = 0; c < cols; c++) {
+    if (!assigned.has(c)) vClueCols.add(c);
+  }
+
+  const types: Array<Array<'0' | '1' | '2'>> = Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => '0' as const)
+  );
+  for (let r = 0; r < rows; r++) {
+    for (const c of hClueCols) types[r][c] = '1';
+  }
+  for (const r of vClueRows) {
+    for (const c of vClueCols) types[r][c] = '2';
+  }
+
+  const locks: Array<{ row: number; col: number; type: '0' | '1' | '2' }> = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      locks.push({ row: r, col: c, type: types[r][c] });
+    }
+  }
+  return locks;
+}
+
 export function imageExitLocks(
   blocks: Array<{
     exitRow: number;
@@ -163,10 +212,9 @@ function exitOptions(
   perimeter.push({ row: startRow + 1, col: startCol + 2 });
 
   const preferred: Direction[] = ['across', 'down'];
-  const angled: Direction[] = ['right-down', 'left-down', 'down-across', 'up-across'];
   const out: Array<{ exitRow: number; exitCol: number; direction: Direction }> = [];
 
-  for (const direction of [...preferred, ...angled]) {
+  for (const direction of preferred) {
     for (const { row, col } of perimeter) {
       const first = firstAnswerCell(row, col, direction);
       if (isInsideBlock(first.row, first.col, startRow, startCol)) continue;
@@ -188,9 +236,12 @@ export function planImageClues(
   const occupied = new Set<string>();
 
   const candidates: Array<{ startRow: number; startCol: number }> = [];
-  // Margin so exits + 3-letter corridors stay in-bounds
-  for (let r = 1; r <= rows - 5; r++) {
-    for (let c = 1; c <= cols - 5; c++) {
+  // Leave a 4-cell margin from the top/left so the packed →↓ border
+  // (clues down the left column and across the top row) always has room
+  // for ≥3-letter words before an image cutout.
+  const margin = 4;
+  for (let r = margin; r <= rows - 5; r++) {
+    for (let c = margin; c <= cols - 5; c++) {
       candidates.push({ startRow: r, startCol: c });
     }
   }

@@ -9,7 +9,6 @@ export interface GridSize {
 
 /**
  * Preferred Hebrew sizes — denser, larger boards (closer to real תשחץ).
- * Image-clue puzzles should use the 13–15 band.
  */
 export const HEBREW_GRID_SIZE_MIX: GridSize[] = [
   { rows: 12, cols: 12 },
@@ -24,6 +23,14 @@ export const HEBREW_GRID_SIZE_MIX: GridSize[] = [
   { rows: 13, cols: 15 },
   { rows: 15, cols: 15 }
 ];
+
+/** Target size for image-clue תשחץ boards. */
+export const IMAGE_CLUE_SIZE_LADDER: GridSize[] = [
+  { rows: 17, cols: 17 },
+];
+
+/** Prefer more images on 17×17; step down if the board will not fill. */
+export const IMAGE_CLUE_COUNT_LADDER = [3, 2, 1];
 
 export function mixSizes(count: number, mix: GridSize[] = HEBREW_GRID_SIZE_MIX): GridSize[] {
   return Array.from({ length: count }, (_, i) => mix[i % mix.length]);

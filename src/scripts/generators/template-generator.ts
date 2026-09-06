@@ -54,6 +54,11 @@ interface GeneratorConfig {
   cutoutCells?: Array<{ row: number; col: number }>;
   /** Definition cells that must stay fixed (e.g. image-clue exits). */
   lockedCells?: Array<{ row: number; col: number; type: FieldType }>;
+  /** Image exits + letter corridors that repair must not rewrite. */
+  protectedCells?: Array<{ row: number; col: number; type: FieldType }>;
+  /** Prefer →↓ only so large boards stay fully packed without invalid Engel slots. */
+  simpleArrows?: boolean;
+  maxSlotLength?: number;
   minPopulation?: number;       // floor so n never drops below this (avoids collapse)
   maxIterations?: number;      // cap iterations (default 100)
   quiet?: boolean;             // suppress per-iteration logs when true
@@ -288,16 +293,16 @@ function lockedKeySet(config: GeneratorConfig): Set<string> {
   return keys;
 }
 
-/** Re-apply cutouts and locked definition cells after create/mutate/crossover. */
+/** Re-apply locked definition cells, then image cutouts so holes always win. */
 function applyFixedCells(mask: Mask, config: GeneratorConfig): void {
-  if (config.cutoutCells) {
-    for (const { row, col } of config.cutoutCells) {
-      setField(mask, row, col, '#');
-    }
-  }
   if (config.lockedCells) {
     for (const { row, col, type } of config.lockedCells) {
       setField(mask, row, col, type);
+    }
+  }
+  if (config.cutoutCells) {
+    for (const { row, col } of config.cutoutCells) {
+      setField(mask, row, col, '#');
     }
   }
 }
@@ -721,7 +726,12 @@ function evaluateFitness(mask: Mask, config: GeneratorConfig): number {
  * Per thesis Chapter 3.3: "field assignments which - no matter how the surrounding 
  * mask looks like - are certain to cause a validity violation are disallowed"
  */
-function getAllowedFieldTypes(mask: Mask, row: number, col: number): FieldType[] {
+function getAllowedFieldTypes(
+  mask: Mask,
+  row: number,
+  col: number,
+  simpleArrows = false
+): FieldType[] {
   const allowed: FieldType[] = ['0']; // Letter field always allowed
 
   // Don't allow definition fields that would point outside grid or create impossible words
@@ -730,14 +740,16 @@ function getAllowedFieldTypes(mask: Mask, row: number, col: number): FieldType[]
   if (col < mask.cols - 2) allowed.push('1');
   // Type 2: needs at least 2 cells below
   if (row < mask.rows - 2) allowed.push('2');
-  // Type 3 (right-down): vertical, start in cell (r,c+1) right of clue, go down; need ≥2 cells
-  if (col < mask.cols - 1 && row < mask.rows - 1) allowed.push('3');
-  // Type 4 (left-down): vertical, start in cell (r,c-1) left of clue, go down; need ≥2 cells
-  if (col >= 1 && row < mask.rows - 1) allowed.push('4');
-  // Type 5 (down-across): start (r+1,c), go right; need space below and right
-  if (row < mask.rows - 1 && col < mask.cols - 2) allowed.push('5');
-  // Type 6 (up-across): start (r-1,c), go right; need space above and right
-  if (row >= 1 && col < mask.cols - 2) allowed.push('6');
+  if (!simpleArrows) {
+    // Type 3 (right-down): vertical, start in cell (r,c+1) right of clue, go down; need ≥2 cells
+    if (col < mask.cols - 1 && row < mask.rows - 1) allowed.push('3');
+    // Type 4 (left-down): vertical, start in cell (r,c-1) left of clue, go down; need ≥2 cells
+    if (col >= 1 && row < mask.rows - 1) allowed.push('4');
+    // Type 5 (down-across): start (r+1,c), go right; need space below and right
+    if (row < mask.rows - 1 && col < mask.cols - 2) allowed.push('5');
+    // Type 6 (up-across): start (r-1,c), go right; need space above and right
+    if (row >= 1 && col < mask.cols - 2) allowed.push('6');
+  }
 
   // Per thesis Figure 3.6: Avoid certain configurations that cause violations
   // Check for adjacent definition fields that would cause problems
@@ -764,14 +776,20 @@ function getAllowedFieldTypes(mask: Mask, row: number, col: number): FieldType[]
  * Initialize border fields for Swedish-style layout
  * Per thesis Chapter 3.3 and Figure 3.7
  */
-function initializeBorders(mask: Mask): void {
+function initializeBorders(mask: Mask, simpleArrows = false): void {
+  if (simpleArrows && mask.grid[0][0] !== '#') {
+    const corner = getAllowedFieldTypes(mask, 0, 0, true);
+    if (corner.includes('1')) mask.grid[0][0] = '1';
+    else if (corner.includes('2')) mask.grid[0][0] = '2';
+  }
+
   // Top row: typically has definition fields pointing down
   for (let c = 0; c < mask.cols; c++) {
     if (mask.grid[0][c] === '#') continue; // Skip cutouts
     
     // Randomly place down-pointing definition fields
-    if (Math.random() < 0.3 && c > 0) {
-      const allowed = getAllowedFieldTypes(mask, 0, c);
+    if ((simpleArrows ? Math.random() < 0.55 : Math.random() < 0.3) && c > 0) {
+      const allowed = getAllowedFieldTypes(mask, 0, c, simpleArrows);
       if (allowed.includes('2')) {
         mask.grid[0][c] = '2';
       }
@@ -783,8 +801,8 @@ function initializeBorders(mask: Mask): void {
     if (mask.grid[r][0] === '#') continue; // Skip cutouts
     
     // Randomly place right-pointing definition fields
-    if (Math.random() < 0.3 && r > 0) {
-      const allowed = getAllowedFieldTypes(mask, r, 0);
+    if ((simpleArrows ? Math.random() < 0.55 : Math.random() < 0.3) && r > 0) {
+      const allowed = getAllowedFieldTypes(mask, r, 0, simpleArrows);
       if (allowed.includes('1')) {
         mask.grid[r][0] = '1';
       }
@@ -801,7 +819,7 @@ function createRandomMask(config: GeneratorConfig): Mask {
   const mask = createEmptyMask(config.rows, config.cols);
 
   // Initialize borders, then pin cutouts / image exits so borders cannot overwrite them
-  initializeBorders(mask);
+  initializeBorders(mask, config.simpleArrows);
   applyFixedCells(mask, config);
 
   // Rest starts as letter fields (per thesis)
@@ -893,7 +911,7 @@ function mutate(mask: Mask, config: GeneratorConfig): Mask {
     if (locked.has(`${targetRow},${targetCol}`)) continue;
 
     // Get allowed types and pick one different from current
-    const allowed = getAllowedFieldTypes(mutated, targetRow, targetCol);
+    const allowed = getAllowedFieldTypes(mutated, targetRow, targetCol, config.simpleArrows);
     const current = mutated.grid[targetRow][targetCol];
     const options = allowed.filter(t => t !== current);
 
@@ -1258,104 +1276,228 @@ function memeticAlgorithm(config: GeneratorConfig): Mask {
 /**
  * Convert internal mask to GridTemplate format
  */
-function maskToGridTemplate(mask: Mask, name: string, difficulty: Difficulty): GridTemplate {
+function rebuildSlotCrossings(slots: ClueSlot[]): void {
+  for (const slot of slots) {
+    slot.crossings = [];
+  }
+  const letterToSlots = new Map<string, Array<{ slotId: string; position: number }>>();
+  for (const slot of slots) {
+    const cells = slot.cells && slot.cells.length > 0 ? slot.cells : [];
+    for (let pos = 0; pos < cells.length; pos++) {
+      const key = `${cells[pos].row},${cells[pos].col}`;
+      if (!letterToSlots.has(key)) letterToSlots.set(key, []);
+      letterToSlots.get(key)!.push({ slotId: slot.id, position: pos });
+    }
+  }
+  for (const [, slotInfos] of letterToSlots) {
+    if (slotInfos.length < 2) continue;
+    for (let i = 0; i < slotInfos.length; i++) {
+      for (let j = i + 1; j < slotInfos.length; j++) {
+        const slot1 = slots.find((s) => s.id === slotInfos[i].slotId);
+        const slot2 = slots.find((s) => s.id === slotInfos[j].slotId);
+        if (!slot1 || !slot2) continue;
+        slot1.crossings.push({
+          slotId: slot2.id,
+          thisPosition: slotInfos[i].position,
+          otherPosition: slotInfos[j].position,
+        });
+        slot2.crossings.push({
+          slotId: slot1.id,
+          thisPosition: slotInfos[j].position,
+          otherPosition: slotInfos[i].position,
+        });
+      }
+    }
+  }
+}
+
+function countLetterRun(
+  mask: Mask,
+  row: number,
+  col: number,
+  dr: number,
+  dc: number
+): number {
+  let n = 0;
+  let r = row;
+  let c = col;
+  while (isValidCoord(mask, r, c) && isLetterField(mask.grid[r][c])) {
+    n += 1;
+    r += dr;
+    c += dc;
+  }
+  return n;
+}
+
+/**
+ * After the GA, force a packed →↓ mask: split words longer than the Hebrew
+ * pool, turn leftover letter holes into clues, and extend 1–2 letter runs.
+ */
+function repairSimpleArrowMask(mask: Mask, config: GeneratorConfig): Mask {
+  const repaired = cloneMask(mask);
+  applyFixedCells(repaired, config);
+
+  const maxLen = config.maxSlotLength ?? 11;
+  const protectedKeys = new Set(
+    (config.protectedCells ?? []).map((cell) => `${cell.row},${cell.col}`)
+  );
+
+  const pinProtected = () => {
+    for (const cell of config.protectedCells ?? []) {
+      setField(repaired, cell.row, cell.col, cell.type);
+    }
+    for (const { row, col } of config.cutoutCells ?? []) {
+      setField(repaired, row, col, '#');
+    }
+  };
+
+  const canEdit = (row: number, col: number) =>
+    isValidCoord(repaired, row, col) &&
+    repaired.grid[row][col] !== '#' &&
+    !protectedKeys.has(`${row},${col}`);
+
+  for (let pass = 0; pass < 48; pass++) {
+    pinProtected();
+    const words = findAllWords(repaired);
+    let changed = false;
+
+    for (const word of words) {
+      if (word.length >= 3) continue;
+      if (canEdit(word.definitionRow, word.definitionCol)) {
+        repaired.grid[word.definitionRow][word.definitionCol] = '0';
+        changed = true;
+        break;
+      }
+      if (word.length > 0) {
+        const last = word.letters[word.letters.length - 1];
+        const nr = last.row + word.direction.dr;
+        const nc = last.col + word.direction.dc;
+        if (canEdit(nr, nc) && isDefinitionField(repaired.grid[nr][nc])) {
+          repaired.grid[nr][nc] = '0';
+          changed = true;
+          break;
+        }
+      }
+    }
+    if (changed) continue;
+
+    for (const word of words) {
+      if (word.length <= maxLen) continue;
+      for (let i = 3; i <= word.length - 4; i++) {
+        const split = word.letters[i];
+        if (!split || !canEdit(split.row, split.col)) continue;
+        repaired.grid[split.row][split.col] = word.isHorizontal ? '1' : '2';
+        changed = true;
+        break;
+      }
+      if (changed) break;
+    }
+    if (changed) continue;
+
+    const coverage = analyzeCoverage(repaired, words);
+    const uncovered: Array<{ row: number; col: number }> = [];
+    for (const [key, info] of coverage) {
+      if (info.total > 0) continue;
+      const [row, col] = key.split(',').map(Number);
+      uncovered.push({ row, col });
+    }
+    uncovered.sort((a, b) => a.row + a.col - (b.row + b.col));
+    for (const cell of uncovered) {
+      if (!canEdit(cell.row, cell.col)) continue;
+      const rightRun = countLetterRun(repaired, cell.row, cell.col + 1, 0, 1);
+      const downRun = countLetterRun(repaired, cell.row + 1, cell.col, 1, 0);
+      if (rightRun >= 3 && cell.col < repaired.cols - 2) {
+        repaired.grid[cell.row][cell.col] = '1';
+      } else if (downRun >= 3 && cell.row < repaired.rows - 2) {
+        repaired.grid[cell.row][cell.col] = '2';
+      } else if (cell.col < repaired.cols - 2) {
+        repaired.grid[cell.row][cell.col] = '1';
+      } else if (cell.row < repaired.rows - 2) {
+        repaired.grid[cell.row][cell.col] = '2';
+      } else {
+        continue;
+      }
+      changed = true;
+      break;
+    }
+    if (!changed) break;
+  }
+
+  pinProtected();
+  return repaired;
+}
+
+function maskToGridTemplate(
+  mask: Mask,
+  name: string,
+  difficulty: Difficulty,
+  _lockedCells: Array<{ row: number; col: number; type: string }> = [],
+  cutoutCells: Array<{ row: number; col: number }> = []
+): GridTemplate {
   const words = findAllWords(mask);
   const slots: ClueSlot[] = [];
-  const clueCells: Array<{ row: number; col: number; direction: Direction }> = [];
 
-  // Create slots from words with length >= 3
   let slotIndex = 0;
   for (const word of words) {
-    if (word.length < 3) continue;
-
+    if (word.length < 3) {
+      throw new Error(`Template has short word of length ${word.length}`);
+    }
     const direction = fieldTypeToDirection(word.definitionType);
     if (!direction) continue;
-
-    const slotId = `slot_${slotIndex++}`;
-    // startRow/startCol = clue cell; cells = actual letter positions (Engel types 3,4,6 differ from direction-utils)
-    const slot: ClueSlot = {
-      id: slotId,
+    slots.push({
+      id: `slot_${slotIndex++}`,
       direction,
       startRow: word.definitionRow,
       startCol: word.definitionCol,
       length: word.length,
       crossings: [],
-      cells: word.letters.map((l) => ({ row: l.row, col: l.col }))
-    };
-
-    slots.push(slot);
-
-    clueCells.push({
-      row: word.definitionRow,
-      col: word.definitionCol,
-      direction
+      cells: word.letters.map((l) => ({ row: l.row, col: l.col })),
     });
   }
 
-  // Calculate crossings
-  const letterToSlots = new Map<string, Array<{ slotId: string; position: number }>>();
-
-  for (const slot of slots) {
-    const word = words.find(w =>
-      w.definitionRow === slot.startRow &&
-      w.definitionCol === slot.startCol &&
-      fieldTypeToDirection(w.definitionType) === slot.direction &&
-      w.length === slot.length
-    );
-
-    if (word) {
-      for (let pos = 0; pos < word.letters.length; pos++) {
-        const letter = word.letters[pos];
-        const key = `${letter.row},${letter.col}`;
-
-        if (!letterToSlots.has(key)) {
-          letterToSlots.set(key, []);
-        }
-        letterToSlots.get(key)!.push({ slotId: slot.id, position: pos });
-      }
-    }
-  }
-
-  // Add crossing info to slots
-  for (const [, slotInfos] of letterToSlots) {
-    if (slotInfos.length >= 2) {
-      for (let i = 0; i < slotInfos.length; i++) {
-        for (let j = i + 1; j < slotInfos.length; j++) {
-          const slot1 = slots.find(s => s.id === slotInfos[i].slotId);
-          const slot2 = slots.find(s => s.id === slotInfos[j].slotId);
-
-          if (slot1 && slot2) {
-            slot1.crossings.push({
-              slotId: slot2.id,
-              thisPosition: slotInfos[i].position,
-              otherPosition: slotInfos[j].position
-            });
-
-            slot2.crossings.push({
-              slotId: slot1.id,
-              thisPosition: slotInfos[j].position,
-              otherPosition: slotInfos[i].position
-            });
-          }
-        }
-      }
-    }
-  }
-
-  const boundaryCheck = validateSlotsBoundaries(slots, mask.rows, mask.cols);
+  let remaining = slots;
+  const boundaryCheck = validateSlotsBoundaries(remaining, mask.rows, mask.cols);
   if (!boundaryCheck.valid) {
-    throw new Error(`Template boundary validation failed: ${(boundaryCheck.errors ?? []).join('; ')}`);
+    throw new Error(
+      `Template boundary validation failed: ${(boundaryCheck.errors ?? []).join('; ')}`
+    );
   }
+
+  const cutoutSet = new Set(
+    (cutoutCells ?? []).map((cell) => `${cell.row},${cell.col}`)
+  );
+  const letterCovered = new Set<string>();
+  for (const slot of remaining) {
+    for (const cell of slot.cells ?? []) letterCovered.add(`${cell.row},${cell.col}`);
+  }
+  for (let r = 0; r < mask.rows; r++) {
+    for (let c = 0; c < mask.cols; c++) {
+      const cellType = mask.grid[r][c];
+      const key = `${r},${c}`;
+      if (cellType === '#' && !cutoutSet.has(key)) {
+        throw new Error(`Template has empty blocked cell (${r},${c})`);
+      }
+      if (cellType === '0' && !letterCovered.has(key)) {
+        throw new Error(`Template has uncovered letter cell (${r},${c})`);
+      }
+    }
+  }
+
+  rebuildSlotCrossings(remaining);
 
   return {
     id: `template_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     name,
     rows: mask.rows,
     cols: mask.cols,
-    slots,
-    clueCells,
+    slots: remaining,
+    clueCells: remaining.map((slot) => ({
+      row: slot.startRow,
+      col: slot.startCol,
+      direction: slot.direction,
+    })),
     difficulty,
-    categories: ['Generated']
+    categories: ['Generated'],
   };
 }
 
@@ -1370,6 +1512,7 @@ export interface GenerateTemplateOptions {
   name?: string;
   cutoutCells?: Array<{ row: number; col: number }>;
   lockedCells?: Array<{ row: number; col: number; type: '0' | '1' | '2' | '3' | '4' | '5' | '6' }>;
+  protectedCells?: Array<{ row: number; col: number; type: '0' | '1' | '2' | '3' | '4' | '5' | '6' }>;
   // Optional algorithm parameters (defaults from thesis)
   populationSize?: number;        // n, default 15
   weakBreakCondition?: number;    // bw, default 2000
@@ -1382,6 +1525,9 @@ export interface GenerateTemplateOptions {
   maxSlotLength?: number;
   /** Allow more uncovered/blocked cells so a smaller word pool can fill the grid. */
   sparse?: boolean;
+  /** How many times to rerun the GA if the mask fails boundary checks. */
+  maxBoundaryRetries?: number;
+  simpleArrows?: boolean;
 }
 
 /**
@@ -1396,6 +1542,7 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     name = `Arrow Crossword ${rows}x${cols}`,
     cutoutCells = [],
     lockedCells = [],
+    protectedCells = [],
     populationSize = 15,
     weakBreakCondition = 2000,
     strongBreakCondition = 10000,
@@ -1404,7 +1551,9 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     maxIterations: maxIterationsOpt,
     quiet = false,
     maxSlotLength,
-    sparse = false
+    sparse = false,
+    maxBoundaryRetries = 3,
+    simpleArrows = false,
   } = options;
 
   // Larger grids need more memetic iterations to converge; default scales with cell count
@@ -1425,6 +1574,9 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     quiet,
     cutoutCells,
     lockedCells,
+    protectedCells,
+    simpleArrows,
+    maxSlotLength,
     weights: DEFAULT_CONFIG.weights!
   };
 
@@ -1457,6 +1609,22 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     config.weights.wordLength = capped;
   }
 
+  if (simpleArrows) {
+    config.weights.uncoveredField = 4000;
+    config.weights.wordLength = {
+      ...config.weights.wordLength,
+      3: 80,
+      4: 0,
+      5: 0,
+      6: 0,
+      7: 10,
+      8: 40,
+      9: 120,
+      10: 250,
+      11: 400,
+    };
+  }
+
   if (sparse) {
     // Smaller dictionaries cannot fill a fully covered arrow grid; allow
     // blocked cells instead of forcing every letter field to be used.
@@ -1465,16 +1633,23 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     config.weights.singleCoveredOpen = 100;
   }
 
-  const maxBoundaryRetries = 3;
   for (let attempt = 0; attempt < maxBoundaryRetries; attempt++) {
     const bestMask = memeticAlgorithm(config);
+    const packed = simpleArrows ? repairSimpleArrowMask(bestMask, config) : bestMask;
     try {
-      return maskToGridTemplate(bestMask, name, difficulty);
+      return maskToGridTemplate(packed, name, difficulty, lockedCells, cutoutCells);
     } catch (e) {
-      const isBoundaryError = e instanceof Error && e.message.startsWith('Template boundary validation failed');
-      if (isBoundaryError && attempt < maxBoundaryRetries - 1) {
+      const retryable =
+        e instanceof Error &&
+        (e.message.startsWith('Template boundary validation failed') ||
+          e.message.includes('uncovered letter') ||
+          e.message.includes('short word') ||
+          e.message.includes('empty blocked'));
+      if (retryable && attempt < maxBoundaryRetries - 1) {
         if (!quiet) {
-          console.warn(`Template boundary validation failed (attempt ${attempt + 1}/${maxBoundaryRetries}), retrying...`);
+          console.warn(
+            `Template retry ${attempt + 1}/${maxBoundaryRetries}: ${e.message}`
+          );
         }
         continue;
       }

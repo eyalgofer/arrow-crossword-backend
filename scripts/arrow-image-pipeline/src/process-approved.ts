@@ -102,12 +102,11 @@ for (const approval of queued) {
     await new Promise((resolve) => setTimeout(resolve, 400));
     const input = await fetchOriginal(candidate.originalUrl, config.userAgent);
 
-    // Uniform 800×800 clue asset; contain-fit padding keeps faces/landmarks.
+    // Uniform 800×800 clue asset; fill-stretch so the image covers the cell.
     const output = await sharp(input, { limitInputPixels: false })
       .rotate()
       .resize(800, 800, {
-        fit: "contain",
-        background: { r: 18, g: 18, b: 18, alpha: 1 },
+        fit: "fill",
       })
       .jpeg({ quality: 86, mozjpeg: true })
       .toBuffer();
