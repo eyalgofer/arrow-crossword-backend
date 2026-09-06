@@ -16,6 +16,7 @@
     "assign:daily": "ts-node src/scripts/assignDailyPuzzles.ts",
     "sync:indexes": "ts-node src/scripts/syncIndexes.ts",
     "preview:puzzle": "ts-node src/scripts/previewPuzzle.ts",
+    "seed:image-clues": "ts-node src/scripts/seedImageCluePuzzle.ts",
     "recreate:he": "ts-node src/scripts/recreateHebrewPuzzles.ts",
     "check:apple": "node scripts/check-apple-config.js"
   },

@@ -1,51 +1,74 @@
 import { PuzzleItem, Direction, ClueSlot } from '../core/types';
 
+/** Virtual clue cell for answer/arrow geometry (exit for image clues). */
+export function getClueAnchor(item: Pick<PuzzleItem, 'startRow' | 'startCol' | 'exitRow' | 'exitCol' | 'clueType'>): {
+  row: number;
+  col: number;
+} {
+  if (item.clueType === 'image' && item.exitRow != null && item.exitCol != null) {
+    return { row: item.exitRow, col: item.exitCol };
+  }
+  return { row: item.startRow, col: item.startCol };
+}
+
+/** All 9 cells of a 3×3 image block whose top-left is (startRow, startCol). */
+export function getImageBlockCells(startRow: number, startCol: number): Array<{ row: number; col: number }> {
+  const cells: Array<{ row: number; col: number }> = [];
+  for (let dr = 0; dr < 3; dr++) {
+    for (let dc = 0; dc < 3; dc++) {
+      cells.push({ row: startRow + dr, col: startCol + dc });
+    }
+  }
+  return cells;
+}
+
 export function getAnswerCells(
   puzzleItem: PuzzleItem
 ): Array<{ row: number; col: number }> {
   const cells: Array<{ row: number; col: number }> = [];
-  const { startRow, startCol, direction, answer } = puzzleItem;
+  const { direction, answer } = puzzleItem;
+  const anchor = getClueAnchor(puzzleItem);
   
   // Determine starting position and direction of answer
-  let answerStartRow = startRow;
-  let answerStartCol = startCol;
+  let answerStartRow = anchor.row;
+  let answerStartCol = anchor.col;
   let rowDelta = 0;
   let colDelta = 0;
   
   switch (direction) {
     case 'across':
       // Clue cell, answer goes right starting from next column
-      answerStartCol = startCol + 1;
+      answerStartCol = anchor.col + 1;
       colDelta = 1;
       break;
     case 'down':
       // Clue cell, answer goes down starting from next row
-      answerStartRow = startRow + 1;
+      answerStartRow = anchor.row + 1;
       rowDelta = 1;
       break;
     case 'right-down':
       // Clue in cell, arrow points diagonally right-down
       // Answer starts at next column, same row, goes DOWN
-      answerStartCol = startCol + 1;
+      answerStartCol = anchor.col + 1;
       rowDelta = 1;
       break;
     case 'left-down':
       // Clue in cell, arrow points diagonally left-down
       // Answer starts at previous column, same row, goes DOWN
-      answerStartCol = startCol - 1;
-      answerStartRow = startRow; // Same row as clue, not next row
+      answerStartCol = anchor.col - 1;
+      answerStartRow = anchor.row; // Same row as clue, not next row
       rowDelta = 1;
       break;
     case 'down-across':
       // Clue in cell, arrow points down
       // Answer starts at same column, next row, goes RIGHT
-      answerStartRow = startRow + 1;
+      answerStartRow = anchor.row + 1;
       colDelta = 1;
       break;
     case 'up-across':
       // Clue in cell, arrow points up
       // Answer starts at same column, previous row, goes RIGHT
-      answerStartRow = startRow - 1;
+      answerStartRow = anchor.row - 1;
       colDelta = 1;
       break;
   }
@@ -75,8 +98,10 @@ export function getSlotCells(slot: ClueSlot): Array<{ row: number; col: number }
   const cells: Array<{ row: number; col: number }> = [];
   let rowDelta = 0;
   let colDelta = 0;
-  let startRow = slot.startRow;
-  let startCol = slot.startCol;
+  const anchorRow = slot.clueType === 'image' && slot.exitRow != null ? slot.exitRow : slot.startRow;
+  const anchorCol = slot.clueType === 'image' && slot.exitCol != null ? slot.exitCol : slot.startCol;
+  let startRow = anchorRow;
+  let startCol = anchorCol;
 
   // Adjust start based on direction (clue cell vs answer start)
   switch (slot.direction) {
@@ -192,4 +217,22 @@ export function getCellBeforeAnswer(
   }
   
   return { row: prevRow, col: prevCol };
+}
+
+/** First answer cell offset relative to the clue/exit anchor for a direction. */
+export function getFirstAnswerOffset(direction: Direction): { rowDelta: number; colDelta: number; flowRow: number; flowCol: number } {
+  switch (direction) {
+    case 'across':
+      return { rowDelta: 0, colDelta: 1, flowRow: 0, flowCol: 1 };
+    case 'down':
+      return { rowDelta: 1, colDelta: 0, flowRow: 1, flowCol: 0 };
+    case 'right-down':
+      return { rowDelta: 0, colDelta: 1, flowRow: 1, flowCol: 0 };
+    case 'left-down':
+      return { rowDelta: 0, colDelta: -1, flowRow: 1, flowCol: 0 };
+    case 'down-across':
+      return { rowDelta: 1, colDelta: 0, flowRow: 0, flowCol: 1 };
+    case 'up-across':
+      return { rowDelta: -1, colDelta: 0, flowRow: 0, flowCol: 1 };
+  }
 }

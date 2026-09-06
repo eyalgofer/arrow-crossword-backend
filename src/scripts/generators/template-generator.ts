@@ -52,6 +52,8 @@ interface GeneratorConfig {
   strongBreakCondition: number;  // bs in thesis (default 10000)
   similarityThreshold: number;   // δ in thesis (default 0.1)
   cutoutCells?: Array<{ row: number; col: number }>;
+  /** Definition cells that must stay fixed (e.g. image-clue exits). */
+  lockedCells?: Array<{ row: number; col: number; type: FieldType }>;
   minPopulation?: number;       // floor so n never drops below this (avoids collapse)
   maxIterations?: number;      // cap iterations (default 100)
   quiet?: boolean;             // suppress per-iteration logs when true
@@ -275,6 +277,28 @@ function getField(mask: Mask, row: number, col: number): FieldType | null {
 function setField(mask: Mask, row: number, col: number, fieldType: FieldType): void {
   if (isValidCoord(mask, row, col)) {
     mask.grid[row][col] = fieldType;
+  }
+}
+
+function lockedKeySet(config: GeneratorConfig): Set<string> {
+  const keys = new Set<string>();
+  for (const cell of config.lockedCells ?? []) {
+    keys.add(`${cell.row},${cell.col}`);
+  }
+  return keys;
+}
+
+/** Re-apply cutouts and locked definition cells after create/mutate/crossover. */
+function applyFixedCells(mask: Mask, config: GeneratorConfig): void {
+  if (config.cutoutCells) {
+    for (const { row, col } of config.cutoutCells) {
+      setField(mask, row, col, '#');
+    }
+  }
+  if (config.lockedCells) {
+    for (const { row, col, type } of config.lockedCells) {
+      setField(mask, row, col, type);
+    }
   }
 }
 
@@ -776,15 +800,9 @@ function initializeBorders(mask: Mask): void {
 function createRandomMask(config: GeneratorConfig): Mask {
   const mask = createEmptyMask(config.rows, config.cols);
 
-  // Apply cutouts
-  if (config.cutoutCells) {
-    for (const { row, col } of config.cutoutCells) {
-      setField(mask, row, col, '#');
-    }
-  }
-
-  // Initialize borders
+  // Initialize borders, then pin cutouts / image exits so borders cannot overwrite them
   initializeBorders(mask);
+  applyFixedCells(mask, config);
 
   // Rest starts as letter fields (per thesis)
   // The hillclimber will find good positions for definition fields
@@ -812,6 +830,7 @@ function gaussianRandom(): number {
  */
 function mutate(mask: Mask, config: GeneratorConfig): Mask {
   const mutated = cloneMask(mask);
+  const locked = lockedKeySet(config);
   
   // Per thesis: mutation size k randomly chosen from {2, 3}
   const mutationSize = Math.random() < 0.5 ? 2 : 3;
@@ -821,10 +840,15 @@ function mutate(mask: Mask, config: GeneratorConfig): Mask {
   const candidates: Array<{ row: number; col: number }> = [];
   for (let r = 0; r < mask.rows; r++) {
     for (let c = 0; c < mask.cols; c++) {
-      if (mask.grid[r][c] !== '#') {
+      if (mask.grid[r][c] !== '#' && !locked.has(`${r},${c}`)) {
         candidates.push({ row: r, col: c });
       }
     }
+  }
+
+  if (candidates.length === 0) {
+    applyFixedCells(mutated, config);
+    return mutated;
   }
 
   // Tournament selection for center point (α = 2)
@@ -866,6 +890,7 @@ function mutate(mask: Mask, config: GeneratorConfig): Mask {
 
     if (!isValidCoord(mutated, targetRow, targetCol)) continue;
     if (mutated.grid[targetRow][targetCol] === '#') continue;
+    if (locked.has(`${targetRow},${targetCol}`)) continue;
 
     // Get allowed types and pick one different from current
     const allowed = getAllowedFieldTypes(mutated, targetRow, targetCol);
@@ -906,6 +931,7 @@ function mutate(mask: Mask, config: GeneratorConfig): Mask {
     }
   }
 
+  applyFixedCells(mutated, config);
   return mutated;
 }
 
@@ -918,7 +944,7 @@ function mutate(mask: Mask, config: GeneratorConfig): Mask {
  * Algorithm 2 from Appendix A
  * @param beta Optional angle in radians; if omitted, chosen randomly (for backward compatibility)
  */
-function crossover(parent1: Mask, parent2: Mask, beta?: number): Mask {
+function crossover(parent1: Mask, parent2: Mask, config: GeneratorConfig, beta?: number): Mask {
   const child = createEmptyMask(parent1.rows, parent1.cols);
 
   // Per thesis: "Random angle for splitting line through center"
@@ -951,6 +977,7 @@ function crossover(parent1: Mask, parent2: Mask, beta?: number): Mask {
     }
   }
 
+  applyFixedCells(child, config);
   return child;
 }
 
@@ -1109,7 +1136,7 @@ function memeticAlgorithm(config: GeneratorConfig): Mask {
         }
 
         // Create child with the crossover line that had best potential (per thesis: use that beta)
-        const child = crossover(population[i], population[j], bestBeta);
+        const child = crossover(population[i], population[j], config, bestBeta);
         evaluateFitness(child, config);
         child.potentialRating = bestPotential;
         newPop.push(child);
@@ -1187,7 +1214,11 @@ function memeticAlgorithm(config: GeneratorConfig): Mask {
 
     // Early termination if we have a valid, good-enough mask (relaxed for seed speed)
     const qualityThreshold = config.rows * config.cols * 60; // ~6000 for 10x10
-    if (bestValidity === 0 && bestQuality < qualityThreshold) {
+    const hasCutouts = (config.cutoutCells?.length ?? 0) > 0;
+    // With image cutouts, perfect validity is rare — accept a small validity debt early.
+    const validityOk = hasCutouts ? bestValidity <= 2000 : bestValidity === 0;
+    const qualityOk = bestQuality < (hasCutouts ? qualityThreshold * 1.5 : qualityThreshold);
+    if (validityOk && qualityOk) {
       if (!config.quiet) console.log('Found satisfactory solution, terminating');
       break;
     }
@@ -1338,6 +1369,7 @@ export interface GenerateTemplateOptions {
   difficulty?: Difficulty;
   name?: string;
   cutoutCells?: Array<{ row: number; col: number }>;
+  lockedCells?: Array<{ row: number; col: number; type: '0' | '1' | '2' | '3' | '4' | '5' | '6' }>;
   // Optional algorithm parameters (defaults from thesis)
   populationSize?: number;        // n, default 15
   weakBreakCondition?: number;    // bw, default 2000
@@ -1363,6 +1395,7 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     difficulty = Difficulty.MEDIUM,
     name = `Arrow Crossword ${rows}x${cols}`,
     cutoutCells = [],
+    lockedCells = [],
     populationSize = 15,
     weakBreakCondition = 2000,
     strongBreakCondition = 10000,
@@ -1391,6 +1424,7 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     maxIterations,
     quiet,
     cutoutCells,
+    lockedCells,
     weights: DEFAULT_CONFIG.weights!
   };
 

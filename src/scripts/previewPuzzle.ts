@@ -28,7 +28,21 @@ function printPuzzle(puzzle: Puzzle): void {
   // Build display grid: letters, clue numbers, blocked cells
   const display: string[][] = Array.from({ length: rows }, () => Array(cols).fill('███'));
   for (const item of puzzle.puzzleItems) {
-    display[item.startRow][item.startCol] = `${String(item.number).padStart(2)}${ARROWS[item.direction] || '?'}`;
+    if (item.clueType === 'image' && item.exitRow != null && item.exitCol != null) {
+      for (let dr = 0; dr < 3; dr++) {
+        for (let dc = 0; dc < 3; dc++) {
+          const r = item.startRow + dr;
+          const c = item.startCol + dc;
+          if (r === item.exitRow && c === item.exitCol) {
+            display[r][c] = `${String(item.number).padStart(2)}${ARROWS[item.direction] || '?'}`;
+          } else {
+            display[r][c] = 'IMG';
+          }
+        }
+      }
+    } else {
+      display[item.startRow][item.startCol] = `${String(item.number).padStart(2)}${ARROWS[item.direction] || '?'}`;
+    }
   }
   for (const item of puzzle.puzzleItems) {
     const cells = getAnswerCells(item);
@@ -58,8 +72,8 @@ const language: Language = langArgIndex !== -1 && process.argv[langArgIndex + 1]
 const positional = process.argv.slice(2).filter((arg, i, args) => arg !== '--lang' && args[i - 1] !== '--lang');
 
 const difficulty = (positional[0] as Difficulty) || Difficulty.EASY;
-const rows = Math.min(parseInt(positional[1] || '8', 10), 12);
-const cols = Math.min(parseInt(positional[2] || '8', 10), 12);
+const rows = Math.min(parseInt(positional[1] || '8', 10), 16);
+const cols = Math.min(parseInt(positional[2] || '8', 10), 16);
 const count = parseInt(positional[3] || '1', 10);
 
 const puzzles = generatePuzzlesBatch({

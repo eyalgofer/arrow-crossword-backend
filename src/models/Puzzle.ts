@@ -41,6 +41,10 @@ const puzzleItemSchema = new Schema({
   startCol: { type: Number, required: true },
   // Mixed so mongoose does not coerce a missing value into [] (the app renders []).
   enumeration: { type: Schema.Types.Mixed, default: null },
+  clueType: { type: String, enum: ['text', 'image'], default: 'text' },
+  imageUrl: { type: String, required: false },
+  exitRow: { type: Number, required: false },
+  exitCol: { type: Number, required: false },
 }, {
   _id: false,
   toJSON: { transform: omitSingleWordEnumeration },

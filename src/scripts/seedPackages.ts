@@ -215,17 +215,17 @@ const seedPackages = async () => {
         console.log(`   Generating ${count} ${difficulty} puzzle(s)...`);
         let sizes = packageSizes?.slice(sizeOffset, sizeOffset + count);
         sizeOffset += count;
-        // Hard Hebrew fills stall on 12×12; keep those grids at 10×10.
+        // Hard Hebrew fills stall on the largest boards; keep those at 12×12.
         if (language === 'he' && difficulty === Difficulty.HARD && sizes) {
-          sizes = sizes.map(() => ({ rows: 10, cols: 10 }));
+          sizes = sizes.map(() => ({ rows: 12, cols: 12 }));
         }
         const batch = generatePuzzlesBatch({
           difficulty,
           count,
           category: MISC_CATEGORY,
           startIndex: globalPuzzleIndex,
-          rows: 8,
-          cols: 8,
+          rows: language === 'he' ? 13 : 8,
+          cols: language === 'he' ? 13 : 8,
           sizes,
           language,
         });

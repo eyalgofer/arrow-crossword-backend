@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Arrow Image Clue Approval</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
+    body { margin: 0; background:#0b1020; color:#f7f8fb; }
+    header { position:sticky; top:0; z-index:10; background:#0b1020ee; backdrop-filter: blur(12px); padding:18px 24px; border-bottom:1px solid #26304b; }
+    h1 { margin:0 0 4px; font-size:22px; }
+    #stats { color:#aab4d0; }
+    main { max-width:1180px; margin:auto; padding:24px; }
+    .clue { margin-bottom:30px; padding:18px; border:1px solid #26304b; border-radius:18px; background:#11182b; }
+    .title { display:flex; gap:14px; align-items:baseline; margin-bottom:14px; }
+    .he { direction:rtl; font-size:23px; font-weight:800; }
+    .subject { color:#aab4d0; }
+    .cards { display:grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap:14px; }
+    .card { overflow:hidden; border:2px solid transparent; border-radius:14px; background:#0a0f1e; cursor:pointer; }
+    .card.approved { border-color:#74e0a5; }
+    .card.blocked { opacity:.55; }
+    .card img { width:100%; height:190px; object-fit:cover; display:block; background:#151d32; }
+    .meta { padding:10px; font-size:12px; line-height:1.35; }
+    .license { font-weight:700; }
+    .bad { color:#ff9c9c; }
+    .good { color:#74e0a5; }
+    a { color:#9bbcff; }
+    .empty { color:#ffca85; }
+    .pill { display:inline-block; margin-left:8px; padding:3px 8px; border-radius:999px; background:#26304b; font-size:12px; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Arrow Image Clue Approval</h1>
+  <div id="stats">Loading…</div>
+</header>
+<main id="app"></main>
+<script>
+  let approvals = new Map();
+
+  async function load() {
+    const [groups, approved] = await Promise.all([
+      fetch("/api/candidates").then(r=>r.json()),
+      fetch("/api/approvals").then(r=>r.json())
+    ]);
+    approvals = new Map(approved.map(x => [x.clueId, x.candidateId]));
+    render(groups);
+  }
+
+  async function approve(clueId, candidateId) {
+    await fetch("/api/approve", {
+      method:"POST",
+      headers:{"content-type":"application/json"},
+      body:JSON.stringify({clueId,candidateId})
+    });
+    approvals.set(clueId,candidateId);
+    load();
+  }
+
+  function esc(x="") {
+    return x.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  function render(groups) {
+    const approvedCount = groups.filter(g => approvals.has(g.clue.id)).length;
+    document.querySelector("#stats").textContent =
+      `${groups.length} clues · ${approvedCount} approved · ${groups.length-approvedCount} remaining`;
+
+    document.querySelector("#app").innerHTML = groups.map(g => {
+      const c = g.clue;
+      const cards = (g.candidates || []).map(x => `
+        <div class="card ${approvals.get(c.id)===x.id ? "approved":""} ${x.allowed ? "":"blocked"}"
+             onclick="${x.allowed ? `approve('${c.id}','${x.id}')` : ""}">
+          <img src="${esc(x.thumbUrl)}" alt="">
+          <div class="meta">
+            <div class="${x.allowed ? "good":"bad"}">${x.allowed ? "✓ reusable candidate" : "⚠ manual/rejected"}</div>
+            <div class="license">${esc(x.license || "Unknown license")}</div>
+            <div>${esc(x.author || "Unknown author")}</div>
+            ${x.rejectReason ? `<div class="bad">${esc(x.rejectReason)}</div>` : ""}
+            <a href="${esc(x.descriptionUrl)}" target="_blank" onclick="event.stopPropagation()">Commons page</a>
+          </div>
+        </div>
+      `).join("");
+
+      return `
+        <section class="clue">
+          <div class="title">
+            <span class="he">${esc(c.answer_hebrew)}</span>
+            <span class="subject">${esc(c.subject)}</span>
+            <span class="pill">${esc(c.type)} / ${esc(c.category)}</span>
+          </div>
+          ${cards ? `<div class="cards">${cards}</div>` : `<div class="empty">No candidates found${g.error ? ": "+esc(g.error) : ""}</div>`}
+        </section>
+      `;
+    }).join("");
+  }
+  load();
+</script>
+</body>
+</html>

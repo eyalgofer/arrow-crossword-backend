@@ -63,6 +63,35 @@ export function generatePuzzleFromGrid(
       continue;
     }
 
+    const clueNumber = puzzleItemNumber++;
+    slotIdToClueNumber.set(slot.id, clueNumber);
+
+    if (slot.clueType === 'image') {
+      const imageAnswer = slot.fixedAnswer ?? word;
+      const imageParts = imageAnswer.split(/\s+/).filter(Boolean);
+      const imageEnumeration =
+        slot.fixedEnumeration !== undefined
+          ? slot.fixedEnumeration
+          : imageParts.length > 1
+            ? imageParts.map(part => Array.from(part).length)
+            : null;
+      usedAnswers.add(normalizeWord(imageAnswer));
+      puzzleItems.push({
+        number: clueNumber,
+        direction: slot.direction,
+        clue: 'IMAGE',
+        answer: imageParts.length > 1 ? imageParts.join(' ') : normalizeWord(imageAnswer),
+        enumeration: imageEnumeration,
+        startRow: slot.startRow,
+        startCol: slot.startCol,
+        clueType: 'image',
+        imageUrl: slot.imageUrl,
+        exitRow: slot.exitRow,
+        exitCol: slot.exitCol,
+      });
+      continue;
+    }
+
     const clueText = pickClue(word, usedClues, clueProvider, language);
     usedClues.add(clueText);
     usedAnswers.add(normalizedAnswer);
@@ -71,8 +100,6 @@ export function generatePuzzleFromGrid(
     const enumeration =
       wordParts.length > 1 ? wordParts.map(part => Array.from(part).length) : null;
 
-    const clueNumber = puzzleItemNumber++;
-    slotIdToClueNumber.set(slot.id, clueNumber);
     puzzleItems.push({
       number: clueNumber,
       direction: slot.direction,
@@ -81,6 +108,7 @@ export function generatePuzzleFromGrid(
       enumeration,
       startRow: slot.startRow,
       startCol: slot.startCol,
+      clueType: 'text',
     });
   }
 
@@ -93,7 +121,17 @@ export function generatePuzzleFromGrid(
   const answerCellPositions = new Set<string>();
   for (const slot of template.slots) {
     if (!gridState.placedWords.has(slot.id)) continue;
-    clueCellPositions.add(`${slot.startRow},${slot.startCol}`);
+    if (slot.clueType === 'image' && slot.exitRow != null && slot.exitCol != null) {
+      clueCellPositions.add(`${slot.exitRow},${slot.exitCol}`);
+      // Whole 3×3 counts as blocked/clue footprint for boundary purposes
+      for (let dr = 0; dr < 3; dr++) {
+        for (let dc = 0; dc < 3; dc++) {
+          clueCellPositions.add(`${slot.startRow + dr},${slot.startCol + dc}`);
+        }
+      }
+    } else {
+      clueCellPositions.add(`${slot.startRow},${slot.startCol}`);
+    }
     for (const c of getSlotCells(slot)) {
       answerCellPositions.add(`${c.row},${c.col}`);
     }

@@ -45,6 +45,46 @@ export function solveGrid(
     initialState.clueCells.add(`${clueCell.row},${clueCell.col}`);
   }
 
+  // Prefill image / fixed-answer slots so CSP never rewrites them
+  let prefilledState = initialState;
+  const remainingForSolve: ClueSlot[] = [];
+  for (const slot of template.slots) {
+    // Image blocks are non-letter footprint for the solver
+    if (slot.clueType === 'image') {
+      if (slot.exitRow != null && slot.exitCol != null) {
+        prefilledState.clueCells.add(`${slot.exitRow},${slot.exitCol}`);
+      }
+      for (let dr = 0; dr < 3; dr++) {
+        for (let dc = 0; dc < 3; dc++) {
+          prefilledState.clueCells.add(`${slot.startRow + dr},${slot.startCol + dc}`);
+        }
+      }
+    }
+
+    if (slot.clueType === 'image' && !slot.fixedAnswer) {
+      if (!config.quiet) {
+        console.log(`  ❌ Image slot ${slot.id} has no bound answer`);
+      }
+      return null;
+    }
+
+    if (slot.fixedAnswer) {
+      const cells = getSlotCells(slot);
+      const rowDelta = cells.length >= 2 ? cells[1].row - cells[0].row : 0;
+      const colDelta = cells.length >= 2 ? cells[1].col - cells[0].col : 0;
+      const word = slot.fixedAnswer;
+      if (!canPlaceWord(prefilledState, word, cells, rowDelta, colDelta)) {
+        if (!config.quiet) {
+          console.log(`  ❌ Cannot prefill fixed answer "${word}" for slot ${slot.id}`);
+        }
+        return null;
+      }
+      prefilledState = placeWord(prefilledState, slot.id, word, cells, rowDelta, colDelta);
+    } else {
+      remainingForSolve.push(slot);
+    }
+  }
+
   /** Find placeable candidate words for a slot in the current state. */
   function getCandidates(state: GridState, slot: ClueSlot, limit: number): string[] {
     const cells = getSlotCells(slot);
@@ -128,7 +168,7 @@ export function solveGrid(
     return null;
   }
 
-  const result = backtrack(initialState, [...template.slots]);
+  const result = backtrack(prefilledState, remainingForSolve);
 
   if (!config.quiet) {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
