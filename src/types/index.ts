@@ -21,6 +21,8 @@ export interface UserStats {
   fastestTime: number;
 }
 
+export type ClueType = 'text' | 'image';
+
 export interface PuzzleItem {
   number: number;
   direction: 'across' | 'down' | 'right-down' | 'left-down' | 'down-across' | 'up-across';
@@ -29,6 +31,13 @@ export interface PuzzleItem {
   startRow: number;
   startCol: number;
   enumeration?: number[] | null;
+  /** Defaults to 'text' when omitted. */
+  clueType?: ClueType;
+  /** Image URL when clueType === 'image'. */
+  imageUrl?: string;
+  /** Perimeter cell of the 3×3 image used for direction/arrow math. */
+  exitRow?: number;
+  exitCol?: number;
 }
 
 export interface PuzzleGrid {

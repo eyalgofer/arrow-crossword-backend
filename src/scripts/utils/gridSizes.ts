@@ -1,23 +1,27 @@
-export const MAX_GRID_SIZE = 13;
-export const MIN_GRID_SIZE = 13;
+export const MAX_GRID_SIZE = 18;
+export const MIN_GRID_SIZE = 8;
 
 export interface GridSize {
   rows: number;
   cols: number;
 }
 
-/** Preferred Hebrew sizes: mostly bigger than 8x8, with 12s in the mix. */
+/**
+ * Preferred Hebrew sizes — denser, larger boards (closer to real תשחץ).
+ * Image-clue puzzles should use the 13–15 band.
+ */
 export const HEBREW_GRID_SIZE_MIX: GridSize[] = [
-  { rows: 10, cols: 10 },
-  { rows: 9, cols: 11 },
-  { rows: 11, cols: 10 },
-  { rows: 8, cols: 10 },
-  { rows: 12, cols: 10 },
-  { rows: 9, cols: 9 },
-  { rows: 10, cols: 12 },
-  { rows: 11, cols: 11 },
-  { rows: 8, cols: 9 },
-  { rows: 10, cols: 10 },
+  { rows: 12, cols: 12 },
+  { rows: 13, cols: 12 },
+  { rows: 12, cols: 13 },
+  { rows: 13, cols: 13 },
+  { rows: 14, cols: 12 },
+  { rows: 12, cols: 14 },
+  { rows: 14, cols: 13 },
+  { rows: 13, cols: 14 },
+  { rows: 15, cols: 13 },
+  { rows: 13, cols: 15 },
+  { rows: 15, cols: 15 },
 ];
 
 export function mixSizes(count: number, mix: GridSize[] = HEBREW_GRID_SIZE_MIX): GridSize[] {
@@ -28,7 +32,7 @@ export function clampGridSize(n: number): number {
   return Math.max(MIN_GRID_SIZE, Math.min(MAX_GRID_SIZE, Math.round(n)));
 }
 
-/** Try the requested size, then shrink toward 8x8 if the generator cannot fill it. */
+/** Try the requested size, then shrink toward MIN if the generator cannot fill it. */
 export function sizeFallbackChain(rows: number, cols: number): GridSize[] {
   const chain: GridSize[] = [];
   const seen = new Set<string>();

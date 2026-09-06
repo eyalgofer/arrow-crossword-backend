@@ -2,6 +2,8 @@ import { Difficulty, Language } from '../../types';
 
 export { Difficulty, Language };
 
+export type ClueType = 'text' | 'image';
+
 export interface PuzzleItem {
   number: number;
   direction: Direction;
@@ -10,6 +12,10 @@ export interface PuzzleItem {
   enumeration?: number[] | null;
   startRow: number;
   startCol: number;
+  clueType?: ClueType;
+  imageUrl?: string;
+  exitRow?: number;
+  exitCol?: number;
 }
 
 export interface Puzzle {
@@ -47,6 +53,12 @@ export interface ClueSlot {
   crossings: CrossingPoint[];
   /** When set, solver uses these cells directly instead of deriving from startRow/startCol/direction (needed for Engel geometry types 3,4,6). */
   cells?: Array<{ row: number; col: number }>;
+  clueType?: ClueType;
+  imageUrl?: string;
+  exitRow?: number;
+  exitCol?: number;
+  fixedAnswer?: string;
+  fixedEnumeration?: number[] | null;
 }
 
 export type Direction = 'across' | 'down' | 'right-down' | 'left-down' | 'down-across' | 'up-across';
