@@ -1398,8 +1398,14 @@ function repairSimpleArrowMask(mask: Mask, config: GeneratorConfig): Mask {
     if (changed) continue;
 
     for (const word of words) {
-      if (word.length <= maxLen) continue;
-      for (let i = 3; i <= word.length - 4; i++) {
+      const defKey = `${word.definitionRow},${word.definitionCol}`;
+      const imageWordTooLong = protectedKeys.has(defKey) && word.length > 8;
+      if (word.length <= maxLen && !imageWordTooLong) continue;
+      const splitAt = imageWordTooLong ? 4 : 3;
+      const splitUntil = imageWordTooLong
+        ? Math.min(7, word.length - 3)
+        : word.length - 4;
+      for (let i = splitAt; i <= splitUntil; i++) {
         const split = word.letters[i];
         if (!split || !canEdit(split.row, split.col)) continue;
         repaired.grid[split.row][split.col] = word.isHorizontal ? '1' : '2';
@@ -1422,13 +1428,9 @@ function repairSimpleArrowMask(mask: Mask, config: GeneratorConfig): Mask {
       if (!canEdit(cell.row, cell.col)) continue;
       const rightRun = countLetterRun(repaired, cell.row, cell.col + 1, 0, 1);
       const downRun = countLetterRun(repaired, cell.row + 1, cell.col, 1, 0);
-      if (rightRun >= 3 && cell.col < repaired.cols - 2) {
+      if (rightRun >= 3) {
         repaired.grid[cell.row][cell.col] = '1';
-      } else if (downRun >= 3 && cell.row < repaired.rows - 2) {
-        repaired.grid[cell.row][cell.col] = '2';
-      } else if (cell.col < repaired.cols - 2) {
-        repaired.grid[cell.row][cell.col] = '1';
-      } else if (cell.row < repaired.rows - 2) {
+      } else if (downRun >= 3) {
         repaired.grid[cell.row][cell.col] = '2';
       } else {
         continue;
@@ -1456,7 +1458,9 @@ function maskToGridTemplate(
   let slotIndex = 0;
   for (const word of words) {
     if (word.length < 3) {
-      throw new Error(`Template has short word of length ${word.length}`);
+      throw new Error(
+        `Template has short word of length ${word.length} at (${word.definitionRow},${word.definitionCol}) type ${word.definitionType}`
+      );
     }
     const direction = fieldTypeToDirection(word.definitionType);
     if (!direction) continue;
@@ -1629,15 +1633,15 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     config.weights.uncoveredField = 4000;
     config.weights.wordLength = {
       ...config.weights.wordLength,
-      3: 80,
-      4: 0,
+      3: 220,
+      4: 40,
       5: 0,
       6: 0,
-      7: 10,
-      8: 40,
-      9: 120,
-      10: 250,
-      11: 400,
+      7: 0,
+      8: 20,
+      9: 80,
+      10: 400,
+      11: 800,
     };
   }
 

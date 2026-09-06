@@ -15,6 +15,11 @@ export interface SolverConfig {
   maxAttempts: number;
   /** Abort after this many ms so a single solve never hangs. */
   maxSolveTimeMs?: number;
+  /**
+   * After image slots are filled, abort that text-fill attempt after this many
+   * ms so the search can try a different catalog combination.
+   */
+  maxTextSliceMs?: number;
   /** Higher score = tried first. Candidates are shuffled before scoring, so equal scores stay random. */
   wordScorer?: (word: string, placedWords: string[]) => number;
   quiet?: boolean;
@@ -106,16 +111,16 @@ export function solveGrid(
       Array.from(state.placedWords.values()).map(w => normalizeWord(w))
     );
 
-    // Cap early — large unconstrained pools are mostly interchangeable
+    const fromCatalog = Boolean(slot.candidateAnswers && slot.candidateAnswers.length > 0);
     let candidates: string[];
-    if (slot.candidateAnswers && slot.candidateAnswers.length > 0) {
-      candidates = slot.candidateAnswers.filter((w) => !placedAnswers.has(normalizeWord(w)));
+    if (fromCatalog) {
+      candidates = slot.candidateAnswers!.filter((w) => !placedAnswers.has(normalizeWord(w)));
     } else {
       candidates = findMatchingWords(wordIndex, slot.length, constraints).filter(
         (w) => !placedAnswers.has(normalizeWord(w))
       );
     }
-    if (candidates.length > limit * 4) {
+    if (!fromCatalog && candidates.length > limit * 4) {
       candidates = shuffleArray(candidates).slice(0, limit * 4);
     } else {
       candidates = shuffleArray(candidates);
@@ -125,17 +130,30 @@ export function solveGrid(
     const colDelta = cells.length >= 2 ? cells[1].col - cells[0].col : 0;
 
     const placeable: string[] = [];
+    const cap = fromCatalog ? candidates.length : limit;
     for (const word of candidates) {
       if (canPlaceWord(state, word, cells, rowDelta, colDelta)) {
         placeable.push(word);
-        if (placeable.length >= limit) break;
+        if (placeable.length >= cap) break;
       }
     }
     return placeable;
   }
 
-  /** MRV: pick the remaining slot with the fewest valid candidates. */
   let loggedDeadEnd = false;
+  function logDeadEnd(slot: ClueSlot): void {
+    if (loggedDeadEnd) return;
+    loggedDeadEnd = true;
+    const at =
+      slot.clueType === 'image' && slot.exitRow != null
+        ? `block(${slot.startRow},${slot.startCol}) exit(${slot.exitRow},${slot.exitCol})`
+        : `(${slot.startRow},${slot.startCol})`;
+    console.log(
+      `   … dead end: ${slot.clueType === 'image' ? 'image' : 'text'} ${slot.direction} ${slot.length} @ ${at}`
+    );
+  }
+
+  /** MRV: pick the remaining slot with the fewest valid candidates. */
   function selectNextSlot(
     state: GridState,
     remainingSlots: ClueSlot[]
@@ -144,14 +162,10 @@ export function solveGrid(
 
     for (const slot of remainingSlots) {
       if (timedOut()) return null;
-      const candidates = getCandidates(state, slot, 60);
+      const cap = slot.candidateAnswers?.length ? 80 : 15;
+      const candidates = getCandidates(state, slot, cap);
       if (candidates.length === 0) {
-        if (!loggedDeadEnd) {
-          loggedDeadEnd = true;
-          console.log(
-            `   … dead end: ${slot.clueType === 'image' ? 'image' : 'text'} ${slot.direction} ${slot.length} @ (${slot.startRow},${slot.startCol})`
-          );
-        }
+        logDeadEnd(slot);
         return { slot, candidates };
       }
       if (!best || candidates.length < best.candidates.length) {
@@ -161,13 +175,40 @@ export function solveGrid(
     return best;
   }
 
-  function backtrack(state: GridState, remainingSlots: ClueSlot[]): GridState | null {
+  function textStillOpen(state: GridState, textSlots: ClueSlot[]): boolean {
+    for (const slot of textSlots) {
+      if (getCandidates(state, slot, 8).length === 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  let textSliceStart = 0;
+  function backtrack(
+    state: GridState,
+    remainingImages: ClueSlot[],
+    remainingText: ClueSlot[]
+  ): GridState | null {
     if (timedOut()) return null;
     attempts++;
     if (attempts > config.maxAttempts) return null;
-    if (remainingSlots.length === 0) return state;
+    if (remainingImages.length === 0 && remainingText.length === 0) return state;
 
-    const selection = selectNextSlot(state, remainingSlots);
+    const imagePhase = remainingImages.length > 0;
+    if (imagePhase) {
+      textSliceStart = 0;
+    } else if (config.maxTextSliceMs) {
+      if (textSliceStart === 0) {
+        textSliceStart = Date.now();
+        if (!textStillOpen(state, remainingText)) return null;
+      } else if (Date.now() - textSliceStart > config.maxTextSliceMs) {
+        return null;
+      }
+    }
+
+    const pool = imagePhase ? remainingImages : remainingText;
+    const selection = selectNextSlot(state, pool);
     if (!selection || selection.candidates.length === 0) return null;
 
     const { slot } = selection;
@@ -182,19 +223,39 @@ export function solveGrid(
       candidates.sort((a, b) => scorer(b, placed) - scorer(a, placed));
     }
 
-    const newRemaining = remainingSlots.filter(s => s.id !== slot.id);
+    const newImages = remainingImages.filter((s) => s.id !== slot.id);
+    const newText = remainingText.filter((s) => s.id !== slot.id);
     for (const word of candidates) {
       if (timedOut() || attempts > config.maxAttempts) return null;
       if (!canPlaceWord(state, word, cells, rowDelta, colDelta)) continue;
 
       const newState = placeWord(state, slot.id, word, cells, rowDelta, colDelta);
-      const result = backtrack(newState, newRemaining);
+      if (imagePhase) {
+        const imageKeys = new Set(cells.map((cell) => `${cell.row},${cell.col}`));
+        const crossed = remainingText.filter((textSlot) =>
+          getSlotCells(textSlot).some((cell) => imageKeys.has(`${cell.row},${cell.col}`))
+        );
+        if (!textStillOpen(newState, crossed)) continue;
+      }
+      const result = backtrack(newState, newImages, newText);
       if (result !== null) return result;
     }
     return null;
   }
 
-  const result = backtrack(prefilledState, remainingForSolve);
+  const imageSlots = remainingForSolve.filter((slot) => slot.clueType === 'image');
+  const textSlots = remainingForSolve.filter((slot) => slot.clueType !== 'image');
+  for (const slot of remainingForSolve) {
+    const cap = slot.candidateAnswers?.length ? 80 : 8;
+    if (getCandidates(prefilledState, slot, cap).length === 0) {
+      logDeadEnd(slot);
+      if (!config.quiet) {
+        console.log(`  ❌ Failed to solve "${template.name}" after 0 attempts (0.0s)`);
+      }
+      return null;
+    }
+  }
+  const result = backtrack(prefilledState, imageSlots, textSlots);
 
   if (!config.quiet) {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
