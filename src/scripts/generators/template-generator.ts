@@ -1364,19 +1364,35 @@ function repairSimpleArrowMask(mask: Mask, config: GeneratorConfig): Mask {
     for (const word of words) {
       if (word.length >= 3) continue;
       if (canEdit(word.definitionRow, word.definitionCol)) {
+        // Clue ran into an image hole or another clue after 0–2 letters.
+        // Drop it so a neighboring word can absorb the leftover letters.
         repaired.grid[word.definitionRow][word.definitionCol] = '0';
         changed = true;
         break;
       }
-      if (word.length > 0) {
-        const last = word.letters[word.letters.length - 1];
-        const nr = last.row + word.direction.dr;
-        const nc = last.col + word.direction.dc;
-        if (canEdit(nr, nc) && isDefinitionField(repaired.grid[nr][nc])) {
-          repaired.grid[nr][nc] = '0';
+      if (word.length === 0) {
+        const fr = word.startRow;
+        const fc = word.startCol;
+        if (canEdit(fr, fc) && repaired.grid[fr][fc] !== '#') {
+          repaired.grid[fr][fc] = '0';
           changed = true;
           break;
         }
+        continue;
+      }
+      const last = word.letters[word.letters.length - 1];
+      const nr = last.row + word.direction.dr;
+      const nc = last.col + word.direction.dc;
+      if (canEdit(nr, nc) && isDefinitionField(repaired.grid[nr][nc])) {
+        repaired.grid[nr][nc] = '0';
+        changed = true;
+        break;
+      }
+      const letter = word.letters[0];
+      if (word.length === 1 && canEdit(letter.row, letter.col)) {
+        repaired.grid[letter.row][letter.col] = word.isHorizontal ? '2' : '1';
+        changed = true;
+        break;
       }
     }
     if (changed) continue;

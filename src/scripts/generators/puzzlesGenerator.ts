@@ -1,22 +1,51 @@
 import { Difficulty, Language } from '../../types';
-import { Puzzle, GridTemplate } from '../core/types';
+import { Puzzle, GridTemplate, Direction } from '../core/types';
 import { getClueProvider, ClueProvider } from '../core/clueProvider';
 import { generateTemplate } from './template-generator';
 import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
 import { generatePuzzleFromGrid } from './puzzle-assembler';
 import { getSlotCells, getUncoveredCells } from './direction-utils';
-import { GridSize, IMAGE_CLUE_SIZE_LADDER, MAX_GRID_SIZE, sizeFallbackChain } from '../utils/gridSizes';
+import { normalizeWord } from './validation-utils';
+import { createEmptyGridState, canPlaceWord } from './grid-state';
+import { GridSize, IMAGE_CLUE_COUNT_LADDER, IMAGE_CLUE_SIZE_LADDER, MAX_GRID_SIZE, sizeFallbackChain } from '../utils/gridSizes';
 import {
   catalogLetterLength,
   imageBlockCutouts,
   imageExitLocks,
-  packedBorderLocks,
+  isInImageBlock,
   ImageClueCatalogEntry,
   loadGeneratedImageClueCatalog,
   planImageClues,
   PlannedImageClue,
 } from './imageClueCatalog';
+
+const HORIZONTAL_DIRS = new Set<Direction>(['across', 'down-across', 'up-across']);
+
+function directionMixOk(
+  slots: Array<{ direction: Direction }>,
+  logLabel?: string
+): boolean {
+  let horizontal = 0;
+  let vertical = 0;
+  const kinds = new Set<Direction>();
+  for (const slot of slots) {
+    kinds.add(slot.direction);
+    if (HORIZONTAL_DIRS.has(slot.direction)) horizontal += 1;
+    else vertical += 1;
+  }
+  const total = horizontal + vertical;
+  if (total === 0) return false;
+  const hShare = horizontal / total;
+  const vShare = vertical / total;
+  const ok = hShare >= 0.32 && vShare >= 0.32 && kinds.size >= 2;
+  if (!ok && logLabel) {
+    console.log(
+      `   … ${logLabel}: direction mix h=${horizontal} v=${vertical} kinds=${[...kinds].join(',')}`
+    );
+  }
+  return ok;
+}
 
 export class PuzzleGenerator {
   private wordIndex: CrossingIndex;
@@ -169,13 +198,25 @@ export class PuzzleGenerator {
       const cutoutCells =
         imagePlan.length > 0 ? imageBlockCutouts(imagePlan) : undefined;
       const imageLocks = imagePlan.length > 0 ? imageExitLocks(imagePlan) : [];
-      const lockedCells = [
-        ...(wantImages > 0 ? packedBorderLocks(rows, cols) : []),
-        ...imageLocks,
-      ];
+      const cornerLock = wantImages
+        ? ([
+            { row: 0, col: 0, type: '1' as const },
+            { row: 0, col: 1, type: '0' as const },
+            { row: 0, col: 2, type: '0' as const },
+            { row: 0, col: 3, type: '0' as const },
+          ] as const)
+        : [];
+      const lockedCells = [...cornerLock, ...imageLocks];
+      const protectedCells = [...cornerLock, ...imageLocks];
 
       const t0 = Date.now();
-      const template = this.buildTemplate(rows, cols, cutoutCells, lockedCells, imageLocks);
+      const template = this.buildTemplate(
+        rows,
+        cols,
+        cutoutCells,
+        lockedCells.length ? lockedCells : undefined,
+        protectedCells.length ? protectedCells : undefined
+      );
       if (!template) {
         if (wantImages > 0 && attempt < 8) {
           console.log(
@@ -185,47 +226,57 @@ export class PuzzleGenerator {
         continue;
       }
 
-      if (!this.bindImageClues(template, imagePlan, this.imageClueCatalog)) {
-        if (wantImages > 0 && attempt < 5) {
-          console.log(
-            `   … image attempt ${attempt + 1}: bind failed (${template.slots.length} slots, ${Date.now() - t0}ms)`
-          );
-        }
-        continue;
-      }
-
-      if (wantImages > 0) {
-        const covered = new Set<string>();
-        for (const clue of template.clueCells) covered.add(`${clue.row},${clue.col}`);
-        for (const slot of template.slots) {
-          for (const cell of getSlotCells(slot)) covered.add(`${cell.row},${cell.col}`);
-        }
-        for (const cut of cutoutCells ?? []) covered.add(`${cut.row},${cut.col}`);
-        const holes = rows * cols - covered.size;
-        if (holes > 0) {
-          if (attempt < 8) {
-            console.log(`   … image attempt ${attempt + 1}: ${holes} empty cells, retrying`);
+      let puzzle: Puzzle | null = null;
+      const bindTries = 1;
+      for (let bindTry = 0; bindTry < bindTries; bindTry++) {
+        if (bindTry > 0) this.clearImageBinds(template);
+        if (!this.bindImageClues(template, imagePlan, this.imageClueCatalog)) {
+          if (wantImages > 0 && attempt < 5 && bindTry === 0) {
+            console.log(
+              `   … image attempt ${attempt + 1}: bind failed (${template.slots.length} slots, ${Date.now() - t0}ms)`
+            );
           }
-          continue;
+          break;
         }
-      }
 
-      if (template.slots.some((slot) => slot.length > 11 || slot.length < 3)) {
-        if (wantImages > 0 && attempt < 8) {
-          const bad = template.slots.filter((slot) => slot.length > 11 || slot.length < 3);
+        if (wantImages > 0) {
+          const covered = new Set<string>();
+          for (const clue of template.clueCells) covered.add(`${clue.row},${clue.col}`);
+          for (const slot of template.slots) {
+            for (const cell of getSlotCells(slot)) covered.add(`${cell.row},${cell.col}`);
+          }
+          for (const cut of cutoutCells ?? []) covered.add(`${cut.row},${cut.col}`);
+          const holes = rows * cols - covered.size;
+          if (holes > 0) {
+            if (attempt < 8 && bindTry === 0) {
+              console.log(`   … image attempt ${attempt + 1}: ${holes} empty cells, retrying`);
+            }
+            break;
+          }
+        }
+
+        if (template.slots.some((slot) => slot.length > 11 || slot.length < 3)) {
+          if (wantImages > 0 && attempt < 8 && bindTry === 0) {
+            const bad = template.slots.filter((slot) => slot.length > 11 || slot.length < 3);
+            console.log(
+              `   … image attempt ${attempt + 1}: unfillable slot lengths ${bad.map((s) => s.length).join(',')}`
+            );
+          }
+          break;
+        }
+
+        if (wantImages > 0 && !directionMixOk(template.slots, bindTry === 0 ? `image attempt ${attempt + 1}` : undefined)) {
+          break;
+        }
+
+        if (wantImages > 0 && bindTry === 0) {
           console.log(
-            `   … image attempt ${attempt + 1}: unfillable slot lengths ${bad.map((s) => s.length).join(',')}`
+            `   … image attempt ${attempt + 1}: solving ${template.slots.length} slots (${Date.now() - t0}ms tmpl)...`
           );
         }
-        continue;
+        puzzle = this.solveTemplate(template, meta);
+        if (puzzle) break;
       }
-
-      if (wantImages > 0) {
-        console.log(
-          `   … image attempt ${attempt + 1}: solving ${template.slots.length} slots (${Date.now() - t0}ms tmpl)...`
-        );
-      }
-      const puzzle = this.solveTemplate(template, meta);
       if (!puzzle) {
         if (wantImages > 0) {
           console.log(`   … image attempt ${attempt + 1}: solve/validate failed`);
@@ -241,9 +292,28 @@ export class PuzzleGenerator {
         }
         continue;
       }
+      if (wantImages > 0 && !directionMixOk(puzzle.puzzleItems, `image attempt ${attempt + 1} solved`)) {
+        continue;
+      }
       return puzzle;
     }
     return null;
+  }
+
+  private clearImageBinds(template: GridTemplate): void {
+    for (const slot of template.slots) {
+      if (slot.clueType !== 'image') continue;
+      if (slot.exitRow != null) slot.startRow = slot.exitRow;
+      if (slot.exitCol != null) slot.startCol = slot.exitCol;
+      delete slot.clueType;
+      delete slot.imageUrl;
+      delete slot.fixedAnswer;
+      delete slot.fixedEnumeration;
+      delete slot.candidateAnswers;
+      delete slot.imageUrlByAnswer;
+      delete slot.exitRow;
+      delete slot.exitCol;
+    }
   }
 
   private bindImageClues(
@@ -253,10 +323,9 @@ export class PuzzleGenerator {
   ): boolean {
     if (imagePlan.length === 0) return true;
 
-    const unused = [...catalog].sort(() => Math.random() - 0.5);
     const usedSlots = new Set<string>();
     for (const img of imagePlan) {
-      let slot = template.slots.find(
+      const slot = template.slots.find(
         (s) =>
           !usedSlots.has(s.id) &&
           s.startRow === img.exitRow &&
@@ -264,46 +333,97 @@ export class PuzzleGenerator {
           s.direction === img.direction &&
           s.length >= 3
       );
-      // Fallback: any ≥3 slot anchored on the exit cell
-      if (!slot) {
-        slot = template.slots.find(
-          (s) =>
-            !usedSlots.has(s.id) &&
-            s.startRow === img.exitRow &&
-            s.startCol === img.exitCol &&
-            s.length >= 3
-        );
-      }
       if (!slot) return false;
 
-      const matchIndex = unused.findIndex(
-        (entry) => catalogLetterLength(entry) === slot!.length
-      );
-      if (matchIndex < 0) {
-        if (usedSlots.size === 0) {
-          const available = [...new Set(unused.map(catalogLetterLength))].sort(
-            (a, b) => a - b
-          );
-          console.log(
-            `   … no image answer of length ${slot.length} (have ${available.join(',')})`
-          );
-        }
+      const fromExit = getSlotCells({
+        ...slot,
+        cells: undefined,
+        clueType: 'image',
+        exitRow: img.exitRow,
+        exitCol: img.exitCol,
+        startRow: img.exitRow,
+        startCol: img.exitCol,
+      });
+      if (
+        fromExit.length < 3 ||
+        fromExit.some((cell) => isInImageBlock(cell.row, cell.col, img.startRow, img.startCol))
+      ) {
         return false;
       }
-      const [entry] = unused.splice(matchIndex, 1);
+
+      const entries = catalog.filter((entry) => catalogLetterLength(entry) === slot.length);
+      if (entries.length === 0) {
+        console.log(`   … no image answer of length ${slot.length}`);
+        return false;
+      }
+
+      const rowDelta = fromExit.length >= 2 ? fromExit[1].row - fromExit[0].row : 0;
+      const colDelta = fromExit.length >= 2 ? fromExit[1].col - fromExit[0].col : 0;
+      const probe = createEmptyGridState(template.rows, template.cols);
+      for (const clue of template.clueCells) {
+        probe.clueCells.add(`${clue.row},${clue.col}`);
+      }
+      for (const block of imagePlan) {
+        probe.clueCells.add(`${block.exitRow},${block.exitCol}`);
+        for (let dr = 0; dr < 3; dr++) {
+          for (let dc = 0; dc < 3; dc++) {
+            const row = block.startRow + dr;
+            const col = block.startCol + dc;
+            if (row === block.exitRow && col === block.exitCol) continue;
+            probe.clueCells.add(`${row},${col}`);
+          }
+        }
+      }
+      if (!entries.some((entry) => canPlaceWord(probe, entry.answer, fromExit, rowDelta, colDelta))) {
+        return false;
+      }
+
+      const imageUrlByAnswer: Record<string, string> = {};
+      for (const entry of entries) {
+        imageUrlByAnswer[entry.answer] = entry.imageUrl;
+        imageUrlByAnswer[normalizeWord(entry.answer)] = entry.imageUrl;
+      }
 
       usedSlots.add(slot.id);
-      const parts = entry.answer.split(/\s+/).filter(Boolean);
+      slot.cells = fromExit;
       slot.clueType = 'image';
-      slot.imageUrl = entry.imageUrl;
-      slot.fixedAnswer = entry.answer;
-      slot.fixedEnumeration =
-        parts.length > 1 ? parts.map((part) => Array.from(part).length) : null;
       slot.exitRow = img.exitRow;
       slot.exitCol = img.exitCol;
       slot.startRow = img.startRow;
       slot.startCol = img.startCol;
-      // Keep slot.direction from the template (matches the locked field type)
+      slot.candidateAnswers = entries.map((entry) => entry.answer);
+      slot.imageUrlByAnswer = imageUrlByAnswer;
+      delete slot.fixedAnswer;
+      delete slot.imageUrl;
+    }
+
+    const probe = createEmptyGridState(template.rows, template.cols);
+    for (const clue of template.clueCells) {
+      probe.clueCells.add(`${clue.row},${clue.col}`);
+    }
+    for (const slot of template.slots) {
+      if (slot.clueType !== 'image') continue;
+      if (slot.exitRow != null) probe.clueCells.add(`${slot.exitRow},${slot.exitCol}`);
+      for (let dr = 0; dr < 3; dr++) {
+        for (let dc = 0; dc < 3; dc++) {
+          probe.clueCells.add(`${slot.startRow + dr},${slot.startCol + dc}`);
+        }
+      }
+    }
+    for (const slot of template.slots) {
+      const cells = getSlotCells(slot);
+      if (
+        cells.some(
+          (cell) =>
+            cell.row < 0 ||
+            cell.col < 0 ||
+            cell.row >= template.rows ||
+            cell.col >= template.cols ||
+            probe.clueCells.has(`${cell.row},${cell.col}`)
+        )
+      ) {
+        return false;
+      }
     }
     return true;
   }
@@ -332,13 +452,13 @@ export class PuzzleGenerator {
         cols,
         name: `${rows}x${cols} arrow crossword`,
         quiet: true,
-        maxIterations: withImages ? 1 : this.language === 'he' ? (large ? 22 : 18) : 8,
-        minPopulation: withImages ? 1 : 3,
-        populationSize: withImages ? 1 : this.language === 'he' ? (large ? 8 : 6) : 5,
-        weakBreakCondition: withImages ? 1 : this.language === 'he' ? (large ? 180 : 130) : 80,
-        strongBreakCondition: withImages ? 1 : this.language === 'he' ? (large ? 450 : 350) : 250,
-        maxBoundaryRetries: withImages ? 1 : 2,
-        maxSlotLength: withImages ? 11 : undefined,
+        maxIterations: this.language === 'he' ? (large ? 22 : 18) : 8,
+        minPopulation: 3,
+        populationSize: this.language === 'he' ? (large ? 8 : 6) : 5,
+        weakBreakCondition: this.language === 'he' ? (large ? 180 : 130) : 80,
+        strongBreakCondition: this.language === 'he' ? (large ? 450 : 350) : 250,
+        maxBoundaryRetries: 2,
+        maxSlotLength: this.language === 'he' ? 11 : undefined,
         sparse: this.language === 'he' && cells >= 81 && !withImages,
         simpleArrows: withImages,
         cutoutCells,
@@ -363,7 +483,7 @@ export class PuzzleGenerator {
     const cells = template.rows * template.cols;
     const hasImages = template.slots.some((slot) => slot.clueType === 'image');
     const maxSolveTimeMs = hasImages
-      ? 90000
+      ? 180000
       : (this.language === 'he' ? 20 : 12) * 1000 + cells * (cells >= 256 ? 80 : 40);
     const jitter = new Map<string, number>();
     const wordScorer = (word: string, _placedWords: string[]) => {
@@ -435,7 +555,7 @@ export function generatePuzzlesBatch(config: {
   });
 }
 
-/** Try 17×17 with two image clues and no empty cells. */
+/** Try 16×16 with 4 image clues, using mixed →↓ arrows. */
 export function generateLargestImageCluePuzzle(config: {
   category: string;
   startIndex: number;
@@ -445,12 +565,12 @@ export function generateLargestImageCluePuzzle(config: {
   const generator = new PuzzleGenerator('he', config.imageClueCatalog);
   const counts = config.imageClueCount
     ? [config.imageClueCount]
-    : [2];
+    : IMAGE_CLUE_COUNT_LADDER;
   for (const size of IMAGE_CLUE_SIZE_LADDER) {
     for (const imageCount of counts) {
-      const attempts = 40;
+      const attempts = 28;
       console.log(
-        `\n—— Trying ${size.rows}x${size.cols} with ${imageCount} image${imageCount === 1 ? '' : 's'} (${attempts} attempts, no empty cells) ——`
+        `\n—— Trying ${size.rows}x${size.cols} with ${imageCount} image${imageCount === 1 ? '' : 's'} (${attempts} attempts) ——`
       );
       const t0 = Date.now();
       const puzzles = generator.generateBatch({
@@ -467,7 +587,7 @@ export function generateLargestImageCluePuzzle(config: {
         `   ${size.rows}x${size.cols} / ${imageCount} image(s) elapsed ${Date.now() - t0}ms`
       );
       if (puzzles[0]) return puzzles[0];
-      console.log(`   did not fill`);
+      console.log(`   did not fill, trying next`);
     }
   }
   return null;

@@ -61,7 +61,7 @@ export function solveGrid(
       }
     }
 
-    if (slot.clueType === 'image' && !slot.fixedAnswer) {
+    if (slot.clueType === 'image' && !slot.fixedAnswer && !slot.candidateAnswers?.length) {
       if (!config.quiet) {
         console.log(`  ❌ Image slot ${slot.id} has no bound answer`);
       }
@@ -74,9 +74,22 @@ export function solveGrid(
       const colDelta = cells.length >= 2 ? cells[1].col - cells[0].col : 0;
       const word = slot.fixedAnswer;
       if (!canPlaceWord(prefilledState, word, cells, rowDelta, colDelta)) {
-        if (!config.quiet) {
-          console.log(`  ❌ Cannot prefill fixed answer "${word}" for slot ${slot.id}`);
+        const normalized = normalizeWord(word);
+        let why = `len ${normalized.length} vs ${cells.length} cells`;
+        for (let i = 0; i < Math.min(normalized.length, cells.length); i++) {
+          const { row, col } = cells[i];
+          if (row < 0 || col < 0 || row >= prefilledState.rows || col >= prefilledState.cols) {
+            why = `out of bounds (${row},${col})`;
+            break;
+          }
+          if (prefilledState.clueCells.has(`${row},${col}`)) {
+            why = `clue cell (${row},${col})`;
+            break;
+          }
         }
+        console.log(
+          `   … cannot prefill "${normalized}" (${slot.direction} ${slot.length}): ${why}`
+        );
         return null;
       }
       prefilledState = placeWord(prefilledState, slot.id, word, cells, rowDelta, colDelta);
@@ -94,8 +107,14 @@ export function solveGrid(
     );
 
     // Cap early — large unconstrained pools are mostly interchangeable
-    let candidates = findMatchingWords(wordIndex, slot.length, constraints)
-      .filter(w => !placedAnswers.has(normalizeWord(w)));
+    let candidates: string[];
+    if (slot.candidateAnswers && slot.candidateAnswers.length > 0) {
+      candidates = slot.candidateAnswers.filter((w) => !placedAnswers.has(normalizeWord(w)));
+    } else {
+      candidates = findMatchingWords(wordIndex, slot.length, constraints).filter(
+        (w) => !placedAnswers.has(normalizeWord(w))
+      );
+    }
     if (candidates.length > limit * 4) {
       candidates = shuffleArray(candidates).slice(0, limit * 4);
     } else {
@@ -116,6 +135,7 @@ export function solveGrid(
   }
 
   /** MRV: pick the remaining slot with the fewest valid candidates. */
+  let loggedDeadEnd = false;
   function selectNextSlot(
     state: GridState,
     remainingSlots: ClueSlot[]
@@ -126,7 +146,13 @@ export function solveGrid(
       if (timedOut()) return null;
       const candidates = getCandidates(state, slot, 60);
       if (candidates.length === 0) {
-        return { slot, candidates }; // dead end - fail fast
+        if (!loggedDeadEnd) {
+          loggedDeadEnd = true;
+          console.log(
+            `   … dead end: ${slot.clueType === 'image' ? 'image' : 'text'} ${slot.direction} ${slot.length} @ (${slot.startRow},${slot.startCol})`
+          );
+        }
+        return { slot, candidates };
       }
       if (!best || candidates.length < best.candidates.length) {
         best = { slot, candidates };

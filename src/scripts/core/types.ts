@@ -59,6 +59,9 @@ export interface ClueSlot {
   exitCol?: number;
   fixedAnswer?: string;
   fixedEnumeration?: number[] | null;
+  /** If set, the solver may only fill this slot from these answers (image-clue catalog). */
+  candidateAnswers?: string[];
+  imageUrlByAnswer?: Record<string, string>;
 }
 
 export type Direction = 'across' | 'down' | 'right-down' | 'left-down' | 'down-across' | 'up-across';

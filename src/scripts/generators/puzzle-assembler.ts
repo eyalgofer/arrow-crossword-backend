@@ -75,6 +75,10 @@ export function generatePuzzleFromGrid(
           : imageParts.length > 1
             ? imageParts.map(part => Array.from(part).length)
             : null;
+      const imageUrl =
+        slot.imageUrl ||
+        slot.imageUrlByAnswer?.[imageAnswer] ||
+        slot.imageUrlByAnswer?.[normalizeWord(imageAnswer)];
       usedAnswers.add(normalizeWord(imageAnswer));
       puzzleItems.push({
         number: clueNumber,
@@ -85,7 +89,7 @@ export function generatePuzzleFromGrid(
         startRow: slot.startRow,
         startCol: slot.startCol,
         clueType: 'image',
-        imageUrl: slot.imageUrl,
+        imageUrl,
         exitRow: slot.exitRow,
         exitCol: slot.exitCol,
       });

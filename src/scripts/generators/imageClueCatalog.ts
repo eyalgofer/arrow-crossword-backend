@@ -87,53 +87,18 @@ export function imageBlockCutouts(
   return cells;
 }
 
-/**
- * Packed →↓ skeleton: every cell is a clue or a letter of a 3–6 letter word.
- * Images punch 3×3 holes on top of this; cutouts must be applied last.
- */
-export function packedBorderLocks(
-  rows: number,
-  cols: number
-): Array<{ row: number; col: number; type: '0' | '1' | '2' }> {
-  const hClueCols: number[] = [];
-  for (let c = 0; c + 3 < cols; c += 5) hClueCols.push(c);
-
-  const vClueRows: number[] = [];
-  for (let r = 0; r + 3 < rows; r += 4) vClueRows.push(r);
-
-  const vClueCols = new Set<number>();
-  const assigned = new Set<number>();
-  for (const c of hClueCols) {
-    assigned.add(c);
-    assigned.add(c + 1);
-    assigned.add(c + 2);
-    assigned.add(c + 3);
-    if (c + 4 < cols) {
-      vClueCols.add(c + 4);
-      assigned.add(c + 4);
-    }
-  }
-  for (let c = 0; c < cols; c++) {
-    if (!assigned.has(c)) vClueCols.add(c);
-  }
-
-  const types: Array<Array<'0' | '1' | '2'>> = Array.from({ length: rows }, () =>
-    Array.from({ length: cols }, () => '0' as const)
+export function isInImageBlock(
+  row: number,
+  col: number,
+  startRow: number,
+  startCol: number
+): boolean {
+  return (
+    row >= startRow &&
+    row <= startRow + 2 &&
+    col >= startCol &&
+    col <= startCol + 2
   );
-  for (let r = 0; r < rows; r++) {
-    for (const c of hClueCols) types[r][c] = '1';
-  }
-  for (const r of vClueRows) {
-    for (const c of vClueCols) types[r][c] = '2';
-  }
-
-  const locks: Array<{ row: number; col: number; type: '0' | '1' | '2' }> = [];
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      locks.push({ row: r, col: c, type: types[r][c] });
-    }
-  }
-  return locks;
 }
 
 export function imageExitLocks(
@@ -236,12 +201,9 @@ export function planImageClues(
   const occupied = new Set<string>();
 
   const candidates: Array<{ startRow: number; startCol: number }> = [];
-  // Leave a 4-cell margin from the top/left so the packed →↓ border
-  // (clues down the left column and across the top row) always has room
-  // for ≥3-letter words before an image cutout.
-  const margin = 4;
-  for (let r = margin; r <= rows - 5; r++) {
-    for (let c = margin; c <= cols - 5; c++) {
+  // Margin so the 3×3 block and a 3-letter exit corridor stay in-bounds
+  for (let r = 1; r <= rows - 5; r++) {
+    for (let c = 1; c <= cols - 5; c++) {
       candidates.push({ startRow: r, startCol: c });
     }
   }
@@ -277,9 +239,8 @@ export function planImageClues(
     }
     if (overlaps) continue;
 
-    // Prefer across/down (first N options); light shuffle within tiers
+    // Shuffle within across/down vs angled so boards mix like a normal תשחץ
     const options = exitOptions(block.startRow, block.startCol);
-    // 2 dirs × 8 perimeter = 16 preferred, then angled
     const primary = options.slice(0, 16).sort(() => Math.random() - 0.5);
     const secondary = options.slice(16).sort(() => Math.random() - 0.5);
     const ordered = [...primary, ...secondary];
@@ -295,8 +256,8 @@ export function planImageClues(
     }
     if (!chosen) continue;
 
-    for (let dr = 0; dr < 3; dr++) {
-      for (let dc = 0; dc < 3; dc++) {
+    for (let dr = -1; dr < 4; dr++) {
+      for (let dc = -1; dc < 4; dc++) {
         occupied.add(`${block.startRow + dr},${block.startCol + dc}`);
       }
     }

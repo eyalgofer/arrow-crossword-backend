@@ -26,11 +26,11 @@ export const HEBREW_GRID_SIZE_MIX: GridSize[] = [
 
 /** Target size for image-clue תשחץ boards. */
 export const IMAGE_CLUE_SIZE_LADDER: GridSize[] = [
-  { rows: 17, cols: 17 },
+  { rows: 16, cols: 16 },
 ];
 
-/** Prefer more images on 17×17; step down if the board will not fill. */
-export const IMAGE_CLUE_COUNT_LADDER = [3, 2, 1];
+/** Prefer four images on 16×16. */
+export const IMAGE_CLUE_COUNT_LADDER = [4];
 
 export function mixSizes(count: number, mix: GridSize[] = HEBREW_GRID_SIZE_MIX): GridSize[] {
   return Array.from({ length: count }, (_, i) => mix[i % mix.length]);

@@ -26,8 +26,22 @@ import { connectToDatabase } from './utils/scriptUtils';
 
 const PACKAGE_ORDER = 0;
 const PUZZLE_TITLE = '#9';
-const MIN_IMAGE_CLUES = 2;
+const MIN_IMAGE_CLUES = 4;
 const CACHED = path.join(__dirname, '../../tmp-image-clue-puzzle.json');
+
+function directionMixLooksNatural(puzzle: GeneratedPuzzle): boolean {
+  const horizontal = new Set(['across', 'down-across', 'up-across']);
+  let h = 0;
+  let v = 0;
+  const kinds = new Set<string>();
+  for (const item of puzzle.puzzleItems) {
+    kinds.add(item.direction);
+    if (horizontal.has(item.direction)) h += 1;
+    else v += 1;
+  }
+  const total = h + v;
+  return total > 0 && h / total >= 0.32 && v / total >= 0.32 && kinds.size >= 2;
+}
 
 function cachedPuzzleIsReady(): GeneratedPuzzle | null {
   if (!fs.existsSync(CACHED)) return null;
@@ -35,9 +49,10 @@ function cachedPuzzleIsReady(): GeneratedPuzzle | null {
   const images = cached.puzzleItems.filter((item) => item.clueType === 'image');
   const ready =
     images.length >= MIN_IMAGE_CLUES &&
-    cached.grid?.rows === 17 &&
-    cached.grid?.cols === 17 &&
+    cached.grid?.rows === 16 &&
+    cached.grid?.cols === 16 &&
     getUncoveredCells(cached).length === 0 &&
+    directionMixLooksNatural(cached) &&
     images.every(
       (item) =>
         item.imageUrl &&
@@ -58,12 +73,12 @@ async function generateFresh(): Promise<GeneratedPuzzle> {
     );
   }
   console.log(
-    `Generating 17x17 with 2 image clues and no empty cells (catalog ${catalog.length})...`
+    `Generating 16x16 mixed-arrow תשחץ with 4 image clues (catalog ${catalog.length})...`
   );
   const puzzle = generateLargestImageCluePuzzle({
     category: 'כללי',
     startIndex: 9,
-    imageClueCount: 2,
+    imageClueCount: 4,
     imageClueCatalog: catalog,
   });
   if (!puzzle) {
