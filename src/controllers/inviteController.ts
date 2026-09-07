@@ -86,8 +86,10 @@ export const createInvite = async (req: AuthRequest, res: Response) => {
       fromUser.displayName?.trim() ||
       fromUser.email?.split('@')[0] ||
       'Someone';
+    // The app calls OneSignal.login(user.id), and the auth API exposes
+    // firebaseUid as `id` — so that is the external_id OneSignal knows.
     void sendGameInvitePush({
-      toUserId: toUser._id.toString(),
+      toUserId: toUser.firebaseUid,
       fromDisplayName,
       inviteId: inviteId.toString(),
       mode: settings.mode,

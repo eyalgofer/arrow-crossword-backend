@@ -45,13 +45,17 @@ export function buildGameInviteCopy(params: {
     },
     contents: {
       en: `${name} invited you for a ${kind} match. Tap to respond.`,
-      he: `${name} הזמין אותך למשחק ${kindHe}. לחץ כדי להגיב.`,
+      he: `${name} מזמין אותך למשחק ${kindHe}! לחצ/י להצטרפות.`,
     },
   };
 }
 
 type SendPushParams = {
-  /** External user id — must match OneSignal.login(user.id) on the client (MongoDB `_id`). */
+  /**
+   * External user id — must match OneSignal.login(user.id) on the client.
+   * The auth API returns `firebaseUid` as `user.id`, so pass `User.firebaseUid`
+   * (the Google/Apple subject), not the MongoDB `_id`.
+   */
   externalUserId: string;
   headings: Record<string, string>;
   contents: Record<string, string>;

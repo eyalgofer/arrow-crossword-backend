@@ -53,6 +53,10 @@
         {
           "name": "GOOGLE_IOS_CLIENT_ID",
           "valueFrom": "arn:aws:secretsmanager:eu-north-1:211888002768:secret:arrow-crossword/google-ios-client-id-RzdcK8"
+        },
+        {
+          "name": "ONESIGNAL_REST_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:eu-north-1:211888002768:secret:arrow-crossword/onesignal-rest-api-key-kxIWoE"
         }
       ],
       "logConfiguration": {
