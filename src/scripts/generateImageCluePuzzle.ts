@@ -22,13 +22,13 @@ async function main() {
   }
 
   console.log(
-    `Generating 16x16 mixed-arrow תשחץ with 4 image clues (catalog ${catalog.length})...`
+    `Generating 15x15 mixed-arrow תשחץ with 2 image clues (catalog ${catalog.length})...`
   );
   const t0 = Date.now();
   const p = generateLargestImageCluePuzzle({
     category: 'כללי',
     startIndex: 9,
-    imageClueCount: 4,
+    imageClueCount: 2,
     imageClueCatalog: catalog,
   });
   console.log(`elapsed ${Date.now() - t0}ms`);

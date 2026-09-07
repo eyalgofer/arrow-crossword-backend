@@ -1445,6 +1445,28 @@ function repairSimpleArrowMask(mask: Mask, config: GeneratorConfig): Mask {
   return repaired;
 }
 
+/**
+ * Regular 16×16 →↓ lattice: 3–5 letter slots, mixed arrows, fully packed.
+ * Image cutouts/locks are applied on top, then repair heals chopped words.
+ */
+function paintLatticeMask(mask: Mask): void {
+  if (mask.rows !== 16 || mask.cols !== 16) return;
+  for (let r = 0; r < 16; r++) {
+    const clueRow = r % 5 === 0 && r < mask.rows - 1;
+    for (let c = 0; c < 16; c++) {
+      if (clueRow) {
+        if (c === 0 || c === 5 || c === 10) mask.grid[r][c] = '1';
+        else if (c === 4 || c === 9 || c === 14 || c === 15) mask.grid[r][c] = '2';
+        else mask.grid[r][c] = '0';
+      } else if (c === 0 || c === 5 || c === 10) {
+        mask.grid[r][c] = '1';
+      } else {
+        mask.grid[r][c] = '0';
+      }
+    }
+  }
+}
+
 function maskToGridTemplate(
   mask: Mask,
   name: string,
@@ -1548,6 +1570,8 @@ export interface GenerateTemplateOptions {
   /** How many times to rerun the GA if the mask fails boundary checks. */
   maxBoundaryRetries?: number;
   simpleArrows?: boolean;
+  /** Use a fixed 16×16 →↓ lattice instead of the memetic algorithm. */
+  lattice?: boolean;
 }
 
 /**
@@ -1574,6 +1598,7 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     sparse = false,
     maxBoundaryRetries = 3,
     simpleArrows = false,
+    lattice = false,
   } = options;
 
   // Larger grids need more memetic iterations to converge; default scales with cell count
@@ -1651,6 +1676,13 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     config.weights.uncoveredField = 700;
     config.weights.singleCoveredEnclosed = 40;
     config.weights.singleCoveredOpen = 100;
+  }
+
+  if (lattice && rows === 16 && cols === 16) {
+    const mask = createEmptyMask(rows, cols);
+    paintLatticeMask(mask);
+    applyFixedCells(mask, config);
+    return maskToGridTemplate(mask, name, difficulty, lockedCells, cutoutCells);
   }
 
   for (let attempt = 0; attempt < maxBoundaryRetries; attempt++) {

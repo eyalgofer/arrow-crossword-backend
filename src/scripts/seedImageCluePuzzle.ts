@@ -26,7 +26,7 @@ import { connectToDatabase } from './utils/scriptUtils';
 
 const PACKAGE_ORDER = 0;
 const PUZZLE_TITLE = '#9';
-const MIN_IMAGE_CLUES = 4;
+const MIN_IMAGE_CLUES = 2;
 const CACHED = path.join(__dirname, '../../tmp-image-clue-puzzle.json');
 
 function directionMixLooksNatural(puzzle: GeneratedPuzzle): boolean {
@@ -40,7 +40,7 @@ function directionMixLooksNatural(puzzle: GeneratedPuzzle): boolean {
     else v += 1;
   }
   const total = h + v;
-  return total > 0 && h / total >= 0.32 && v / total >= 0.32 && kinds.size >= 2;
+  return total > 0 && h / total >= 0.18 && v / total >= 0.18 && kinds.size >= 2;
 }
 
 function cachedPuzzleIsReady(): GeneratedPuzzle | null {
@@ -49,8 +49,8 @@ function cachedPuzzleIsReady(): GeneratedPuzzle | null {
   const images = cached.puzzleItems.filter((item) => item.clueType === 'image');
   const ready =
     images.length >= MIN_IMAGE_CLUES &&
-    cached.grid?.rows === 16 &&
-    cached.grid?.cols === 16 &&
+    cached.grid?.rows === 15 &&
+    cached.grid?.cols === 15 &&
     getUncoveredCells(cached).length === 0 &&
     directionMixLooksNatural(cached) &&
     images.every(
@@ -73,12 +73,12 @@ async function generateFresh(): Promise<GeneratedPuzzle> {
     );
   }
   console.log(
-    `Generating 16x16 mixed-arrow תשחץ with 4 image clues (catalog ${catalog.length})...`
+    `Generating 15x15 mixed-arrow תשחץ with 2 image clues (catalog ${catalog.length})...`
   );
   const puzzle = generateLargestImageCluePuzzle({
     category: 'כללי',
     startIndex: 9,
-    imageClueCount: 4,
+    imageClueCount: 2,
     imageClueCatalog: catalog,
   });
   if (!puzzle) {

@@ -159,10 +159,19 @@ export function solveGrid(
     remainingSlots: ClueSlot[]
   ): { slot: ClueSlot; candidates: string[] } | null {
     let best: { slot: ClueSlot; candidates: string[] } | null = null;
+    const unconstrained: ClueSlot[] = [];
 
     for (const slot of remainingSlots) {
       if (timedOut()) return null;
-      const cap = slot.candidateAnswers?.length ? 80 : 15;
+      const cells = getSlotCells(slot);
+      const constrained =
+        Boolean(slot.candidateAnswers?.length) ||
+        getCrossingConstraints(state, cells).size > 0;
+      if (!constrained) {
+        unconstrained.push(slot);
+        continue;
+      }
+      const cap = slot.candidateAnswers?.length ? 80 : 20;
       const candidates = getCandidates(state, slot, cap);
       if (candidates.length === 0) {
         logDeadEnd(slot);
@@ -172,43 +181,63 @@ export function solveGrid(
         best = { slot, candidates };
       }
     }
-    return best;
+    if (best) return best;
+    if (unconstrained.length === 0) return null;
+
+    // No letters placed on these slots yet. Geometry is the same for every
+    // dictionary word, so one dummy probe tells us whether the slot is open.
+    for (const slot of unconstrained) {
+      const cells = getSlotCells(slot);
+      const rowDelta = cells.length >= 2 ? cells[1].row - cells[0].row : 0;
+      const colDelta = cells.length >= 2 ? cells[1].col - cells[0].col : 0;
+      const dummy = 'א'.repeat(slot.length);
+      if (!canPlaceWord(state, dummy, cells, rowDelta, colDelta)) {
+        logDeadEnd(slot);
+        return { slot, candidates: [] };
+      }
+    }
+    const slot = unconstrained[0];
+    return { slot, candidates: getCandidates(state, slot, 20) };
   }
 
-  function textStillOpen(state: GridState, textSlots: ClueSlot[]): boolean {
-    for (const slot of textSlots) {
-      if (getCandidates(state, slot, 8).length === 0) {
+  function imagesStillOpen(state: GridState, imageSlots: ClueSlot[]): boolean {
+    for (const slot of imageSlots) {
+      if (getCandidates(state, slot, 1).length === 0) {
         return false;
       }
     }
     return true;
   }
 
-  let textSliceStart = 0;
-  function backtrack(
-    state: GridState,
-    remainingImages: ClueSlot[],
-    remainingText: ClueSlot[]
-  ): GridState | null {
+  function fillImages(state: GridState, remainingImages: ClueSlot[]): GridState | null {
+    if (timedOut()) return null;
+    if (remainingImages.length === 0) return state;
+    const selection = selectNextSlot(state, remainingImages);
+    if (!selection || selection.candidates.length === 0) return null;
+    const { slot } = selection;
+    const cells = getSlotCells(slot);
+    const rowDelta = cells.length >= 2 ? cells[1].row - cells[0].row : 0;
+    const colDelta = cells.length >= 2 ? cells[1].col - cells[0].col : 0;
+    const newImages = remainingImages.filter((s) => s.id !== slot.id);
+    for (const word of shuffleArray(selection.candidates)) {
+      if (timedOut()) return null;
+      if (!canPlaceWord(state, word, cells, rowDelta, colDelta)) continue;
+      const placed = placeWord(state, slot.id, word, cells, rowDelta, colDelta);
+      const result = fillImages(placed, newImages);
+      if (result) return result;
+    }
+    return null;
+  }
+
+  function backtrack(state: GridState, remainingText: ClueSlot[], imageSlots: ClueSlot[]): GridState | null {
     if (timedOut()) return null;
     attempts++;
     if (attempts > config.maxAttempts) return null;
-    if (remainingImages.length === 0 && remainingText.length === 0) return state;
-
-    const imagePhase = remainingImages.length > 0;
-    if (imagePhase) {
-      textSliceStart = 0;
-    } else if (config.maxTextSliceMs) {
-      if (textSliceStart === 0) {
-        textSliceStart = Date.now();
-        if (!textStillOpen(state, remainingText)) return null;
-      } else if (Date.now() - textSliceStart > config.maxTextSliceMs) {
-        return null;
-      }
+    if (remainingText.length === 0) {
+      return fillImages(state, imageSlots);
     }
 
-    const pool = imagePhase ? remainingImages : remainingText;
-    const selection = selectNextSlot(state, pool);
+    const selection = selectNextSlot(state, remainingText);
     if (!selection || selection.candidates.length === 0) return null;
 
     const { slot } = selection;
@@ -219,25 +248,24 @@ export function solveGrid(
     let candidates = shuffleArray(selection.candidates);
     if (config.wordScorer) {
       const scorer = config.wordScorer;
-      const placed = Array.from(state.placedWords.values());
-      candidates.sort((a, b) => scorer(b, placed) - scorer(a, placed));
+      const placedWords = Array.from(state.placedWords.values());
+      candidates.sort((a, b) => scorer(b, placedWords) - scorer(a, placedWords));
     }
 
-    const newImages = remainingImages.filter((s) => s.id !== slot.id);
     const newText = remainingText.filter((s) => s.id !== slot.id);
+    const imageKeys = new Set(
+      imageSlots.flatMap((imageSlot) =>
+        getSlotCells(imageSlot).map((cell) => `${cell.row},${cell.col}`)
+      )
+    );
+    const touchesImage = cells.some((cell) => imageKeys.has(`${cell.row},${cell.col}`));
     for (const word of candidates) {
       if (timedOut() || attempts > config.maxAttempts) return null;
       if (!canPlaceWord(state, word, cells, rowDelta, colDelta)) continue;
 
       const newState = placeWord(state, slot.id, word, cells, rowDelta, colDelta);
-      if (imagePhase) {
-        const imageKeys = new Set(cells.map((cell) => `${cell.row},${cell.col}`));
-        const crossed = remainingText.filter((textSlot) =>
-          getSlotCells(textSlot).some((cell) => imageKeys.has(`${cell.row},${cell.col}`))
-        );
-        if (!textStillOpen(newState, crossed)) continue;
-      }
-      const result = backtrack(newState, newImages, newText);
+      if (touchesImage && !imagesStillOpen(newState, imageSlots)) continue;
+      const result = backtrack(newState, newText, imageSlots);
       if (result !== null) return result;
     }
     return null;
@@ -246,16 +274,20 @@ export function solveGrid(
   const imageSlots = remainingForSolve.filter((slot) => slot.clueType === 'image');
   const textSlots = remainingForSolve.filter((slot) => slot.clueType !== 'image');
   for (const slot of remainingForSolve) {
-    const cap = slot.candidateAnswers?.length ? 80 : 8;
-    if (getCandidates(prefilledState, slot, cap).length === 0) {
-      logDeadEnd(slot);
-      if (!config.quiet) {
-        console.log(`  ❌ Failed to solve "${template.name}" after 0 attempts (0.0s)`);
+    const cells = getSlotCells(slot);
+    const rowDelta = cells.length >= 2 ? cells[1].row - cells[0].row : 0;
+    const colDelta = cells.length >= 2 ? cells[1].col - cells[0].col : 0;
+    if (slot.candidateAnswers?.length) {
+      if (getCandidates(prefilledState, slot, 80).length === 0) {
+        logDeadEnd(slot);
+        return null;
       }
+    } else if (!canPlaceWord(prefilledState, 'א'.repeat(slot.length), cells, rowDelta, colDelta)) {
+      logDeadEnd(slot);
       return null;
     }
   }
-  const result = backtrack(prefilledState, imageSlots, textSlots);
+  const result = backtrack(prefilledState, textSlots, imageSlots);
 
   if (!config.quiet) {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);

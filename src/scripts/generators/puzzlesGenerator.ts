@@ -38,7 +38,7 @@ function directionMixOk(
   if (total === 0) return false;
   const hShare = horizontal / total;
   const vShare = vertical / total;
-  const ok = hShare >= 0.32 && vShare >= 0.32 && kinds.size >= 2;
+  const ok = hShare >= 0.18 && vShare >= 0.18 && kinds.size >= 2;
   if (!ok && logLabel) {
     console.log(
       `   … ${logLabel}: direction mix h=${horizontal} v=${vertical} kinds=${[...kinds].join(',')}`
@@ -360,7 +360,8 @@ export class PuzzleGenerator {
           s.startRow === img.exitRow &&
           s.startCol === img.exitCol &&
           s.direction === img.direction &&
-          s.length === img.answerLength
+          s.length >= 5 &&
+          s.length <= 9
       );
       if (!slot) return false;
 
@@ -491,6 +492,7 @@ export class PuzzleGenerator {
         maxSlotLength: this.language === 'he' ? (withImages ? 9 : 11) : undefined,
         sparse: this.language === 'he' && cells >= 81 && !withImages,
         simpleArrows: withImages,
+        lattice: false,
         cutoutCells,
         lockedCells,
         protectedCells,
@@ -513,7 +515,7 @@ export class PuzzleGenerator {
     const cells = template.rows * template.cols;
     const hasImages = template.slots.some((slot) => slot.clueType === 'image');
     const maxSolveTimeMs = hasImages
-      ? 100000
+      ? 40000
       : (this.language === 'he' ? 20 : 12) * 1000 + cells * (cells >= 256 ? 80 : 40);
     const jitter = new Map<string, number>();
     const wordScorer = (word: string, _placedWords: string[]) => {
@@ -586,7 +588,7 @@ export function generatePuzzlesBatch(config: {
   });
 }
 
-/** Try 16×16 with 4 image clues, using mixed →↓ arrows. */
+/** Try 15×15 with 2 image clues, using mixed →↓ arrows. */
 export function generateLargestImageCluePuzzle(config: {
   category: string;
   startIndex: number;
@@ -599,7 +601,7 @@ export function generateLargestImageCluePuzzle(config: {
     : IMAGE_CLUE_COUNT_LADDER;
   for (const size of IMAGE_CLUE_SIZE_LADDER) {
     for (const imageCount of counts) {
-      const attempts = 48;
+      const attempts = 32;
       console.log(
         `\n—— Trying ${size.rows}x${size.cols} with ${imageCount} image${imageCount === 1 ? '' : 's'} (${attempts} attempts) ——`
       );
