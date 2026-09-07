@@ -9,6 +9,8 @@
 const ONESIGNAL_API_URL = 'https://api.onesignal.com/notifications';
 
 export const GAME_INVITE_NOTIFICATION_TYPE = 'game_invite';
+export const INVITE_ACCEPTED_NOTIFICATION_TYPE = 'invite_accepted';
+export const INVITE_DECLINED_NOTIFICATION_TYPE = 'invite_declined';
 
 export type MatchKindLabel = 'quick' | 'normal' | 'unlimited time';
 
@@ -46,6 +48,44 @@ export function buildGameInviteCopy(params: {
     contents: {
       en: `${name} invited you for a ${kind} match. Tap to respond.`,
       he: `${name} מזמין אותך למשחק ${kindHe}! לחצ/י להצטרפות.`,
+    },
+  };
+}
+
+export function buildInviteAcceptedCopy(params: {
+  displayName: string;
+  mode?: string;
+  timed?: boolean;
+}): { headings: Record<string, string>; contents: Record<string, string> } {
+  const name = params.displayName.trim() || 'Your friend';
+  const kind = matchKindLabel(params.mode, params.timed);
+  const kindHe = matchKindLabelHe(kind);
+
+  return {
+    headings: {
+      en: 'Invite accepted',
+      he: 'ההזמנה התקבלה',
+    },
+    contents: {
+      en: `${name} accepted your ${kind} match invite. Tap to play!`,
+      he: `${name} קיבל/ה את ההזמנה למשחק ${kindHe}! לחצ/י כדי לשחק.`,
+    },
+  };
+}
+
+export function buildInviteDeclinedCopy(params: {
+  displayName: string;
+}): { headings: Record<string, string>; contents: Record<string, string> } {
+  const name = params.displayName.trim() || 'Your friend';
+
+  return {
+    headings: {
+      en: 'Invite declined',
+      he: 'ההזמנה נדחתה',
+    },
+    contents: {
+      en: `${name} declined your match invite. Maybe next time!`,
+      he: `${name} דחה/תה את ההזמנה למשחק. אולי בפעם הבאה!`,
     },
   };
 }
@@ -142,6 +182,58 @@ export async function sendGameInvitePush(params: {
     contents,
     data: {
       type: GAME_INVITE_NOTIFICATION_TYPE,
+      inviteId: params.inviteId,
+      screen: 'multiplayer',
+    },
+  });
+}
+
+/** Sent to the inviter when the invitee accepts; carries the match so the app can jump straight in. */
+export async function sendInviteAcceptedPush(params: {
+  toUserId: string;
+  fromDisplayName: string;
+  inviteId: string;
+  matchId: string;
+  puzzleId: string;
+  mode?: string;
+  timed?: boolean;
+}): Promise<boolean> {
+  const { headings, contents } = buildInviteAcceptedCopy({
+    displayName: params.fromDisplayName,
+    mode: params.mode,
+    timed: params.timed,
+  });
+
+  return sendPushToExternalUser({
+    externalUserId: params.toUserId,
+    headings,
+    contents,
+    data: {
+      type: INVITE_ACCEPTED_NOTIFICATION_TYPE,
+      inviteId: params.inviteId,
+      matchId: params.matchId,
+      puzzleId: params.puzzleId,
+      screen: 'multiplayer',
+    },
+  });
+}
+
+/** Sent to the inviter when the invitee declines. */
+export async function sendInviteDeclinedPush(params: {
+  toUserId: string;
+  fromDisplayName: string;
+  inviteId: string;
+}): Promise<boolean> {
+  const { headings, contents } = buildInviteDeclinedCopy({
+    displayName: params.fromDisplayName,
+  });
+
+  return sendPushToExternalUser({
+    externalUserId: params.toUserId,
+    headings,
+    contents,
+    data: {
+      type: INVITE_DECLINED_NOTIFICATION_TYPE,
       inviteId: params.inviteId,
       screen: 'multiplayer',
     },

@@ -10,7 +10,16 @@ import { resolveLanguage } from '../utils/language';
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
 import { createMatchTiming, serializeTimingFields } from '../utils/matchTiming';
 import { durationSecondsForSettings, parseMatchSettings } from '../utils/matchSettings';
-import { sendGameInvitePush } from '../services/onesignal';
+import {
+  sendGameInvitePush,
+  sendInviteAcceptedPush,
+  sendInviteDeclinedPush,
+} from '../services/onesignal';
+
+/** Name shown in push copy: chosen nickname, else email local-part, else a generic fallback. */
+function pushDisplayName(user: { displayName?: string | null; email?: string | null }): string {
+  return user.displayName?.trim() || user.email?.split('@')[0] || 'Someone';
+}
 
 export const createInvite = async (req: AuthRequest, res: Response) => {
   try {
@@ -82,15 +91,11 @@ export const createInvite = async (req: AuthRequest, res: Response) => {
       .populate('to', 'displayName email photoURL');
 
     // Fire-and-forget push so invite creation is not blocked by OneSignal.
-    const fromDisplayName =
-      fromUser.displayName?.trim() ||
-      fromUser.email?.split('@')[0] ||
-      'Someone';
     // The app calls OneSignal.login(user.id), and the auth API exposes
     // firebaseUid as `id` — so that is the external_id OneSignal knows.
     void sendGameInvitePush({
       toUserId: toUser.firebaseUid,
-      fromDisplayName,
+      fromDisplayName: pushDisplayName(fromUser),
       inviteId: inviteId.toString(),
       mode: settings.mode,
       timed: settings.timed,
@@ -272,6 +277,20 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
     if (socketsInRoom.length === 0 && activeSocketCount > 0) {
       console.warn(`[INVITE] WARNING: User has ${activeSocketCount} active socket(s) but 0 in room! This suggests a room joining issue.`);
     }
+
+    // Fire-and-forget push to the inviter (covers the app being backgrounded/closed).
+    void sendInviteAcceptedPush({
+      toUserId: fromUser.firebaseUid,
+      fromDisplayName: pushDisplayName(currentUser),
+      inviteId: invite._id.toString(),
+      matchId: match._id.toString(),
+      puzzleId: randomPuzzleId.toString(),
+      mode: settings.mode,
+      timed: timing.timed,
+    }).catch((err) => {
+      console.error('[OneSignal] Invite accepted push failed', err);
+    });
+
     res.json({
       success: true,
       matchId: match._id.toString(),
@@ -310,6 +329,18 @@ export const declineInvite = async (req: AuthRequest, res: Response) => {
     invite.status = InviteStatus.DECLINED;
     invite.respondedAt = new Date();
     await invite.save();
+
+    // Fire-and-forget push to the inviter. Missing inviter is not an error here.
+    const inviter = await User.findById(invite.from);
+    if (inviter) {
+      void sendInviteDeclinedPush({
+        toUserId: inviter.firebaseUid,
+        fromDisplayName: pushDisplayName(currentUser),
+        inviteId: invite._id.toString(),
+      }).catch((err) => {
+        console.error('[OneSignal] Invite declined push failed', err);
+      });
+    }
 
     // Return updated invite
     const populatedInvite = await Invite.findById(invite._id)
