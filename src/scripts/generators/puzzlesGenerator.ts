@@ -213,7 +213,7 @@ export class PuzzleGenerator {
       }
 
       let puzzle: Puzzle | null = null;
-      const bindTries = wantImages > 0 ? 4 : 1;
+      const bindTries = wantImages > 0 ? 2 : 1;
       for (let bindTry = 0; bindTry < bindTries; bindTry++) {
         if (bindTry > 0) this.clearImageBinds(template);
         if (!this.bindImageClues(template, imagePlan, this.imageClueCatalog)) {
@@ -274,7 +274,7 @@ export class PuzzleGenerator {
             `   … image attempt ${attempt + 1}: solving ${template.slots.length} slots [${images}] (${Date.now() - t0}ms tmpl) ${formatQuality(templateStats)}`
           );
         }
-        const solveTries = wantImages > 0 ? 3 : this.language === 'he' ? 2 : 1;
+        const solveTries = wantImages > 0 ? 2 : this.language === 'he' ? 2 : 1;
         for (let solveTry = 0; solveTry < solveTries && !puzzle; solveTry++) {
           puzzle = this.solveTemplate(template, meta);
         }
@@ -491,12 +491,12 @@ export class PuzzleGenerator {
         cols,
         name: `${rows}x${cols} arrow crossword`,
         quiet: true,
-        maxIterations: this.language === 'he' ? (withImages ? (large ? 40 : 32) : large ? 36 : 28) : 8,
+        maxIterations: this.language === 'he' ? (withImages ? (large ? 18 : 16) : large ? 24 : 20) : 8,
         minPopulation: 4,
-        populationSize: this.language === 'he' ? (withImages ? 12 : large ? 12 : 10) : 5,
-        weakBreakCondition: this.language === 'he' ? (withImages ? 400 : large ? 420 : 320) : 80,
-        strongBreakCondition: this.language === 'he' ? (withImages ? 900 : large ? 950 : 700) : 250,
-        maxBoundaryRetries: withImages ? 4 : 3,
+        populationSize: this.language === 'he' ? (withImages ? 8 : large ? 10 : 8) : 5,
+        weakBreakCondition: this.language === 'he' ? (withImages ? 200 : large ? 280 : 220) : 80,
+        strongBreakCondition: this.language === 'he' ? (withImages ? 480 : large ? 600 : 450) : 250,
+        maxBoundaryRetries: withImages ? 2 : 3,
         maxSlotLength: this.language === 'he' ? (withImages ? 9 : 11) : undefined,
         sparse: false,
         simpleArrows: false,
@@ -523,7 +523,7 @@ export class PuzzleGenerator {
     const cells = template.rows * template.cols;
     const hasImages = template.slots.some((slot) => slot.clueType === 'image');
     const maxSolveTimeMs = hasImages
-      ? 45000
+      ? 60000
       : (this.language === 'he' ? 28 : 12) * 1000 + cells * (cells >= 256 ? 80 : 40);
     const jitter = new Map<string, number>();
     const wordScorer = (word: string, _placedWords: string[]) => {
@@ -612,7 +612,12 @@ export function generateLargestImageCluePuzzle(config: {
   const sizes = config.sizes ?? IMAGE_CLUE_SIZE_LADDER;
   for (const size of sizes) {
     for (const imageCount of counts) {
-      const attempts = config.imageClueAttempts ?? (imageCount >= 4 ? 64 : 48);
+      const base = config.imageClueAttempts ?? (imageCount >= 4 ? 64 : 48);
+      const cells = size.rows * size.cols;
+      const attempts =
+        cells >= 225 ? Math.max(4, Math.round(base * 0.12)) :
+        cells >= 196 ? Math.max(8, Math.round(base * 0.25)) :
+        base;
       console.log(
         `\n—— Trying ${size.rows}x${size.cols} with ${imageCount} image${imageCount === 1 ? '' : 's'} (${attempts} attempts) ——`
       );

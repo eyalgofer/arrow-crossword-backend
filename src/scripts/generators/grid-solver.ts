@@ -171,7 +171,7 @@ export function solveGrid(
         unconstrained.push(slot);
         continue;
       }
-      const cap = slot.candidateAnswers?.length ? 80 : 20;
+      const cap = slot.candidateAnswers?.length ? 80 : 40;
       const candidates = getCandidates(state, slot, cap);
       if (candidates.length === 0) {
         logDeadEnd(slot);
@@ -211,7 +211,9 @@ export function solveGrid(
 
   function fillImages(state: GridState, remainingImages: ClueSlot[]): GridState | null {
     if (timedOut()) return null;
-    if (remainingImages.length === 0) return state;
+    if (remainingImages.length === 0) {
+      return backtrack(state, textSlots, []);
+    }
     const selection = selectNextSlot(state, remainingImages);
     if (!selection || selection.candidates.length === 0) return null;
     const { slot } = selection;
@@ -234,7 +236,7 @@ export function solveGrid(
     attempts++;
     if (attempts > config.maxAttempts) return null;
     if (remainingText.length === 0) {
-      return fillImages(state, imageSlots);
+      return state;
     }
 
     const selection = selectNextSlot(state, remainingText);
@@ -287,7 +289,8 @@ export function solveGrid(
       return null;
     }
   }
-  const result = backtrack(prefilledState, textSlots, imageSlots);
+  const afterImages = fillImages(prefilledState, imageSlots);
+  const result = afterImages;
 
   if (!config.quiet) {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);

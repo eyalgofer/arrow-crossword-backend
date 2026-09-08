@@ -1329,6 +1329,39 @@ function countLetterRun(
   return n;
 }
 
+/** Cell immediately before the first letter, along the word flow (not the clue). */
+function cellBeforeFirstLetter(
+  fieldType: FieldType,
+  first: { row: number; col: number }
+): { row: number; col: number } {
+  switch (fieldType) {
+    case '1':
+    case '5':
+    case '6':
+      return { row: first.row, col: first.col - 1 };
+    default:
+      return { row: first.row - 1, col: first.col };
+  }
+}
+
+function bentArrowIsSafe(
+  mask: Mask,
+  defRow: number,
+  defCol: number,
+  fieldType: FieldType
+): boolean {
+  const offset = getWordStartOffset(fieldType);
+  if (!offset) return false;
+  const first = { row: defRow + offset.dr, col: defCol + offset.dc };
+  if (!isValidCoord(mask, first.row, first.col) || !isLetterField(mask.grid[first.row][first.col])) {
+    return false;
+  }
+  const before = cellBeforeFirstLetter(fieldType, first);
+  if (!isValidCoord(mask, before.row, before.col)) return true;
+  const cell = mask.grid[before.row][before.col];
+  return cell !== '0';
+}
+
 /**
  * Pick a legal clue type at (row, col) that starts a word of at least 3 letters.
  * Prefers unused mixed-arrow types so boards do not collapse to →↓.
@@ -1350,10 +1383,18 @@ function bestClueTypeForHole(
   consider('1', countLetterRun(mask, row, col + 1, 0, 1), false);
   consider('2', countLetterRun(mask, row + 1, col, 1, 0), false);
   if (!simpleArrows) {
-    consider('3', countLetterRun(mask, row, col + 1, 1, 0), true);
-    consider('4', countLetterRun(mask, row, col - 1, 1, 0), true);
-    consider('5', countLetterRun(mask, row + 1, col, 0, 1), true);
-    consider('6', countLetterRun(mask, row - 1, col, 0, 1), true);
+    if (bentArrowIsSafe(mask, row, col, '3')) {
+      consider('3', countLetterRun(mask, row, col + 1, 1, 0), true);
+    }
+    if (bentArrowIsSafe(mask, row, col, '4')) {
+      consider('4', countLetterRun(mask, row, col - 1, 1, 0), true);
+    }
+    if (bentArrowIsSafe(mask, row, col, '5')) {
+      consider('5', countLetterRun(mask, row + 1, col, 0, 1), true);
+    }
+    if (bentArrowIsSafe(mask, row, col, '6')) {
+      consider('6', countLetterRun(mask, row - 1, col, 0, 1), true);
+    }
   }
   if (options.length === 0) return null;
 
@@ -1405,6 +1446,26 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
     pinProtected();
     const words = findAllWords(repaired);
     let changed = false;
+
+    for (const word of words) {
+      const type = word.definitionType;
+      if (type === '0' || type === '#' || type === '1' || type === '2') continue;
+      if (!canEdit(word.definitionRow, word.definitionCol)) continue;
+      if (word.letters.length >= 3 && bentArrowIsSafe(repaired, word.definitionRow, word.definitionCol, type)) {
+        continue;
+      }
+      const fallback = bestClueTypeForHole(
+        repaired,
+        word.definitionRow,
+        word.definitionCol,
+        true,
+        isVerticalWord(type)
+      );
+      repaired.grid[word.definitionRow][word.definitionCol] = fallback ?? '0';
+      changed = true;
+      break;
+    }
+    if (changed) continue;
 
     for (const word of words) {
       if (word.length >= 3) continue;

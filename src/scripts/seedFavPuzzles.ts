@@ -31,7 +31,7 @@ const LANGUAGE = 'he' as const;
 const TARGET = 5;
 const WORKER_IMAGES = 2;
 const WORKER_ATTEMPTS = 48;
-const PARALLEL = 2;
+const PARALLEL = 3;
 const DIFFICULTIES: Difficulty[] = [
   Difficulty.EASY,
   Difficulty.MEDIUM,
