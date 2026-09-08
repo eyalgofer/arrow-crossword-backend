@@ -22,6 +22,7 @@ export interface QualityStats {
   shortSlots: number;
   longSlots: number;
   slotCount: number;
+  dualClueCells: number;
   imageQuadrants: Quadrant[];
   imagesOpposite: boolean;
 }
@@ -60,7 +61,14 @@ export function imagesAreOpposite(quadrants: Quadrant[]): boolean {
 }
 
 function scoreFromSlots(
-  slots: Array<{ direction: Direction; length: number; cells: Array<{ row: number; col: number }> }>,
+  slots: Array<{
+    direction: Direction;
+    length: number;
+    cells: Array<{ row: number; col: number }>;
+    startRow?: number;
+    startCol?: number;
+    clueType?: string;
+  }>,
   grid: { rows: number; cols: number },
   images: Array<{ startRow: number; startCol: number }> = []
 ): QualityStats {
@@ -89,6 +97,16 @@ function scoreFromSlots(
   }
   const letterCells = letterToCount.size;
   const total = horizontal + vertical;
+  const cluePos = new Map<string, number>();
+  for (const slot of slots) {
+    if (slot.clueType === 'image' || slot.startRow == null || slot.startCol == null) continue;
+    const key = cellKey(slot.startRow, slot.startCol);
+    cluePos.set(key, (cluePos.get(key) ?? 0) + 1);
+  }
+  let dualClueCells = 0;
+  for (const count of cluePos.values()) {
+    if (count >= 2) dualClueCells += 1;
+  }
   const imageQuadrants = images.map((img) =>
     quadrantOf(img.startRow + 1, img.startCol + 1, grid.rows, grid.cols)
   );
@@ -104,6 +122,7 @@ function scoreFromSlots(
     shortSlots,
     longSlots,
     slotCount: slots.length,
+    dualClueCells,
     imageQuadrants,
     imagesOpposite: imagesAreOpposite(imageQuadrants),
   };
@@ -118,6 +137,9 @@ export function scoreTemplate(template: GridTemplate): QualityStats {
       direction: slot.direction,
       length: slot.length,
       cells: slot.cells && slot.cells.length > 0 ? slot.cells : getSlotCells(slot),
+      startRow: slot.startRow,
+      startCol: slot.startCol,
+      clueType: slot.clueType,
     })),
     { rows: template.rows, cols: template.cols },
     images
@@ -133,6 +155,9 @@ export function scorePuzzle(puzzle: Puzzle): QualityStats {
       direction: item.direction,
       length: item.answer.replace(/\s+/g, '').length,
       cells: getAnswerCells(item),
+      startRow: item.startRow,
+      startCol: item.startCol,
+      clueType: item.clueType,
     })),
     puzzle.grid,
     images
@@ -177,7 +202,8 @@ export function formatQuality(stats: QualityStats): string {
     `cross=${stats.crossingRatio.toFixed(2)} ` +
     `(${stats.crossedCells}/${stats.letterCells}) ` +
     `kinds=${stats.directionKinds}[${kinds}] ` +
-    `h=${stats.horizontalShare.toFixed(2)} v=${stats.verticalShare.toFixed(2)}` +
+    `h=${stats.horizontalShare.toFixed(2)} v=${stats.verticalShare.toFixed(2)} ` +
+    `dual=${stats.dualClueCells}` +
     quads
   );
 }

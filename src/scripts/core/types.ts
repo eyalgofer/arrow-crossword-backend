@@ -11,6 +11,7 @@ export interface PuzzleItem {
   answer: string;
   enumeration?: number[] | null;
   startRow: number;
+  /** Two text items may share this cell (two arrows in one square). */
   startCol: number;
   clueType?: ClueType;
   imageUrl?: string;

@@ -1,5 +1,5 @@
 /**
- * Generate 5 Hebrew image-clue puzzles (15→14→13, 2 images) and wire them as weekly picks.
+ * Generate 5 Hebrew image-clue puzzles (13→14→15, 2 images) and wire them as weekly picks.
  *
  * Spawns parallel workers because a large fill can take several minutes.
  *
@@ -30,7 +30,7 @@ import { FAV_PICK_ACCENTS } from '../utils/puzzlePreview';
 const LANGUAGE = 'he' as const;
 const TARGET = 5;
 const WORKER_IMAGES = 2;
-const WORKER_ATTEMPTS = 48;
+const WORKER_ATTEMPTS = 24;
 const PARALLEL = 3;
 const DIFFICULTIES: Difficulty[] = [
   Difficulty.EASY,

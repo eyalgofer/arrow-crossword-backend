@@ -390,7 +390,7 @@ export class PuzzleGenerator {
       const entries = shuffled(
         catalog.filter((entry) => catalogLetterLength(entry) === slot.length)
       );
-      if (entries.length < 4) {
+      if (entries.length < 2) {
         console.log(`   … no image answer of length ${slot.length}`);
         return false;
       }
@@ -491,12 +491,13 @@ export class PuzzleGenerator {
         cols,
         name: `${rows}x${cols} arrow crossword`,
         quiet: true,
-        maxIterations: this.language === 'he' ? (withImages ? (large ? 18 : 16) : large ? 24 : 20) : 8,
+        maxIterations: this.language === 'he' ? (withImages ? (large ? 16 : 14) : large ? 24 : 20) : 8,
         minPopulation: 4,
         populationSize: this.language === 'he' ? (withImages ? 8 : large ? 10 : 8) : 5,
         weakBreakCondition: this.language === 'he' ? (withImages ? 200 : large ? 280 : 220) : 80,
         strongBreakCondition: this.language === 'he' ? (withImages ? 480 : large ? 600 : 450) : 250,
         maxBoundaryRetries: withImages ? 2 : 3,
+        crossoverSamples: withImages ? 12 : undefined,
         maxSlotLength: this.language === 'he' ? (withImages ? 9 : 11) : undefined,
         sparse: false,
         simpleArrows: false,
@@ -540,7 +541,7 @@ export class PuzzleGenerator {
     const result = solveGrid(template, this.wordIndex, {
       maxAttempts,
       maxSolveTimeMs,
-      maxTextSliceMs: hasImages ? 20000 : undefined,
+      maxTextSliceMs: hasImages ? 18000 : undefined,
       wordScorer,
       quiet: true,
     });
@@ -596,7 +597,7 @@ export function generatePuzzlesBatch(config: {
   });
 }
 
-/** Try 15×15 → 13×13 with mixed-arrow image clues. */
+/** Grow 13×13 → 15×15 with mixed-arrow image clues; keep the largest fill. */
 export function generateLargestImageCluePuzzle(config: {
   category: string;
   startIndex: number;
@@ -610,13 +611,14 @@ export function generateLargestImageCluePuzzle(config: {
     ? [config.imageClueCount]
     : IMAGE_CLUE_COUNT_LADDER;
   const sizes = config.sizes ?? IMAGE_CLUE_SIZE_LADDER;
+  let best: Puzzle | null = null;
   for (const size of sizes) {
     for (const imageCount of counts) {
       const base = config.imageClueAttempts ?? (imageCount >= 4 ? 64 : 48);
       const cells = size.rows * size.cols;
       const attempts =
-        cells >= 225 ? Math.max(4, Math.round(base * 0.12)) :
-        cells >= 196 ? Math.max(8, Math.round(base * 0.25)) :
+        cells >= 225 ? Math.max(4, Math.round(base * 0.15)) :
+        cells >= 196 ? Math.max(6, Math.round(base * 0.25)) :
         base;
       console.log(
         `\n—— Trying ${size.rows}x${size.cols} with ${imageCount} image${imageCount === 1 ? '' : 's'} (${attempts} attempts) ——`
@@ -635,9 +637,18 @@ export function generateLargestImageCluePuzzle(config: {
       console.log(
         `   ${size.rows}x${size.cols} / ${imageCount} image(s) elapsed ${Date.now() - t0}ms`
       );
-      if (puzzles[0]) return puzzles[0];
-      console.log(`   did not fill, trying next`);
+      if (puzzles[0]) {
+        best = puzzles[0];
+        console.log(`   keeping ${size.rows}x${size.cols}, trying larger if any remain`);
+      } else if (best) {
+        console.log(
+          `   did not fill, keeping ${best.grid.rows}x${best.grid.cols}`
+        );
+        return best;
+      } else {
+        console.log(`   did not fill, trying next`);
+      }
     }
   }
-  return null;
+  return best;
 }

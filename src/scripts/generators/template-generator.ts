@@ -7,10 +7,12 @@ import { validateSlotsBoundaries } from './validation-utils';
  * using Evolutionary Algorithms” (2009).
  * Reference: https://jakobengel.github.io/pdf/JakobEngelBsc.pdf
  *
- * Swedish arrow crosswords (arrowords): clue-in-cell, arrows show direction (→↓↘↙⤵⤴),
- * high letter intersection. Six definition types (Figure 2.2) map to across, down,
- * right-down, left-down, down-across, up-across. Memetic algorithm (Ch. 4) with
- * fitness from coverage, word length, clustering, dead ends (Ch. 3.2).
+ * Swedish / Hebrew arrow crosswords: clue-in-cell, arrows show direction (→↓↘↙⤵⤴),
+ * high letter intersection. A definition cell may hold two arrows (one horizontal
+ * + one vertical) so two words share one blocked square — the usual newspaper packing.
+ * Six definition types (Figure 2.2) map to across, down, right-down, left-down,
+ * down-across, up-across. Memetic algorithm (Ch. 4) with fitness from coverage,
+ * word length, clustering, dead ends (Ch. 3.2).
  */
 
 // ============================================================================
@@ -27,16 +29,20 @@ import { validateSlotsBoundaries } from './validation-utils';
  * 5: Definition field - arrow points RIGHT from bottom (↗→) - horizontal word
  * 6: Definition field - arrow points RIGHT from top (↘→) - horizontal word
  * #: Cut-out field (blocked)
- * 
+ *
+ * A definition cell may encode two arrows, e.g. "12" for → and ↓ in the same square.
  * Per thesis: Types 1, 5, 6 define HORIZONTAL words
  *            Types 2, 3, 4 define VERTICAL words
  */
-type FieldType = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '#';
+type ArrowType = '1' | '2' | '3' | '4' | '5' | '6';
+type FieldType = '0' | ArrowType | '#';
+/** Letter, cutout, one arrow, or two sorted arrows ("12", "25", …). */
+type CellValue = string;
 
 interface Mask {
   rows: number;
   cols: number;
-  grid: FieldType[][];
+  grid: CellValue[][];
   fitness?: number;
   validityPenalty?: number;
   qualityPenalty?: number;
@@ -62,6 +68,8 @@ interface GeneratorConfig {
   minPopulation?: number;       // floor so n never drops below this (avoids collapse)
   maxIterations?: number;      // cap iterations (default 100)
   quiet?: boolean;             // suppress per-iteration logs when true
+  /** How many random crossover lines to sample per pair (thesis: 50). */
+  crossoverSamples?: number;
   // Fitness weights from thesis Chapter 3.2
   weights: {
     // Coverage penalties (Chapter 3.2.1)
@@ -225,25 +233,38 @@ function fieldTypeToDirection(fieldType: FieldType): Direction | null {
   }
 }
 
-/**
- * Check if field type is a definition field
- */
-function isDefinitionField(fieldType: FieldType): boolean {
-  return ['1', '2', '3', '4', '5', '6'].includes(fieldType);
+function isArrowType(ch: string): ch is ArrowType {
+  return ch === '1' || ch === '2' || ch === '3' || ch === '4' || ch === '5' || ch === '6';
 }
 
-/**
- * Check if field type is a letter field
- */
-function isLetterField(fieldType: FieldType): boolean {
-  return fieldType === '0';
+/** Individual arrows in a cell ("12" → ['1','2']). */
+function arrowTypesIn(cell: string): ArrowType[] {
+  if (!cell || cell === '0' || cell === '#') return [];
+  const seen = new Set<ArrowType>();
+  const out: ArrowType[] = [];
+  for (const ch of cell) {
+    if (!isArrowType(ch) || seen.has(ch)) continue;
+    seen.add(ch);
+    out.push(ch);
+  }
+  return out;
 }
 
-/**
- * Check if field type is blocked (non-letter)
- */
-function isBlockedField(fieldType: FieldType): boolean {
-  return fieldType !== '0';
+function encodeArrows(types: ArrowType[]): CellValue {
+  const unique = [...new Set(types.filter(isArrowType))].sort();
+  return unique.length === 0 ? '0' : unique.slice(0, 2).join('');
+}
+
+function isDefinitionField(cell: string): boolean {
+  return arrowTypesIn(cell).length > 0;
+}
+
+function isLetterField(cell: string): boolean {
+  return cell === '0';
+}
+
+function isBlockedField(cell: string): boolean {
+  return cell !== '0';
 }
 
 // ============================================================================
@@ -251,7 +272,7 @@ function isBlockedField(fieldType: FieldType): boolean {
 // ============================================================================
 
 function createEmptyMask(rows: number, cols: number): Mask {
-  const grid: FieldType[][] = [];
+  const grid: CellValue[][] = [];
   for (let r = 0; r < rows; r++) {
     grid.push(new Array(cols).fill('0'));
   }
@@ -274,12 +295,12 @@ function isValidCoord(mask: Mask, row: number, col: number): boolean {
   return row >= 0 && row < mask.rows && col >= 0 && col < mask.cols;
 }
 
-function getField(mask: Mask, row: number, col: number): FieldType | null {
+function getField(mask: Mask, row: number, col: number): CellValue | null {
   if (!isValidCoord(mask, row, col)) return null;
   return mask.grid[row][col];
 }
 
-function setField(mask: Mask, row: number, col: number, fieldType: FieldType): void {
+function setField(mask: Mask, row: number, col: number, fieldType: CellValue): void {
   if (isValidCoord(mask, row, col)) {
     mask.grid[row][col] = fieldType;
   }
@@ -334,9 +355,8 @@ function findAllWords(mask: Mask): WordInfo[] {
 
   for (let r = 0; r < mask.rows; r++) {
     for (let c = 0; c < mask.cols; c++) {
-      const fieldType = mask.grid[r][c];
-      if (!isDefinitionField(fieldType)) continue;
-
+      const arrows = arrowTypesIn(mask.grid[r][c]);
+      for (const fieldType of arrows) {
       const startOffset = getWordStartOffset(fieldType);
       const dir = getWordDirection(fieldType);
       if (!startOffset || !dir) continue;
@@ -384,6 +404,7 @@ function findAllWords(mask: Mask): WordInfo[] {
         letters,
         isHorizontal: isHorizontalWord(fieldType)
       });
+      }
     }
   }
 
@@ -726,50 +747,48 @@ function evaluateFitness(mask: Mask, config: GeneratorConfig): number {
  * Per thesis Chapter 3.3: "field assignments which - no matter how the surrounding 
  * mask looks like - are certain to cause a validity violation are disallowed"
  */
+function arrowGeometryOk(mask: Mask, row: number, col: number, type: ArrowType): boolean {
+  switch (type) {
+    case '1': return col < mask.cols - 2;
+    case '2': return row < mask.rows - 2;
+    case '3': return col < mask.cols - 1 && row < mask.rows - 1;
+    case '4': return col >= 1 && row < mask.rows - 1;
+    case '5': return row < mask.rows - 1 && col < mask.cols - 2;
+    case '6': return row >= 1 && col < mask.cols - 2;
+  }
+}
+
+function getAllowedArrowTypes(
+  mask: Mask,
+  row: number,
+  col: number,
+  simpleArrows = false
+): ArrowType[] {
+  const allowed: ArrowType[] = [];
+  const candidates: ArrowType[] = simpleArrows ? ['1', '2'] : ['1', '2', '3', '4', '5', '6'];
+  for (const type of candidates) {
+    if (!arrowGeometryOk(mask, row, col, type)) continue;
+    if ((type === '3' || type === '4' || type === '5' || type === '6') &&
+        !bentArrowIsSafe(mask, row, col, type)) {
+      continue;
+    }
+    allowed.push(type);
+  }
+  return allowed;
+}
+
+/**
+ * Get allowed field encodings for a position.
+ * Includes letter, single arrows, and horizontal+vertical duals (two clues in one cell).
+ */
 function getAllowedFieldTypes(
   mask: Mask,
   row: number,
   col: number,
   simpleArrows = false
-): FieldType[] {
-  const allowed: FieldType[] = ['0']; // Letter field always allowed
-
-  // Don't allow definition fields that would point outside grid or create impossible words
-  // Per thesis Figure 2.2: 1→, 2↓, 3↘, 4↙, 5⤵, 6⤴
-  // Type 1: needs at least 2 cells to the right
-  if (col < mask.cols - 2) allowed.push('1');
-  // Type 2: needs at least 2 cells below
-  if (row < mask.rows - 2) allowed.push('2');
-  if (!simpleArrows) {
-    // Type 3 (right-down): vertical, start in cell (r,c+1) right of clue, go down; need ≥2 cells
-    if (col < mask.cols - 1 && row < mask.rows - 1) allowed.push('3');
-    // Type 4 (left-down): vertical, start in cell (r,c-1) left of clue, go down; need ≥2 cells
-    if (col >= 1 && row < mask.rows - 1) allowed.push('4');
-    // Type 5 (down-across): start (r+1,c), go right; need space below and right
-    if (row < mask.rows - 1 && col < mask.cols - 2) allowed.push('5');
-    // Type 6 (up-across): start (r-1,c), go right; need space above and right
-    if (row >= 1 && col < mask.cols - 2) allowed.push('6');
-  }
-
-  // Per thesis Figure 3.6: Avoid certain configurations that cause violations
-  // Check for adjacent definition fields that would cause problems
-  const above = getField(mask, row - 1, col);
-  const left = getField(mask, row, col - 1);
-  const right = getField(mask, row, col + 1);
-  const below = getField(mask, row + 1, col);
-
-  // Remove types that would conflict with existing arrows
-  // If cell above is type 2 pointing down, we shouldn't start a horizontal word here
-  if (above === '2' || above === '3' || above === '4') {
-    // These would create overlapping words - remove horizontal types that start here
-  }
-
-  // If cell to left is type 1 pointing right, we shouldn't start a vertical word here
-  if (left === '1' || left === '5' || left === '6') {
-    // These would create overlapping words - remove vertical types that start here  
-  }
-
-  return allowed;
+): CellValue[] {
+  const arrows = getAllowedArrowTypes(mask, row, col, simpleArrows);
+  return ['0', ...arrows];
 }
 
 /**
@@ -922,7 +941,7 @@ function mutate(mask: Mask, config: GeneratorConfig): Mask {
       // "type 3, 4, 5 and 6 each 1/24"
       
       const rand = Math.random();
-      let newType: FieldType;
+      let newType: CellValue;
       
       if (rand < 2/3 && options.includes('0')) {
         newType = '0';
@@ -932,11 +951,13 @@ function mutate(mask: Mask, config: GeneratorConfig): Mask {
         if (defOptions.length === 0) {
           newType = options[Math.floor(Math.random() * options.length)];
         } else {
-          // Weight type 1,2 higher than 3,4,5,6
-          const weighted: FieldType[] = [];
+          // Weight type 1,2 higher than 3,4,5,6; duals (two clues / cell) highest
+          const weighted: CellValue[] = [];
           for (const t of defOptions) {
-            if (t === '1' || t === '2') {
-              weighted.push(t, t); // Double weight for types 1,2
+          if (t.length === 2) {
+            weighted.push(t);
+          } else if (t === '1' || t === '2') {
+              weighted.push(t, t);
             } else {
               weighted.push(t);
             }
@@ -1143,7 +1164,7 @@ function memeticAlgorithm(config: GeneratorConfig): Mask {
         let bestPotential = Infinity;
         let bestBeta = 0;
 
-        for (let k = 0; k < 50; k++) {
+        for (let k = 0; k < (config.crossoverSamples ?? 50); k++) {
           const beta = Math.random() * Math.PI * 2;
           const potential = calculatePotentialRating(population[i], population[j], beta);
           
@@ -1234,7 +1255,7 @@ function memeticAlgorithm(config: GeneratorConfig): Mask {
     const qualityThreshold = config.rows * config.cols * 60; // ~6000 for 10x10
     const hasCutouts = (config.cutoutCells?.length ?? 0) > 0;
     // With image cutouts, perfect validity is rare — accept a small validity debt early.
-    const validityOk = hasCutouts ? bestValidity <= 2000 : bestValidity === 0;
+    const validityOk = bestValidity === 0;
     const qualityOk = bestQuality < (hasCutouts ? qualityThreshold * 1.5 : qualityThreshold);
     if (validityOk && qualityOk) {
       if (!config.quiet) console.log('Found satisfactory solution, terminating');
@@ -1362,6 +1383,107 @@ function bentArrowIsSafe(
   return cell !== '0';
 }
 
+function lettersFromArrow(
+  mask: Mask,
+  defRow: number,
+  defCol: number,
+  type: ArrowType,
+  treatAsLetter: Set<string> = new Set()
+): Array<{ row: number; col: number }> {
+  const offset = getWordStartOffset(type);
+  const dir = getWordDirection(type);
+  if (!offset || !dir) return [];
+  const letters: Array<{ row: number; col: number }> = [];
+  let r = defRow + offset.dr;
+  let c = defCol + offset.dc;
+  while (isValidCoord(mask, r, c)) {
+    const key = `${r},${c}`;
+    const isLetter = mask.grid[r][c] === '0' || treatAsLetter.has(key);
+    if (!isLetter) break;
+    letters.push({ row: r, col: c });
+    r += dir.dr;
+    c += dir.dc;
+  }
+  return letters;
+}
+
+/** Absorb a neighboring single-arrow clue into this cell (two clues, one square). */
+function tryMergeDuals(
+  mask: Mask,
+  canEdit: (row: number, col: number) => boolean,
+  simpleArrows: boolean,
+  maxLen: number
+): boolean {
+  for (let r = 0; r < mask.rows; r++) {
+    for (let c = 0; c < mask.cols; c++) {
+      const keepTypes = arrowTypesIn(mask.grid[r][c]);
+      if (keepTypes.length !== 1 || !canEdit(r, c)) continue;
+      const keep = keepTypes[0];
+      const addOns = simpleArrows ? (['1', '2'] as ArrowType[]) : (['1', '2', '3', '4', '5', '6'] as ArrowType[]);
+      for (const add of addOns) {
+        if (add === keep) continue;
+        if (isHorizontalWord(keep) === isHorizontalWord(add)) continue;
+        if (!arrowGeometryOk(mask, r, c, add)) continue;
+        const offset = getWordStartOffset(add);
+        if (!offset) continue;
+        const fr = r + offset.dr;
+        const fc = c + offset.dc;
+        if (!canEdit(fr, fc)) continue;
+        const freeTypes = arrowTypesIn(mask.grid[fr][fc]);
+        if (freeTypes.length !== 1 || freeTypes[0] !== add) continue;
+        const treat = new Set([`${fr},${fc}`]);
+        if ((add === '3' || add === '4' || add === '5' || add === '6')) {
+          const first = { row: fr, col: fc };
+          const before = cellBeforeFirstLetter(add, first);
+          if (isValidCoord(mask, before.row, before.col) && mask.grid[before.row][before.col] === '0') {
+            continue;
+          }
+        }
+        const letters = lettersFromArrow(mask, r, c, add, treat);
+        if (letters.length < 3 || letters.length > maxLen) continue;
+        mask.grid[r][c] = encodeArrows([keep, add]);
+        mask.grid[fr][fc] = '0';
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** Add a second arrow onto an existing clue so it covers an uncovered letter. */
+function tryStackCover(
+  mask: Mask,
+  row: number,
+  col: number,
+  canEdit: (r: number, c: number) => boolean,
+  simpleArrows: boolean,
+  maxLen: number
+): boolean {
+  for (let r = 0; r < mask.rows; r++) {
+    for (let c = 0; c < mask.cols; c++) {
+      const existing = arrowTypesIn(mask.grid[r][c]);
+      if (existing.length !== 1 || !canEdit(r, c)) continue;
+      const keep = existing[0];
+      const addOns = simpleArrows ? (['1', '2'] as ArrowType[]) : (['1', '2', '3', '4', '5', '6'] as ArrowType[]);
+      for (const add of addOns) {
+        if (add === keep) continue;
+        if (isHorizontalWord(keep) === isHorizontalWord(add)) continue;
+        if (!arrowGeometryOk(mask, r, c, add)) continue;
+        if ((add === '3' || add === '4' || add === '5' || add === '6') &&
+            !bentArrowIsSafe(mask, r, c, add)) {
+          continue;
+        }
+        const letters = lettersFromArrow(mask, r, c, add);
+        if (letters.length < 3 || letters.length > maxLen) continue;
+        if (!letters.some((letter) => letter.row === row && letter.col === col)) continue;
+        mask.grid[r][c] = encodeArrows([keep, add]);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 /**
  * Pick a legal clue type at (row, col) that starts a word of at least 3 letters.
  * Prefers unused mixed-arrow types so boards do not collapse to →↓.
@@ -1372,10 +1494,10 @@ function bestClueTypeForHole(
   col: number,
   simpleArrows: boolean,
   preferVertical: boolean
-): FieldType | null {
-  const allowed = new Set(getAllowedFieldTypes(mask, row, col, simpleArrows));
-  const options: Array<{ type: FieldType; run: number; mixed: boolean }> = [];
-  const consider = (type: FieldType, run: number, mixed: boolean) => {
+): ArrowType | null {
+  const allowed = new Set(getAllowedArrowTypes(mask, row, col, simpleArrows));
+  const options: Array<{ type: ArrowType; run: number; mixed: boolean }> = [];
+  const consider = (type: ArrowType, run: number, mixed: boolean) => {
     if (!allowed.has(type) || run < 3) return;
     options.push({ type, run, mixed });
   };
@@ -1399,8 +1521,8 @@ function bestClueTypeForHole(
   if (options.length === 0) return null;
 
   const axis = preferVertical
-    ? (t: FieldType) => t === '2' || t === '3' || t === '4'
-    : (t: FieldType) => t === '1' || t === '5' || t === '6';
+    ? (t: ArrowType) => t === '2' || t === '3' || t === '4'
+    : (t: ArrowType) => t === '1' || t === '5' || t === '6';
   options.sort((a, b) => {
     const aAxis = axis(a.type) ? 1 : 0;
     const bAxis = axis(b.type) ? 1 : 0;
@@ -1450,10 +1572,38 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
     for (const word of words) {
       const type = word.definitionType;
       if (type === '0' || type === '#' || type === '1' || type === '2') continue;
-      if (!canEdit(word.definitionRow, word.definitionCol)) continue;
       if (word.letters.length >= 3 && bentArrowIsSafe(repaired, word.definitionRow, word.definitionCol, type)) {
         continue;
       }
+      const offset = getWordStartOffset(type);
+      if (offset) {
+        const first = {
+          row: word.definitionRow + offset.dr,
+          col: word.definitionCol + offset.dc,
+        };
+        const before = cellBeforeFirstLetter(type, first);
+        if (
+          isValidCoord(repaired, before.row, before.col) &&
+          canEdit(before.row, before.col) &&
+          isLetterField(repaired.grid[before.row][before.col])
+        ) {
+          const pin = bestClueTypeForHole(
+            repaired,
+            before.row,
+            before.col,
+            simpleArrows,
+            isHorizontalWord(type)
+          );
+          if (pin) {
+            repaired.grid[before.row][before.col] = pin;
+            changed = true;
+            break;
+          }
+        }
+      }
+      if (!canEdit(word.definitionRow, word.definitionCol)) continue;
+      const existing = arrowTypesIn(repaired.grid[word.definitionRow][word.definitionCol]);
+      const without = existing.filter((arrow) => arrow !== type);
       const fallback = bestClueTypeForHole(
         repaired,
         word.definitionRow,
@@ -1461,7 +1611,8 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
         true,
         isVerticalWord(type)
       );
-      repaired.grid[word.definitionRow][word.definitionCol] = fallback ?? '0';
+      const next = fallback && fallback !== type ? [...without, fallback] : without;
+      repaired.grid[word.definitionRow][word.definitionCol] = encodeArrows(next);
       changed = true;
       break;
     }
@@ -1470,7 +1621,9 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
     for (const word of words) {
       if (word.length >= 3) continue;
       if (canEdit(word.definitionRow, word.definitionCol)) {
-        repaired.grid[word.definitionRow][word.definitionCol] = '0';
+        const left = arrowTypesIn(repaired.grid[word.definitionRow][word.definitionCol])
+          .filter((arrow) => arrow !== word.definitionType);
+        repaired.grid[word.definitionRow][word.definitionCol] = encodeArrows(left);
         changed = true;
         break;
       }
@@ -1487,7 +1640,7 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
       const last = word.letters[word.letters.length - 1];
       const nr = last.row + word.direction.dr;
       const nc = last.col + word.direction.dc;
-      if (canEdit(nr, nc) && isDefinitionField(repaired.grid[nr][nc])) {
+      if (canEdit(nr, nc) && arrowTypesIn(repaired.grid[nr][nc]).length === 1) {
         repaired.grid[nr][nc] = '0';
         changed = true;
         break;
@@ -1529,6 +1682,12 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
     }
     if (changed) continue;
 
+    const hasCutouts = (config.cutoutCells?.length ?? 0) > 0;
+    if (!hasCutouts && tryMergeDuals(repaired, canEdit, simpleArrows, maxLen)) {
+      changed = true;
+      continue;
+    }
+
     const coverage = analyzeCoverage(repaired, words);
     const uncovered: Array<{ row: number; col: number }> = [];
     for (const [key, info] of coverage) {
@@ -1539,6 +1698,13 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
     uncovered.sort((a, b) => a.row + a.col - (b.row + b.col));
     for (const cell of uncovered) {
       if (!canEdit(cell.row, cell.col)) continue;
+      if (
+        !hasCutouts &&
+        tryStackCover(repaired, cell.row, cell.col, canEdit, simpleArrows, maxLen)
+      ) {
+        changed = true;
+        break;
+      }
       const type = bestClueTypeForHole(repaired, cell.row, cell.col, simpleArrows, false);
       if (!type) continue;
       repaired.grid[cell.row][cell.col] = type;
@@ -1670,6 +1836,7 @@ export interface GenerateTemplateOptions {
   minPopulation?: number;         // floor for n to avoid collapse, default 5
   maxIterations?: number;         // cap iterations, default 100
   quiet?: boolean;               // suppress per-iteration logs
+  crossoverSamples?: number;
   /** Slot lengths above this are treated as unfillable (penalty 5000). */
   maxSlotLength?: number;
   /** Allow more uncovered/blocked cells so a smaller word pool can fill the grid. */
@@ -1706,6 +1873,7 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     maxBoundaryRetries = 3,
     simpleArrows = false,
     lattice = false,
+    crossoverSamples,
   } = options;
 
   // Larger grids need more memetic iterations to converge; default scales with cell count
@@ -1729,6 +1897,7 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     protectedCells,
     simpleArrows,
     maxSlotLength,
+    crossoverSamples,
     weights: {
       ...DEFAULT_CONFIG.weights!,
       wordLength: { ...DEFAULT_CONFIG.weights!.wordLength },
@@ -1829,23 +1998,27 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
 /**
  * Print mask to console for debugging
  */
-function printMask(mask: Mask): void {
-  const symbols: Record<FieldType, string> = {
-    '0': '·',
+function cellGlyph(cell: CellValue): string {
+  const arrows = arrowTypesIn(cell);
+  if (cell === '#') return '█';
+  if (arrows.length === 0) return '·';
+  const map: Record<ArrowType, string> = {
     '1': '→',
     '2': '↓',
     '3': '↘',
     '4': '↙',
     '5': '⤵',
     '6': '⤴',
-    '#': '█'
   };
+  return arrows.map((arrow) => map[arrow]).join('');
+}
 
+function printMask(mask: Mask): void {
   console.log(`Fitness: ${mask.fitness} (validity: ${mask.validityPenalty}, quality: ${mask.qualityPenalty})`);
   for (let r = 0; r < mask.rows; r++) {
     let row = '';
     for (let c = 0; c < mask.cols; c++) {
-      row += symbols[mask.grid[r][c]] + ' ';
+      row += cellGlyph(mask.grid[r][c]).padEnd(2);
     }
     console.log(row);
   }

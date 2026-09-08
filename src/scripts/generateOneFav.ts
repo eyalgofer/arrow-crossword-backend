@@ -1,5 +1,5 @@
 /**
- * Generate one Hebrew image-clue puzzle (15×15, then 14×14, then 13×13) and write JSON to --out.
+ * Generate one Hebrew image-clue puzzle (13×13, then 14×14, then 15×15) and write JSON to --out.
  * Used by seed:fav-puzzles in parallel.
  *
  * Usage:

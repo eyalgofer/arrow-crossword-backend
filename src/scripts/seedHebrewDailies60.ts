@@ -2,7 +2,7 @@
  * Generate Hebrew 13–15 daily puzzles with 2 image clues and assign them
  * from today through the next three months (unless --count is set).
  *
- * Tries 15×15, then 14×14, then 13×13. Never smaller than 13×13.
+ * Tries 13×13, then 14×14, then 15×15. Never smaller than 13×13.
  *
  * Usage:
  *   npx ts-node src/scripts/seedHebrewDailies60.ts
@@ -108,7 +108,7 @@ const main = async () => {
     const startDay = addDays(new Date(), 0);
     const lastDay = addDays(startDay, COUNT - 1);
     const sizes = STRICT_13 ? [{ rows: ROWS, cols: COLS }] : IMAGE_CLUE_SIZE_LADDER;
-    const sizeMode = STRICT_13 ? 'strict 13x13' : '15→14→13 with 2 images';
+    const sizeMode = STRICT_13 ? 'strict 13x13' : '13→14→15 with 2 images';
     console.log(
       `📅 Generating ${COUNT} Hebrew dailies (${sizeMode}) ` +
       `${startDay.toLocaleDateString()} → ${lastDay.toLocaleDateString()}\n`

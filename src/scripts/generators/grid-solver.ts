@@ -41,9 +41,11 @@ export function solveGrid(
 ): GridState | null {
   let attempts = 0;
   const startTime = Date.now();
+  let textDeadline = Number.POSITIVE_INFINITY;
 
   const timedOut = () =>
-    config.maxSolveTimeMs !== undefined && Date.now() - startTime > config.maxSolveTimeMs;
+    (config.maxSolveTimeMs !== undefined && Date.now() - startTime > config.maxSolveTimeMs) ||
+    Date.now() > textDeadline;
 
   const initialState = createEmptyGridState(template.rows, template.cols);
   for (const clueCell of template.clueCells) {
@@ -212,7 +214,13 @@ export function solveGrid(
   function fillImages(state: GridState, remainingImages: ClueSlot[]): GridState | null {
     if (timedOut()) return null;
     if (remainingImages.length === 0) {
-      return backtrack(state, textSlots, []);
+      textDeadline =
+        config.maxTextSliceMs !== undefined
+          ? Date.now() + config.maxTextSliceMs
+          : Number.POSITIVE_INFINITY;
+      const filled = backtrack(state, textSlots, []);
+      textDeadline = Number.POSITIVE_INFINITY;
+      return filled;
     }
     const selection = selectNextSlot(state, remainingImages);
     if (!selection || selection.candidates.length === 0) return null;

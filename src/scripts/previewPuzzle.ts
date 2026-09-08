@@ -43,7 +43,14 @@ function printPuzzle(puzzle: Puzzle): void {
         }
       }
     } else {
-      display[item.startRow][item.startCol] = `${String(item.number).padStart(2)}${ARROWS[item.direction] || '?'}`;
+      const prev = display[item.startRow][item.startCol];
+      const arrow = ARROWS[item.direction] || '?';
+      if (prev === '███') {
+        display[item.startRow][item.startCol] = `${String(item.number).padStart(2)}${arrow}`;
+      } else {
+        const prevArrow = prev.slice(2);
+        display[item.startRow][item.startCol] = `${arrow}${prevArrow} `.slice(0, 3);
+      }
     }
   }
   for (const item of puzzle.puzzleItems) {
