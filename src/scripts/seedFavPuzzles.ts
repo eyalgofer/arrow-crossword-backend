@@ -1,7 +1,7 @@
 /**
- * Generate 5 Hebrew 15×15 image-clue puzzles and wire them as weekly picks.
+ * Generate 5 Hebrew image-clue puzzles (15→14→13, 2 images) and wire them as weekly picks.
  *
- * Spawns parallel workers because a single 15×15 fill can take several minutes.
+ * Spawns parallel workers because a large fill can take several minutes.
  *
  * Usage:
  *   npm run seed:fav-puzzles
@@ -29,9 +29,8 @@ import { FAV_PICK_ACCENTS } from '../utils/puzzlePreview';
 
 const LANGUAGE = 'he' as const;
 const TARGET = 5;
-/** 15×15 with 2+ image blocks did not fill in practice; 12×12 with 1 image does. */
-const WORKER_IMAGES = 1;
-const WORKER_ATTEMPTS = 24;
+const WORKER_IMAGES = 2;
+const WORKER_ATTEMPTS = 48;
 const PARALLEL = 2;
 const DIFFICULTIES: Difficulty[] = [
   Difficulty.EASY,

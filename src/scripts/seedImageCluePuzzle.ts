@@ -20,6 +20,7 @@ import { Difficulty } from '../types';
 import { Puzzle as GeneratedPuzzle } from './core/types';
 import { generateLargestImageCluePuzzle } from './generators/puzzlesGenerator';
 import { loadImageClueCatalogFromMongo } from './generators/imageClueCatalog';
+import { formatQuality, puzzleQualityOk, scorePuzzle } from './generators/puzzle-quality';
 import { getUncoveredCells } from './generators/direction-utils';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import { connectToDatabase } from './utils/scriptUtils';
@@ -29,30 +30,17 @@ const PUZZLE_TITLE = '#9';
 const MIN_IMAGE_CLUES = 2;
 const CACHED = path.join(__dirname, '../../tmp-image-clue-puzzle.json');
 
-function directionMixLooksNatural(puzzle: GeneratedPuzzle): boolean {
-  const horizontal = new Set(['across', 'down-across', 'up-across']);
-  let h = 0;
-  let v = 0;
-  const kinds = new Set<string>();
-  for (const item of puzzle.puzzleItems) {
-    kinds.add(item.direction);
-    if (horizontal.has(item.direction)) h += 1;
-    else v += 1;
-  }
-  const total = h + v;
-  return total > 0 && h / total >= 0.18 && v / total >= 0.18 && kinds.size >= 2;
-}
-
 function cachedPuzzleIsReady(): GeneratedPuzzle | null {
   if (!fs.existsSync(CACHED)) return null;
   const cached = JSON.parse(fs.readFileSync(CACHED, 'utf8')) as GeneratedPuzzle;
   const images = cached.puzzleItems.filter((item) => item.clueType === 'image');
+  const stats = scorePuzzle(cached);
   const ready =
     images.length >= MIN_IMAGE_CLUES &&
-    cached.grid?.rows === 15 &&
-    cached.grid?.cols === 15 &&
+    cached.grid?.rows >= 13 &&
+    cached.grid?.cols >= 13 &&
     getUncoveredCells(cached).length === 0 &&
-    directionMixLooksNatural(cached) &&
+    puzzleQualityOk(stats, images.length) &&
     images.every(
       (item) =>
         item.imageUrl &&
@@ -60,6 +48,7 @@ function cachedPuzzleIsReady(): GeneratedPuzzle | null {
         /[\u0590-\u05FF]/.test(item.answer) &&
         !item.imageUrl.includes('premierpups')
     );
+  if (ready) console.log(`Cached puzzle quality ${formatQuality(stats)}`);
   return ready ? cached : null;
 }
 
@@ -73,7 +62,7 @@ async function generateFresh(): Promise<GeneratedPuzzle> {
     );
   }
   console.log(
-    `Generating 15x15 mixed-arrow תשחץ with 2 image clues (catalog ${catalog.length})...`
+    `Generating mixed-arrow תשחץ (15→13) with 2 image clues (catalog ${catalog.length})...`
   );
   const puzzle = generateLargestImageCluePuzzle({
     category: 'כללי',

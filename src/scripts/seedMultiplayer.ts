@@ -31,7 +31,7 @@ const seedMultiplayer = async () => {
           cols: MULTIPLAYER_GRID_COLS,
         }));
 
-    const sizeLabel = language === 'he' ? 'easy, mixed 8–12 grids' : `easy ${MULTIPLAYER_GRID_ROWS}x${MULTIPLAYER_GRID_COLS}`;
+    const sizeLabel = language === 'he' ? 'easy, mixed 13–15 grids' : `easy ${MULTIPLAYER_GRID_ROWS}x${MULTIPLAYER_GRID_COLS}`;
     console.log(
       `🎮 Generating ${MULTIPLAYER_PUZZLE_COUNT} multiplayer puzzles (${language}): ${sizeLabel}...\n`
     );

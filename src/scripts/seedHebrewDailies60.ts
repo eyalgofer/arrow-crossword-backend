@@ -1,13 +1,13 @@
 /**
- * Generate Hebrew 13x13 daily puzzles and assign them from today
- * through the next three months (unless --count is set).
+ * Generate Hebrew 13–15 daily puzzles with 2 image clues and assign them
+ * from today through the next three months (unless --count is set).
  *
- * Tries 13x13 first; falls back to smaller grids if the generator cannot fill it.
+ * Tries 15×15, then 14×14, then 13×13. Never smaller than 13×13.
  *
  * Usage:
  *   npx ts-node src/scripts/seedHebrewDailies60.ts
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 1
- *   npx ts-node src/scripts/seedHebrewDailies60.ts --strict   # require exact 13x13
+ *   npx ts-node src/scripts/seedHebrewDailies60.ts --strict   # require 13x13
  */
 
 import dotenv from 'dotenv';
@@ -19,15 +19,22 @@ import { PuzzleGenerator } from './generators/puzzlesGenerator';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import { assignPuzzleToDate, getDayOfYear } from '../utils/dailyPuzzleUtils';
 import { connectToDatabase, closeDatabaseAndExit, handleScriptError } from './utils/scriptUtils';
+import {
+  loadGeneratedImageClueCatalog,
+  loadImageClueCatalogFromMongo,
+} from './generators/imageClueCatalog';
+import { IMAGE_CLUE_SIZE_LADDER } from './utils/gridSizes';
+import { normalizeWord } from './generators/validation-utils';
 
 dotenv.config();
 
 const countArgIndex = process.argv.indexOf('--count');
-const STRICT_SIZE = process.argv.includes('--strict');
+const STRICT_13 = process.argv.includes('--strict');
 const ROWS = 13;
 const COLS = 13;
 const CATEGORY = 'יומי';
 const LANGUAGE = 'he' as const;
+const IMAGE_COUNT = 2;
 
 function addDays(date: Date, days: number): Date {
   const next = new Date(date);
@@ -85,39 +92,61 @@ const main = async () => {
   try {
     await connectToDatabase();
 
+    const mongoCatalog = await loadImageClueCatalogFromMongo();
+    const localCatalog = loadGeneratedImageClueCatalog();
+    const byAnswer = new Map(mongoCatalog.map((entry) => [normalizeWord(entry.answer), entry]));
+    for (const entry of localCatalog) {
+      if (entry.answer && entry.imageUrl) byAnswer.set(normalizeWord(entry.answer), entry);
+    }
+    const catalog = [...byAnswer.values()];
+    if (catalog.length < IMAGE_COUNT) {
+      throw new Error(
+        `Need image clues, found ${catalog.length}. Run scripts/arrow-image-pipeline \`npm run process\` first.`
+      );
+    }
+
     const startDay = addDays(new Date(), 0);
     const lastDay = addDays(startDay, COUNT - 1);
-    const sizeMode = STRICT_SIZE ? 'strict 13x13' : '13x13 with fallback';
+    const sizes = STRICT_13 ? [{ rows: ROWS, cols: COLS }] : IMAGE_CLUE_SIZE_LADDER;
+    const sizeMode = STRICT_13 ? 'strict 13x13' : '15→14→13 with 2 images';
     console.log(
       `📅 Generating ${COUNT} Hebrew dailies (${sizeMode}) ` +
       `${startDay.toLocaleDateString()} → ${lastDay.toLocaleDateString()}\n`
     );
 
-    const generator = new PuzzleGenerator(LANGUAGE);
+    const generator = new PuzzleGenerator(LANGUAGE, catalog);
     const savedIds: string[] = [];
 
     for (let i = 0; i < COUNT; i++) {
       const date = addDays(startDay, i);
       let saved = null;
       for (let attempt = 1; attempt <= 2 && !saved; attempt++) {
-        const generated = generator.generateBatch({
-          count: 1,
-          category: CATEGORY,
-          getTitle: () => `תשחץ יומי ${i + 1}`,
-          rows: ROWS,
-          cols: COLS,
-          strictSize: STRICT_SIZE,
-        });
-        const puzzle = generated[0];
+        let puzzle = null;
+        for (const size of sizes) {
+          const generated = generator.generateBatch({
+            count: 1,
+            category: CATEGORY,
+            getTitle: () => `תשחץ יומי ${i + 1}`,
+            rows: size.rows,
+            cols: size.cols,
+            strictSize: true,
+            imageClueCount: IMAGE_COUNT,
+            imageClueAttempts: 48,
+          });
+          if (generated[0]) {
+            puzzle = generated[0];
+            break;
+          }
+        }
         if (!puzzle) continue;
         const errors = validatePuzzleBoundaries(puzzle);
         if (errors.length > 0) {
           console.warn(`   ⚠️  Puzzle ${i + 1} failed validation (try ${attempt})`);
           continue;
         }
-        if (STRICT_SIZE && (puzzle.grid.rows !== ROWS || puzzle.grid.cols !== COLS)) {
+        if (puzzle.grid.rows < 13 || puzzle.grid.cols < 13) {
           console.warn(
-            `   ⚠️  Got ${puzzle.grid.rows}x${puzzle.grid.cols}, wanted ${ROWS}x${COLS} (try ${attempt})`
+            `   ⚠️  Got ${puzzle.grid.rows}x${puzzle.grid.cols}, wanted ≥13x13 (try ${attempt})`
           );
           continue;
         }
@@ -137,9 +166,10 @@ const main = async () => {
       await ensureMongoConnection();
       await replaceDailyAssignment(saved._id as mongoose.Types.ObjectId, date);
       savedIds.push(String(saved._id));
+      const images = saved.puzzleItems.filter((item) => item.clueType === 'image').length;
       console.log(
         `   ${date.toLocaleDateString()} → ${saved.title} ` +
-        `(${saved.grid.rows}x${saved.grid.cols}, ${saved.puzzleItems.length} clues)`
+        `(${saved.grid.rows}x${saved.grid.cols}, ${saved.puzzleItems.length} clues, ${images} images)`
       );
       if (COUNT === 1) {
         console.log(`   puzzleId: ${saved._id}`);

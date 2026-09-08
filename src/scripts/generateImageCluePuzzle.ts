@@ -22,7 +22,7 @@ async function main() {
   }
 
   console.log(
-    `Generating 15x15 mixed-arrow תשחץ with 2 image clues (catalog ${catalog.length})...`
+    `Generating mixed-arrow תשחץ (15→13) with 2 image clues (catalog ${catalog.length})...`
   );
   const t0 = Date.now();
   const p = generateLargestImageCluePuzzle({

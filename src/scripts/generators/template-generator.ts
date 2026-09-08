@@ -1330,14 +1330,59 @@ function countLetterRun(
 }
 
 /**
- * After the GA, force a packed →↓ mask: split words longer than the Hebrew
- * pool, turn leftover letter holes into clues, and extend 1–2 letter runs.
+ * Pick a legal clue type at (row, col) that starts a word of at least 3 letters.
+ * Prefers unused mixed-arrow types so boards do not collapse to →↓.
  */
-function repairSimpleArrowMask(mask: Mask, config: GeneratorConfig): Mask {
+function bestClueTypeForHole(
+  mask: Mask,
+  row: number,
+  col: number,
+  simpleArrows: boolean,
+  preferVertical: boolean
+): FieldType | null {
+  const allowed = new Set(getAllowedFieldTypes(mask, row, col, simpleArrows));
+  const options: Array<{ type: FieldType; run: number; mixed: boolean }> = [];
+  const consider = (type: FieldType, run: number, mixed: boolean) => {
+    if (!allowed.has(type) || run < 3) return;
+    options.push({ type, run, mixed });
+  };
+
+  consider('1', countLetterRun(mask, row, col + 1, 0, 1), false);
+  consider('2', countLetterRun(mask, row + 1, col, 1, 0), false);
+  if (!simpleArrows) {
+    consider('3', countLetterRun(mask, row, col + 1, 1, 0), true);
+    consider('4', countLetterRun(mask, row, col - 1, 1, 0), true);
+    consider('5', countLetterRun(mask, row + 1, col, 0, 1), true);
+    consider('6', countLetterRun(mask, row - 1, col, 0, 1), true);
+  }
+  if (options.length === 0) return null;
+
+  const axis = preferVertical
+    ? (t: FieldType) => t === '2' || t === '3' || t === '4'
+    : (t: FieldType) => t === '1' || t === '5' || t === '6';
+  options.sort((a, b) => {
+    const aAxis = axis(a.type) ? 1 : 0;
+    const bAxis = axis(b.type) ? 1 : 0;
+    if (bAxis !== aAxis) return bAxis - aAxis;
+    if (Number(b.mixed) !== Number(a.mixed)) return Number(b.mixed) - Number(a.mixed);
+    return b.run - a.run;
+  });
+  const top = options.filter(
+    (opt) => axis(opt.type) === axis(options[0].type) && opt.mixed === options[0].mixed
+  );
+  return top[Math.floor(Math.random() * top.length)].type;
+}
+
+/**
+ * After the GA, pack the mask: split overlong words, absorb 1–2 letter runs,
+ * and turn leftover letter holes into clues using any legal arrow type.
+ */
+function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
   const repaired = cloneMask(mask);
   applyFixedCells(repaired, config);
 
   const maxLen = config.maxSlotLength ?? 11;
+  const simpleArrows = config.simpleArrows ?? false;
   const protectedKeys = new Set(
     (config.protectedCells ?? []).map((cell) => `${cell.row},${cell.col}`)
   );
@@ -1364,8 +1409,6 @@ function repairSimpleArrowMask(mask: Mask, config: GeneratorConfig): Mask {
     for (const word of words) {
       if (word.length >= 3) continue;
       if (canEdit(word.definitionRow, word.definitionCol)) {
-        // Clue ran into an image hole or another clue after 0–2 letters.
-        // Drop it so a neighboring word can absorb the leftover letters.
         repaired.grid[word.definitionRow][word.definitionCol] = '0';
         changed = true;
         break;
@@ -1390,9 +1433,18 @@ function repairSimpleArrowMask(mask: Mask, config: GeneratorConfig): Mask {
       }
       const letter = word.letters[0];
       if (word.length === 1 && canEdit(letter.row, letter.col)) {
-        repaired.grid[letter.row][letter.col] = word.isHorizontal ? '2' : '1';
-        changed = true;
-        break;
+        const type = bestClueTypeForHole(
+          repaired,
+          letter.row,
+          letter.col,
+          simpleArrows,
+          word.isHorizontal
+        );
+        if (type) {
+          repaired.grid[letter.row][letter.col] = type;
+          changed = true;
+          break;
+        }
       }
     }
     if (changed) continue;
@@ -1426,15 +1478,9 @@ function repairSimpleArrowMask(mask: Mask, config: GeneratorConfig): Mask {
     uncovered.sort((a, b) => a.row + a.col - (b.row + b.col));
     for (const cell of uncovered) {
       if (!canEdit(cell.row, cell.col)) continue;
-      const rightRun = countLetterRun(repaired, cell.row, cell.col + 1, 0, 1);
-      const downRun = countLetterRun(repaired, cell.row + 1, cell.col, 1, 0);
-      if (rightRun >= 3) {
-        repaired.grid[cell.row][cell.col] = '1';
-      } else if (downRun >= 3) {
-        repaired.grid[cell.row][cell.col] = '2';
-      } else {
-        continue;
-      }
+      const type = bestClueTypeForHole(repaired, cell.row, cell.col, simpleArrows, false);
+      if (!type) continue;
+      repaired.grid[cell.row][cell.col] = type;
       changed = true;
       break;
     }
@@ -1622,7 +1668,10 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     protectedCells,
     simpleArrows,
     maxSlotLength,
-    weights: DEFAULT_CONFIG.weights!
+    weights: {
+      ...DEFAULT_CONFIG.weights!,
+      wordLength: { ...DEFAULT_CONFIG.weights!.wordLength },
+    },
   };
 
   // Adjust word length penalties based on difficulty
@@ -1676,6 +1725,11 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     config.weights.uncoveredField = 700;
     config.weights.singleCoveredEnclosed = 40;
     config.weights.singleCoveredOpen = 100;
+  } else {
+    // Crossing-first: pay more for letters that sit in only one word.
+    config.weights.uncoveredField = 2800;
+    config.weights.singleCoveredEnclosed = 200;
+    config.weights.singleCoveredOpen = 450;
   }
 
   if (lattice && rows === 16 && cols === 16) {
@@ -1687,7 +1741,7 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
 
   for (let attempt = 0; attempt < maxBoundaryRetries; attempt++) {
     const bestMask = memeticAlgorithm(config);
-    const packed = simpleArrows ? repairSimpleArrowMask(bestMask, config) : bestMask;
+    const packed = repairPackedMask(bestMask, config);
     try {
       return maskToGridTemplate(packed, name, difficulty, lockedCells, cutoutCells);
     } catch (e) {

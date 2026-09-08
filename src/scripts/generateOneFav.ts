@@ -1,9 +1,9 @@
 /**
- * Generate one 15×15 Hebrew image-clue puzzle and write JSON to --out.
+ * Generate one Hebrew image-clue puzzle (15×15, then 14×14, then 13×13) and write JSON to --out.
  * Used by seed:fav-puzzles in parallel.
  *
  * Usage:
- *   npx ts-node src/scripts/generateOneFav.ts --out tmp-fav-1.json --images 2 --attempts 40
+ *   npx ts-node src/scripts/generateOneFav.ts --out tmp-fav-1.json --images 2 --attempts 48
  */
 
 import * as fs from 'fs';
@@ -16,6 +16,7 @@ import {
 import { getUncoveredCells } from './generators/direction-utils';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import { Puzzle as GeneratedPuzzle } from './core/types';
+import { IMAGE_CLUE_SIZE_LADDER } from './utils/gridSizes';
 
 function arg(name: string, fallback?: string): string | undefined {
   const idx = process.argv.indexOf(name);
@@ -27,8 +28,8 @@ function puzzleIsReady(puzzle: GeneratedPuzzle, minImages: number): boolean {
   const images = puzzle.puzzleItems.filter((item) => item.clueType === 'image');
   return (
     images.length >= minImages &&
-    puzzle.grid?.rows >= 12 &&
-    puzzle.grid?.cols >= 12 &&
+    puzzle.grid?.rows >= 13 &&
+    puzzle.grid?.cols >= 13 &&
     getUncoveredCells(puzzle).length === 0 &&
     validatePuzzleBoundaries(puzzle).length === 0 &&
     images.every((item) => item.imageUrl && item.answer && /[\u0590-\u05FF]/.test(item.answer))
@@ -61,9 +62,7 @@ function main() {
     imageClueCount: images,
     imageClueCatalog: catalog,
     imageClueAttempts: attempts,
-    sizes: [
-      { rows: 12, cols: 12 },
-    ],
+    sizes: IMAGE_CLUE_SIZE_LADDER,
   });
 
   if (!puzzle || !puzzleIsReady(puzzle, images)) {

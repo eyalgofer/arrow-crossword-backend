@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { Direction } from '../core/types';
 import { normalizeWord } from './validation-utils';
+import { Quadrant, quadrantOf } from './puzzle-quality';
 
 export interface ImageClueCatalogEntry {
   id?: string;
@@ -161,10 +162,36 @@ function isInsideBlock(
   );
 }
 
+const ALL_IMAGE_DIRS: Direction[] = [
+  'across',
+  'down',
+  'right-down',
+  'left-down',
+  'down-across',
+  'up-across',
+];
+
+type ImageQuadrant = Quadrant;
+
+const OPPOSITE_QUAD: Record<ImageQuadrant, ImageQuadrant> = {
+  NW: 'SE',
+  NE: 'SW',
+  SW: 'NE',
+  SE: 'NW',
+};
+
+function shuffleCopy<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 /**
  * Every perimeter cell of the 3×3 × every direction whose first answer
  * lands on a neighbor *outside* the image (same geometry as text clues).
- * Across/down listed first so the planner prefers simple exits.
  */
 function exitOptions(
   startRow: number,
@@ -178,10 +205,8 @@ function exitOptions(
   perimeter.push({ row: startRow + 1, col: startCol });
   perimeter.push({ row: startRow + 1, col: startCol + 2 });
 
-  const preferred: Direction[] = ['across', 'down'];
   const out: Array<{ exitRow: number; exitCol: number; direction: Direction }> = [];
-
-  for (const direction of preferred) {
+  for (const direction of ALL_IMAGE_DIRS) {
     for (const { row, col } of perimeter) {
       const first = firstAnswerCell(row, col, direction);
       if (isInsideBlock(first.row, first.col, startRow, startCol)) continue;
@@ -195,9 +220,38 @@ function inBounds(row: number, col: number, rows: number, cols: number): boolean
   return row >= 0 && row < rows && col >= 0 && col < cols;
 }
 
+function candidatesInQuadrant(
+  quad: ImageQuadrant,
+  rows: number,
+  cols: number
+): Array<{ startRow: number; startCol: number }> {
+  const cells: Array<{ startRow: number; startCol: number }> = [];
+  for (let r = 1; r <= rows - 3; r++) {
+    for (let c = 1; c <= cols - 3; c++) {
+      if (quadrantOf(r + 1, c + 1, rows, cols) === quad) {
+        cells.push({ startRow: r, startCol: c });
+      }
+    }
+  }
+  return shuffleCopy(cells);
+}
+
+function placementOrder(count: number): ImageQuadrant[] {
+  const first = shuffleCopy<ImageQuadrant>(['NW', 'NE', 'SW', 'SE'])[0];
+  if (count <= 1) return [first];
+  const order: ImageQuadrant[] = [first, OPPOSITE_QUAD[first]];
+  const rest = shuffleCopy<ImageQuadrant>(['NW', 'NE', 'SW', 'SE']).filter(
+    (quad) => !order.includes(quad)
+  );
+  while (order.length < count && rest.length > 0) {
+    order.push(rest.shift()!);
+  }
+  return order;
+}
+
 /**
- * Plan non-overlapping 3×3 image blocks with mixed →↓ exits and room for
- * a catalog-friendly answer (at least 5 letters before an edge or another image).
+ * Plan non-overlapping 3×3 image blocks in opposite quadrants with mixed
+ * arrow exits and room for a catalog-friendly answer (5–9 letters).
  */
 export function planImageClues(
   rows: number,
@@ -208,14 +262,7 @@ export function planImageClues(
   const placed: PlannedImageClue[] = [];
   const footprint = new Set<string>();
   const blocked = new Set<string>();
-
-  const candidates: Array<{ startRow: number; startCol: number }> = [];
-  for (let r = 1; r <= rows - 5; r++) {
-    for (let c = 1; c <= cols - 5; c++) {
-      candidates.push({ startRow: r, startCol: c });
-    }
-  }
-  candidates.sort(() => Math.random() - 0.5);
+  const quads = placementOrder(count);
 
   function isImageInterior(
     row: number,
@@ -249,33 +296,18 @@ export function planImageClues(
     return n;
   }
 
-  for (const block of candidates) {
-    if (placed.length >= count) break;
-
-    let overlaps = false;
-    for (let dr = 0; dr < 3 && !overlaps; dr++) {
+  function tryPlace(block: { startRow: number; startCol: number }): PlannedImageClue | null {
+    for (let dr = 0; dr < 3; dr++) {
       for (let dc = 0; dc < 3; dc++) {
-        if (footprint.has(`${block.startRow + dr},${block.startCol + dc}`)) {
-          overlaps = true;
-          break;
-        }
+        if (footprint.has(`${block.startRow + dr},${block.startCol + dc}`)) return null;
       }
     }
-    if (overlaps) continue;
 
-    const acrossCount = placed.filter((img) => img.direction === 'across').length;
-    const downCount = placed.filter((img) => img.direction === 'down').length;
-    let preferredDir: Direction;
-    if (acrossCount >= 2 && downCount < 2) preferredDir = 'down';
-    else if (downCount >= 2 && acrossCount < 2) preferredDir = 'across';
-    else preferredDir = placed.length % 2 === 0 ? 'across' : 'down';
-    const options = exitOptions(block.startRow, block.startCol).filter(
-      (opt) => opt.direction === 'across' || opt.direction === 'down'
-    );
-    const ordered = [
-      ...options.filter((opt) => opt.direction === preferredDir).sort(() => Math.random() - 0.5),
-      ...options.filter((opt) => opt.direction !== preferredDir).sort(() => Math.random() - 0.5),
-    ];
+    const usedDirs = new Set(placed.map((img) => img.direction));
+    const options = exitOptions(block.startRow, block.startCol);
+    const unused = shuffleCopy(options.filter((opt) => !usedDirs.has(opt.direction)));
+    const used = shuffleCopy(options.filter((opt) => usedDirs.has(opt.direction)));
+    const ordered = [...unused, ...used];
     const extra = {
       startRow: block.startRow,
       startCol: block.startCol,
@@ -283,15 +315,15 @@ export function planImageClues(
       exitCol: block.startCol,
     };
 
-    let chosen: PlannedImageClue | null = null;
     for (const opt of ordered) {
       extra.exitRow = opt.exitRow;
       extra.exitCol = opt.exitCol;
       const first = firstAnswerCell(opt.exitRow, opt.exitCol, opt.direction);
+      if (!inBounds(first.row, first.col, rows, cols)) continue;
       if (isInsideBlock(first.row, first.col, block.startRow, block.startCol)) continue;
       const available = maxRun(opt.exitRow, opt.exitCol, opt.direction, extra);
       if (available < 5) continue;
-      chosen = {
+      return {
         startRow: block.startRow,
         startCol: block.startCol,
         exitRow: opt.exitRow,
@@ -300,19 +332,20 @@ export function planImageClues(
         fieldType: directionToFieldType(opt.direction),
         answerLength: Math.min(9, available),
       };
-      break;
     }
-    if (!chosen) continue;
+    return null;
+  }
 
+  function commit(chosen: PlannedImageClue): void {
     for (let dr = -1; dr < 4; dr++) {
       for (let dc = -1; dc < 4; dc++) {
-        footprint.add(`${block.startRow + dr},${block.startCol + dc}`);
+        footprint.add(`${chosen.startRow + dr},${chosen.startCol + dc}`);
       }
     }
     for (let dr = 0; dr < 3; dr++) {
       for (let dc = 0; dc < 3; dc++) {
-        const row = block.startRow + dr;
-        const col = block.startCol + dc;
+        const row = chosen.startRow + dr;
+        const col = chosen.startCol + dc;
         if (row === chosen.exitRow && col === chosen.exitCol) continue;
         blocked.add(`${row},${col}`);
       }
@@ -322,8 +355,40 @@ export function planImageClues(
     for (let i = 0; i < 3; i++) {
       blocked.add(`${start.row + i * start.flowRow},${start.col + i * start.flowCol}`);
     }
-
     placed.push(chosen);
+  }
+
+  for (const quad of quads) {
+    if (placed.length >= count) break;
+    for (const block of candidatesInQuadrant(quad, rows, cols)) {
+      const chosen = tryPlace(block);
+      if (!chosen) continue;
+      commit(chosen);
+      break;
+    }
+  }
+
+  if (placed.length < count) {
+    const takenQuads = new Set(
+      placed.map((img) => quadrantOf(img.startRow + 1, img.startCol + 1, rows, cols))
+    );
+    const preferQuads = new Set(
+      [...takenQuads].map((quad) => OPPOSITE_QUAD[quad])
+    );
+    const fallback: Array<{ startRow: number; startCol: number; rank: number }> = [];
+    for (let r = 1; r <= rows - 3; r++) {
+      for (let c = 1; c <= cols - 3; c++) {
+        const quad = quadrantOf(r + 1, c + 1, rows, cols);
+        const rank = preferQuads.has(quad) ? 0 : takenQuads.has(quad) ? 2 : 1;
+        fallback.push({ startRow: r, startCol: c, rank });
+      }
+    }
+    fallback.sort((a, b) => a.rank - b.rank || Math.random() - 0.5);
+    for (const block of fallback) {
+      if (placed.length >= count) break;
+      const chosen = tryPlace(block);
+      if (chosen) commit(chosen);
+    }
   }
 
   return placed;

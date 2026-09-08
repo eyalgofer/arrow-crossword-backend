@@ -1,5 +1,5 @@
 import { Difficulty, Language } from '../../types';
-import { Puzzle, GridTemplate, Direction } from '../core/types';
+import { Puzzle, GridTemplate } from '../core/types';
 import { getClueProvider, ClueProvider } from '../core/clueProvider';
 import { generateTemplate } from './template-generator';
 import { solveGrid } from './grid-solver';
@@ -8,7 +8,7 @@ import { generatePuzzleFromGrid } from './puzzle-assembler';
 import { getSlotCells, getUncoveredCells } from './direction-utils';
 import { normalizeWord } from './validation-utils';
 import { createEmptyGridState, canPlaceWord, placeWord } from './grid-state';
-import { GridSize, IMAGE_CLUE_COUNT_LADDER, IMAGE_CLUE_SIZE_LADDER, MAX_GRID_SIZE, sizeFallbackChain } from '../utils/gridSizes';
+import { GridSize, IMAGE_CLUE_COUNT_LADDER, IMAGE_CLUE_SIZE_LADDER, MAX_GRID_SIZE, MIN_GRID_SIZE, sizeFallbackChain } from '../utils/gridSizes';
 import {
   catalogLetterLength,
   imageBlockCutouts,
@@ -19,33 +19,14 @@ import {
   planImageClues,
   PlannedImageClue,
 } from './imageClueCatalog';
-
-const HORIZONTAL_DIRS = new Set<Direction>(['across', 'down-across', 'up-across']);
-
-function directionMixOk(
-  slots: Array<{ direction: Direction }>,
-  logLabel?: string
-): boolean {
-  let horizontal = 0;
-  let vertical = 0;
-  const kinds = new Set<Direction>();
-  for (const slot of slots) {
-    kinds.add(slot.direction);
-    if (HORIZONTAL_DIRS.has(slot.direction)) horizontal += 1;
-    else vertical += 1;
-  }
-  const total = horizontal + vertical;
-  if (total === 0) return false;
-  const hShare = horizontal / total;
-  const vShare = vertical / total;
-  const ok = hShare >= 0.18 && vShare >= 0.18 && kinds.size >= 2;
-  if (!ok && logLabel) {
-    console.log(
-      `   … ${logLabel}: direction mix h=${horizontal} v=${vertical} kinds=${[...kinds].join(',')}`
-    );
-  }
-  return ok;
-}
+import {
+  formatQuality,
+  puzzleQualityOk,
+  scorePuzzle,
+  scoreTemplate,
+  shuffled,
+  templateQualityOk,
+} from './puzzle-quality';
 
 export class PuzzleGenerator {
   private wordIndex: CrossingIndex;
@@ -82,31 +63,37 @@ export class PuzzleGenerator {
     imageClueCount?: number;
     imageClueAttempts?: number;
   }): Puzzle[] {
-    const defaultRows = Math.min(config.rows ?? 12, MAX_GRID_SIZE);
-    const defaultCols = Math.min(config.cols ?? 12, MAX_GRID_SIZE);
+    const hebrewFloor = this.language === 'he' ? MIN_GRID_SIZE : 8;
+    const defaultRows = Math.min(Math.max(config.rows ?? hebrewFloor, hebrewFloor), MAX_GRID_SIZE);
+    const defaultCols = Math.min(Math.max(config.cols ?? hebrewFloor, hebrewFloor), MAX_GRID_SIZE);
     const puzzles: Puzzle[] = [];
 
     for (let i = 0; i < config.count; i++) {
-      const requested = config.sizes?.[i % (config.sizes?.length ?? 1)] ?? {
+      const raw = config.sizes?.[i % (config.sizes?.length ?? 1)] ?? {
         rows: defaultRows,
         cols: defaultCols,
       };
+      const requested =
+        this.language === 'he'
+          ? {
+              rows: Math.max(MIN_GRID_SIZE, Math.min(raw.rows, MAX_GRID_SIZE)),
+              cols: Math.max(MIN_GRID_SIZE, Math.min(raw.cols, MAX_GRID_SIZE)),
+            }
+          : {
+              rows: Math.min(raw.rows, MAX_GRID_SIZE),
+              cols: Math.min(raw.cols, MAX_GRID_SIZE),
+            };
       const chain =
         this.language === 'he' && !config.strictSize
           ? sizeFallbackChain(requested.rows, requested.cols)
-          : [
-              {
-                rows: Math.min(requested.rows, MAX_GRID_SIZE),
-                cols: Math.min(requested.cols, MAX_GRID_SIZE),
-              },
-            ];
+          : [requested];
 
       let generated: Puzzle | null = null;
       for (const size of chain) {
         const attempts = config.imageClueCount
-          ? (config.imageClueAttempts ?? 40)
+          ? (config.imageClueAttempts ?? 48)
           : config.strictSize
-            ? 24
+            ? 28
             : undefined;
         generated = this.tryGenerateOne(
           size.rows,
@@ -162,14 +149,12 @@ export class PuzzleGenerator {
       attemptOverride ??
       (this.language === 'he'
         ? cells >= 196
-          ? 16
-          : cells >= 144
-            ? 18
-            : cells >= 121
-              ? 16
-              : cells >= 100
-                ? 14
-                : 12
+          ? 24
+          : cells >= 169
+            ? 28
+            : cells >= 144
+              ? 24
+              : 20
         : 15);
 
     // Image clues: Hebrew only, and only when explicitly requested.
@@ -228,7 +213,7 @@ export class PuzzleGenerator {
       }
 
       let puzzle: Puzzle | null = null;
-      const bindTries = 1;
+      const bindTries = wantImages > 0 ? 4 : 1;
       for (let bindTry = 0; bindTry < bindTries; bindTry++) {
         if (bindTry > 0) this.clearImageBinds(template);
         if (!this.bindImageClues(template, imagePlan, this.imageClueCatalog)) {
@@ -240,7 +225,7 @@ export class PuzzleGenerator {
               `   … image attempt ${attempt + 1}: bind failed (${template.slots.length} slots, wanted ${wanted}, ${Date.now() - t0}ms)`
             );
           }
-          break;
+          continue;
         }
 
         if (wantImages > 0) {
@@ -255,21 +240,28 @@ export class PuzzleGenerator {
             if (attempt < 8 && bindTry === 0) {
               console.log(`   … image attempt ${attempt + 1}: ${holes} empty cells, retrying`);
             }
-            break;
+            continue;
           }
         }
 
-        if (template.slots.some((slot) => slot.length > 9 || slot.length < 3)) {
+        const maxLen = wantImages > 0 ? 9 : 11;
+        if (template.slots.some((slot) => slot.length > maxLen || slot.length < 3)) {
           if (wantImages > 0 && attempt < 8 && bindTry === 0) {
-            const bad = template.slots.filter((slot) => slot.length > 9 || slot.length < 3);
+            const bad = template.slots.filter((slot) => slot.length > maxLen || slot.length < 3);
             console.log(
               `   … image attempt ${attempt + 1}: unfillable slot lengths ${bad.map((s) => s.length).join(',')}`
             );
           }
-          break;
+          continue;
         }
 
-        if (wantImages > 0 && !directionMixOk(template.slots, bindTry === 0 ? `image attempt ${attempt + 1}` : undefined)) {
+        const templateStats = scoreTemplate(template);
+        if (this.language === 'he' && !templateQualityOk(templateStats, wantImages)) {
+          if (attempt < 8 && bindTry === 0) {
+            console.log(
+              `   … attempt ${attempt + 1}: template quality ${formatQuality(templateStats)}`
+            );
+          }
           break;
         }
 
@@ -279,10 +271,10 @@ export class PuzzleGenerator {
             .map((slot) => `${slot.direction}:${slot.length}`)
             .join(',');
           console.log(
-            `   … image attempt ${attempt + 1}: solving ${template.slots.length} slots [${images}] (${Date.now() - t0}ms tmpl)...`
+            `   … image attempt ${attempt + 1}: solving ${template.slots.length} slots [${images}] (${Date.now() - t0}ms tmpl) ${formatQuality(templateStats)}`
           );
         }
-        const solveTries = 1;
+        const solveTries = wantImages > 0 ? 3 : this.language === 'he' ? 2 : 1;
         for (let solveTry = 0; solveTry < solveTries && !puzzle; solveTry++) {
           puzzle = this.solveTemplate(template, meta);
         }
@@ -303,8 +295,17 @@ export class PuzzleGenerator {
         }
         continue;
       }
-      if (wantImages > 0 && !directionMixOk(puzzle.puzzleItems, `image attempt ${attempt + 1} solved`)) {
+      const stats = scorePuzzle(puzzle);
+      if (this.language === 'he' && !puzzleQualityOk(stats, wantImages)) {
+        if (attempt < 8) {
+          console.log(
+            `   … attempt ${attempt + 1}: filled but quality ${formatQuality(stats)}`
+          );
+        }
         continue;
+      }
+      if (this.language === 'he') {
+        console.log(`   quality ${formatQuality(stats)}`);
       }
       return puzzle;
     }
@@ -349,15 +350,24 @@ export class PuzzleGenerator {
 
     const usedSlots = new Set<string>();
     for (const img of imagePlan) {
-      const slot = template.slots.find(
-        (s) =>
-          !usedSlots.has(s.id) &&
-          s.startRow === img.exitRow &&
-          s.startCol === img.exitCol &&
-          s.direction === img.direction &&
-          s.length >= 5 &&
-          s.length <= 9
-      );
+      const slot =
+        template.slots.find(
+          (s) =>
+            !usedSlots.has(s.id) &&
+            s.startRow === img.exitRow &&
+            s.startCol === img.exitCol &&
+            s.direction === img.direction &&
+            s.length >= 5 &&
+            s.length <= 9
+        ) ??
+        template.slots.find(
+          (s) =>
+            !usedSlots.has(s.id) &&
+            s.startRow === img.exitRow &&
+            s.startCol === img.exitCol &&
+            s.length >= 5 &&
+            s.length <= 9
+        );
       if (!slot) return false;
 
       const fromExit = getSlotCells({
@@ -368,6 +378,7 @@ export class PuzzleGenerator {
         exitCol: img.exitCol,
         startRow: img.exitRow,
         startCol: img.exitCol,
+        direction: slot.direction,
       });
       if (
         fromExit.length < 3 ||
@@ -376,7 +387,9 @@ export class PuzzleGenerator {
         return false;
       }
 
-      const entries = catalog.filter((entry) => catalogLetterLength(entry) === slot.length);
+      const entries = shuffled(
+        catalog.filter((entry) => catalogLetterLength(entry) === slot.length)
+      );
       if (entries.length < 4) {
         console.log(`   … no image answer of length ${slot.length}`);
         return false;
@@ -478,15 +491,15 @@ export class PuzzleGenerator {
         cols,
         name: `${rows}x${cols} arrow crossword`,
         quiet: true,
-        maxIterations: this.language === 'he' ? (withImages ? (large ? 18 : 14) : large ? 22 : 18) : 8,
-        minPopulation: 3,
-        populationSize: this.language === 'he' ? (withImages ? 8 : large ? 8 : 6) : 5,
-        weakBreakCondition: this.language === 'he' ? (withImages ? 160 : large ? 180 : 130) : 80,
-        strongBreakCondition: this.language === 'he' ? (withImages ? 400 : large ? 450 : 350) : 250,
-        maxBoundaryRetries: withImages ? 2 : 2,
+        maxIterations: this.language === 'he' ? (withImages ? (large ? 40 : 32) : large ? 36 : 28) : 8,
+        minPopulation: 4,
+        populationSize: this.language === 'he' ? (withImages ? 12 : large ? 12 : 10) : 5,
+        weakBreakCondition: this.language === 'he' ? (withImages ? 400 : large ? 420 : 320) : 80,
+        strongBreakCondition: this.language === 'he' ? (withImages ? 900 : large ? 950 : 700) : 250,
+        maxBoundaryRetries: withImages ? 4 : 3,
         maxSlotLength: this.language === 'he' ? (withImages ? 9 : 11) : undefined,
-        sparse: this.language === 'he' && cells >= 81 && !withImages,
-        simpleArrows: withImages,
+        sparse: false,
+        simpleArrows: false,
         lattice: false,
         cutoutCells,
         lockedCells,
@@ -510,8 +523,8 @@ export class PuzzleGenerator {
     const cells = template.rows * template.cols;
     const hasImages = template.slots.some((slot) => slot.clueType === 'image');
     const maxSolveTimeMs = hasImages
-      ? 15000
-      : (this.language === 'he' ? 20 : 12) * 1000 + cells * (cells >= 256 ? 80 : 40);
+      ? 45000
+      : (this.language === 'he' ? 28 : 12) * 1000 + cells * (cells >= 256 ? 80 : 40);
     const jitter = new Map<string, number>();
     const wordScorer = (word: string, _placedWords: string[]) => {
       let j = jitter.get(word);
@@ -527,7 +540,7 @@ export class PuzzleGenerator {
     const result = solveGrid(template, this.wordIndex, {
       maxAttempts,
       maxSolveTimeMs,
-      maxTextSliceMs: hasImages ? 8000 : undefined,
+      maxTextSliceMs: hasImages ? 20000 : undefined,
       wordScorer,
       quiet: true,
     });
@@ -583,7 +596,7 @@ export function generatePuzzlesBatch(config: {
   });
 }
 
-/** Try 15×15 with the requested image-clue count, using mixed →↓ arrows. */
+/** Try 15×15 → 13×13 with mixed-arrow image clues. */
 export function generateLargestImageCluePuzzle(config: {
   category: string;
   startIndex: number;
@@ -599,7 +612,7 @@ export function generateLargestImageCluePuzzle(config: {
   const sizes = config.sizes ?? IMAGE_CLUE_SIZE_LADDER;
   for (const size of sizes) {
     for (const imageCount of counts) {
-      const attempts = config.imageClueAttempts ?? (imageCount >= 4 ? 64 : 32);
+      const attempts = config.imageClueAttempts ?? (imageCount >= 4 ? 64 : 48);
       console.log(
         `\n—— Trying ${size.rows}x${size.cols} with ${imageCount} image${imageCount === 1 ? '' : 's'} (${attempts} attempts) ——`
       );

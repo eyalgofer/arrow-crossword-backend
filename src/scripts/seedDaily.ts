@@ -6,6 +6,13 @@ import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import { assignPuzzlesToDateRange } from '../utils/dailyPuzzleUtils';
 import { Difficulty, Language } from '../types';
 import { connectToDatabase, closeDatabaseAndExit, handleScriptError, filterValidPuzzles } from './utils/scriptUtils';
+import {
+  ImageClueCatalogEntry,
+  loadGeneratedImageClueCatalog,
+  loadImageClueCatalogFromMongo,
+} from './generators/imageClueCatalog';
+import { IMAGE_CLUE_SIZE_LADDER } from './utils/gridSizes';
+import { normalizeWord } from './generators/validation-utils';
 
 dotenv.config();
 
@@ -17,14 +24,46 @@ const DAILY_PUZZLE_COUNT = 3;
 const langArgIndex = process.argv.indexOf('--lang');
 const language: Language = langArgIndex !== -1 && process.argv[langArgIndex + 1] === 'he' ? 'he' : 'en';
 
-// Hebrew users see Hebrew categories and titles
 const DAILY_CATEGORY = language === 'he' ? 'יומי' : 'Daily';
 const dailyTitle = (index: number) => language === 'he' ? `תשחץ יומי ${index + 1}` : `Daily Puzzle ${index + 1}`;
+
+function mergeCatalogs(
+  mongo: ImageClueCatalogEntry[],
+  local: ImageClueCatalogEntry[]
+): ImageClueCatalogEntry[] {
+  const byAnswer = new Map<string, ImageClueCatalogEntry>();
+  for (const entry of [...mongo, ...local]) {
+    if (!entry.answer || !entry.imageUrl) continue;
+    byAnswer.set(normalizeWord(entry.answer), entry);
+  }
+  return [...byAnswer.values()];
+}
 
 const seedDaily = async () => {
   try {
     await connectToDatabase();
-    const sizeLabel = language === 'he' ? 'easy, mixed 13-13 grids' : `easy ${DAILY_GRID_ROWS}x${DAILY_GRID_COLS}`;
+
+    let imageClueCatalog: ImageClueCatalogEntry[] | undefined;
+    let imageClueCount = 0;
+    if (language === 'he') {
+      const mongoCatalog = await loadImageClueCatalogFromMongo();
+      const localCatalog = loadGeneratedImageClueCatalog();
+      imageClueCatalog = mergeCatalogs(mongoCatalog, localCatalog);
+      if (imageClueCatalog.length < 2) {
+        console.error(
+          `Need image clues, found ${imageClueCatalog.length}. ` +
+            `Run scripts/arrow-image-pipeline \`npm run process\` first.`
+        );
+        await closeDatabaseAndExit(1);
+        return;
+      }
+      imageClueCount = 2;
+    }
+
+    const sizeLabel =
+      language === 'he'
+        ? '13–15 mixed-arrow grids with 2 images'
+        : `easy ${DAILY_GRID_ROWS}x${DAILY_GRID_COLS}`;
     console.log(`📅 Generating ${DAILY_PUZZLE_COUNT} daily puzzles (${language}): ${sizeLabel}...\n`);
 
     const batch = generatePuzzlesBatch({
@@ -34,9 +73,14 @@ const seedDaily = async () => {
       startIndex: 0,
       rows: DAILY_GRID_ROWS,
       cols: DAILY_GRID_COLS,
+      sizes: language === 'he' ? IMAGE_CLUE_SIZE_LADDER : undefined,
       language,
+      strictSize: language === 'he',
+      imageClueCount,
+      imageClueCatalog,
+      imageClueAttempts: imageClueCount > 0 ? 48 : undefined,
     });
-    
+
     const validPuzzles = filterValidPuzzles(batch, validatePuzzleBoundaries);
 
     if (validPuzzles.length === 0) {
@@ -46,7 +90,6 @@ const seedDaily = async () => {
 
     console.log(`✅ Generated ${validPuzzles.length} valid puzzles\n`);
 
-    // Save puzzles to Puzzles collection
     const savedPuzzles = await Puzzle.insertMany(
       validPuzzles.map((puzzle, index) => ({
         ...puzzle,
@@ -55,7 +98,6 @@ const seedDaily = async () => {
     );
 
     console.log(`✅ Saved ${savedPuzzles.length} puzzles to Puzzles collection\n`);
-
 
     const startDate = new Date();
     startDate.setHours(0, 0, 0, 0);
