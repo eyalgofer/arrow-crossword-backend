@@ -3,11 +3,13 @@ import { Puzzle } from '../models/Puzzle';
 import { PuzzlePackage } from '../models/PuzzlePackage';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { DailyPuzzle } from '../models/DailyPuzzle';
+import { FavPuzzle } from '../models/FavPuzzle';
 import { User } from '../models/User';
 import { AuthRequest, ProgressSummary } from '../types';
 import { resolveLanguage, languageFilter } from '../utils/language';
 import { withoutSingleWordEnumeration } from '../utils/enumeration';
 import { getDayOfYear } from '../utils/dailyPuzzleUtils';
+import { buildPuzzlePreview, FAV_PICK_ACCENTS, toCardDifficulty } from '../utils/puzzlePreview';
 
 export const getPuzzles = async (req: AuthRequest, res: Response) => {
   try {
@@ -165,6 +167,55 @@ export const getDailyPuzzleSolvedCount = async (req: AuthRequest, res: Response)
   } catch (error) {
     console.error('Get daily puzzle solved count error:', error);
     res.status(500).json({ error: 'Failed to get daily puzzle solved count' });
+  }
+};
+
+/**
+ * GET /api/puzzles/favorites
+ * Curated weekly picks for the Play tab. Lean card payload only.
+ */
+export const getFavoritePuzzles = async (req: AuthRequest, res: Response) => {
+  try {
+    const language = resolveLanguage(req);
+    const favs = await FavPuzzle.find({
+      language: languageFilter(language),
+      isActive: { $ne: false },
+    })
+      .sort({ order: 1 })
+      .populate('puzzleId')
+      .lean();
+
+    const active = favs.filter((fav) => fav.puzzleId);
+    const puzzleIds = active.map((fav) => (fav.puzzleId as any)._id);
+
+    const counts = puzzleIds.length
+      ? await UserPuzzleProgress.aggregate<{ _id: unknown; count: number }>([
+          { $match: { puzzleId: { $in: puzzleIds }, isCompleted: true } },
+          { $group: { _id: '$puzzleId', count: { $sum: 1 } } },
+        ])
+      : [];
+    const solvedByPuzzle = new Map(counts.map((row) => [String(row._id), row.count]));
+
+    const picks = active.map((fav, index) => {
+      const puzzle = fav.puzzleId as any;
+      const preview = buildPuzzlePreview(puzzle.grid, puzzle.puzzleItems || []);
+      const accent = fav.accent || FAV_PICK_ACCENTS[index % FAV_PICK_ACCENTS.length];
+      return {
+        id: String(puzzle._id),
+        gridSize: preview.gridSize,
+        difficulty: toCardDifficulty(puzzle.difficulty),
+        solvedCount: solvedByPuzzle.get(String(puzzle._id)) ?? 0,
+        ...(fav.badge ? { badge: fav.badge } : {}),
+        accent,
+        shape: preview.shape,
+        letters: preview.letters,
+      };
+    });
+
+    res.json({ picks });
+  } catch (error) {
+    console.error('Get favorite puzzles error:', error);
+    res.status(500).json({ error: 'Failed to get favorite puzzles' });
   }
 };
 

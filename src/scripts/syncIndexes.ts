@@ -16,6 +16,7 @@ import dotenv from 'dotenv';
 import { Puzzle } from '../models/Puzzle';
 import { PuzzlePackage } from '../models/PuzzlePackage';
 import { DailyPuzzle } from '../models/DailyPuzzle';
+import { FavPuzzle } from '../models/FavPuzzle';
 import { MultiplayerPuzzle } from '../models/MultiplayerPuzzle';
 import { User } from '../models/User';
 import { RefreshToken } from '../models/RefreshToken';
@@ -30,7 +31,7 @@ const syncIndexes = async () => {
   try {
     await connectToDatabase();
 
-    for (const model of [Puzzle, PuzzlePackage, DailyPuzzle, MultiplayerPuzzle, User, RefreshToken, Match, MatchWordClaim, Invite]) {
+    for (const model of [Puzzle, PuzzlePackage, DailyPuzzle, FavPuzzle, MultiplayerPuzzle, User, RefreshToken, Match, MatchWordClaim, Invite]) {
       const dropped = await model.syncIndexes();
       console.log(`✅ ${model.modelName}: indexes synced${dropped.length > 0 ? ` (dropped: ${dropped.join(', ')})` : ''}`);
     }

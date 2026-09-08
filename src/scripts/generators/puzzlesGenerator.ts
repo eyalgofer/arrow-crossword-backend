@@ -197,7 +197,7 @@ export class PuzzleGenerator {
         continue;
       }
       const imageDirs = new Set(imagePlan.map((img) => img.direction));
-      if (wantImages > 0 && imageDirs.size < 2) {
+      if (wantImages >= 2 && imageDirs.size < 2) {
         continue;
       }
 
@@ -205,12 +205,7 @@ export class PuzzleGenerator {
         imagePlan.length > 0 ? imageBlockCutouts(imagePlan) : undefined;
       const imageLocks = imagePlan.length > 0 ? imageExitLocks(imagePlan) : [];
       const cornerLock = wantImages
-        ? ([
-            { row: 0, col: 0, type: '1' as const },
-            { row: 0, col: 1, type: '0' as const },
-            { row: 0, col: 2, type: '0' as const },
-            { row: 0, col: 3, type: '0' as const },
-          ] as const)
+        ? ([{ row: 0, col: 0, type: '1' as const }] as const)
         : [];
       const lockedCells = [...cornerLock, ...imageLocks];
       const protectedCells = [...cornerLock, ...imageLocks];
@@ -515,7 +510,7 @@ export class PuzzleGenerator {
     const cells = template.rows * template.cols;
     const hasImages = template.slots.some((slot) => slot.clueType === 'image');
     const maxSolveTimeMs = hasImages
-      ? 40000
+      ? 15000
       : (this.language === 'he' ? 20 : 12) * 1000 + cells * (cells >= 256 ? 80 : 40);
     const jitter = new Map<string, number>();
     const wordScorer = (word: string, _placedWords: string[]) => {
@@ -588,20 +583,23 @@ export function generatePuzzlesBatch(config: {
   });
 }
 
-/** Try 15×15 with 2 image clues, using mixed →↓ arrows. */
+/** Try 15×15 with the requested image-clue count, using mixed →↓ arrows. */
 export function generateLargestImageCluePuzzle(config: {
   category: string;
   startIndex: number;
   imageClueCount?: number;
   imageClueCatalog: ImageClueCatalogEntry[];
+  imageClueAttempts?: number;
+  sizes?: GridSize[];
 }): Puzzle | null {
   const generator = new PuzzleGenerator('he', config.imageClueCatalog);
   const counts = config.imageClueCount
     ? [config.imageClueCount]
     : IMAGE_CLUE_COUNT_LADDER;
-  for (const size of IMAGE_CLUE_SIZE_LADDER) {
+  const sizes = config.sizes ?? IMAGE_CLUE_SIZE_LADDER;
+  for (const size of sizes) {
     for (const imageCount of counts) {
-      const attempts = 32;
+      const attempts = config.imageClueAttempts ?? (imageCount >= 4 ? 64 : 32);
       console.log(
         `\n—— Trying ${size.rows}x${size.cols} with ${imageCount} image${imageCount === 1 ? '' : 's'} (${attempts} attempts) ——`
       );
