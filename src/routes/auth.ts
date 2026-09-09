@@ -69,7 +69,7 @@ router.post('/google', async (req: Request, res: Response) => {
         firebaseUid: googleUser.googleId,
         email: googleUser.email,
         photoURL: googleUser.picture,
-        coins: 60,
+        coins: 100,
       });
       await user.save();
       console.log('Created new user:', user.email);
@@ -143,7 +143,7 @@ router.post('/apple', async (req: Request, res: Response) => {
         firebaseUid: appleUser.appleId,
         email: appleUser.email,
         photoURL: undefined,
-        coins: 60,
+        coins: 100,
       });
       await user.save();
       console.log('Created new Apple user:', user.email);
