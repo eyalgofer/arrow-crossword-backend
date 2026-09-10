@@ -3,12 +3,15 @@
  *
  * Usage:
  *   npx ts-node src/scripts/seedImageCluePuzzle.ts --package 3 --puzzle 1
+ *   npx ts-node src/scripts/seedImageCluePuzzle.ts --package 3 --puzzle 1 --from tmp-image-clue-puzzle.json
  *   npm run seed:image-clues
  */
 
 import dotenv from 'dotenv';
 dotenv.config();
 
+import fs from 'fs';
+import path from 'path';
 import mongoose from 'mongoose';
 import { Puzzle } from '../models/Puzzle';
 import { PuzzlePackage } from '../models/PuzzlePackage';
@@ -45,6 +48,7 @@ function argValue(name: string, fallback?: string): string | undefined {
 const PACKAGE_NUMBER = parseInt(argValue('--package', '3') ?? '3', 10);
 const PUZZLE_NUMBER = parseInt(argValue('--puzzle', '1') ?? '1', 10);
 const MIN_IMAGE_CLUES = parseInt(argValue('--images', '2') ?? '2', 10);
+const FROM_FILE = argValue('--from');
 const PUZZLE_TITLE = `#${PUZZLE_NUMBER}`;
 
 function mergeCatalogs(
@@ -194,7 +198,17 @@ async function main() {
       `${target.puzzleItems.filter((item) => item.clueType === 'image').length} images`
   );
 
-  const puzzle = await generateFresh(catalog);
+  let puzzle: GeneratedPuzzle;
+  if (FROM_FILE) {
+    const filePath = path.resolve(FROM_FILE);
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`Puzzle file not found: ${filePath}`);
+    }
+    console.log(`Loading puzzle from ${filePath}`);
+    puzzle = JSON.parse(fs.readFileSync(filePath, 'utf8')) as GeneratedPuzzle;
+  } else {
+    puzzle = await generateFresh(catalog);
+  }
   puzzle.title = PUZZLE_TITLE;
   const boundaryErrors = validatePuzzleBoundaries(puzzle);
   if (boundaryErrors.length > 0) {
