@@ -211,9 +211,28 @@ export function solveGrid(
     return true;
   }
 
+  function textSlotsViable(state: GridState): boolean {
+    for (const slot of textSlots) {
+      const cells = getSlotCells(slot);
+      const constraints = getCrossingConstraints(state, cells);
+      if (constraints.size === 0) {
+        const rowDelta = cells.length >= 2 ? cells[1].row - cells[0].row : 0;
+        const colDelta = cells.length >= 2 ? cells[1].col - cells[0].col : 0;
+        if (!canPlaceWord(state, 'א'.repeat(slot.length), cells, rowDelta, colDelta)) {
+          return false;
+        }
+        continue;
+      }
+      if (getCandidates(state, slot, 1).length === 0) return false;
+    }
+    return true;
+  }
+
   function fillImages(state: GridState, remainingImages: ClueSlot[]): GridState | null {
     if (timedOut()) return null;
     if (remainingImages.length === 0) {
+      // Reject image combos that already zero out a text slot — fail fast.
+      if (!textSlotsViable(state)) return null;
       textDeadline =
         config.maxTextSliceMs !== undefined
           ? Date.now() + config.maxTextSliceMs
@@ -233,6 +252,9 @@ export function solveGrid(
       if (timedOut()) return null;
       if (!canPlaceWord(state, word, cells, rowDelta, colDelta)) continue;
       const placed = placeWord(state, slot.id, word, cells, rowDelta, colDelta);
+      // Partial FC: remaining image slots + any already-constrained text.
+      if (newImages.length === 0 && !textSlotsViable(placed)) continue;
+      if (newImages.some((img) => getCandidates(placed, img, 1).length === 0)) continue;
       const result = fillImages(placed, newImages);
       if (result) return result;
     }
@@ -297,8 +319,7 @@ export function solveGrid(
       return null;
     }
   }
-  const afterImages = fillImages(prefilledState, imageSlots);
-  const result = afterImages;
+  const result = fillImages(prefilledState, imageSlots);
 
   if (!config.quiet) {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);

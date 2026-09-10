@@ -106,17 +106,25 @@ export function isInImageBlock(
 
 export function imageExitLocks(
   blocks: Array<{
+    startRow: number;
+    startCol: number;
     exitRow: number;
     exitCol: number;
     fieldType: ImageExitFieldType;
     direction: Direction;
+    answerLength?: number;
   }>
 ): Array<{ row: number; col: number; type: ImageExitFieldType | '0' }> {
   const locks: Array<{ row: number; col: number; type: ImageExitFieldType | '0' }> = [];
   for (const b of blocks) {
     locks.push({ row: b.exitRow, col: b.exitCol, type: b.fieldType });
     const start = firstAnswerCell(b.exitRow, b.exitCol, b.direction);
-    for (let i = 0; i < 3; i++) {
+    // Protect only the first few letters so repair can still place a splitter
+    // at the catalog target length (5–8). Full-length protection made image
+    // words run to the edge (>9) and bind failed, while locked stoppers
+    // created unfixable short words.
+    const protectedLetters = 4;
+    for (let i = 0; i < protectedLetters; i++) {
       locks.push({
         row: start.row + i * start.flowRow,
         col: start.col + i * start.flowCol,
@@ -171,6 +179,9 @@ const ALL_IMAGE_DIRS: Direction[] = [
   'up-across',
 ];
 
+/** Prefer straight arrows for image exits — bent exits over-constrain the CSP. */
+const PREFERRED_IMAGE_DIRS: Direction[] = ['across', 'down', 'down-across', 'up-across'];
+
 type ImageQuadrant = Quadrant;
 
 const OPPOSITE_QUAD: Record<ImageQuadrant, ImageQuadrant> = {
@@ -220,20 +231,51 @@ function inBounds(row: number, col: number, rows: number, cols: number): boolean
   return row >= 0 && row < rows && col >= 0 && col < cols;
 }
 
+/** Prefer true corners / edges — newspaper תשחץ puts photo blocks there. */
+function cornerBias(
+  startRow: number,
+  startCol: number,
+  rows: number,
+  cols: number,
+  quad: ImageQuadrant
+): number {
+  const maxR = rows - 3;
+  const maxC = cols - 3;
+  const distCorner =
+    quad === 'NW'
+      ? startRow + startCol
+      : quad === 'NE'
+        ? startRow + (maxC - startCol)
+        : quad === 'SW'
+          ? (maxR - startRow) + startCol
+          : (maxR - startRow) + (maxC - startCol);
+  return distCorner;
+}
+
 function candidatesInQuadrant(
   quad: ImageQuadrant,
   rows: number,
   cols: number
 ): Array<{ startRow: number; startCol: number }> {
   const cells: Array<{ startRow: number; startCol: number }> = [];
-  for (let r = 1; r <= rows - 3; r++) {
-    for (let c = 1; c <= cols - 3; c++) {
+  // Allow row/col 0 so photos can sit in absolute corners (like the references).
+  for (let r = 0; r <= rows - 3; r++) {
+    for (let c = 0; c <= cols - 3; c++) {
       if (quadrantOf(r + 1, c + 1, rows, cols) === quad) {
         cells.push({ startRow: r, startCol: c });
       }
     }
   }
-  return shuffleCopy(cells);
+  cells.sort(
+    (a, b) =>
+      cornerBias(a.startRow, a.startCol, rows, cols, quad) -
+        cornerBias(b.startRow, b.startCol, rows, cols, quad) ||
+      Math.random() - 0.5
+  );
+  // Keep a little randomness among the best ~8 corner candidates.
+  const head = cells.slice(0, Math.min(8, cells.length));
+  const tail = cells.slice(8);
+  return [...shuffleCopy(head), ...shuffleCopy(tail)];
 }
 
 function placementOrder(count: number): ImageQuadrant[] {
@@ -257,12 +299,25 @@ export function planImageClues(
   rows: number,
   cols: number,
   count: number = 3,
-  _preferredLengths: number[] = [8, 7, 6, 9, 5]
+  preferredLengths: number[] = [7, 6, 5]
 ): PlannedImageClue[] {
   const placed: PlannedImageClue[] = [];
   const footprint = new Set<string>();
   const blocked = new Set<string>();
   const quads = placementOrder(count);
+  const lengthPrefs =
+    preferredLengths.length > 0 ? preferredLengths : [7, 6, 5];
+
+  function pickAnswerLength(available: number): number | null {
+    if (available < 5) return null;
+    // Prefer 5–7 (dense pools); allow 8 when needed.
+    const prefs = lengthPrefs.filter((len) => len >= 5 && len <= 8);
+    const ordered = prefs.length > 0 ? prefs : [7, 6, 5, 8];
+    for (const len of ordered) {
+      if (len <= available) return len;
+    }
+    return Math.min(8, available);
+  }
 
   function isImageInterior(
     row: number,
@@ -305,8 +360,14 @@ export function planImageClues(
 
     const usedDirs = new Set(placed.map((img) => img.direction));
     const options = exitOptions(block.startRow, block.startCol);
+    const rankDir = (d: Direction) => {
+      const pref = PREFERRED_IMAGE_DIRS.indexOf(d);
+      return pref === -1 ? 100 : pref;
+    };
     const unused = shuffleCopy(options.filter((opt) => !usedDirs.has(opt.direction)));
     const used = shuffleCopy(options.filter((opt) => usedDirs.has(opt.direction)));
+    unused.sort((a, b) => rankDir(a.direction) - rankDir(b.direction));
+    used.sort((a, b) => rankDir(a.direction) - rankDir(b.direction));
     const ordered = [...unused, ...used];
     const extra = {
       startRow: block.startRow,
@@ -315,6 +376,7 @@ export function planImageClues(
       exitCol: block.startCol,
     };
 
+    let fallback: PlannedImageClue | null = null;
     for (const opt of ordered) {
       extra.exitRow = opt.exitRow;
       extra.exitCol = opt.exitCol;
@@ -322,18 +384,22 @@ export function planImageClues(
       if (!inBounds(first.row, first.col, rows, cols)) continue;
       if (isInsideBlock(first.row, first.col, block.startRow, block.startCol)) continue;
       const available = maxRun(opt.exitRow, opt.exitCol, opt.direction, extra);
-      if (available < 5) continue;
-      return {
+      const answerLength = pickAnswerLength(available);
+      if (answerLength == null) continue;
+      const candidate: PlannedImageClue = {
         startRow: block.startRow,
         startCol: block.startCol,
         exitRow: opt.exitRow,
         exitCol: opt.exitCol,
         direction: opt.direction,
         fieldType: directionToFieldType(opt.direction),
-        answerLength: Math.min(9, available),
+        answerLength,
       };
+      // Prefer catalog-rich mid lengths (5–7).
+      if (answerLength >= 5 && answerLength <= 7) return candidate;
+      if (!fallback) fallback = candidate;
     }
-    return null;
+    return fallback;
   }
 
   function commit(chosen: PlannedImageClue): void {
@@ -352,7 +418,9 @@ export function planImageClues(
     }
     blocked.add(`${chosen.exitRow},${chosen.exitCol}`);
     const start = firstAnswerCell(chosen.exitRow, chosen.exitCol, chosen.direction);
-    for (let i = 0; i < 3; i++) {
+    // Reserve room for a 5–8 letter image answer (planner + repair will terminate).
+    const corridor = Math.min(Math.max(chosen.answerLength, 5), 8);
+    for (let i = 0; i < corridor; i++) {
       blocked.add(`${start.row + i * start.flowRow},${start.col + i * start.flowCol}`);
     }
     placed.push(chosen);
@@ -376,10 +444,13 @@ export function planImageClues(
       [...takenQuads].map((quad) => OPPOSITE_QUAD[quad])
     );
     const fallback: Array<{ startRow: number; startCol: number; rank: number }> = [];
-    for (let r = 1; r <= rows - 3; r++) {
-      for (let c = 1; c <= cols - 3; c++) {
+    for (let r = 0; r <= rows - 3; r++) {
+      for (let c = 0; c <= cols - 3; c++) {
         const quad = quadrantOf(r + 1, c + 1, rows, cols);
-        const rank = preferQuads.has(quad) ? 0 : takenQuads.has(quad) ? 2 : 1;
+        const edge =
+          r === 0 || c === 0 || r === rows - 3 || c === cols - 3 ? 0 : 1;
+        const rank =
+          (preferQuads.has(quad) ? 0 : takenQuads.has(quad) ? 2 : 1) * 10 + edge;
         fallback.push({ startRow: r, startCol: c, rank });
       }
     }

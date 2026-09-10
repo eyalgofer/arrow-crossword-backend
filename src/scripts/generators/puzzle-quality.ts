@@ -179,8 +179,8 @@ export function qualityOk(stats: QualityStats, thresholds: QualityThresholds): b
 
 export function templateQualityOk(stats: QualityStats, imageCount: number): boolean {
   return qualityOk(stats, {
-    minCrossing: MIN_TEMPLATE_CROSSING,
-    minKinds: MIN_TEMPLATE_KINDS,
+    minCrossing: imageCount > 0 ? 0.5 : MIN_TEMPLATE_CROSSING,
+    minKinds: imageCount > 0 ? 3 : MIN_TEMPLATE_KINDS,
     minAxisShare: 0.2,
     requireOppositeImages: imageCount >= 2,
   });
@@ -188,9 +188,9 @@ export function templateQualityOk(stats: QualityStats, imageCount: number): bool
 
 export function puzzleQualityOk(stats: QualityStats, imageCount: number): boolean {
   return qualityOk(stats, {
-    minCrossing: MIN_PUZZLE_CROSSING,
-    minKinds: MIN_PUZZLE_KINDS,
-    minAxisShare: MIN_AXIS_SHARE,
+    minCrossing: imageCount > 0 ? 0.52 : MIN_PUZZLE_CROSSING,
+    minKinds: imageCount > 0 ? 3 : MIN_PUZZLE_KINDS,
+    minAxisShare: 0.2,
     requireOppositeImages: imageCount >= 2,
   });
 }

@@ -1,11 +1,12 @@
 /**
- * Generate the largest Hebrew image-clue puzzle that will fill, and write it to disk.
+ * Generate a 15×15 Hebrew image-clue puzzle and write it to disk.
  * Usage: npx ts-node src/scripts/generateImageCluePuzzle.ts
  */
 import { generateLargestImageCluePuzzle } from './generators/puzzlesGenerator';
 import { loadGeneratedImageClueCatalog } from './generators/imageClueCatalog';
 import { getUncoveredCells } from './generators/direction-utils';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
+import { formatQuality, scorePuzzle } from './generators/puzzle-quality';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -22,7 +23,7 @@ async function main() {
   }
 
   console.log(
-    `Generating mixed-arrow תשחץ (15→13) with 2 image clues (catalog ${catalog.length})...`
+    `Generating 15×15 mixed-arrow תשחץ with 2 image clues (catalog ${catalog.length})...`
   );
   const t0 = Date.now();
   const p = generateLargestImageCluePuzzle({
@@ -30,6 +31,8 @@ async function main() {
     startIndex: 9,
     imageClueCount: 2,
     imageClueCatalog: catalog,
+    imageClueAttempts: 80,
+    sizes: [{ rows: 15, cols: 15 }],
   });
   console.log(`elapsed ${Date.now() - t0}ms`);
 
@@ -51,9 +54,11 @@ async function main() {
   }
 
   const images = p.puzzleItems.filter((i) => i.clueType === 'image');
+  const stats = scorePuzzle(p);
   console.log(
     `OK ${p.grid.rows}x${p.grid.cols} clues=${p.puzzleItems.length} images=${images.length}`
   );
+  console.log(`quality ${formatQuality(stats)}`);
   for (const img of images) {
     console.log(
       `  #${img.number} ${img.direction} ${img.answer} block(${img.startRow},${img.startCol}) exit(${img.exitRow},${img.exitCol})` +

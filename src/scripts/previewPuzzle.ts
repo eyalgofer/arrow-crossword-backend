@@ -122,7 +122,7 @@ const puzzles = generatePuzzlesBatch({
   strictSize: language === 'he',
   imageClueCount: language === 'he' ? imageClueCount : 0,
   imageClueCatalog,
-  imageClueAttempts: imageClueCount > 0 ? 48 : undefined,
+  imageClueAttempts: imageClueCount > 0 ? (rows >= 15 && cols >= 15 ? 60 : 48) : undefined,
 });
 
 for (const puzzle of puzzles) {

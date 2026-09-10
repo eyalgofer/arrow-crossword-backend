@@ -841,10 +841,50 @@ function createRandomMask(config: GeneratorConfig): Mask {
   initializeBorders(mask, config.simpleArrows);
   applyFixedCells(mask, config);
 
-  // Rest starts as letter fields (per thesis)
-  // The hillclimber will find good positions for definition fields
+  // With image cutouts, sprinkle interior dual-friendly clues so repair starts
+  // closer to a newspaper-style packed grid (references are dense with duals).
+  if ((config.cutoutCells?.length ?? 0) > 0 && !config.simpleArrows) {
+    seedNewspaperClues(mask, config);
+    applyFixedCells(mask, config);
+  }
 
   return mask;
+}
+
+/**
+ * Stagger short →/↓ (and occasional dual) clues so 15×15 image boards look
+ * like Swedish/Hebrew newspaper תשחץ rather than sparse border-only seeds.
+ */
+function seedNewspaperClues(mask: Mask, config: GeneratorConfig): void {
+  const locked = lockedKeySet(config);
+  const step = mask.rows >= 15 ? 3 : 4;
+  const phase = Math.floor(Math.random() * step);
+
+  for (let r = 1; r < mask.rows - 1; r++) {
+    for (let c = 1; c < mask.cols - 1; c++) {
+      if (mask.grid[r][c] === '#' || locked.has(`${r},${c}`)) continue;
+      if (mask.grid[r][c] !== '0') continue;
+      if ((r + c + phase) % step !== 0) continue;
+      // Denser clues → shorter slots → much higher Hebrew fill rate.
+      if (Math.random() > 0.3) continue;
+
+      const allowed = getAllowedFieldTypes(mask, r, c, config.simpleArrows);
+      const duals = allowed.filter((t) => t.length === 2);
+      const singles = allowed.filter((t) => t === '1' || t === '2');
+      const mixed = allowed.filter(
+        (t) => t === '3' || t === '4' || t === '5' || t === '6'
+      );
+      let pick: CellValue | null = null;
+      if (duals.length > 0 && Math.random() < 0.28) {
+        pick = duals[Math.floor(Math.random() * duals.length)];
+      } else if (singles.length > 0 && Math.random() < 0.65) {
+        pick = singles[Math.floor(Math.random() * singles.length)];
+      } else if (mixed.length > 0 && Math.random() < 0.25) {
+        pick = mixed[Math.floor(Math.random() * mixed.length)];
+      }
+      if (pick) mask.grid[r][c] = pick;
+    }
+  }
 }
 
 // ============================================================================
@@ -1564,7 +1604,7 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
     repaired.grid[row][col] !== '#' &&
     !protectedKeys.has(`${row},${col}`);
 
-  for (let pass = 0; pass < 48; pass++) {
+  for (let pass = 0; pass < ((config.cutoutCells?.length ?? 0) > 0 ? 72 : 48); pass++) {
     pinProtected();
     const words = findAllWords(repaired);
     let changed = false;
@@ -1665,9 +1705,11 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
 
     for (const word of words) {
       const defKey = `${word.definitionRow},${word.definitionCol}`;
-      const imageWordTooLong = protectedKeys.has(defKey) && word.length > 8;
+      const isImageExit = protectedKeys.has(defKey);
+      const imageWordTooLong = isImageExit && word.length > 7;
       if (word.length <= maxLen && !imageWordTooLong) continue;
-      const splitAt = imageWordTooLong ? 4 : 3;
+      // Image exits: prefer splitting at catalog-friendly 5–7.
+      const splitAt = imageWordTooLong ? 5 : 3;
       const splitUntil = imageWordTooLong
         ? Math.min(7, word.length - 3)
         : word.length - 4;
@@ -1683,11 +1725,8 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
     if (changed) continue;
 
     const hasCutouts = (config.cutoutCells?.length ?? 0) > 0;
-    if (!hasCutouts && tryMergeDuals(repaired, canEdit, simpleArrows, maxLen)) {
-      changed = true;
-      continue;
-    }
 
+    // Cover holes BEFORE dual merges — otherwise dual packing can starve coverage.
     const coverage = analyzeCoverage(repaired, words);
     const uncovered: Array<{ row: number; col: number }> = [];
     for (const [key, info] of coverage) {
@@ -1699,8 +1738,14 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
     for (const cell of uncovered) {
       if (!canEdit(cell.row, cell.col)) continue;
       if (
-        !hasCutouts &&
-        tryStackCover(repaired, cell.row, cell.col, canEdit, simpleArrows, maxLen)
+        tryStackCover(
+          repaired,
+          cell.row,
+          cell.col,
+          canEdit,
+          hasCutouts || simpleArrows,
+          maxLen
+        )
       ) {
         changed = true;
         break;
@@ -1711,6 +1756,14 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
       changed = true;
       break;
     }
+    if (changed) continue;
+
+    // Dual packing for newspaper feel (→↓ only around image cutouts).
+    if (tryMergeDuals(repaired, canEdit, hasCutouts || simpleArrows, maxLen)) {
+      changed = true;
+      continue;
+    }
+
     if (!changed) break;
   }
 
@@ -1737,6 +1790,85 @@ function paintLatticeMask(mask: Mask): void {
         mask.grid[r][c] = '0';
       }
     }
+  }
+}
+
+/**
+ * Newspaper-style →↓ lattice for 13–15 grids (Swedish/Hebrew תשחץ look).
+ * Dual clues on lattice nodes; 3–4 letter runs between nodes — very fillable.
+ * Image cutouts/locks are applied on top; repairPackedMask heals around them.
+ * A few safe bent arrows are sprinkled so quality gates see mixed directions.
+ */
+function paintNewspaperMask(mask: Mask): void {
+  const { rows, cols } = mask;
+  // Match the proven 16×16 lattice rhythm (step 5):
+  // clue rows: → on the lattice columns, ↓ just before the next node / at the edge
+  // other rows: → on the lattice columns only
+  const step = 5;
+
+  for (let r = 0; r < rows; r++) {
+    const clueRow = r % step === 0 && r < rows - 1;
+    for (let c = 0; c < cols; c++) {
+      if (clueRow) {
+        if (c % step === 0 && c < cols - 1) {
+          mask.grid[r][c] = '1';
+        } else if (c % step === step - 1 || c === cols - 1) {
+          mask.grid[r][c] = '2';
+        } else {
+          mask.grid[r][c] = '0';
+        }
+      } else if (c % step === 0 && c < cols - 1) {
+        mask.grid[r][c] = '1';
+      } else {
+        mask.grid[r][c] = '0';
+      }
+    }
+  }
+
+  // Add duals only on clue-row lattice nodes when both arrows have room
+  // (→ has letters to the right, ↓ has letters below — not another → cell).
+  for (let r = 0; r < rows - 1; r += step) {
+    for (let c = 0; c < cols - 1; c += step) {
+      if (mask.grid[r][c] !== '1') continue;
+      // ↓ needs the cell below to be a letter (not another across clue).
+      if (mask.grid[r + 1][c] !== '0') continue;
+      mask.grid[r][c] = '12';
+    }
+  }
+}
+
+/** Convert a few →/↓ clues to bent arrows where geometry allows (mixed look). */
+function sprinkleBentArrows(mask: Mask, want: number): void {
+  const bent: ArrowType[] = ['3', '4', '5', '6'];
+  const candidates: Array<{ row: number; col: number }> = [];
+  for (let r = 0; r < mask.rows; r++) {
+    for (let c = 0; c < mask.cols; c++) {
+      const arrows = arrowTypesIn(mask.grid[r][c]);
+      if (arrows.length === 1 && (arrows[0] === '1' || arrows[0] === '2')) {
+        candidates.push({ row: r, col: c });
+      }
+    }
+  }
+  // Shuffle
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+  let placed = 0;
+  for (const { row, col } of candidates) {
+    if (placed >= want) break;
+    const keep = arrowTypesIn(mask.grid[row][col])[0];
+    const options = bent.filter(
+      (type) =>
+        isHorizontalWord(keep) !== isHorizontalWord(type) &&
+        arrowGeometryOk(mask, row, col, type) &&
+        bentArrowIsSafe(mask, row, col, type) &&
+        lettersFromArrow(mask, row, col, type).length >= 3
+    );
+    if (options.length === 0) continue;
+    const add = options[Math.floor(Math.random() * options.length)];
+    mask.grid[row][col] = encodeArrows([keep, add]);
+    placed += 1;
   }
 }
 
@@ -1844,8 +1976,10 @@ export interface GenerateTemplateOptions {
   /** How many times to rerun the GA if the mask fails boundary checks. */
   maxBoundaryRetries?: number;
   simpleArrows?: boolean;
-  /** Use a fixed 16×16 →↓ lattice instead of the memetic algorithm. */
+  /** Use a fixed →↓ lattice instead of the memetic algorithm. */
   lattice?: boolean;
+  /** Newspaper lattice for 13–15 image boards (faster + more fillable). */
+  newspaper?: boolean;
 }
 
 /**
@@ -1873,6 +2007,7 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     maxBoundaryRetries = 3,
     simpleArrows = false,
     lattice = false,
+    newspaper = false,
     crossoverSamples,
   } = options;
 
@@ -1960,6 +2095,37 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     config.weights.uncoveredField = 2800;
     config.weights.singleCoveredEnclosed = 200;
     config.weights.singleCoveredOpen = 450;
+  }
+
+  if (newspaper && rows >= 13 && cols >= 13 && rows <= 15 && cols <= 15) {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < maxBoundaryRetries; attempt++) {
+      try {
+        const mask = createEmptyMask(rows, cols);
+        paintNewspaperMask(mask);
+        applyFixedCells(mask, config);
+        const plainPacked = repairPackedMask(mask, config);
+        try {
+          const bentMask = cloneMask(plainPacked);
+          sprinkleBentArrows(bentMask, Math.max(3, Math.floor((rows * cols) / 55)));
+          applyFixedCells(bentMask, config);
+          const bentPacked = repairPackedMask(bentMask, config);
+          return maskToGridTemplate(bentPacked, name, difficulty, lockedCells, cutoutCells);
+        } catch {
+          // Bent sprinkle sometimes leaves holes around image cutouts — use →↓ lattice.
+          return maskToGridTemplate(plainPacked, name, difficulty, lockedCells, cutoutCells);
+        }
+      } catch (e) {
+        lastError = e;
+        if (!quiet) {
+          const message = e instanceof Error ? e.message : String(e);
+          console.warn(`Newspaper template retry ${attempt + 1}/${maxBoundaryRetries}: ${message}`);
+        }
+      }
+    }
+    throw lastError instanceof Error
+      ? lastError
+      : new Error('Newspaper template failed after retries');
   }
 
   if (lattice && rows === 16 && cols === 16) {

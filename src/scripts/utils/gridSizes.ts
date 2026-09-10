@@ -23,11 +23,11 @@ export const HEBREW_GRID_SIZE_MIX: GridSize[] = [
   { rows: 15, cols: 15 }
 ];
 
-/** Grow from 13×13 toward 15×15. Never below 13. */
+/** Prefer 15×15 first (target layout), then fall back. */
 export const IMAGE_CLUE_SIZE_LADDER: GridSize[] = [
-  { rows: 13, cols: 13 },
-  { rows: 14, cols: 14 },
   { rows: 15, cols: 15 },
+  { rows: 14, cols: 14 },
+  { rows: 13, cols: 13 },
 ];
 
 /** Two image clues on daily / favorite boards. */
