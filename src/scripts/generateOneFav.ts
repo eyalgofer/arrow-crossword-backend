@@ -1,9 +1,9 @@
 /**
- * Generate one Hebrew image-clue puzzle (13×13, then 14×14, then 15×15) and write JSON to --out.
- * Used by seed:fav-puzzles in parallel.
+ * Generate one Hebrew 15×15 image-clue puzzle and write JSON to --out.
+ * Used by seed:fav-puzzles / seedHebrewDailies60 in parallel.
  *
  * Usage:
- *   npx ts-node src/scripts/generateOneFav.ts --out tmp-fav-1.json --images 2 --attempts 48
+ *   npx ts-node src/scripts/generateOneFav.ts --out tmp-fav-1.json --images 2 --attempts 64 --size 15
  */
 
 import * as fs from 'fs';
@@ -16,7 +16,7 @@ import {
 import { getUncoveredCells } from './generators/direction-utils';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import { Puzzle as GeneratedPuzzle } from './core/types';
-import { IMAGE_CLUE_SIZE_LADDER } from './utils/gridSizes';
+import { GridSize, IMAGE_CLUE_SIZE_LADDER } from './utils/gridSizes';
 
 function arg(name: string, fallback?: string): string | undefined {
   const idx = process.argv.indexOf(name);
@@ -24,12 +24,12 @@ function arg(name: string, fallback?: string): string | undefined {
   return process.argv[idx + 1] ?? fallback;
 }
 
-function puzzleIsReady(puzzle: GeneratedPuzzle, minImages: number): boolean {
+function puzzleIsReady(puzzle: GeneratedPuzzle, minImages: number, minSize: number): boolean {
   const images = puzzle.puzzleItems.filter((item) => item.clueType === 'image');
   return (
     images.length >= minImages &&
-    puzzle.grid?.rows >= 13 &&
-    puzzle.grid?.cols >= 13 &&
+    puzzle.grid?.rows >= minSize &&
+    puzzle.grid?.cols >= minSize &&
     getUncoveredCells(puzzle).length === 0 &&
     validatePuzzleBoundaries(puzzle).length === 0 &&
     images.every((item) => item.imageUrl && item.answer && /[\u0590-\u05FF]/.test(item.answer))
@@ -46,26 +46,34 @@ function loadCatalog(catalogPath?: string): ImageClueCatalogEntry[] {
 function main() {
   const out = arg('--out');
   const images = parseInt(arg('--images', '2') ?? '2', 10);
-  const attempts = parseInt(arg('--attempts', '48') ?? '48', 10);
+  const attempts = parseInt(arg('--attempts', '64') ?? '64', 10);
   const catalogPath = arg('--catalog');
   const index = parseInt(arg('--index', '1') ?? '1', 10);
+  const sizeArg = parseInt(arg('--size', '15') ?? '15', 10);
   if (!out) {
     console.error('Missing --out');
     process.exit(1);
   }
 
+  const sizes: GridSize[] =
+    sizeArg >= 13
+      ? [{ rows: sizeArg, cols: sizeArg }]
+      : IMAGE_CLUE_SIZE_LADDER;
+
   const catalog = loadCatalog(catalogPath);
-  console.log(`[fav ${index}] catalog ${catalog.length}, ${images} image(s), ${attempts} attempts`);
+  console.log(
+    `[fav ${index}] catalog ${catalog.length}, ${images} image(s), ${attempts} attempts, ${sizes[0].rows}x${sizes[0].cols}`
+  );
   const puzzle = generateLargestImageCluePuzzle({
     category: 'כללי',
     startIndex: index,
     imageClueCount: images,
     imageClueCatalog: catalog,
     imageClueAttempts: attempts,
-    sizes: IMAGE_CLUE_SIZE_LADDER,
+    sizes,
   });
 
-  if (!puzzle || !puzzleIsReady(puzzle, images)) {
+  if (!puzzle || !puzzleIsReady(puzzle, images, sizeArg >= 13 ? sizeArg : 13)) {
     console.error(`[fav ${index}] FAILED`);
     process.exit(1);
   }

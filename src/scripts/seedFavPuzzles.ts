@@ -1,5 +1,5 @@
 /**
- * Generate 5 Hebrew image-clue puzzles (13→14→15, 2 images) and wire them as weekly picks.
+ * Generate 4 Hebrew 15×15 image-clue puzzles (2 images) and wire them as weekly picks.
  *
  * Spawns parallel workers because a large fill can take several minutes.
  *
@@ -28,15 +28,15 @@ import { normalizeWord } from './generators/validation-utils';
 import { FAV_PICK_ACCENTS } from '../utils/puzzlePreview';
 
 const LANGUAGE = 'he' as const;
-const TARGET = 5;
+const TARGET = 4;
 const WORKER_IMAGES = 2;
-const WORKER_ATTEMPTS = 24;
-const PARALLEL = 3;
+const WORKER_ATTEMPTS = 64;
+const WORKER_SIZE = 15;
+const PARALLEL = 2;
 const DIFFICULTIES: Difficulty[] = [
   Difficulty.EASY,
   Difficulty.MEDIUM,
   Difficulty.MEDIUM,
-  Difficulty.HARD,
   Difficulty.HARD,
 ];
 
@@ -79,6 +79,8 @@ function runWorker(index: number, catalogPath: string, outPath: string): Promise
         catalogPath,
         '--index',
         String(index),
+        '--size',
+        String(WORKER_SIZE),
       ],
       { cwd: ROOT, stdio: 'inherit' }
     );
@@ -145,11 +147,13 @@ async function main() {
     );
   }
   fs.writeFileSync(CATALOG_FILE, JSON.stringify(catalog));
-  console.log(`Catalog ${catalog.length} (mongo ${mongoCatalog.length} + local ${localCatalog.length})`);
+  console.log(
+    `Catalog ${catalog.length} (mongo ${mongoCatalog.length} + local ${localCatalog.length}) — targeting ${TARGET}× ${WORKER_SIZE}x${WORKER_SIZE}`
+  );
 
   let collected: GeneratedPuzzle[] = [];
   let wave = 0;
-  while (collected.length < TARGET && wave < 3) {
+  while (collected.length < TARGET && wave < 4) {
     wave += 1;
     const missing = TARGET - collected.length;
     console.log(`\n—— Wave ${wave}: generating ${missing} puzzle(s) in parallel ——`);

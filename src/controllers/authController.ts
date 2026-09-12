@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { User } from '../models/User';
 import { AuthRequest } from '../types';
+import { getUserNumber, notifyNewUser } from '../services/slack';
 
 export const register = async (req: AuthRequest, res: Response) => {
   try {
@@ -25,6 +26,18 @@ export const register = async (req: AuthRequest, res: Response) => {
     });
 
     await user.save();
+
+    void getUserNumber()
+      .then((userNumber) =>
+        notifyNewUser({
+          displayName: user.displayName,
+          email: user.email,
+          userNumber,
+        })
+      )
+      .catch((err) => {
+        console.error('[Slack] New-user notify failed', err);
+      });
 
     res.status(201).json({
       message: 'User registered successfully',

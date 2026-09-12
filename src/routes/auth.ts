@@ -12,6 +12,21 @@ import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { Match } from '../models/Match';
 import { Invite } from '../models/Invite';
+import { getUserNumber, notifyNewUser } from '../services/slack';
+
+function notifyNewUserCreated(user: InstanceType<typeof User>) {
+  void getUserNumber()
+    .then((userNumber) =>
+      notifyNewUser({
+        displayName: user.displayName,
+        email: user.email,
+        userNumber,
+      })
+    )
+    .catch((err) => {
+      console.error('[Slack] New-user notify failed', err);
+    });
+}
 
 const router = Router();
 
@@ -73,6 +88,7 @@ router.post('/google', async (req: Request, res: Response) => {
       });
       await user.save();
       console.log('Created new user:', user.email);
+      notifyNewUserCreated(user);
       return res.json(await authPayload(user, true));
     }
 
@@ -147,6 +163,7 @@ router.post('/apple', async (req: Request, res: Response) => {
       });
       await user.save();
       console.log('Created new Apple user:', user.email);
+      notifyNewUserCreated(user);
       return res.json(await authPayload(user, true));
     }
 

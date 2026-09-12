@@ -16,5 +16,5 @@ synonym-seed-words.csv
 src/scripts/core/.clueCache.json
 .clue-import/
 tmp-image-clue-puzzle.json
-tmp-fav-catalog.json
-tmp-fav-puzzles/
+tmp-*-catalog.json
+tmp-*-puzzles/

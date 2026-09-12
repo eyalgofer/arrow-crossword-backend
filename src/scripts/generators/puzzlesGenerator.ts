@@ -540,7 +540,7 @@ export class PuzzleGenerator {
     const cells = template.rows * template.cols;
     const hasImages = template.slots.some((slot) => slot.clueType === 'image');
     const maxSolveTimeMs = hasImages
-      ? (cells >= 225 ? 45000 : 35000)
+      ? (cells >= 225 ? 25000 : 20000)
       : (this.language === 'he' ? 28 : 12) * 1000 + cells * (cells >= 256 ? 80 : 40);
     const jitter = new Map<string, number>();
     const wordScorer = (word: string, _placedWords: string[]) => {
@@ -557,7 +557,7 @@ export class PuzzleGenerator {
     const result = solveGrid(template, this.wordIndex, {
       maxAttempts,
       maxSolveTimeMs,
-      maxTextSliceMs: hasImages ? 12000 : undefined,
+      maxTextSliceMs: hasImages ? 7000 : undefined,
       wordScorer,
       quiet: true,
     });
