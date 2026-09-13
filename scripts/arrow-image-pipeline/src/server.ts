@@ -10,8 +10,8 @@ app.use(express.json({ limit: "1mb" }));
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.resolve(__dirname, "../public");
-const candidatesPath = path.resolve("data/candidates.json");
-const approvalsPath = path.resolve("data/approvals.json");
+const candidatesPath = path.resolve("data/candidates_v2.json");
+const approvalsPath = path.resolve("data/approvals_v2.json");
 
 app.use(express.static(publicDir));
 
