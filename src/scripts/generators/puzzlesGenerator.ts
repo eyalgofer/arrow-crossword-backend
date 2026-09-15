@@ -332,11 +332,18 @@ export class PuzzleGenerator {
       const len = catalogLetterLength(entry);
       counts.set(len, (counts.get(len) ?? 0) + 1);
     }
+    // Prefer lengths the catalog can actually supply (5–9). Require at least 2
+    // answers so bindImageClues has a choice; fall back to richest available.
     const preferred = [...counts.entries()]
-      .filter(([len, n]) => len >= 5 && len <= 7 && n >= 4)
+      .filter(([len, n]) => len >= 5 && len <= 9 && n >= 2)
+      .sort((a, b) => b[1] - a[1] || a[0] - b[0])
+      .map(([len]) => len);
+    if (preferred.length > 0) return preferred;
+    const any = [...counts.entries()]
+      .filter(([len, n]) => len >= 4 && len <= 10 && n >= 1)
       .sort((a, b) => b[1] - a[1])
       .map(([len]) => len);
-    return preferred.length > 0 ? preferred : [7, 6, 5];
+    return any.length > 0 ? any : [7, 8, 6, 5];
   }
 
   private bindImageClues(
@@ -359,8 +366,9 @@ export class PuzzleGenerator {
           !usedSlots.has(s.id) &&
           s.startRow === img.exitRow &&
           s.startCol === img.exitCol &&
-          s.length >= 5 &&
-          s.length <= 8
+          s.length >= 4 &&
+          s.length <= 10 &&
+          (catalogByLen.get(s.length) ?? 0) >= 1
       );
       // Prefer planned length, then catalog-rich lengths, then matching direction.
       candidates.sort((a, b) => {
@@ -395,7 +403,7 @@ export class PuzzleGenerator {
       const entries = shuffled(
         catalog.filter((entry) => catalogLetterLength(entry) === slot.length)
       );
-      if (entries.length < 2) {
+      if (entries.length < 1) {
         console.log(`   … no image answer of length ${slot.length}`);
         return false;
       }
