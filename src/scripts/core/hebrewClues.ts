@@ -4,7 +4,6 @@ export interface RawHebrewEntry {
   difficulty?: 1 | 2 | 3; // easy medium hard; omitted defaults to 1
 }
 
-// @ts-expect-error TS2590: this object-literal list is too large for TypeScript to infer
 export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "אב", clues: ["מבני המשפחה", "הורה זכר בקיצור"], difficulty: 1 },
   { answer: "אבא", clues: ["מבני המשפחה"], difficulty: 1 },
@@ -15,10 +14,10 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "אבד", clues: ["נעלם"], difficulty: 1 },
   { answer: "אבדו", clues: ["נעלמו"], difficulty: 1 },
   { answer: "אבוד", clues: ["חסר תקווה"], difficulty: 1 },
-  { answer: "אבודה", clues: ["חסרת תקווה בהשאלה"], difficulty: 2 },
+  { answer: "אבודה", clues: ["חסרת תקווה"], difficulty: 2 },
   { answer: "אבוי", clues: ["מילת צער"], difficulty: 1 },
   { answer: "אבולוציה", clues: ["תיאוריה להיווצרות המינים"], difficulty: 3 },
-  { answer: "אבטחה", clues: ["הגנה שמירה"], difficulty: 1 },
+  { answer: "אבטחה", clues: ["הגנה, שמירה"], difficulty: 1 },
   { answer: "אבטליון", clues: ["ישוב בגליל התחתון"], difficulty: 3 },
   { answer: "אביב", clues: ["מעונות השנה", "העונה שבין החורף לקיץ", "שם ישראלי נפוץ וגם עונה"], difficulty: 1 },
   { answer: "אביב אלוש", clues: ["שחקן ישראלי"], difficulty: 3 },
@@ -34,7 +33,6 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "אביחי שטרן", clues: ["מראשי עיריית קריית שמונה"], difficulty: 3 },
   { answer: "אבי טולדנו", clues: ["זמר ישראלי"], difficulty: 3 },
   { answer: "אביטל", clues: ["מושב בעמק יזרעאל"], difficulty: 2 },
-  { answer: "אביי", clues: ["אמורא בבלי"], difficulty: 2 },
   { answer: "אבי נמני", clues: ["כדורגלן עבר ישראלי"], difficulty: 3 },
   { answer: "אביעד קיסוס", clues: ["שדרן ומנחה ישראלי"], difficulty: 3 },
   { answer: "אביר", clues: ["לוחם בימי הביניים"], difficulty: 2 },
@@ -43,8 +41,8 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "אבישי", clues: ["לוחם מקראי"], difficulty: 1 },
   { answer: "אביתר", clues: ["כהן בימי דוד המלך"], difficulty: 2 },
   { answer: "אבני איתן", clues: ["מושב ברמת הגולן"], difficulty: 3 },
-  { answer: "אבל", clues: ["צער על מוות", "צער על מות"], difficulty: 1 },
-  { answer: "אבן", clues: ["גוש קטן של סלע", "משרי החוץ ש\"מ", "גוש סלע קטן"], difficulty: 2 },
+  { answer: "אבל", clues: ["צער על מוות"], difficulty: 1 },
+  { answer: "אבן", clues: ["גוש קטן של סלע", "משרי החוץ ש\"מ"], difficulty: 2 },
   { answer: "אבני חפץ", clues: ["ישוב בשומרון"], difficulty: 3 },
   { answer: "אבניאל", clues: ["צייר ופסל ישראלי"], difficulty: 2 },
   { answer: "אבנית", clues: ["משקע סיד"], difficulty: 1 },
@@ -83,16 +81,15 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "אגסי", clues: ["טניסאי עבר אמריקאי ש\"מ"], difficulty: 2 },
   { answer: "אגרול", clues: ["מאכל מהמטבח הסיני"], difficulty: 1 },
   { answer: "אגרופן", clues: ["כלי נשק מתכתי"], difficulty: 2 },
-  { answer: "אגדת דשא", clues: ["סדרת דרמה ישראלית"], difficulty: 3 },
   { answer: "אדוני", clues: ["שף ישראלי ש\"מ"], difficulty: 3 },
-  { answer: "אדוקה", clues: ["דבקה מסורה"], difficulty: 1 },
-  { answer: "אדיב", clues: ["נחמד מתחשב"], difficulty: 1 },
+  { answer: "אדוקה", clues: ["דבקה, מסורה"], difficulty: 1 },
+  { answer: "אדיב", clues: ["נחמד, מתחשב"], difficulty: 1 },
   { answer: "אדיח", clues: ["אבטל תפקידו או משרתו"], difficulty: 2 },
   { answer: "אדינבורו", clues: ["עיר בסקוטלנד"], difficulty: 2 },
-  { answer: "אזל", clues: ["נגמר אין עוד ממנו"], difficulty: 1 },
+  { answer: "אזל", clues: ["נגמר, אין עוד ממנו"], difficulty: 1 },
   { answer: "אדם", clues: ["דמות בספר בראשית"], difficulty: 1 },
   { answer: "אדרבא", clues: ["יתר על כן"], difficulty: 1 },
-  { answer: "אדרי", clues: ["משרי העלייה והקליטה ש\"מ", "משרי העלייה"], difficulty: 2 },
+  { answer: "אדרי", clues: ["משרי העלייה והקליטה ש\"מ"], difficulty: 2 },
   {
     answer: "אדרנלין",
     clues: [
