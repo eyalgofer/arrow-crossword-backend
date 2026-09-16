@@ -3794,7 +3794,6 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "נהרי", clues: ["עיתונאי ישראלי ש\"מ"], difficulty: 3 },
   { answer: "נהריה", clues: ["עיר בצפון"], difficulty: 1 },
   { answer: "נואשנו", clues: ["איבדנו תקווה"], difficulty: 2 },
-  { answer: "נוב", clues: ["נובמבר קיצור"], difficulty: 1 },
   { answer: "נובר", clues: ["חופר באדמה"], difficulty: 1 },
   { answer: "נודל", clues: ["סרט ישראלי עם מילי אביטל"], difficulty: 2 },
   { answer: "נוהל", clues: ["סוג דרך פעולה"], difficulty: 2 },
@@ -6041,8 +6040,6 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "טלוויזיה", clues: ["צופים בה בתוכניות"], difficulty: 3 },
   { answer: "אינטרנט", clues: ["הרשת העולמית"], difficulty: 2 },
   { answer: "מסך", clues: ["רואים עליו תמונה"], difficulty: 1 },
-  { answer: "מקלדת", clues: ["מקלידים עליה אותיות"], difficulty: 2 },
-  { answer: "מצלמה", clues: ["מצלמים בה תמונות"], difficulty: 2 },
   { answer: "אוזניות", clues: ["שומעים בהן מוזיקה"], difficulty: 2 },
   {
     answer: "סוללה",
@@ -7052,8 +7049,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "ממולא", clues: ["ירק עם אורז בפנים"], difficulty: 1 },
   { answer: "נקניקיות", clues: ["בשר ארוך שמטגנים"], difficulty: 3 },
   { answer: "קוטג", clues: ["גבינה רכה לבנה"], difficulty: 1 },
-  { answer: "לאבנה", clues: ["גבינה רכה חמצמצה"], difficulty: 1 },
-  { answer: "קצפת", clues: ["שמנת מוקצפת מתוקה"], difficulty: 2 },
+  { answer: "לאבנה", clues: ["גבינה רכה חמצמצה"], difficulty: 1 },  
   { answer: "שייק", clues: ["שתייה טחונה מפירות"], difficulty: 2 },
   { answer: "סמודי", clues: ["שייק סמיך מפירות"], difficulty: 2 },
   { answer: "גחנון", clues: ["מאפה תימני לשבת"], difficulty: 1 },
@@ -9841,7 +9837,6 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     answer: "מגנטיט",
     clues: [
       "מינרל ברזל בעל תכונות מגנטיות",
-      "מגנטים טבעיים קדומים נוצרו ממנו",
       "תחמוצת ברזל שמצפן מוקדם יכול היה להסתמך עליה"
     ],
     difficulty: 2
