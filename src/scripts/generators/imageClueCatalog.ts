@@ -299,23 +299,23 @@ export function planImageClues(
   rows: number,
   cols: number,
   count: number = 3,
-  preferredLengths: number[] = [8, 7, 9, 6, 5]
+  preferredLengths: number[] = [8, 7, 6, 5]
 ): PlannedImageClue[] {
   const placed: PlannedImageClue[] = [];
   const footprint = new Set<string>();
   const blocked = new Set<string>();
   const quads = placementOrder(count);
   const lengthPrefs =
-    preferredLengths.length > 0 ? preferredLengths : [8, 7, 9, 6, 5];
+    preferredLengths.length > 0 ? preferredLengths : [8, 7, 6, 5];
 
   function pickAnswerLength(available: number): number | null {
-    if (available < 4) return null;
-    const prefs = lengthPrefs.filter((len) => len >= 4 && len <= 10);
-    const ordered = prefs.length > 0 ? prefs : [8, 7, 9, 6, 5, 10, 4];
+    if (available < 5) return null;
+    const prefs = lengthPrefs.filter((len) => len >= 5 && len <= 8);
+    const ordered = prefs.length > 0 ? prefs : [8, 7, 6, 5];
     for (const len of ordered) {
       if (len <= available) return len;
     }
-    return Math.min(10, available);
+    return Math.min(8, available);
   }
 
   function isImageInterior(

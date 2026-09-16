@@ -548,7 +548,7 @@ export class PuzzleGenerator {
     const cells = template.rows * template.cols;
     const hasImages = template.slots.some((slot) => slot.clueType === 'image');
     const maxSolveTimeMs = hasImages
-      ? (cells >= 225 ? 25000 : 20000)
+      ? (cells >= 196 ? 45000 : 35000)
       : (this.language === 'he' ? 28 : 12) * 1000 + cells * (cells >= 256 ? 80 : 40);
     const jitter = new Map<string, number>();
     const wordScorer = (word: string, _placedWords: string[]) => {
@@ -565,7 +565,7 @@ export class PuzzleGenerator {
     const result = solveGrid(template, this.wordIndex, {
       maxAttempts,
       maxSolveTimeMs,
-      maxTextSliceMs: hasImages ? 7000 : undefined,
+      maxTextSliceMs: hasImages ? 10000 : undefined,
       wordScorer,
       quiet: true,
     });
@@ -639,10 +639,9 @@ export function generateLargestImageCluePuzzle(config: {
     for (const imageCount of counts) {
       const base = config.imageClueAttempts ?? (imageCount >= 4 ? 64 : 48);
       const cells = size.rows * size.cols;
-      // Give 15×15 the full budget — it used to be starved at ~15%.
+      // Full budget for 14×14 and 15×15 — smaller boards only get a reduced share.
       const attempts =
-        cells >= 225 ? base :
-        cells >= 196 ? Math.max(12, Math.round(base * 0.7)) :
+        cells >= 196 ? base :
         Math.max(10, Math.round(base * 0.55));
       console.log(
         `\n—— Trying ${size.rows}x${size.cols} with ${imageCount} image${imageCount === 1 ? '' : 's'} (${attempts} attempts) ——`

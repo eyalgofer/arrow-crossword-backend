@@ -4,7 +4,6 @@ export interface RawHebrewEntry {
   difficulty?: 1 | 2 | 3; // easy medium hard; omitted defaults to 1
 }
 
-// @ts-expect-error TS2590: this object-literal list is too large for TypeScript to infer
 export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "אב", clues: ["מבני המשפחה", "הורה זכר בקיצור"], difficulty: 1 },
   { answer: "אבא", clues: ["מבני המשפחה"], difficulty: 1 },
