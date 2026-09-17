@@ -9,6 +9,11 @@ import { AuthRequest, ProgressSummary } from '../types';
 import { resolveLanguage, languageFilter } from '../utils/language';
 import { withoutSingleWordEnumeration } from '../utils/enumeration';
 import { getDayOfYear } from '../utils/dailyPuzzleUtils';
+import {
+  applyDailyStreak,
+  effectiveCurrentStreak,
+  emptyDailyPuzzleStats,
+} from '../utils/dailyPuzzleStats';
 import { buildPuzzlePreview, FAV_PICK_ACCENTS, toCardDifficulty } from '../utils/puzzlePreview';
 
 export const getPuzzles = async (req: AuthRequest, res: Response) => {
@@ -167,6 +172,33 @@ export const getDailyPuzzleSolvedCount = async (req: AuthRequest, res: Response)
   } catch (error) {
     console.error('Get daily puzzle solved count error:', error);
     res.status(500).json({ error: 'Failed to get daily puzzle solved count' });
+  }
+};
+
+/**
+ * GET /api/puzzles/daily/stats
+ * Lifetime daily-puzzle stats for the authenticated user (profile card).
+ */
+export const getDailyPuzzleStats = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = await User.findOne({ firebaseUid: req.user!.uid })
+      .select('dailyPuzzleStats')
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const stats = user.dailyPuzzleStats ?? emptyDailyPuzzleStats();
+
+    res.json({
+      solvedCount: stats.solvedCount ?? 0,
+      fastestSeconds: stats.fastestSeconds ?? null,
+      currentStreak: effectiveCurrentStreak(stats),
+    });
+  } catch (error) {
+    console.error('Get daily puzzle stats error:', error);
+    res.status(500).json({ error: 'Failed to get daily puzzle stats' });
   }
 };
 
@@ -458,6 +490,7 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
 
     const wasAlreadyCompleted = progress?.isCompleted ?? false;
     let coinsAwarded = 0;
+    let userNeedsSave = false;
 
     // Generate all completed clue IDs in format "number|direction"
     const allCompletedClueIds = puzzle.puzzleItems.map(
@@ -488,7 +521,7 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
           user.stats.fastestTime = completionTime;
         }
 
-        await user.save();
+        userNeedsSave = true;
       }
 
       progress.lastPlayedAt = new Date();
@@ -519,6 +552,31 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
         user.stats.fastestTime = completionTime;
       }
 
+      userNeedsSave = true;
+    }
+
+    // Lifetime daily-puzzle stats (profile card)
+    const isDailyPuzzle = await DailyPuzzle.exists({ puzzleId });
+    if (isDailyPuzzle) {
+      if (!user.dailyPuzzleStats) {
+        user.dailyPuzzleStats = emptyDailyPuzzleStats();
+      }
+
+      if (!wasAlreadyCompleted) {
+        user.dailyPuzzleStats.solvedCount += 1;
+        applyDailyStreak(user.dailyPuzzleStats);
+        userNeedsSave = true;
+      }
+
+      const completionSeconds = Math.floor(completionTime);
+      const fastest = user.dailyPuzzleStats.fastestSeconds;
+      if (fastest === null || fastest === undefined || completionSeconds < fastest) {
+        user.dailyPuzzleStats.fastestSeconds = completionSeconds;
+        userNeedsSave = true;
+      }
+    }
+
+    if (userNeedsSave) {
       await user.save();
     }
 

@@ -21,6 +21,15 @@ export interface UserStats {
   fastestTime: number;
 }
 
+/** Lifetime daily-puzzle stats for the profile screen. */
+export interface DailyPuzzleStats {
+  solvedCount: number;
+  fastestSeconds: number | null;
+  currentStreak: number;
+  /** Local calendar date (YYYY-MM-DD) of the last unique daily counted toward the streak. */
+  lastSolvedDate: string | null;
+}
+
 export type ClueType = 'text' | 'image';
 
 export interface PuzzleItem {
