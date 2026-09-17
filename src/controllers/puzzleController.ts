@@ -11,6 +11,7 @@ import { withoutSingleWordEnumeration } from '../utils/enumeration';
 import { getDayOfYear } from '../utils/dailyPuzzleUtils';
 import {
   applyDailyStreak,
+  deriveDailyPuzzleStatsFromProgress,
   effectiveCurrentStreak,
   emptyDailyPuzzleStats,
 } from '../utils/dailyPuzzleStats';
@@ -178,18 +179,43 @@ export const getDailyPuzzleSolvedCount = async (req: AuthRequest, res: Response)
 /**
  * GET /api/puzzles/daily/stats
  * Lifetime daily-puzzle stats for the authenticated user (profile card).
+ *
+ * Prefers the denormalized counter on the user, but derives from completed
+ * daily progress when that counter is still empty (pre-feature completes).
  */
 export const getDailyPuzzleStats = async (req: AuthRequest, res: Response) => {
   try {
-    const user = await User.findOne({ firebaseUid: req.user!.uid })
-      .select('dailyPuzzleStats')
-      .lean();
+    const user = await User.findOne({ firebaseUid: req.user!.uid }).select(
+      'dailyPuzzleStats'
+    );
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const stats = user.dailyPuzzleStats ?? emptyDailyPuzzleStats();
+    let stats = user.dailyPuzzleStats ?? emptyDailyPuzzleStats();
+
+    // Backfill from progress when the counter was never written (legacy completes).
+    if (!stats.solvedCount) {
+      const dailyPuzzleIds = await DailyPuzzle.distinct('puzzleId');
+      if (dailyPuzzleIds.length > 0) {
+        const completes = await UserPuzzleProgress.find({
+          userId: user._id,
+          puzzleId: { $in: dailyPuzzleIds },
+          isCompleted: true,
+        })
+          .select('bestTime lastPlayedAt')
+          .lean();
+
+        const derived = deriveDailyPuzzleStatsFromProgress(completes);
+        if (derived.solvedCount > 0) {
+          stats = derived;
+          user.dailyPuzzleStats = derived;
+          user.markModified('dailyPuzzleStats');
+          await user.save();
+        }
+      }
+    }
 
     res.json({
       solvedCount: stats.solvedCount ?? 0,
@@ -573,6 +599,10 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
       if (fastest === null || fastest === undefined || completionSeconds < fastest) {
         user.dailyPuzzleStats.fastestSeconds = completionSeconds;
         userNeedsSave = true;
+      }
+
+      if (userNeedsSave) {
+        user.markModified('dailyPuzzleStats');
       }
     }
 

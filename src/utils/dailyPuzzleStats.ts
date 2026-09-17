@@ -66,3 +66,63 @@ export function applyDailyStreak(stats: DailyPuzzleStatsFields, today: string = 
 
   stats.lastSolvedDate = today;
 }
+
+/** Consecutive days ending today/yesterday from a sorted unique list of YYYY-MM-DD. */
+export function streakFromSolveDates(
+  dateKeys: string[],
+  today: string = toLocalDateString()
+): { currentStreak: number; lastSolvedDate: string | null } {
+  const unique = [...new Set(dateKeys.filter(Boolean))].sort();
+  if (unique.length === 0) {
+    return { currentStreak: 0, lastSolvedDate: null };
+  }
+
+  const lastSolvedDate = unique[unique.length - 1];
+  const gap = localDateDiffDays(lastSolvedDate, today);
+  if (gap > 1) {
+    return { currentStreak: 0, lastSolvedDate };
+  }
+
+  let currentStreak = 1;
+  for (let i = unique.length - 1; i > 0; i--) {
+    if (localDateDiffDays(unique[i - 1], unique[i]) === 1) {
+      currentStreak += 1;
+    } else {
+      break;
+    }
+  }
+  return { currentStreak, lastSolvedDate };
+}
+
+export type DailySolveRecord = {
+  bestTime: number | null;
+  lastPlayedAt: Date | null;
+};
+
+/** Build lifetime stats from completed daily-puzzle progress rows. */
+export function deriveDailyPuzzleStatsFromProgress(
+  completes: DailySolveRecord[],
+  today: string = toLocalDateString()
+): DailyPuzzleStatsFields {
+  const solvedCount = completes.length;
+  let fastestSeconds: number | null = null;
+  for (const row of completes) {
+    if (typeof row.bestTime === 'number' && row.bestTime >= 0) {
+      fastestSeconds =
+        fastestSeconds == null ? row.bestTime : Math.min(fastestSeconds, row.bestTime);
+    }
+  }
+
+  const dateKeys = completes
+    .map((row) => (row.lastPlayedAt ? toLocalDateString(new Date(row.lastPlayedAt)) : null))
+    .filter((d): d is string => !!d);
+
+  const { currentStreak, lastSolvedDate } = streakFromSolveDates(dateKeys, today);
+
+  return {
+    solvedCount,
+    fastestSeconds,
+    currentStreak,
+    lastSolvedDate,
+  };
+}
