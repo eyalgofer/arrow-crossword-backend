@@ -4,7 +4,7 @@
  *
  * Usage:
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 14 --start 2026-09-16
- *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 14 --from-tomorrow
+ *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 7 --from-tomorrow
  */
 
 import dotenv from 'dotenv';
@@ -40,22 +40,12 @@ const OUT_DIR = path.join(ROOT, 'tmp-daily-puzzles');
 
 /** Rotating presets — mostly 2 images for fill reliability; sprinkle 3–5. */
 const FALLBACK_PRESETS: Array<{ size: 14 | 15; images: number }> = [
-  { size: 15, images: 2 },
-  { size: 14, images: 2 },
-  { size: 15, images: 3 },
   { size: 14, images: 2 },
   { size: 14, images: 3 },
-  { size: 15, images: 2 },
+  { size: 14, images: 2 },
   { size: 14, images: 4 },
-  { size: 15, images: 2 },
   { size: 14, images: 2 },
-  { size: 15, images: 3 },
-  { size: 14, images: 2 },
-  { size: 15, images: 2 },
-  { size: 14, images: 3 },
-  { size: 15, images: 2 },
-  { size: 14, images: 5 },
-  { size: 15, images: 2 },
+  { size: 14, images: 3 }
 ];
 
 function argValue(name: string, fallback?: string): string | undefined {
