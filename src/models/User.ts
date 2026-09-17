@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { UserStats } from '../types';
+import { DailyPuzzleStats, UserStats } from '../types';
 
 export interface IUser extends Document {
   firebaseUid: string;
@@ -11,6 +11,7 @@ export interface IUser extends Document {
   photoURL?: string;
   coins: number;
   stats: UserStats;
+  dailyPuzzleStats: DailyPuzzleStats;
   preferences: {
     soundEnabled: boolean;
     vibrationEnabled: boolean;
@@ -53,6 +54,12 @@ const userSchema = new Schema<IUser>({
     totalTime: { type: Number, default: 0 },
     averageTime: { type: Number, default: 0 },
     fastestTime: { type: Number, default: 0 }
+  },
+  dailyPuzzleStats: {
+    solvedCount: { type: Number, default: 0 },
+    fastestSeconds: { type: Number, default: null },
+    currentStreak: { type: Number, default: 0 },
+    lastSolvedDate: { type: String, default: null }
   },
   preferences: {
     soundEnabled: { type: Boolean, default: true },
