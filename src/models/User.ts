@@ -1,6 +1,8 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { DailyPuzzleStats, UserStats } from '../types';
 
+export type DevicePlatform = 'ios' | 'android';
+
 export interface IUser extends Document {
   firebaseUid: string;
   email: string;
@@ -9,6 +11,8 @@ export interface IUser extends Document {
   /** Lowercased unique key; only set when the user chooses a nickname. */
   displayNameKey?: string | null;
   photoURL?: string;
+  /** Last known app platform from sign-in (`ios` / `android`). */
+  device?: DevicePlatform | null;
   coins: number;
   stats: UserStats;
   dailyPuzzleStats: DailyPuzzleStats;
@@ -42,6 +46,11 @@ const userSchema = new Schema<IUser>({
   },
   photoURL: {
     type: String
+  },
+  device: {
+    type: String,
+    enum: ['ios', 'android'],
+    default: null
   },
   coins: {
     type: Number,

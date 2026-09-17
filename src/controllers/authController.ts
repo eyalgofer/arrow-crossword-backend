@@ -33,6 +33,7 @@ export const register = async (req: AuthRequest, res: Response) => {
           displayName: user.displayName,
           email: user.email,
           userNumber,
+          device: user.device,
         })
       )
       .catch((err) => {

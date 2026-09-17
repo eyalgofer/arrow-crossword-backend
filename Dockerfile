@@ -33,9 +33,6 @@ RUN npm install --omit=dev && npm cache clean --force
 # Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Copy firebase service account (if needed at runtime)
-COPY --chown=nodejs:nodejs firebase-service-account.json ./
-
 # Switch to non-root user
 USER nodejs
 

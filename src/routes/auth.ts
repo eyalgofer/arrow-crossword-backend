@@ -7,12 +7,19 @@ import {
   rotateRefreshToken,
   revokeAllRefreshTokens
 } from '../services/authTokens';
-import { User } from '../models/User';
+import { DevicePlatform, User } from '../models/User';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { Match } from '../models/Match';
 import { Invite } from '../models/Invite';
 import { getUserNumber, notifyNewUser } from '../services/slack';
+
+function parseDevice(value: unknown): DevicePlatform | null {
+  if (value === 'ios' || value === 'android') {
+    return value;
+  }
+  return null;
+}
 
 function notifyNewUserCreated(user: InstanceType<typeof User>) {
   void getUserNumber()
@@ -21,6 +28,7 @@ function notifyNewUserCreated(user: InstanceType<typeof User>) {
         displayName: user.displayName,
         email: user.email,
         userNumber,
+        device: user.device,
       })
     )
     .catch((err) => {
@@ -39,6 +47,7 @@ function userPayload(user: InstanceType<typeof User>) {
     displayName,
     avatar: user.photoURL,
     coins: user.coins,
+    device: user.device ?? null,
   };
 }
 
@@ -53,7 +62,8 @@ async function authPayload(user: InstanceType<typeof User>, isNewUser: boolean) 
 
 router.post('/google', async (req: Request, res: Response) => {
   try {
-    const { idToken } = req.body;
+    const { idToken, device: deviceRaw } = req.body;
+    const device = parseDevice(deviceRaw);
 
     if (!idToken) {
       return res.status(400).json({ error: 'idToken is required' });
@@ -84,6 +94,7 @@ router.post('/google', async (req: Request, res: Response) => {
         firebaseUid: googleUser.googleId,
         email: googleUser.email,
         photoURL: googleUser.picture,
+        device,
         coins: 100,
       });
       await user.save();
@@ -95,6 +106,9 @@ router.post('/google', async (req: Request, res: Response) => {
     // Existing accounts keep their displayName (chosen nickname or original name).
     if (googleUser.picture) {
       user.photoURL = googleUser.picture;
+    }
+    if (device) {
+      user.device = device;
     }
     await user.save();
     console.log('Existing user signed in:', user.email);
@@ -121,7 +135,8 @@ router.post('/apple', async (req: Request, res: Response) => {
     console.log('   Headers:', JSON.stringify(req.headers, null, 2));
     console.log('   Body keys:', Object.keys(req.body || {}));
     
-    const { identityToken, name } = req.body;
+    const { identityToken, name, device: deviceRaw } = req.body;
+    const device = parseDevice(deviceRaw);
 
     if (!identityToken) {
       console.log('   ❌ Missing identityToken');
@@ -131,6 +146,9 @@ router.post('/apple', async (req: Request, res: Response) => {
     console.log('   ✅ identityToken received (length:', identityToken.length, ')');
     if (name) {
       console.log('   ✅ name received:', name);
+    }
+    if (device) {
+      console.log('   ✅ device received:', device);
     }
 
     // Verify the token with Apple
@@ -159,6 +177,7 @@ router.post('/apple', async (req: Request, res: Response) => {
         firebaseUid: appleUser.appleId,
         email: appleUser.email,
         photoURL: undefined,
+        device,
         coins: 100,
       });
       await user.save();
@@ -167,6 +186,9 @@ router.post('/apple', async (req: Request, res: Response) => {
       return res.json(await authPayload(user, true));
     }
 
+    if (device) {
+      user.device = device;
+    }
     await user.save();
     console.log('Existing Apple user signed in:', user.email);
 
@@ -193,6 +215,8 @@ const DEMO_EMAIL = 'demo@arrowcrossword.app';
 
 router.post('/demo', async (req: Request, res: Response) => {
   try {
+    const device = parseDevice(req.body?.device);
+
     let user = await User.findOne({ firebaseUid: DEMO_FIREBASE_UID });
     if (!user) {
       user = await User.findOne({ email: DEMO_EMAIL });
@@ -202,10 +226,14 @@ router.post('/demo', async (req: Request, res: Response) => {
         firebaseUid: DEMO_FIREBASE_UID,
         email: DEMO_EMAIL,
         displayName: 'Demo User',
+        device,
         coins: 1000,
       });
       await user.save();
       console.log('Created demo user:', user.email);
+    } else if (device) {
+      user.device = device;
+      await user.save();
     }
 
     console.log('Demo user signed in:', user.email);
