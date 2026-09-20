@@ -7982,7 +7982,6 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "גל", clues: ["בים וגם ברדיו"], difficulty: 1 },
   { answer: "גנגס", clues: ["נהר קדוש בהודו"], difficulty: 2 },
   { answer: "גקוזי", clues: ["אמבט בועות"], difficulty: 1 },
-  { answer: "גריפין", clues: ["חצי נשר חצי אריה"], difficulty: 2 },
   { answer: "גרנד קניון", clues: ["קניון אדום באריזונה"], difficulty: 3 },
   { answer: "דארת ויידר", clues: ["אבא מאחורי המסכה השחורה"], difficulty: 3 },
   { answer: "דומבלדור", clues: ["מנהל בית ספר לקוסמים"], difficulty: 3 },
@@ -8010,7 +8009,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     ],
     difficulty: 2
   },
-  { answer: "דיסקורד", clues: ["צ׳אט לגיימרים"], difficulty: 2 },
+  { answer: "דיסקורד", clues: ["אפליקציית צ׳אט שגדלה אצל גיימרים"], difficulty: 2 },
   { answer: "דלמטי", clues: ["כלב עם נקודות"], difficulty: 2 },
   { answer: "דנובה", clues: ["נהר שחוצה את וינה ובודפשט"], difficulty: 2 },
   { answer: "דרבוקה", clues: ["תוף שמונח על הברך"], difficulty: 2 },
@@ -8027,7 +8026,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "הוקי קרח", clues: ["דיסקית ומקלות על הקרח"], difficulty: 3 },
   { answer: "הזמר במסכה", clues: ["שרים בלי לדעת מי מתחת"], difficulty: 3 },
   { answer: "הטבעה", clues: ["כדור נדחף לטבעת מלמעלה"], difficulty: 2 },
-  { answer: "היברידי", clues: ["רכב עם מנוע ומנוע חשמל"], difficulty: 2 },
+  { answer: "היברידי", clues: ["רכב עם מנוע בנזין ומנוע חשמלי"], difficulty: 2 },
   {
     answer: "הידרה",
     clues: [
@@ -8057,7 +8056,6 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "הליום", clues: ["גז שמעיף בלונים למעלה", "הגז שמעלה בלוני מסיבות באוויר"], difficulty: 2 },
   { answer: "הנגב", clues: ["חצי מהמדינה בדרום"], difficulty: 2 },
   { answer: "הנפקה", clues: ["החברה עולה לבורסה"], difficulty: 2 },
-  { answer: "הקולוסיאום", clues: ["זירה עגולה ברומא"], difficulty: 3 },
   { answer: "הרי האלפים", clues: ["רכס עם יודלים ושוקולד"], difficulty: 3 },
   { answer: "הרי האנדים", clues: ["רכס לאורך דרום אמריקה"], difficulty: 3 },
   { answer: "הרי הרוקי", clues: ["רכס במערב אמריקה"], difficulty: 3 },
@@ -8069,7 +8067,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "ווייפיי", clues: ["אינטרנט בלי כבל"], difficulty: 2 },
   { answer: "ווייקבורד", clues: ["גלשן מאחורי סירה"], difficulty: 3 },
   { answer: "ווימבלדון", clues: ["טורניר טניס על דשא"], difficulty: 3 },
-  { answer: "וויקינגים", clues: ["לוחמים מסקנדינביה בסדרה"], difficulty: 3 },
+  { answer: "וויקינגים", clues: ["לוחמים מסקנדינביה בימי הביניים"], difficulty: 3 },
   { answer: "וולדמורט", clues: ["מי שאסור להגיד את שמו"], difficulty: 3 },
   { answer: "וולט דיסני", clues: ["מייסד ממלכת הקסם"], difficulty: 3 },
   { answer: "וונדר וומן", clues: ["גיבורת על עם לאסו"], difficulty: 3 },
@@ -8085,7 +8083,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "חלבונים", clues: ["אבני בניין מהמזון"], difficulty: 2 },
   { answer: "חמסה", clues: ["יד נגד עין הרע"], difficulty: 2 },
   { answer: "חפיף", clues: ["לא מדויק, ככה ככה"], difficulty: 2 },
-  { answer: "חרצית", clues: ["פרח צהוב של קיץ"], difficulty: 1 },
+  { answer: "חרצית", clues: ["פרח של סתיו, לעיתים צהוב"], difficulty: 1 },
   {
     answer: "טאבון",
     clues: [
@@ -8123,7 +8121,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "יאללה", clues: ["קדימה, זזים"], difficulty: 1 },
   { answer: "יגואר", clues: ["חתול גדול מדרום אמריקה"], difficulty: 2 },
   { answer: "יוגה", clues: ["תנוחות ונשימות על מזרן"], difficulty: 2 },
-  { answer: "יום הזיכרון", clues: ["צפירה ודומיה"], difficulty: 3 },
+  { answer: "יום הזיכרון", clues: ["צפירה ודומיה"], difficulty: 1 },
   { answer: "יוניקורן", clues: ["סטארטאפ בשווי מיליארד"], difficulty: 3 },
   { answer: "ים סוף", clues: ["הים של אילת"], difficulty: 2 },
   {
@@ -8136,18 +8134,18 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     ],
     difficulty: 1
   },
-  { answer: "ירח דבש", clues: ["חופשה אחרי החופה"], difficulty: 3 },
+  { answer: "ירח דבש", clues: ["חופשה אחרי החופה"], difficulty: 1 },
   { answer: "כבידה", clues: ["מה שמחזיק אותנו על הרצפה"], difficulty: 2 },
   { answer: "כוורן", clues: ["עובד עם דבורים"], difficulty: 2 },
-  { answer: "כוכב ים", clues: ["חמש זרועות על הקרקעית"], difficulty: 3 },
-  { answer: "כוכב נולד", clues: ["תוכנית ששרים בה לחבר שופטים"], difficulty: 3 },
+  { answer: "כוכב ים", clues: ["חמש זרועות על הקרקעית"], difficulty: 1 },
+  { answer: "כוכב נולד", clues: ["תוכנית ריאליטי ישנה ששרים בה לחבר שופטים"], difficulty: 3 },
   { answer: "כוסמת", clues: ["גרעין ללחם ולאיטריות"], difficulty: 2 },
   { answer: "כספית", clues: ["מתכת שהיא נוזל"], difficulty: 2 },
   { answer: "כפפות", clues: ["מחממות אצבעות"], difficulty: 2 },
-  { answer: "כרטיס אדום", clues: ["מורחק מהמגרש"], difficulty: 3 },
+  { answer: "כרטיס אדום", clues: ["מורחק מהמגרש"], difficulty: 1 },
   { answer: "לאסו", clues: ["חבל זריקה"], difficulty: 1 },
   { answer: "לברדור", clues: ["כלב ציד ידידותי"], difficulty: 2 },
-  { answer: "לג בעומר", clues: ["מדורות ולפידים"], difficulty: 3 },
+  { answer: "לג בעומר", clues: ["מדורות ולפידים"], difficulty: 1 },
   { answer: "לוכסן", clues: ["הקו האלכסוני בכתובת"], difficulty: 2 },
   { answer: "לייזר", clues: ["קרן אור מרוכזת"], difficulty: 2 },
   { answer: "לייק", clues: ["אגודל למעלה ברשת"], difficulty: 2 },
@@ -8172,7 +8170,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "מיטוכונדריה", clues: ["תחנת הכוח של התא"], difficulty: 3 },
   { answer: "מייבש", clues: ["מסתובב אחרי הכביסה"], difficulty: 2 },
   { answer: "מיין קון", clues: ["חתול ענק פרוותי"], difficulty: 3 },
-  { answer: "מילקשייק", clues: ["גלידה טחונה לשתייה"], difficulty: 3 },
+  { answer: "מילקשייק", clues: ["גלידה טחונה לשתייה"], difficulty: 1 },
   { answer: "מימן", clues: ["היסוד הכי קל"], difficulty: 2 },
   { answer: "מינוטאור", clues: ["חצי אדם חצי פר"], difficulty: 3 },
   { answer: "מיני גולף", clues: ["חור עם טחנת רוח בדרך"], difficulty: 3 },
@@ -8195,7 +8193,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "מרימבה", clues: ["קסילופון גדול עם תהודה"], difficulty: 2 },
   { answer: "מרכאות", clues: ["מישהו אחר אמר את זה"], difficulty: 2 },
   { answer: "משחקי הכס", clues: ["כס ברזל ודרקונים"], difficulty: 3 },
-  { answer: "משלוח מנות", clues: ["מגש מתוק בפורים"], difficulty: 3 },
+  { answer: "משלוח מנות", clues: ["מגש מתוק בפורים"], difficulty: 1 },
   { answer: "מתקפה", clues: ["הולכים קדימה במשחק"], difficulty: 2 },
   { answer: "נווה צדק", clues: ["השכונה הישנה של תל אביב"], difficulty: 3 },
   {
@@ -8218,7 +8216,6 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "נמלת אש", clues: ["נמלה שעוקצת חזק"], difficulty: 3 },
   { answer: "נקודתיים", clues: ["מה שבא אחר כך מסביר"], difficulty: 3 },
   { answer: "סאבלט", clues: ["שוכרים דירה ממי ששכר"], difficulty: 2 },
-  { answer: "סארקזם", clues: ["הומור שאומר ההפך"], difficulty: 2 },
   { answer: "סבבה", clues: ["הכול טוב, בסלנג"], difficulty: 2 },
   { answer: "סביבון", clues: ["מסתובב בחנוכה"], difficulty: 2 },
   { answer: "סביון", clues: ["פרח צהוב שנהיה כדור לבן"], difficulty: 1 },
@@ -8227,7 +8224,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "סוגריים", clues: ["הערה בצד"], difficulty: 2 },
   { answer: "סודוקו", clues: ["ספרות אחד עד תשע בלי חזרה"], difficulty: 2 },
   { answer: "סווייפ", clues: ["החלקה ימינה באפליקציה"], difficulty: 2 },
-  { answer: "סויה", clues: ["רוטב מלוח אסייתי"], difficulty: 2 },
+  { answer: "סויה", clues: ["קטנית שממנה מכינים חלב, טופו ורוטב"], difficulty: 2 },
   { answer: "סולמית", clues: ["סימן של האשטג וגם תו"], difficulty: 2 },
   { answer: "סומלייה", clues: ["בקיא ביינות במסעדה"], difficulty: 2 },
   { answer: "סוסון ים", clues: ["דג שעומד זקוף"], difficulty: 2 },
@@ -8290,7 +8287,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "סקווש", clues: ["מחבט בחדר סגור"], difficulty: 2 },
   { answer: "סקייפ", clues: ["שיחת וידאו מהדור הקודם"], difficulty: 2 },
   { answer: "סרדין", clues: ["דג קטן בקופסת שימורים"], difficulty: 1 },
-  { answer: "סרוטונין", clues: ["הורמון מצב הרוח"], difficulty: 3 },
+  { answer: "סרוטונין", clues: ["מוליך עצבי המזוהה עם מצב הרוח"], difficulty: 3 },
   { answer: "סרט מדידה", clues: ["מטר מתקפל בכיס"], difficulty: 3 },
   { answer: "סשימי", clues: ["פרוסות דג בלי אורז"], difficulty: 1 },
   { answer: "עלית", clues: ["שוקולד ישראלי מהצפון"], difficulty: 2 },
@@ -8408,7 +8405,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     ],
     difficulty: 3
   },
-  { answer: "קורנפלקס", clues: ["דגני בוקר מתירס בקערה"], difficulty: 3 },
+  { answer: "קורנפלקס", clues: ["דגני בוקר מתירס בקערה"], difficulty: 1 },
   { answer: "קטאיף", clues: ["כיס ממולא לארוחת רמדאן"], difficulty: 2 },
   { answer: "קיגל", clues: ["אטריות אפויות לשבת"], difficulty: 2 },
   { answer: "קינדל", clues: ["קורא ספרים אלקטרוני"], difficulty: 2 },
@@ -8448,7 +8445,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "תעלומה שקשה לפצח",
       "אלן טיורינג וצוותים בבלצ'לי פארק סייעו לפענח את צפניה"
     ],
-    difficulty: 1
+    difficulty: 2
   },
   { answer: "אנטרקטיקה", clues: ["היבשת הקרה ביותר בכדור הארץ"], difficulty: 3 },
   { answer: "ארכימדס", clues: ["המדען היווני המזוהה עם הקריאה ״אאורקה!״"], difficulty: 3 },
@@ -8523,7 +8520,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "חדק הפיל, בלשון אחרת",
       "גם בירת סודאן נושאת את השם הזה"
     ],
-    difficulty: 1
+    difficulty: 2
   },
   { answer: "טאג מאהל", clues: ["מאוזוליאום הודי שנבנה כסמל לאהבה"], difficulty: 3 },
   { answer: "טיטאניק", clues: ["אוניית פאר שטבעה במסע הבכורה שלה"], difficulty: 3 },
@@ -8655,7 +8652,6 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     ],
     difficulty: 2
   },
-  { answer: "אמפיתאטרון", clues: ["מבנה עתיק שבו הקהל הקיף את המתרחש"], difficulty: 3 },
   {
     answer: "אנדרומדה",
     clues: [
@@ -8873,7 +8869,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     ],
     difficulty: 1
   },
-  { answer: "קולוסיאום", clues: ["הזירה הרומית שבה נלחמו גלדיאטורים"], difficulty: 3 },
+  { answer: "קולוסיאום", clues: ["הזירה הרומית שבה נלחמו גלדיאטורים", "זירה עגולה ברומא"], difficulty: 3 },
   { answer: "רדיום", clues: ["יסוד רדיואקטיבי שזוהה בידי מארי ופייר קירי"], difficulty: 3 },
   { answer: "רוזמרין", clues: ["עשב תיבול ים-תיכוני עם עלים דמויי מחטים"], difficulty: 3 },
   { answer: "רולטה", clues: ["משחק קזינו שבו הכדור מחליט איפה לעצור"], difficulty: 2 },
@@ -8996,7 +8992,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     difficulty: 1
   },
   { answer: "סמור", clues: ["יונק טורף קטן ומאורך", "בן משפחה של הלוטרה והגירית"], difficulty: 1 },
-  { answer: "סרקזם", clues: ["אומרים דבר אחד ומתכוונים לעקוץ עם ההפך", "ציניות עוקצנית"], difficulty: 2 },
+  { answer: "סרקזם", clues: ["אומרים דבר אחד ומתכוונים לעקוץ עם ההפך", "הומור שאומר ההפך", "ציניות עוקצנית"], difficulty: 2 },
   {
     answer: "פטרייה",
     clues: [
@@ -9188,7 +9184,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "העץ שנראה כאילו נשתל הפוך",
       "עץ שמסוגל לאגור כמויות גדולות של מים בגזעו"
     ],
-    difficulty: 1
+    difficulty: 2
   },
   {
     answer: "בונקר",
@@ -9257,7 +9253,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     clues: [
       "גרם למישהו לעשות משהו",
       "עודד לפעולה",
-      "פועל שנשמע כמעט כמו שמו של מכרסם קוצני"
+      "גם פועל וגם מכרסם קוצני"
     ],
     difficulty: 1
   },
@@ -9390,12 +9386,13 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "המקום שבו נוירון מעביר את המסר הלאה",
       "צומת זעיר במערכת העצבים"
     ],
-    difficulty: 1
+    difficulty: 3
   },
   {
     answer: "פומפייה",
     clues: [
       "כלי מטבח שמוריד גבינה לחתיכות קטנות",
+      "מגרדת גבינה וגזר",
       "יש לה חורים חדים אבל היא לא מסננת",
       "פרמזן פוגש אותה רגע לפני הפסטה"
     ],
@@ -9461,7 +9458,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "טבעת יבשה קטנה בלב האוקיינוס",
       "מבנה אלמוגים שנוצר לעיתים סביב שרידיו של אי געשי"
     ],
-    difficulty: 1
+    difficulty: 3
   },
   {
     answer: "אידיליה",
@@ -9709,14 +9706,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "מתקצר בתאים רבים עם כל חלוקה",
       "מעין כובע מגן בקצה החומר הגנטי הארוז"
     ],
-    difficulty: 2
-  },
-  {
-    answer: "טרמיטים",
-    clues: [
-      "חרקים חברתיים שעץ יכול להפוך אצלם לארוחת ערב"
-    ],
-    difficulty: 1
+    difficulty: 3
   },
   {
     answer: "כלנתר",
@@ -9749,7 +9739,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     clues: [
       "אדם שהופך לזאב בפולקלור"
     ],
-    difficulty: 2
+    difficulty: 3
   },
   {
     answer: "לימבו",
@@ -9798,8 +9788,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     answer: "מטמורפוזה",
     clues: [
       "התהליך שהופך זחל לפרפר",
-      "שינוי צורה דרמטי",
-      "שם יצירה של קפקא וגם תהליך ביולוגי"
+      "שינוי צורה דרמטי"
     ],
     difficulty: 2
   },
@@ -9948,7 +9937,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "טכניקה שבה הצבע הופך לחלק מהקיר",
       "הקפלה הסיסטינית מפורסמת בציורים מסוג זה"
     ],
-    difficulty: 1
+    difficulty: 2
   },
   {
     answer: "צופן קיסר",
@@ -9973,7 +9962,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "אריסטו קשר אותו להשפעת הטרגדיה על הצופה",
       "התחושה שאחרי שהרגש סוף סוף יצא החוצה"
     ],
-    difficulty: 1
+    difficulty: 3
   },
   {
     answer: "רדיוס",
@@ -10132,7 +10121,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "כשהירח נמצא הכי רחוק מאיתנו במסלולו",
       "ההפך מפריגיאה"
     ],
-    difficulty: 2
+    difficulty: 3
   },
   {
     answer: "אקלקטי",
@@ -10158,7 +10147,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "ביצה שמתבשלת במים בלי הקליפה",
       "נכנסת למים עירומה ויוצאת לארוחת בוקר"
     ],
-    difficulty: 3
+    difficulty: 2
   },
   {
     answer: "גאות",
@@ -10189,9 +10178,10 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     answer: "גריפון",
     clues: [
       "יצור אגדי שחציו אריה וחציו עיט",
+      "חצי נשר חצי אריה",
       "שומר אוצרות מיתולוגי בעל כנפיים ומקור"
     ],
-    difficulty: 3
+    difficulty: 2
   },
   {
     answer: "דוגית",
@@ -10242,7 +10232,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "הרגע שבו שיר בן 14 שורות משנה כיוון",
       "מונח ספרותי שמקורו באיטלקית ל'פנייה'"
     ],
-    difficulty: 2
+    difficulty: 3
   },
   {
     answer: "חוגה",
@@ -10260,7 +10250,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "כלי טיס שתוכנן לצמצם את חתימת הגילוי שלו",
       "ה־F-117 הוא דוגמה מפורסמת"
     ],
-    difficulty: 1
+    difficulty: 2
   },
   {
     answer: "טאבולה ראסה",
@@ -10323,7 +10313,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "מופיע בביטוי המתאר דבר שעבר זמנו",
       "מי שאבד עליו ה___ כבר אינו בשיאו"
     ],
-    difficulty: 1
+    difficulty: 2
   },
   {
     answer: "ליטוגרפיה",
@@ -10339,7 +10329,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     clues: [
       "קללה או פורענות"
     ],
-    difficulty: 1
+    difficulty: 3
   },
   {
     answer: "מגילה",
@@ -10424,7 +10414,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     clues: [
       "רוח טבע נשית במיתולוגיה היוונית",
     ],
-    difficulty: 3
+    difficulty: 2
   },
   {
     answer: "נרוואל",
@@ -10506,7 +10496,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   {
     answer: "פלנקטון",
     clues: [
-      "יצורים זעירים זוהרים בחושך שנסחפים עם זרמי המים",
+      "יצורים זעירים הנסחפים עם זרמי המים",
     ],
     difficulty: 3
   },
@@ -10517,7 +10507,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "כשהירח מגיע אליה הוא קרוב אלינו במיוחד",
       "ההפך מאפוגיאה"
     ],
-    difficulty: 2
+    difficulty: 3
   },
   {
     answer: "צדף",
@@ -10533,7 +10523,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     clues: [
       "חרק שהזכר שלו מסוגל לעשות המון רעש",
     ],
-    difficulty: 3
+    difficulty: 2
   },
   {
     answer: "קונטרפונקט",
@@ -10608,7 +10598,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "ברפואה, הצטברות נוזל מחוץ לכלי הדם",
       "יכול להצטבר למשל סביב הריאה"
     ],
-    difficulty: 2
+    difficulty: 3
   },
   {
     answer: "תקבולת",
@@ -10649,6 +10639,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     answer: "אמפיתיאטרון",
     clues: [
       "זירה שמוקפת במושבים",
+      "מבנה עתיק שבו הקהל הקיף את המתרחש",
       "הקולוסיאום הוא הדוגמה המפורסמת ביותר"
     ],
     difficulty: 3
@@ -10768,7 +10759,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     clues: [
       "דו־חי בעל גוף מוארך וזנב",
     ],
-    difficulty: 3
+    difficulty: 2
   },
   {
     answer: "עוגייה",
@@ -10776,7 +10767,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "במטבח אוכלים אותה, בדפדפן היא עוקבת אחריך",
       "יכולה להכיל שוקולד או מידע על הגלישה שלך"
     ],
-    difficulty: 3
+    difficulty: 1
   },
   {
     answer: "פקעת",
@@ -10977,15 +10968,6 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     difficulty: 1
   },
   {
-    answer: "פומפיה",
-    clues: [
-      "מגרדת גבינה וגזר",
-      "משטח מחורר שמקטין ירקות",
-      "מי שפוגש אותה בלי זהירות עלול גם להתגרד"
-    ],
-    difficulty: 2
-  },
-  {
     answer: "מערוך",
     clues: [
       "גלגלת בצק",
@@ -10999,7 +10981,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     clues: [
       "כלי קטן למלח על השולחן",
       "שותפה קבועה של הפלפלת",
-      "הופכת אוכל תפל לאוכל"
+      "הופכת אוכל תפל לאוכל טעים"
     ],
     difficulty: 1
   },
@@ -11268,7 +11250,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     answer: "אוכף",
     clues: [
       "מושב על גב הסוס",
-      "מפריד בין הרוכב לפרסה",
+      "מפריד בין הרוכב לגב הסוס",
       "בלי הוא, הרכיבה נעשית אישית מדי"
     ],
     difficulty: 1
@@ -11366,7 +11348,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   {
     answer: "עט נובע",
     clues: [
-      "כלי כתיבה עם דיו וגולה או ציפורן",
+      "כלי כתיבה עם דיו וציפורן",
       "לא כדורי, אלא זורם",
       "חתימות רשמיות אוהבות אותו"
     ],
@@ -11376,7 +11358,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     answer: "תות שדה",
     clues: [
       "פרי אדום עם גרעינים בחוץ",
-      "בקיץ הוא מתוק, בשמנת הוא חגיגי",
+      "בחורף הוא מתוק, בשמנת הוא חגיגי",
       "לא צומח על עץ, למרות השם"
     ],
     difficulty: 1
@@ -11433,7 +11415,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "גר במחילות ויוצא בחושך",
       "לא דב ולא חתול — משהו באמצע"
     ],
-    difficulty: 3
+    difficulty: 2
   },
   {
     answer: "סוסון",
@@ -11475,8 +11457,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     answer: "חגב",
     clues: [
       "חרק קופץ בשדה",
-      "יש לו רגליים אחוריות מוגזמות",
-      "במכות מצרים הוא הגיע בנחיל"
+      "יש לו רגליים אחוריות מוגזמות"
     ],
     difficulty: 1
   },
@@ -11547,7 +11528,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     answer: "אלבטרוס",
     clues: [
       "עוף ים ענק עם מוטת כנפיים מטורפת",
-      "גולףנים מפחדים ממנו על המסלול",
+      "תוצאה נדירה ומשמחת במגרש הגולף",
       "בשירה הוא לפעמים סמל של נטל"
     ],
     difficulty: 3
@@ -11575,7 +11556,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     clues: [
       "מעבר מים דרך קרום בררני",
       "צמחים שותים בזכותה בלי קש",
-      "ממיום מהול למיום מרוכז, או להפך לפי הריכוז"
+      "ממיום מהול למיום מרוכז דרך קרום בררני"
     ],
     difficulty: 3
   },
@@ -11746,7 +11727,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     clues: [
       "כלי טיס עם מדחף מעל הראש",
       "יכול לרחף במקום כמו יונק דבש מכני",
-      "נחתת בלי מסלול ארוך"
+      "נוחת בלי מסלול ארוך"
     ],
     difficulty: 1
   },
@@ -11781,7 +11762,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     answer: "משואה",
     clues: [
       "לפיד טקס גדול",
-      "ביום השואה מדליקים אותן בהר הרצל",
+      "בערב יום העצמאות מדליקים אותן בהר הרצל",
       "אש של זיכרון, לא של בישול"
     ],
     difficulty: 2
@@ -11898,7 +11879,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     answer: "כרכום",
     clues: [
       "צמח שממנו מפיקים זעפרן",
-      "אבקנים יקרים במשקל זהב",
+      "צלקות יקרות במשקל זהב",
       "נותן צבע צהוב־כתום לאורז"
     ],
     difficulty: 3
@@ -12403,7 +12384,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     clues: [
       "גם מדינה ענקית וגם העוף של החג",
       "ניו דלהי מצד אחד, תנור מצד שני",
-      "בירתה דלהי, כנפיה בתנור"
+      "בירתה ניו דלהי, כנפיה בתנור"
     ],
     difficulty: 1
   },
@@ -12429,7 +12410,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
     answer: "מגזין",
     clues: [
       "כתב עת צבעוני",
-      "גם בית קיבול למחסנית בנשק",
+      "גם מחסנית כדורים בנשק",
       "על הדוכן ליד העיתונים, או בתוך האקדח"
     ],
     difficulty: 2
@@ -12513,7 +12494,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "יושב בצד שמאל של הבטן, בשקט",
       "לא הכבד ולא הכליה — השכן הפחות מפורסם"
     ],
-    difficulty: 3
+    difficulty: 2
   },
   {
     answer: "כרומוזום",
@@ -12558,7 +12539,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
       "ביערות גשם הוא מרגיש בבית",
       "מתרבה בנבגים, לא בזרעים"
     ],
-    difficulty: 3
+    difficulty: 2
   },
   {
     answer: "קליפה",
