@@ -1588,7 +1588,6 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "סוחפ", clues: ["מלהיב מרגש"], difficulty: 1 },
   { answer: "סייג", clues: ["תנאי מגביל"], difficulty: 1 },
   { answer: "סוכן", clues: ["נציג, שליח"], difficulty: 1 },
-  { answer: "וול", clues: ["קיר הפייסבוק"], difficulty: 1 },
   { answer: "וולה", clues: ["בעיטה בכדורגל"], difficulty: 2 },
   { answer: "וולוו", clues: ["יצרנית רכב שבדית"], difficulty: 2 },
   {
@@ -4745,7 +4744,6 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "צידוד", clues: ["הפניית מערכת על גבי ציר"], difficulty: 2 },
   { answer: "צידי", clues: ["לא מרכזי", "לא במרכז"], difficulty: 1 },
   { answer: "ציון", clues: ["בלימודים"], difficulty: 1 },
-  { answer: "ציוץ", clues: ["פרסום ב\"טוויטר\""], difficulty: 2 },
   { answer: "ציטוט", clues: ["ציון אמירה של אחר"], difficulty: 2 },
   { answer: "צילום", clues: ["הסרטה"], difficulty: 1 },
   { answer: "צילינדר", clues: ["חלק במנוע"], difficulty: 2 },
