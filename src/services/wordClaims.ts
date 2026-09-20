@@ -54,6 +54,68 @@ export function findPuzzleItem(puzzle: IPuzzle, clueId: string): PuzzleItem | un
   );
 }
 
+export function answerCellsForItem(item: PuzzleItem): Array<{ row: number; col: number }> {
+  const letters = (item.answer ?? '').replace(/[\s\-–—]+/g, '');
+  const anchorRow = item.clueType === 'image' && item.exitRow != null && item.exitCol != null
+    ? item.exitRow
+    : item.startRow;
+  const anchorCol = item.clueType === 'image' && item.exitRow != null && item.exitCol != null
+    ? item.exitCol
+    : item.startCol;
+  const cells: Array<{ row: number; col: number }> = [];
+
+  for (let i = 0; i < letters.length; i++) {
+    let row = anchorRow;
+    let col = anchorCol;
+    switch (item.direction) {
+      case 'across':
+        row = anchorRow;
+        col = anchorCol + 1 + i;
+        break;
+      case 'down':
+        row = anchorRow + 1 + i;
+        col = anchorCol;
+        break;
+      case 'right-down':
+        row = anchorRow + i;
+        col = anchorCol + 1;
+        break;
+      case 'down-across':
+        row = anchorRow + 1;
+        col = anchorCol + i;
+        break;
+      case 'left-down':
+        row = anchorRow + i;
+        col = anchorCol - 1;
+        break;
+      case 'up-across':
+        row = anchorRow - 1;
+        col = anchorCol + i;
+        break;
+    }
+    cells.push({ row, col });
+  }
+
+  return cells;
+}
+
+export function lockedCellsFromClaims(
+  puzzle: IPuzzle,
+  claimedWords: ClaimedWord[] | undefined
+): Set<string> {
+  const keys = new Set<string>();
+  for (const word of claimedWords ?? []) {
+    const item = findPuzzleItem(puzzle, word.clueId);
+    if (!item) {
+      continue;
+    }
+    for (const cell of answerCellsForItem(item)) {
+      keys.add(`${cell.row},${cell.col}`);
+    }
+  }
+  return keys;
+}
+
 export function claimProgress(claimedCount: number, totalClues: number): number {
   if (totalClues <= 0) {
     return 0;

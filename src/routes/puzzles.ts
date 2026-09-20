@@ -20,7 +20,7 @@ const router = Router();
 
 router.get('/', authenticateToken, getPuzzles);
 router.get('/daily', authenticateToken, getDailyPuzzle);
-router.get('/daily/solved-count', authenticateToken, getDailyPuzzleSolvedCount);
+router.get('/daily/solved-count', getDailyPuzzleSolvedCount);
 router.get('/daily/stats', authenticateToken, getDailyPuzzleStats);
 router.get('/favorites', authenticateToken, getFavoritePuzzles);
 router.get('/random', authenticateToken, getRandomPuzzle); 

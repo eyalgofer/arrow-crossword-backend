@@ -67,26 +67,53 @@ export const getPackagesProgress = async (req: AuthRequest, res: Response) => {
       .sort({ order: 1 })
       .lean();
 
-    // Get all completed puzzle IDs for this user
-    const completedProgress = await UserPuzzleProgress.find({
-      userId: user._id,
-      isCompleted: true
-    }).select('puzzleId').lean();
+    const allPuzzleIds = packages.flatMap(pkg => pkg.puzzleIds);
+    const progressDocs = allPuzzleIds.length
+      ? await UserPuzzleProgress.find({
+          userId: user._id,
+          puzzleId: { $in: allPuzzleIds }
+        })
+          .select('puzzleId completedCluesCount totalClues isCompleted lastPlayedAt')
+          .lean()
+      : [];
 
-    const completedPuzzleIds = new Set(
-      completedProgress.map(p => p.puzzleId.toString())
+    const progressByPuzzleId = new Map(
+      progressDocs.map(p => [p.puzzleId.toString(), p])
     );
 
-    // Calculate progress for each package
     const progress = packages.map(pkg => {
-      const completedCount = pkg.puzzleIds.filter(
-        puzzleId => completedPuzzleIds.has(puzzleId.toString())
-      ).length;
+      let lastPlayedAt: Date | undefined;
+
+      const puzzles = pkg.puzzleIds.map(puzzleId => {
+        const saved = progressByPuzzleId.get(puzzleId.toString());
+        const percent = puzzleProgressPercent(saved);
+        const entry: {
+          puzzleId: string;
+          progress: number;
+          lastPlayedAt?: Date;
+        } = {
+          puzzleId: puzzleId.toString(),
+          progress: percent
+        };
+
+        if (saved?.lastPlayedAt) {
+          entry.lastPlayedAt = saved.lastPlayedAt;
+          if (!lastPlayedAt || saved.lastPlayedAt > lastPlayedAt) {
+            lastPlayedAt = saved.lastPlayedAt;
+          }
+        }
+
+        return entry;
+      });
+
+      const completedCount = puzzles.filter(p => p.progress === 100).length;
 
       return {
         packageId: pkg._id,
         completedCount,
-        isCompleted: completedCount >= pkg.puzzleCount
+        isCompleted: pkg.puzzleIds.length > 0 && completedCount === pkg.puzzleIds.length,
+        ...(lastPlayedAt ? { lastPlayedAt } : {}),
+        puzzles
       };
     });
 
@@ -126,3 +153,23 @@ export const getPackage = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ error: 'Failed to get package' });
   }
 };
+
+function puzzleProgressPercent(
+  saved?: {
+    isCompleted?: boolean;
+    completedCluesCount?: number;
+    totalClues?: number;
+  }
+): number {
+  if (!saved) {
+    return 0;
+  }
+  if (saved.isCompleted) {
+    return 100;
+  }
+  const total = saved.totalClues ?? 0;
+  if (total <= 0) {
+    return 0;
+  }
+  return Math.round(((saved.completedCluesCount ?? 0) / total) * 100);
+}

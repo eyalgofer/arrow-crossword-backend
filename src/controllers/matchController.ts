@@ -5,7 +5,7 @@ import { User } from '../models/User';
 import { AuthRequest } from '../types';
 import { MatchCompletionReason, MatchStatus } from '../types';
 import { io } from '../server';
-import { withMatchTiming } from '../utils/matchTiming';
+import { withMatchTiming, isMatchTimedOut } from '../utils/matchTiming';
 import { resolveMatchMode } from '../utils/matchSettings';
 import { completeExpiredMatches, completeMatch, ensureMatchNotExpired } from '../services/matchCompletion';
 import { serializeClaimedWords } from '../services/wordClaims';
@@ -58,8 +58,10 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
       .populate('players.userId', 'displayName photoURL')
       .sort({ startedAt: -1 });
 
+    const activeMatches = matches.filter(match => !isMatchTimedOut(match));
+
     // Enhance matches with opponent info and time elapsed
-    const enhancedMatches = matches.map(match => {
+    const enhancedMatches = activeMatches.map(match => {
       const matchObj = match.toObject();
       
       // Ensure players array includes photoURL (from populated userId or stored value)
@@ -96,8 +98,12 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
       const opponentUserId = opponent ? ((opponent.userId as any)?._id || opponent.userId) : null;
       const opponentPopulated = opponent ? (opponent.userId as any) : null;
 
+      const userProgress = currentUserPlayer?.progress || 0;
+      const opponentProgress = opponent?.progress || 0;
+
       return withMatchTiming({
         ...matchObj,
+        matchId: match._id.toString(),
         mode: resolveMatchMode(match),
         claimedWords: serializeClaimedWords(match.claimedWords),
         players: enhancedPlayers,
@@ -105,10 +111,12 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
           userId: opponentUserId,
           displayName: opponent.displayName || opponentPopulated?.displayName,
           photoURL: opponent.photoURL || opponentPopulated?.photoURL,
-          progress: opponent.progress,
+          progress: opponentProgress,
           claimedCount: opponent.claimedCount ?? 0
         } : null,
-        currentUserPuzzleProgress: currentUserPlayer?.progress || 0,
+        userProgress,
+        opponentProgress,
+        currentUserPuzzleProgress: userProgress,
         timeElapsed
       });
     });
@@ -165,7 +173,7 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
     );
 
     if (!isPlayer) {
-      return res.status(403).json({ error: 'Not authorized to view this match' });
+      return res.status(404).json({ error: 'Match not found' });
     }
 
     // Enhance with opponent info and time elapsed
@@ -190,18 +198,24 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
     const opponentUserId = opponent ? ((opponent.userId as any)?._id || opponent.userId) : null;
     const opponentPopulated = opponent ? (opponent.userId as any) : null;
 
+    const userProgress = currentUserPlayer?.progress || 0;
+    const opponentProgress = opponent?.progress || 0;
+
     const enhancedMatch = withMatchTiming({
       ...match.toObject(),
+      matchId: match._id.toString(),
       mode: resolveMatchMode(match),
       claimedWords: serializeClaimedWords(match.claimedWords),
       opponent: opponent ? {
         userId: opponentUserId,
         displayName: opponent.displayName || opponentPopulated?.displayName,
         photoURL: opponent.photoURL || opponentPopulated?.photoURL,
-        progress: opponent.progress,
+        progress: opponentProgress,
         claimedCount: opponent.claimedCount ?? 0
       } : null,
-      currentUserPuzzleProgress: currentUserPlayer?.progress || 0,
+      userProgress,
+      opponentProgress,
+      currentUserPuzzleProgress: userProgress,
       timeElapsed
     });
 

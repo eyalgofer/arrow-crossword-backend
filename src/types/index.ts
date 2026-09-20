@@ -101,6 +101,7 @@ export interface GameState {
   puzzleId: string;
   moves: PlayerMove[];
   claimedWords: ClaimedWord[];
+  lockedCells?: Set<string>;
   mode: MatchMode;
   timed: boolean;
   startedAt?: Date;

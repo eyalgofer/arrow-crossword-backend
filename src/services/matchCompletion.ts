@@ -6,7 +6,7 @@ import { MatchCompletionReason, MatchMode, MatchStatus } from '../types';
 import { MATCH_REWARD_COINS } from '../constants/match';
 import { isMatchTimedOut } from '../utils/matchTiming';
 import { removeActiveGame } from '../sockets/activeGames';
-import { isBoardFullyClaimed, winnerIdFromClaimedCount } from './wordClaims';
+import { isBoardFullyClaimed, serializeClaimedWords, winnerIdFromClaimedCount } from './wordClaims';
 import { isQuickMatch } from '../utils/matchSettings';
 
 export interface MatchCompletedPlayer {
@@ -25,6 +25,7 @@ export interface MatchCompletedPayload {
     winnerId: string | null;
     mode: MatchMode;
     players: MatchCompletedPlayer[];
+    claimedWords: ReturnType<typeof serializeClaimedWords>;
   };
 }
 
@@ -81,7 +82,8 @@ export function buildMatchCompletedPayload(
         displayName: player.displayName,
         progress: player.progress ?? 0,
         claimedCount: player.claimedCount ?? 0
-      }))
+      })),
+      claimedWords: serializeClaimedWords(match.claimedWords)
     }
   };
 }

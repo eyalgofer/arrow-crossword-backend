@@ -146,8 +146,7 @@ export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
 
 /**
  * GET /api/puzzles/daily/solved-count
- * How many distinct players have completed today's daily puzzle
- * (the assignment for the request language).
+ * Community stats for today's daily puzzle (request language). Public.
  */
 export const getDailyPuzzleSolvedCount = async (req: AuthRequest, res: Response) => {
   try {
@@ -161,15 +160,37 @@ export const getDailyPuzzleSolvedCount = async (req: AuthRequest, res: Response)
     }).select('puzzleId').lean();
 
     if (!dailyPuzzle) {
-      return res.json({ solvedCount: 0 });
+      return res.json({ solvedCount: 0, fastestSeconds: null });
     }
 
-    const solvedCount = await UserPuzzleProgress.countDocuments({
-      puzzleId: dailyPuzzle.puzzleId,
-      isCompleted: true,
-    });
+    const [stats] = await UserPuzzleProgress.aggregate<{
+      solvedCount: number;
+      fastestSeconds: number | null;
+    }>([
+      { $match: { puzzleId: dailyPuzzle.puzzleId, isCompleted: true } },
+      {
+        $group: {
+          _id: null,
+          solvedCount: { $sum: 1 },
+          fastestSeconds: {
+            $min: {
+              $cond: [{ $gt: ['$bestTime', 0] }, '$bestTime', null],
+            },
+          },
+        },
+      },
+    ]);
 
-    res.json({ solvedCount });
+    const fastest = stats?.fastestSeconds;
+    const fastestSeconds =
+      typeof fastest === 'number' && Number.isFinite(fastest)
+        ? Math.floor(fastest)
+        : null;
+
+    res.json({
+      solvedCount: stats?.solvedCount ?? 0,
+      fastestSeconds,
+    });
   } catch (error) {
     console.error('Get daily puzzle solved count error:', error);
     res.status(500).json({ error: 'Failed to get daily puzzle solved count' });
@@ -596,7 +617,10 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
 
       const completionSeconds = Math.floor(completionTime);
       const fastest = user.dailyPuzzleStats.fastestSeconds;
-      if (fastest === null || fastest === undefined || completionSeconds < fastest) {
+      if (
+        completionSeconds > 0 &&
+        (fastest === null || fastest === undefined || completionSeconds < fastest)
+      ) {
         user.dailyPuzzleStats.fastestSeconds = completionSeconds;
         userNeedsSave = true;
       }

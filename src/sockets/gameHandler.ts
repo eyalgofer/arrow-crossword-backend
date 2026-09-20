@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import { isAccessTokenExpiredError, verifyAccessToken } from '../services/authTokens';
 import { User } from '../models/User';
 import { Match } from '../models/Match';
-import { Puzzle } from '../models/Puzzle';
+import { Puzzle, IPuzzle } from '../models/Puzzle';
 import { MatchStatus, GameState, Language, DEFAULT_LANGUAGE, MatchCompletionReason, MatchMode } from '../types';
 import { IMatch } from '../models/Match';
 import { resolveLanguageFromValues } from '../utils/language';
@@ -19,6 +19,7 @@ import {
   getPlayableMatch
 } from '../services/matchCompletion';
 import {
+  lockedCellsFromClaims,
   playerClaimScores,
   recomputeMatchScores,
   serializeClaimedWords,
@@ -187,6 +188,7 @@ export const setupSocketHandlers = (io: Server) => {
             puzzleId: randomPuzzle._id.toString(),
             moves: [],
             claimedWords: [],
+            lockedCells: new Set<string>(),
             mode: settings.mode,
             ...timing
           };
@@ -262,6 +264,13 @@ export const setupSocketHandlers = (io: Server) => {
         const timing = getMatchTimingFields(match);
         const mode = isQuickMatch(match) ? MatchMode.QUICK : MatchMode.NORMAL;
 
+        // Get the puzzle for the match
+        const puzzle = await Puzzle.findById(match.puzzleId);
+        if (!puzzle) {
+          socket.emit('error', { message: 'Puzzle not found' });
+          return;
+        }
+
         // Initialize game state if not already present (only for in-progress matches)
         if (match.status === MatchStatus.IN_PROGRESS && !activeGames.has(matchId)) {
           const gameState: GameState = {
@@ -276,51 +285,61 @@ export const setupSocketHandlers = (io: Server) => {
             puzzleId: match.puzzleId.toString(),
             moves: match.moves || [],
             claimedWords: match.claimedWords || [],
+            lockedCells: lockedCellsFromClaims(puzzle, match.claimedWords),
             mode,
             ...timing
           };
           activeGames.set(matchId, gameState);
         }
 
-        // Get the puzzle for the match
-        const puzzle = await Puzzle.findById(match.puzzleId);
-        if (!puzzle) {
-          socket.emit('error', { message: 'Puzzle not found' });
-          return;
-        }
-
         // Get opponent info
         const opponent = match.players.find(
           p => p.userId.toString() !== user._id.toString()
         );
+        const currentUserPlayer = match.players.find(
+          p => p.userId.toString() === user._id.toString()
+        );
 
         // Get current game state
         const gameState = activeGames.get(matchId);
+        if (gameState) {
+          gameState.lockedCells = lockedCellsFromClaims(
+            puzzle,
+            gameState.claimedWords || match.claimedWords
+          );
+        }
 
         // Get all moves
         const allMoves = gameState?.moves || match.moves || [];
-        
-        // Filter moves for the current user
-        const userMoves = allMoves.filter(move => {
-          const moveUserId = move.userId?.toString ? move.userId.toString() : move.userId;
-          return moveUserId === user._id.toString();
-        });
+        const currentUserId = user._id.toString();
+        const userMoves = allMoves
+          .filter(move => moveUserId(move) === currentUserId)
+          .map(move => serializeUserMove(move));
+        const opponentMoves = allMoves
+          .filter(move => moveUserId(move) !== currentUserId)
+          .map(move => serializeOpponentMove(move));
+
+        const claimedWords = serializeClaimedWords(gameState?.claimedWords || match.claimedWords);
+        const userProgress = currentUserPlayer?.progress ?? 0;
+        const opponentProgress = opponent?.progress ?? 0;
+        const puzzleId = match.puzzleId.toString();
 
         // Notify room that player joined
         socket.to(matchId).emit('player_joined', {
-          userId: user._id.toString(),
+          userId: currentUserId,
           displayName: user.displayName
         });
 
         // Send full game state to the rejoining player
         socket.emit('joined_match', {
           matchId,
+          puzzleId,
           puzzle,
           opponent: opponent ? {
             userId: opponent.userId.toString(),
             displayName: opponent.displayName,
             photoURL: opponent.photoURL,
-            progress: opponent.progress,
+            progress: opponentProgress,
             claimedCount: opponent.claimedCount ?? 0
           } : null,
           players: (gameState?.players || match.players).map(p => ({
@@ -330,9 +349,16 @@ export const setupSocketHandlers = (io: Server) => {
             progress: p.progress,
             claimedCount: p.claimedCount ?? 0
           })),
-          claimedWords: serializeClaimedWords(gameState?.claimedWords || match.claimedWords),
-          moves: allMoves,
-          userMoves: userMoves,
+          claimedWords,
+          gameState: {
+            moves: opponentMoves,
+            progress: opponentProgress,
+            userMoves,
+            userProgress,
+            claimedWords
+          },
+          moves: opponentMoves,
+          userMoves,
           mode,
           ...serializeTimingFields(timing)
         });
@@ -437,6 +463,18 @@ export const setupSocketHandlers = (io: Server) => {
         const user = await User.findOne({ firebaseUid: socket.userId });
         if (!user) return;
 
+        if (isQuickMatch(match)) {
+          if (!gameState.lockedCells) {
+            const puzzle = await Puzzle.findById(match.puzzleId);
+            if (puzzle) {
+              gameState.lockedCells = lockedCellsFromClaims(puzzle, match.claimedWords);
+            }
+          }
+          if (gameState.lockedCells?.has(`${row},${col}`)) {
+            return;
+          }
+        }
+
         // Add move to game state
         const move = {
           userId: user._id,
@@ -532,16 +570,18 @@ export const setupSocketHandlers = (io: Server) => {
           return;
         }
 
-        syncGameStateClaims(result.match, puzzle.puzzleItems.length);
+        syncGameStateClaims(result.match, puzzle);
 
         const scores = playerClaimScores(result.match.players, puzzle.puzzleItems.length);
         const claimedWords = serializeClaimedWords(result.match.claimedWords);
 
         const wordClaimedPayload = {
+          matchId,
           clueId: result.claim.clueId,
           answer: result.claim.answer,
           userId: result.claim.userId,
           displayName: result.claim.displayName,
+          claimedAt: result.claim.claimedAt,
           scores,
           claimedWords
         };
@@ -678,18 +718,19 @@ async function handleBoardCompletedHint(
   }
 
   const current = await recomputeMatchScores(match, puzzle.puzzleItems.length);
-  syncGameStateClaims(current, puzzle.puzzleItems.length);
+  syncGameStateClaims(current, puzzle);
   await completeMatchIfBoardClaimed(io, current, puzzle.puzzleItems.length);
 }
 
-function syncGameStateClaims(match: IMatch, totalClues: number): void {
+function syncGameStateClaims(match: IMatch, puzzle: IPuzzle): void {
   const gameState = activeGames.get(match._id.toString());
   if (!gameState) {
     return;
   }
 
-  const scores = playerClaimScores(match.players, totalClues);
+  const scores = playerClaimScores(match.players, puzzle.puzzleItems.length);
   gameState.claimedWords = match.claimedWords || [];
+  gameState.lockedCells = lockedCellsFromClaims(puzzle, match.claimedWords);
   gameState.players = gameState.players.map(player => {
     const score = scores.find(s => s.userId === player.userId);
     return {
@@ -698,4 +739,28 @@ function syncGameStateClaims(match: IMatch, totalClues: number): void {
       progress: score?.progress ?? player.progress
     };
   });
+}
+
+function moveUserId(move: { userId?: { toString?: () => string } | string }): string {
+  if (move.userId == null) {
+    return '';
+  }
+  return typeof move.userId === 'string' ? move.userId : String(move.userId.toString?.() ?? move.userId);
+}
+
+function serializeUserMove(move: { row: number; col: number; letter: string }) {
+  return {
+    row: move.row,
+    col: move.col,
+    letter: move.letter
+  };
+}
+
+function serializeOpponentMove(move: { userId?: { toString?: () => string } | string; row: number; col: number; letter: string }) {
+  return {
+    userId: moveUserId(move),
+    row: move.row,
+    col: move.col,
+    letter: move.letter
+  };
 }
