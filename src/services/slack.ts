@@ -25,13 +25,11 @@ export async function notifyNewUser(fields: NewUserSlackFields): Promise<void> {
     return;
   }
 
-  const name = fields.displayName?.trim() || 'not set';
   const device = fields.device === 'ios' || fields.device === 'android'
     ? fields.device
     : 'unknown';
   const text = [
     `🎉 New user number ${fields.userNumber}`,
-    `Nickname: ${fields.displayName}`,
     `Email: ${fields.email}`,
     `Device: ${device}`,
   ].join('\n');

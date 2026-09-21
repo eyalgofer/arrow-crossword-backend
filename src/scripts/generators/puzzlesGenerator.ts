@@ -276,7 +276,7 @@ export class PuzzleGenerator {
             `   … image attempt ${attempt + 1}: solving ${template.slots.length} slots [${images}] (${Date.now() - t0}ms tmpl) ${formatQuality(templateStats)}`
           );
         }
-        const solveTries = wantImages > 0 ? 2 : this.language === 'he' ? 2 : 1;
+        const solveTries = wantImages > 0 ? 2 : 1;
         for (let solveTry = 0; solveTry < solveTries && !puzzle; solveTry++) {
           puzzle = this.solveTemplate(template, meta);
         }
@@ -285,6 +285,8 @@ export class PuzzleGenerator {
       if (!puzzle) {
         if (wantImages > 0) {
           console.log(`   … image attempt ${attempt + 1}: solve/validate failed`);
+        } else if (this.language === 'he' && attempt < 8) {
+          console.log(`   … attempt ${attempt + 1}: solve failed`);
         }
         continue;
       }
@@ -563,7 +565,8 @@ export class PuzzleGenerator {
           : cells >= 196
             ? 45000
             : 35000
-      : (this.language === 'he' ? 28 : 12) * 1000 + cells * (cells >= 256 ? 80 : 40);
+      : // Text Hebrew: fail faster so more templates get tried (daily-like throughput).
+        (this.language === 'he' ? 14 : 12) * 1000 + cells * (cells >= 256 ? 40 : 25);
     const jitter = new Map<string, number>();
     const wordScorer = (word: string, _placedWords: string[]) => {
       let j = jitter.get(word);
