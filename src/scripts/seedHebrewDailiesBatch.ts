@@ -5,7 +5,6 @@
  * Usage:
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 14 --start 2026-09-16
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 7 --from-tomorrow
- *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 7 --from-tomorrow --size 14 --images 2 --fresh
  */
 
 import dotenv from 'dotenv';
@@ -34,18 +33,19 @@ dotenv.config();
 const CATEGORY = 'יומי';
 const LANGUAGE = 'he' as const;
 const PARALLEL = 4;
+const WORKER_ATTEMPTS = 48;
 const ROOT = path.join(__dirname, '../..');
-const CATALOG_FILE = path.join(ROOT, 'tmp-daily-catalog.json');
-const OUT_DIR = path.join(ROOT, 'tmp-daily-puzzles');
+const CATALOG_FILE = path.join(ROOT, 'tmp-daily-batch-catalog.json');
+const OUT_DIR = path.join(ROOT, 'tmp-daily-batch');
 
 /** Rotating presets — mostly 2 images for fill reliability; sprinkle 3–5. */
-const DEFAULT_PRESETS: Array<{ size: 14 | 15; images: number }> = [
+const FALLBACK_PRESETS: Array<{ size: 14 | 15; images: number }> = [
   { size: 14, images: 2 },
   { size: 14, images: 3 },
   { size: 14, images: 2 },
   { size: 14, images: 4 },
   { size: 14, images: 2 },
-  { size: 14, images: 3 },
+  { size: 14, images: 3 }
 ];
 
 function argValue(name: string, fallback?: string): string | undefined {
@@ -53,20 +53,6 @@ function argValue(name: string, fallback?: string): string | undefined {
   if (idx === -1) return fallback;
   return process.argv[idx + 1] ?? fallback;
 }
-
-const FORCE_SIZE = argValue('--size') ? Number(argValue('--size')) : undefined;
-const FORCE_IMAGES = argValue('--images') ? Number(argValue('--images')) : undefined;
-const FALLBACK_PRESETS: Array<{ size: 14 | 15; images: number }> =
-  FORCE_SIZE && FORCE_IMAGES
-    ? [{ size: FORCE_SIZE as 14 | 15, images: FORCE_IMAGES }]
-    : DEFAULT_PRESETS;
-/** When --size/--images set, accept only exact matches; otherwise allow mixed presets. */
-const STRICT_SIZE = FORCE_SIZE;
-const STRICT_IMAGES = FORCE_IMAGES;
-const TARGET_SIZE = FORCE_SIZE ?? 14;
-const TARGET_IMAGES = FORCE_IMAGES ?? 2;
-const FRESH = process.argv.includes('--fresh');
-const WORKER_ATTEMPTS = FORCE_IMAGES === 2 ? 96 : 48;
 
 function addDays(date: Date, days: number): Date {
   const next = new Date(date);
@@ -139,11 +125,16 @@ function puzzleIsReady(puzzle: GeneratedPuzzle, minImages: number, minSize: numb
   );
 }
 
-/** Exclude image answers already shown in any Hebrew daily or favorite. */
-async function loadUsedImageAnswers(): Promise<Set<string>> {
-  const [dailies, favs] = await Promise.all([
-    DailyPuzzle.find({ language: LANGUAGE }).lean(),
+async function loadUsedImageAnswersThisWeek(): Promise<Set<string>> {
+  const weekAgo = new Date();
+  weekAgo.setUTCDate(weekAgo.getUTCDate() - 7);
+
+  // Exclude recent dailies + current favorites + recently created puzzles.
+  // Do NOT dump the entire multiplayer pool — that starves short image answers.
+  const [dailies, favs, recent] = await Promise.all([
+    DailyPuzzle.find({ language: LANGUAGE, date: { $gte: weekAgo } }).lean(),
     FavPuzzle.find({ language: LANGUAGE }).lean(),
+    Puzzle.find({ language: LANGUAGE, createdAt: { $gte: weekAgo } }).lean(),
   ]);
 
   const ids = [
@@ -154,7 +145,7 @@ async function loadUsedImageAnswers(): Promise<Set<string>> {
   const linked = ids.length ? await Puzzle.find({ _id: { $in: ids } }).lean() : [];
 
   const used = new Set<string>();
-  for (const puzzle of linked) {
+  for (const puzzle of [...linked, ...recent]) {
     for (const item of (puzzle as any).puzzleItems || []) {
       if (item.clueType === 'image' && item.answer) {
         used.add(normalizeWord(String(item.answer)));
@@ -256,17 +247,7 @@ async function generateDailies(
 
   const accept = (puzzle: GeneratedPuzzle, label: string): boolean => {
     const answers = imageAnswers(puzzle);
-    const minImages = STRICT_IMAGES ?? 2;
-    if (answers.length < minImages) return false;
-    if (
-      STRICT_SIZE != null &&
-      (puzzle.grid?.rows !== STRICT_SIZE || puzzle.grid?.cols !== STRICT_SIZE)
-    ) {
-      console.log(
-        `♻️  Skipping ${label}: want ${STRICT_SIZE}x${STRICT_SIZE}, got ${puzzle.grid?.rows}x${puzzle.grid?.cols}`
-      );
-      return false;
-    }
+    if (answers.length < 2) return false;
     if (answers.some((answer) => usedImages.has(answer))) {
       console.log(`♻️  Skipping ${label}: image overlap with already-chosen dailies`);
       return false;
@@ -284,11 +265,11 @@ async function generateDailies(
     return true;
   };
 
-  // Reuse unique ready boards from a prior partial run (unless --fresh).
-  if (!FRESH && fs.existsSync(OUT_DIR)) {
+  // Reuse unique ready boards from a prior partial run.
+  if (fs.existsSync(OUT_DIR)) {
     const files = fs
       .readdirSync(OUT_DIR)
-      .filter((name) => /^daily-\d+\.json$/.test(name))
+      .filter((name) => /^(daily|batch)-\d+\.json$/.test(name))
       .sort((a, b) => parseInt(a.replace(/\D/g, ''), 10) - parseInt(b.replace(/\D/g, ''), 10));
     for (const file of files) {
       if (collected.length >= target) break;
@@ -296,9 +277,9 @@ async function generateDailies(
         const puzzle = JSON.parse(
           fs.readFileSync(path.join(OUT_DIR, file), 'utf8')
         ) as GeneratedPuzzle;
-        const minImgs = STRICT_IMAGES ?? 2;
-        const minSize = STRICT_SIZE ?? 14;
-        if (puzzleIsReady(puzzle, minImgs, minSize)) {
+        const images = puzzle.puzzleItems.filter((item) => item.clueType === 'image').length;
+        const size = Math.min(puzzle.grid?.rows ?? 0, puzzle.grid?.cols ?? 0);
+        if (puzzleIsReady(puzzle, Math.min(2, images), Math.min(14, size))) {
           accept(puzzle, file);
         }
       } catch {
@@ -344,15 +325,15 @@ async function generateDailies(
         const preset = FALLBACK_PRESETS[launched % FALLBACK_PRESETS.length];
         launched += 1;
         inFlight += 1;
-        const outPath = path.join(OUT_DIR, `daily-${index}.json`);
+        const outPath = path.join(OUT_DIR, `batch-${index}.json`);
         console.log(
-          `—— Launch daily-${index}: ${preset.size}×${preset.size}, ${preset.images} image(s) ` +
+          `—— Launch batch-${index}: ${preset.size}×${preset.size}, ${preset.images} image(s) ` +
             `(in-flight ${inFlight}, have ${collected.length}/${target}) ——`
         );
         runWorker(index, catalogPath, outPath, preset.size, preset.images)
           .then((puzzle) => {
             inFlight -= 1;
-            if (puzzle) accept(puzzle, `daily-${index}`);
+            if (puzzle) accept(puzzle, `batch-${index}`);
             maybeDone();
           })
           .catch(() => {
@@ -382,11 +363,11 @@ const main = async () => {
     const startDay = parseStartDate();
     const lastDay = addDays(startDay, COUNT - 1);
 
-    const usedImages = await loadUsedImageAnswers();
+    const usedThisWeek = await loadUsedImageAnswersThisWeek();
     const mongoCatalog = await loadImageClueCatalogFromMongo();
     const localCatalog = loadGeneratedImageClueCatalog();
     const merged = mergeCatalogs(mongoCatalog, localCatalog);
-    const available = merged.filter((entry) => !usedImages.has(normalizeWord(entry.answer)));
+    const available = merged.filter((entry) => !usedThisWeek.has(normalizeWord(entry.answer)));
     // Prefer fillable image lengths (5–8). Keep longer ones only as last resort.
     const byLen = (entry: ImageClueCatalogEntry) => normalizeWord(entry.answer).length;
     const preferred = available.filter((entry) => {
@@ -397,41 +378,36 @@ const main = async () => {
       const n = byLen(entry);
       return n < 5 || n > 8;
     });
-    const needImages = COUNT * TARGET_IMAGES;
+    // Use preferred-only when we have enough for the remaining slots.
+    const needImages = COUNT * 2;
     const catalog =
       preferred.length >= Math.max(12, needImages - 8)
         ? preferred
         : [...preferred, ...rest];
 
-    if (preferred.length < needImages) {
+    if (preferred.length < COUNT) {
       console.warn(
-        `⚠️  Only ${preferred.length} catalog entries with length 5–8 after exclude ` +
-          `(need ~${needImages} image slots). Fill rate may be lower.`
+        `⚠️  Only ${preferred.length} catalog entries with length 5–8 after week exclude ` +
+          `(need ~${COUNT * 2} image slots). Fill rate may be lower.`
       );
     }
-    if (catalog.length < needImages) {
+    if (catalog.length < COUNT * 2) {
       throw new Error(
-        `Need unused image clues, found ${catalog.length} after excluding ${usedImages.size} previously shown. ` +
+        `Need unused image clues, found ${catalog.length} after excluding ${usedThisWeek.size} used this week. ` +
           `Run scripts/arrow-image-pipeline \`npm run process\` first.`
       );
     }
 
-    if (FRESH && fs.existsSync(OUT_DIR)) {
-      for (const name of fs.readdirSync(OUT_DIR)) {
-        if (/^daily-\d+\.json$/.test(name)) {
-          fs.unlinkSync(path.join(OUT_DIR, name));
-        }
-      }
-    }
+    // Keep prior partial successes under tmp-daily-puzzles/; only wipe when empty/missing.
     fs.mkdirSync(OUT_DIR, { recursive: true });
     fs.writeFileSync(CATALOG_FILE, JSON.stringify(catalog));
 
     console.log(
       `Catalog ${catalog.length} available ` +
-        `(excluded ${usedImages.size} previously shown; mongo ${mongoCatalog.length} + local ${localCatalog.length})`
+        `(excluded ${usedThisWeek.size} used this week; mongo ${mongoCatalog.length} + local ${localCatalog.length})`
     );
     console.log(
-      `📅 Generating ${COUNT} Hebrew dailies: ${TARGET_SIZE}×${TARGET_SIZE}, ${TARGET_IMAGES} image(s), ` +
+      `📅 Generating ${COUNT} Hebrew dailies: sizes 14/15, images 2–5, ` +
         `${startDay.toLocaleDateString()} → ${lastDay.toLocaleDateString()}\n`
     );
 

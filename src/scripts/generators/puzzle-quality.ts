@@ -3,11 +3,13 @@ import { getAnswerCells, getSlotCells } from './direction-utils';
 
 const HORIZONTAL_DIRS = new Set<Direction>(['across', 'down-across', 'up-across']);
 
-export const MIN_TEMPLATE_CROSSING = 0.5;
-export const MIN_PUZZLE_CROSSING = 0.55;
+export const MIN_TEMPLATE_CROSSING = 0.55;
+export const MIN_PUZZLE_CROSSING = 0.6;
 export const MIN_TEMPLATE_KINDS = 4;
 export const MIN_PUZZLE_KINDS = 4;
 export const MIN_AXIS_SHARE = 0.22;
+/** Text packages: require packed dual-arrow clue cells. */
+export const MIN_DUAL_CLUE_CELLS = 4;
 
 export type Quadrant = 'NW' | 'NE' | 'SW' | 'SE';
 
@@ -31,6 +33,7 @@ export interface QualityThresholds {
   minCrossing: number;
   minKinds: number;
   minAxisShare?: number;
+  minDualClueCells?: number;
   requireOppositeImages?: boolean;
 }
 
@@ -171,6 +174,12 @@ export function qualityOk(stats: QualityStats, thresholds: QualityThresholds): b
   if (stats.horizontalShare < minAxis || stats.verticalShare < minAxis) return false;
   if (stats.shortSlots > 0) return false;
   if (stats.slotCount > 0 && stats.longSlots / stats.slotCount > 0.25) return false;
+  if (
+    thresholds.minDualClueCells != null &&
+    stats.dualClueCells < thresholds.minDualClueCells
+  ) {
+    return false;
+  }
   if (thresholds.requireOppositeImages && stats.imageQuadrants.length >= 2 && !stats.imagesOpposite) {
     return false;
   }
@@ -182,6 +191,7 @@ export function templateQualityOk(stats: QualityStats, imageCount: number): bool
     minCrossing: imageCount > 0 ? 0.5 : MIN_TEMPLATE_CROSSING,
     minKinds: imageCount > 0 ? 3 : MIN_TEMPLATE_KINDS,
     minAxisShare: 0.2,
+    minDualClueCells: imageCount > 0 ? undefined : MIN_DUAL_CLUE_CELLS,
     requireOppositeImages: imageCount >= 2,
   });
 }
@@ -191,6 +201,7 @@ export function puzzleQualityOk(stats: QualityStats, imageCount: number): boolea
     minCrossing: imageCount > 0 ? 0.48 : MIN_PUZZLE_CROSSING,
     minKinds: imageCount > 0 ? 3 : MIN_PUZZLE_KINDS,
     minAxisShare: 0.2,
+    minDualClueCells: imageCount > 0 ? undefined : MIN_DUAL_CLUE_CELLS,
     requireOppositeImages: imageCount >= 2,
   });
 }

@@ -11,6 +11,9 @@ const HEBREW_ENTRIES: RawHebrewEntry[] = HEBREW_CLUES;
 /** Hebrew letters (includes final forms, which sit inside the א-ת range). */
 const HEBREW_ANSWER_PATTERN = /^[\u05D0-\u05EA]{2,11}$/;
 
+/** Must match MAX_CLUE_LENGTH_BY_LANG.he in puzzle-assembler — longer clues never fit. */
+const MAX_HEBREW_CLUE_LENGTH = 28;
+
 /**
  * Normalize a Hebrew answer to the form stored in the grid and sent to clients:
  * no spaces, regular letterforms inside the word, final letterform at the end.
@@ -40,7 +43,9 @@ function preferSpacedDisplay(current: string, incoming: string): string {
 let cached: Map<string, HebrewAnswerEntry> | null = null;
 
 function curatedClues(raw: RawHebrewEntry): string[] {
-  return (raw.clues || []).map(c => c.trim()).filter(Boolean);
+  return (raw.clues || [])
+    .map((c) => c.trim())
+    .filter((c) => c.length > 0 && c.length <= MAX_HEBREW_CLUE_LENGTH);
 }
 
 function buildDatabase(): Map<string, HebrewAnswerEntry> {

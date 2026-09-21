@@ -211,7 +211,7 @@ export class PuzzleGenerator {
       }
 
       let puzzle: Puzzle | null = null;
-      const bindTries = wantImages > 0 ? 4 : 1;
+      const bindTries = wantImages >= 3 ? 6 : wantImages > 0 ? 4 : 1;
       for (let bindTry = 0; bindTry < bindTries; bindTry++) {
         if (bindTry > 0) this.clearImageBinds(template);
         if (!this.bindImageClues(template, imagePlan, this.imageClueCatalog)) {
@@ -525,6 +525,7 @@ export class PuzzleGenerator {
         sparse: false,
         simpleArrows: false,
         lattice: false,
+        // GA + dual packing (newspaper lattice has weak crossing ratios).
         newspaper: false,
         cutoutCells,
         lockedCells,
@@ -547,8 +548,16 @@ export class PuzzleGenerator {
     const maxAttempts = Math.min(80000 + slotCount * 5000, 300000);
     const cells = template.rows * template.cols;
     const hasImages = template.slots.some((slot) => slot.clueType === 'image');
+    const imageSlotCount = template.slots.filter((slot) => slot.clueType === 'image').length;
     const maxSolveTimeMs = hasImages
-      ? (cells >= 196 ? 45000 : 35000)
+      ? // 3+ image boards need more solver time on 14×14/15×15
+        imageSlotCount >= 3
+          ? cells >= 196
+            ? 90000
+            : 75000
+          : cells >= 196
+            ? 45000
+            : 35000
       : (this.language === 'he' ? 28 : 12) * 1000 + cells * (cells >= 256 ? 80 : 40);
     const jitter = new Map<string, number>();
     const wordScorer = (word: string, _placedWords: string[]) => {
@@ -565,7 +574,7 @@ export class PuzzleGenerator {
     const result = solveGrid(template, this.wordIndex, {
       maxAttempts,
       maxSolveTimeMs,
-      maxTextSliceMs: hasImages ? 10000 : undefined,
+      maxTextSliceMs: hasImages ? (imageSlotCount >= 3 ? 16000 : 10000) : undefined,
       wordScorer,
       quiet: true,
     });
@@ -583,7 +592,12 @@ export class PuzzleGenerator {
         language: this.language,
       });
     } catch (error) {
-      if (error instanceof Error && error.message.includes('validation failed')) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('validation failed') ||
+          error.message.includes('No clue available') ||
+          error.message.includes('out of sync'))
+      ) {
         console.error(`  ❌ ${error.message}`);
         return null;
       }

@@ -1758,8 +1758,12 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
     }
     if (changed) continue;
 
-    // Dual packing for newspaper feel (→↓ only around image cutouts).
-    if (tryMergeDuals(repaired, canEdit, hasCutouts || simpleArrows, maxLen)) {
+    // Dual packing: merge as many single-arrow neighbors as possible.
+    let dualMerged = false;
+    while (tryMergeDuals(repaired, canEdit, hasCutouts || simpleArrows, maxLen)) {
+      dualMerged = true;
+    }
+    if (dualMerged) {
       changed = true;
       continue;
     }

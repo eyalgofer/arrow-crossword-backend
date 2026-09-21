@@ -58,6 +58,37 @@ export async function clearPuzzlesForLanguage(language: Language): Promise<void>
 }
 
 /**
+ * Delete only packaged puzzles + packages + their progress for a language.
+ * Leaves dailies, multiplayer, and non-package puzzles untouched.
+ */
+export async function clearPackagesForLanguage(language: Language): Promise<void> {
+  const packages = await PuzzlePackage.find({ language }).select('_id puzzleIds');
+  const fromPackages = packages.flatMap(pkg => pkg.puzzleIds);
+  const packagedDocs = await Puzzle.find({
+    language,
+    packageId: { $exists: true, $ne: null },
+  }).select('_id');
+  const idSet = new Set<string>([
+    ...fromPackages.map(id => String(id)),
+    ...packagedDocs.map(p => String(p._id)),
+  ]);
+  const ids = [...idSet].map(id => new mongoose.Types.ObjectId(id));
+
+  const progress = ids.length
+    ? await UserPuzzleProgress.deleteMany({ puzzleId: { $in: ids } })
+    : { deletedCount: 0 };
+  const puzzleResult = ids.length
+    ? await Puzzle.deleteMany({ _id: { $in: ids } })
+    : { deletedCount: 0 };
+  const packageResult = await PuzzlePackage.deleteMany({ language });
+
+  console.log(`🧹 Cleared ${language} packages only:`);
+  console.log(`   Puzzles: ${puzzleResult.deletedCount}`);
+  console.log(`   Packages: ${packageResult.deletedCount}`);
+  console.log(`   User progress: ${progress.deletedCount}`);
+}
+
+/**
  * Filter valid puzzles by boundary validation
  */
 export function filterValidPuzzles(puzzles: any[], validateFn: (puzzle: any) => string[]): any[] {
