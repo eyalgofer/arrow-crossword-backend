@@ -1881,7 +1881,7 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
     // Dual-first interlocking: split in the missing axis, then stack remaining duals.
     if (densePacking || simpleArrows) {
       let crossed = false;
-      while (true) {
+      for (let splitPass = 0; splitPass < 40; splitPass++) {
         const now = analyzeCoverage(repaired, findAllWords(repaired));
         let did = false;
         for (const [key, info] of now) {
@@ -1926,7 +1926,7 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
   // Force interlocking after coverage is stable — the main loop may never
   // reach the singles pass if hole-filling uses the full budget.
   if (densePacking || simpleArrows) {
-    for (let extra = 0; extra < 80; extra++) {
+    for (let extra = 0; extra < 40; extra++) {
       pinProtected();
       const now = analyzeCoverage(repaired, findAllWords(repaired));
       let did = false;
@@ -1973,12 +1973,11 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
 
   if (densePacking || simpleArrows) {
     pinProtected();
-    while (tryMergeDuals(repaired, canEdit, true, maxLen, minLen)) {
+    for (let n = 0; n < 40 && tryMergeDuals(repaired, canEdit, true, maxLen, minLen); n++) {
       /* pack remaining duals */
     }
-    let stripped = true;
-    while (stripped) {
-      stripped = false;
+    for (let n = 0; n < 40; n++) {
+      let stripped = false;
       for (const word of findAllWords(repaired)) {
         if (word.length >= minLen) continue;
         if (!canEdit(word.definitionRow, word.definitionCol)) continue;
@@ -1989,6 +1988,7 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
         stripped = true;
         break;
       }
+      if (!stripped) break;
     }
   }
 
@@ -2394,33 +2394,6 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
 
   const toTemplate = (packed: Mask) =>
     maskToGridTemplate(packed, name, difficulty, lockedCells, cutoutCells, minSlotLength);
-
-  if (densePacking && !newspaper && !lattice) {
-    let lastDenseError: unknown;
-    for (let attempt = 0; attempt < maxBoundaryRetries; attempt++) {
-      try {
-        const mask = createEmptyMask(rows, cols);
-        paintDenseDualMask(mask, attempt % 2 === 0 ? 3 : 4);
-        applyFixedCells(mask, config);
-        pinSimpleArrowCorner(mask, minSlotLength);
-        const packed = repairPackedMask(mask, config);
-        const crossing = maskCrossingRatio(packed);
-        if (crossing < 0.55) {
-          throw new Error(`Dense lattice crossing ${crossing.toFixed(2)} too low`);
-        }
-        return toTemplate(packed);
-      } catch (e) {
-        lastDenseError = e;
-        if (!quiet) {
-          const message = e instanceof Error ? e.message : String(e);
-          console.warn(`Dense template retry ${attempt + 1}/${maxBoundaryRetries}: ${message}`);
-        }
-      }
-    }
-    if (!quiet && lastDenseError instanceof Error) {
-      console.warn(`Dense lattice failed, falling back to GA: ${lastDenseError.message}`);
-    }
-  }
 
   if (newspaper && rows >= 13 && cols >= 13 && rows <= 15 && cols <= 15) {
     let lastError: unknown;
