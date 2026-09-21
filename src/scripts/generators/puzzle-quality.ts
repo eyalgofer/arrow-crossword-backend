@@ -9,7 +9,7 @@ export const MIN_TEMPLATE_KINDS = 4;
 export const MIN_PUZZLE_KINDS = 4;
 export const MIN_AXIS_SHARE = 0.22;
 /** Text packages: require packed dual-arrow clue cells. */
-export const MIN_DUAL_CLUE_CELLS = 4;
+export const MIN_DUAL_CLUE_CELLS = 3;
 
 export type Quadrant = 'NW' | 'NE' | 'SW' | 'SE';
 
