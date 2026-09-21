@@ -65,6 +65,12 @@ interface GeneratorConfig {
   /** Prefer →↓ only so large boards stay fully packed without invalid Engel slots. */
   simpleArrows?: boolean;
   maxSlotLength?: number;
+  /** Shortest legal slot (3 by default; 2 for dense Hebrew newspaper packing). */
+  minSlotLength?: number;
+  /** Crank single-coverage penalties and dual-first repair (rival interlocking). */
+  densePacking?: boolean;
+  /** Fraction of slots that may be length 2 when minSlotLength is 2. */
+  maxTwoLetterShare?: number;
   minPopulation?: number;       // floor so n never drops below this (avoids collapse)
   maxIterations?: number;      // cap iterations (default 100)
   quiet?: boolean;             // suppress per-iteration logs when true
@@ -105,7 +111,7 @@ const DEFAULT_CONFIG: Partial<GeneratorConfig> = {
     singleCoveredOpen: 200,
     doubleCoveredSameDirection: 600,
     // Table 3.1 - Word length penalties
-    // Length 2 is rejected until the pool has enough 2-letter answers to fill them.
+    // Length 2 is allowed in dense packing (capped share); still expensive by default.
     wordLength: {
       0: 1800,
       1: 1500,
@@ -652,8 +658,8 @@ function evaluateFitness(mask: Mask, config: GeneratorConfig): number {
     const defKey = `${word.definitionRow},${word.definitionCol}`;
     localPenalties.set(defKey, (localPenalties.get(defKey) ?? 0) + lengthPenalty);
 
-    // Validity constraint: 2-letter slots are unfillable with the current Hebrew pool
-    if (word.length < 3) {
+    const minLen = config.minSlotLength ?? 3;
+    if (word.length < minLen) {
       validityPenalty += 1000;
       localPenalties.set(defKey, (localPenalties.get(defKey) ?? 0) + 1000);
     }
@@ -795,12 +801,40 @@ function getAllowedFieldTypes(
  * Initialize border fields for Swedish-style layout
  * Per thesis Chapter 3.3 and Figure 3.7
  */
-function initializeBorders(mask: Mask, simpleArrows = false): void {
-  if (simpleArrows && mask.grid[0][0] !== '#') {
-    const corner = getAllowedFieldTypes(mask, 0, 0, true);
-    if (corner.includes('1')) mask.grid[0][0] = '1';
-    else if (corner.includes('2')) mask.grid[0][0] = '2';
+function pinSimpleArrowCorner(mask: Mask, minLen = 2): void {
+  if (mask.grid[0][0] === '#') return;
+  const arrows: ArrowType[] = [];
+  const rightRun = mask.cols > 1 ? countLetterRun(mask, 0, 1, 0, 1) : 0;
+  const downRun = mask.rows > 1 ? countLetterRun(mask, 1, 0, 1, 0) : 0;
+  if (rightRun >= minLen) arrows.push('1');
+  if (downRun >= minLen) arrows.push('2');
+  if (arrows.length === 0 && mask.rows > minLen) {
+    let cleared = true;
+    for (let r = 1; r <= minLen; r++) {
+      if (mask.grid[r][0] === '#') {
+        cleared = false;
+        break;
+      }
+      mask.grid[r][0] = '0';
+    }
+    if (cleared && countLetterRun(mask, 1, 0, 1, 0) >= minLen) arrows.push('2');
   }
+  if (arrows.length === 0 && mask.cols > minLen) {
+    let cleared = true;
+    for (let c = 1; c <= minLen; c++) {
+      if (mask.grid[0][c] === '#') {
+        cleared = false;
+        break;
+      }
+      mask.grid[0][c] = '0';
+    }
+    if (cleared && countLetterRun(mask, 0, 1, 0, 1) >= minLen) arrows.push('1');
+  }
+  if (arrows.length > 0) mask.grid[0][0] = encodeArrows(arrows);
+}
+
+function initializeBorders(mask: Mask, simpleArrows = false): void {
+  if (simpleArrows) pinSimpleArrowCorner(mask);
 
   // Top row: typically has definition fields pointing down
   for (let c = 0; c < mask.cols; c++) {
@@ -841,9 +875,8 @@ function createRandomMask(config: GeneratorConfig): Mask {
   initializeBorders(mask, config.simpleArrows);
   applyFixedCells(mask, config);
 
-  // With image cutouts, sprinkle interior dual-friendly clues so repair starts
-  // closer to a newspaper-style packed grid (references are dense with duals).
-  if ((config.cutoutCells?.length ?? 0) > 0 && !config.simpleArrows) {
+  // Sprinkle interior dual-friendly clues so repair starts closer to newspaper packing.
+  if (config.densePacking || ((config.cutoutCells?.length ?? 0) > 0 && !config.simpleArrows)) {
     seedNewspaperClues(mask, config);
     applyFixedCells(mask, config);
   }
@@ -1452,7 +1485,8 @@ function tryMergeDuals(
   mask: Mask,
   canEdit: (row: number, col: number) => boolean,
   simpleArrows: boolean,
-  maxLen: number
+  maxLen: number,
+  minLen = 3
 ): boolean {
   for (let r = 0; r < mask.rows; r++) {
     for (let c = 0; c < mask.cols; c++) {
@@ -1480,7 +1514,7 @@ function tryMergeDuals(
           }
         }
         const letters = lettersFromArrow(mask, r, c, add, treat);
-        if (letters.length < 3 || letters.length > maxLen) continue;
+        if (letters.length < minLen || letters.length > maxLen) continue;
         mask.grid[r][c] = encodeArrows([keep, add]);
         mask.grid[fr][fc] = '0';
         return true;
@@ -1497,7 +1531,8 @@ function tryStackCover(
   col: number,
   canEdit: (r: number, c: number) => boolean,
   simpleArrows: boolean,
-  maxLen: number
+  maxLen: number,
+  minLen = 3
 ): boolean {
   for (let r = 0; r < mask.rows; r++) {
     for (let c = 0; c < mask.cols; c++) {
@@ -1514,7 +1549,7 @@ function tryStackCover(
           continue;
         }
         const letters = lettersFromArrow(mask, r, c, add);
-        if (letters.length < 3 || letters.length > maxLen) continue;
+        if (letters.length < minLen || letters.length > maxLen) continue;
         if (!letters.some((letter) => letter.row === row && letter.col === col)) continue;
         mask.grid[r][c] = encodeArrows([keep, add]);
         return true;
@@ -1533,12 +1568,13 @@ function bestClueTypeForHole(
   row: number,
   col: number,
   simpleArrows: boolean,
-  preferVertical: boolean
+  preferVertical: boolean,
+  minLen = 3
 ): ArrowType | null {
   const allowed = new Set(getAllowedArrowTypes(mask, row, col, simpleArrows));
   const options: Array<{ type: ArrowType; run: number; mixed: boolean }> = [];
   const consider = (type: ArrowType, run: number, mixed: boolean) => {
-    if (!allowed.has(type) || run < 3) return;
+    if (!allowed.has(type) || run < minLen) return;
     options.push({ type, run, mixed });
   };
 
@@ -1576,16 +1612,78 @@ function bestClueTypeForHole(
   return top[Math.floor(Math.random() * top.length)].type;
 }
 
+function trySplitToCross(
+  mask: Mask,
+  row: number,
+  col: number,
+  canEdit: (r: number, c: number) => boolean,
+  minLen: number,
+  _maxLen: number
+): boolean {
+  const tryPlace = (r: number, c: number, type: ArrowType): boolean => {
+    if (!canEdit(r, c)) return false;
+    const prev = mask.grid[r][c];
+    const next = isLetterField(prev) ? type : encodeArrows([...arrowTypesIn(prev), type]);
+    mask.grid[r][c] = next;
+    const letters = lettersFromArrow(mask, r, c, type);
+    if (letters.length >= minLen && letters.some((letter) => letter.row === row && letter.col === col)) {
+      return true;
+    }
+    mask.grid[r][c] = prev;
+    return false;
+  };
+
+  if (row > 0 && tryPlace(row - 1, col, '2')) return true;
+  if (col > 0 && tryPlace(row, col - 1, '1')) return true;
+  return false;
+}
+
+function forceCoverHole(
+  mask: Mask,
+  row: number,
+  col: number,
+  minLen: number,
+  canEdit: (r: number, c: number) => boolean
+): boolean {
+  const clearRun = (dr: number, dc: number): boolean => {
+    for (let i = 1; i <= minLen; i++) {
+      const r = row + dr * i;
+      const c = col + dc * i;
+      if (!isValidCoord(mask, r, c) || mask.grid[r][c] === '#') return false;
+      if (!isLetterField(mask.grid[r][c]) && !canEdit(r, c)) return false;
+    }
+    for (let i = 1; i <= minLen; i++) {
+      const r = row + dr * i;
+      const c = col + dc * i;
+      if (canEdit(r, c)) mask.grid[r][c] = '0';
+    }
+    return countLetterRun(mask, row + dr, col + dc, dr, dc) >= minLen;
+  };
+
+  if (clearRun(1, 0)) {
+    mask.grid[row][col] = '2';
+    return true;
+  }
+  if (clearRun(0, 1)) {
+    mask.grid[row][col] = '1';
+    return true;
+  }
+  return false;
+}
+
 /**
- * After the GA, pack the mask: split overlong words, absorb 1–2 letter runs,
- * and turn leftover letter holes into clues using any legal arrow type.
+ * After the GA, pack the mask: split overlong words, absorb short runs,
+ * cover holes, and dual-merge for newspaper interlocking.
  */
 function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
   const repaired = cloneMask(mask);
   applyFixedCells(repaired, config);
 
   const maxLen = config.maxSlotLength ?? 11;
+  const minLen = config.minSlotLength ?? 3;
   const simpleArrows = config.simpleArrows ?? false;
+  const densePacking = config.densePacking ?? false;
+  const maxTwoLetterShare = config.maxTwoLetterShare ?? 0.15;
   const protectedKeys = new Set(
     (config.protectedCells ?? []).map((cell) => `${cell.row},${cell.col}`)
   );
@@ -1597,12 +1695,54 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
     for (const { row, col } of config.cutoutCells ?? []) {
       setField(repaired, row, col, '#');
     }
+    if (simpleArrows) pinSimpleArrowCorner(repaired, minLen);
   };
 
   const canEdit = (row: number, col: number) =>
     isValidCoord(repaired, row, col) &&
     repaired.grid[row][col] !== '#' &&
     !protectedKeys.has(`${row},${col}`);
+
+  const absorbShortWord = (word: WordInfo): boolean => {
+    if (canEdit(word.definitionRow, word.definitionCol)) {
+      const left = arrowTypesIn(repaired.grid[word.definitionRow][word.definitionCol])
+        .filter((arrow) => arrow !== word.definitionType);
+      repaired.grid[word.definitionRow][word.definitionCol] = encodeArrows(left);
+      return true;
+    }
+    if (word.length === 0) {
+      const fr = word.startRow;
+      const fc = word.startCol;
+      if (canEdit(fr, fc) && repaired.grid[fr][fc] !== '#') {
+        repaired.grid[fr][fc] = '0';
+        return true;
+      }
+      return false;
+    }
+    const last = word.letters[word.letters.length - 1];
+    const nr = last.row + word.direction.dr;
+    const nc = last.col + word.direction.dc;
+    if (canEdit(nr, nc) && arrowTypesIn(repaired.grid[nr][nc]).length === 1) {
+      repaired.grid[nr][nc] = '0';
+      return true;
+    }
+    const letter = word.letters[0];
+    if (word.length === 1 && canEdit(letter.row, letter.col)) {
+      const type = bestClueTypeForHole(
+        repaired,
+        letter.row,
+        letter.col,
+        simpleArrows,
+        word.isHorizontal,
+        minLen
+      );
+      if (type) {
+        repaired.grid[letter.row][letter.col] = type;
+        return true;
+      }
+    }
+    return false;
+  };
 
   for (let pass = 0; pass < ((config.cutoutCells?.length ?? 0) > 0 ? 72 : 48); pass++) {
     pinProtected();
@@ -1632,7 +1772,8 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
             before.row,
             before.col,
             simpleArrows,
-            isHorizontalWord(type)
+            isHorizontalWord(type),
+            minLen
           );
           if (pin) {
             repaired.grid[before.row][before.col] = pin;
@@ -1649,7 +1790,8 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
         word.definitionRow,
         word.definitionCol,
         true,
-        isVerticalWord(type)
+        isVerticalWord(type),
+        minLen
       );
       const next = fallback && fallback !== type ? [...without, fallback] : without;
       repaired.grid[word.definitionRow][word.definitionCol] = encodeArrows(next);
@@ -1659,45 +1801,23 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
     if (changed) continue;
 
     for (const word of words) {
-      if (word.length >= 3) continue;
-      if (canEdit(word.definitionRow, word.definitionCol)) {
-        const left = arrowTypesIn(repaired.grid[word.definitionRow][word.definitionCol])
-          .filter((arrow) => arrow !== word.definitionType);
-        repaired.grid[word.definitionRow][word.definitionCol] = encodeArrows(left);
+      if (word.length >= minLen) continue;
+      if (absorbShortWord(word)) {
         changed = true;
         break;
       }
-      if (word.length === 0) {
-        const fr = word.startRow;
-        const fc = word.startCol;
-        if (canEdit(fr, fc) && repaired.grid[fr][fc] !== '#') {
-          repaired.grid[fr][fc] = '0';
-          changed = true;
-          break;
-        }
-        continue;
-      }
-      const last = word.letters[word.letters.length - 1];
-      const nr = last.row + word.direction.dr;
-      const nc = last.col + word.direction.dc;
-      if (canEdit(nr, nc) && arrowTypesIn(repaired.grid[nr][nc]).length === 1) {
-        repaired.grid[nr][nc] = '0';
-        changed = true;
-        break;
-      }
-      const letter = word.letters[0];
-      if (word.length === 1 && canEdit(letter.row, letter.col)) {
-        const type = bestClueTypeForHole(
-          repaired,
-          letter.row,
-          letter.col,
-          simpleArrows,
-          word.isHorizontal
-        );
-        if (type) {
-          repaired.grid[letter.row][letter.col] = type;
-          changed = true;
-          break;
+    }
+    if (changed) continue;
+
+    if (minLen <= 2 && maxTwoLetterShare < 1) {
+      const twoLetter = words.filter((word) => word.length === 2);
+      const cap = Math.floor(words.length * maxTwoLetterShare);
+      if (twoLetter.length > cap) {
+        for (const word of twoLetter.slice(cap)) {
+          if (absorbShortWord(word)) {
+            changed = true;
+            break;
+          }
         }
       }
     }
@@ -1708,11 +1828,10 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
       const isImageExit = protectedKeys.has(defKey);
       const imageWordTooLong = isImageExit && word.length > 7;
       if (word.length <= maxLen && !imageWordTooLong) continue;
-      // Image exits: prefer splitting at catalog-friendly 5–7.
-      const splitAt = imageWordTooLong ? 5 : 3;
+      const splitAt = imageWordTooLong ? 5 : minLen;
       const splitUntil = imageWordTooLong
-        ? Math.min(7, word.length - 3)
-        : word.length - 4;
+        ? Math.min(7, word.length - minLen)
+        : word.length - minLen - 1;
       for (let i = splitAt; i <= splitUntil; i++) {
         const split = word.letters[i];
         if (!split || !canEdit(split.row, split.col)) continue;
@@ -1725,32 +1844,33 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
     if (changed) continue;
 
     const hasCutouts = (config.cutoutCells?.length ?? 0) > 0;
+    const stackSimple = hasCutouts || simpleArrows;
 
     // Cover holes BEFORE dual merges — otherwise dual packing can starve coverage.
     const coverage = analyzeCoverage(repaired, words);
     const uncovered: Array<{ row: number; col: number }> = [];
+    const singles: Array<{ row: number; col: number }> = [];
     for (const [key, info] of coverage) {
-      if (info.total > 0) continue;
       const [row, col] = key.split(',').map(Number);
-      uncovered.push({ row, col });
+      if (info.total === 0) uncovered.push({ row, col });
+      else if (info.total === 1) singles.push({ row, col });
     }
     uncovered.sort((a, b) => a.row + a.col - (b.row + b.col));
+    singles.sort((a, b) => a.row + a.col - (b.row + b.col));
     for (const cell of uncovered) {
       if (!canEdit(cell.row, cell.col)) continue;
-      if (
-        tryStackCover(
-          repaired,
-          cell.row,
-          cell.col,
-          canEdit,
-          hasCutouts || simpleArrows,
-          maxLen
-        )
-      ) {
+      if (tryStackCover(repaired, cell.row, cell.col, canEdit, stackSimple, maxLen, minLen)) {
         changed = true;
         break;
       }
-      const type = bestClueTypeForHole(repaired, cell.row, cell.col, simpleArrows, false);
+      const type = bestClueTypeForHole(
+        repaired,
+        cell.row,
+        cell.col,
+        simpleArrows,
+        false,
+        minLen
+      );
       if (!type) continue;
       repaired.grid[cell.row][cell.col] = type;
       changed = true;
@@ -1758,9 +1878,41 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
     }
     if (changed) continue;
 
+    // Dual-first interlocking: split in the missing axis, then stack remaining duals.
+    if (densePacking || simpleArrows) {
+      let crossed = false;
+      while (true) {
+        const now = analyzeCoverage(repaired, findAllWords(repaired));
+        let did = false;
+        for (const [key, info] of now) {
+          if (info.total !== 1) continue;
+          const [row, col] = key.split(',').map(Number);
+          if (trySplitToCross(repaired, row, col, canEdit, minLen, maxLen)) {
+            did = true;
+            crossed = true;
+            break;
+          }
+        }
+        if (!did) break;
+      }
+      if (!crossed) {
+        for (const cell of singles) {
+          if (tryStackCover(repaired, cell.row, cell.col, canEdit, stackSimple, maxLen, minLen)) {
+            crossed = true;
+            break;
+          }
+        }
+      }
+      if (crossed) {
+        changed = true;
+        continue;
+      }
+    }
+    if (changed) continue;
+
     // Dual packing: merge as many single-arrow neighbors as possible.
     let dualMerged = false;
-    while (tryMergeDuals(repaired, canEdit, hasCutouts || simpleArrows, maxLen)) {
+    while (tryMergeDuals(repaired, canEdit, stackSimple, maxLen, minLen)) {
       dualMerged = true;
     }
     if (dualMerged) {
@@ -1769,6 +1921,75 @@ function repairPackedMask(mask: Mask, config: GeneratorConfig): Mask {
     }
 
     if (!changed) break;
+  }
+
+  // Force interlocking after coverage is stable — the main loop may never
+  // reach the singles pass if hole-filling uses the full budget.
+  if (densePacking || simpleArrows) {
+    for (let extra = 0; extra < 80; extra++) {
+      pinProtected();
+      const now = analyzeCoverage(repaired, findAllWords(repaired));
+      let did = false;
+      for (const [key, info] of now) {
+        if (info.total !== 1) continue;
+        const [row, col] = key.split(',').map(Number);
+        if (trySplitToCross(repaired, row, col, canEdit, minLen, maxLen)) {
+          did = true;
+          break;
+        }
+      }
+      if (!did) break;
+    }
+  }
+
+  // Last resort for leftover letter holes (top-row simple-arrow geometry).
+  const stackSimple = (config.cutoutCells?.length ?? 0) > 0 || simpleArrows;
+  for (let extra = 0; extra < 12; extra++) {
+    pinProtected();
+    const words = findAllWords(repaired);
+    const coverage = analyzeCoverage(repaired, words);
+    let fixed = false;
+    for (const [key, info] of coverage) {
+      if (info.total > 0) continue;
+      const [row, col] = key.split(',').map(Number);
+      if (!canEdit(row, col)) continue;
+      if (tryStackCover(repaired, row, col, canEdit, stackSimple, maxLen, minLen)) {
+        fixed = true;
+        break;
+      }
+      const type = bestClueTypeForHole(repaired, row, col, simpleArrows, false, minLen);
+      if (type) {
+        repaired.grid[row][col] = type;
+        fixed = true;
+        break;
+      }
+      if (forceCoverHole(repaired, row, col, minLen, canEdit)) {
+        fixed = true;
+        break;
+      }
+    }
+    if (!fixed) break;
+  }
+
+  if (densePacking || simpleArrows) {
+    pinProtected();
+    while (tryMergeDuals(repaired, canEdit, true, maxLen, minLen)) {
+      /* pack remaining duals */
+    }
+    let stripped = true;
+    while (stripped) {
+      stripped = false;
+      for (const word of findAllWords(repaired)) {
+        if (word.length >= minLen) continue;
+        if (!canEdit(word.definitionRow, word.definitionCol)) continue;
+        const left = arrowTypesIn(repaired.grid[word.definitionRow][word.definitionCol]).filter(
+          (arrow) => arrow !== word.definitionType
+        );
+        repaired.grid[word.definitionRow][word.definitionCol] = encodeArrows(left);
+        stripped = true;
+        break;
+      }
+    }
   }
 
   pinProtected();
@@ -1793,6 +2014,49 @@ function paintLatticeMask(mask: Mask): void {
       } else {
         mask.grid[r][c] = '0';
       }
+    }
+  }
+}
+
+function maskCrossingRatio(mask: Mask): number {
+  const coverage = analyzeCoverage(mask, findAllWords(mask));
+  let letters = 0;
+  let crossed = 0;
+  for (const info of coverage.values()) {
+    letters += 1;
+    if (info.total >= 2) crossed += 1;
+  }
+  return letters === 0 ? 0 : crossed / letters;
+}
+
+/**
+ * Tight dual lattice for rival-style interlocking (not the weak step-5 newspaper painter).
+ * Duals every `step` cells; top row is down clues, left column is across clues,
+ * so interior letters sit on both a horizontal and a vertical run.
+ */
+function paintDenseDualMask(mask: Mask, step = 3): void {
+  const { rows, cols } = mask;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      mask.grid[r][c] = '0';
+    }
+  }
+
+  for (let c = 0; c < cols; c++) {
+    if (c % step === 0 && c < cols - 1) mask.grid[0][c] = '12';
+    else if (c === cols - 1 && (cols - 1) % step !== 0) mask.grid[0][c] = '2';
+    else mask.grid[0][c] = '0';
+  }
+
+  for (let r = 1; r < rows; r++) {
+    if (r % step === 0 && r < rows - 1) mask.grid[r][0] = '12';
+    else if (r === rows - 1 && (rows - 1) % step !== 0) mask.grid[r][0] = '1';
+    else mask.grid[r][0] = '0';
+  }
+
+  for (let r = step; r < rows - 1; r += step) {
+    for (let c = step; c < cols - 1; c += step) {
+      mask.grid[r][c] = '12';
     }
   }
 }
@@ -1881,14 +2145,15 @@ function maskToGridTemplate(
   name: string,
   difficulty: Difficulty,
   _lockedCells: Array<{ row: number; col: number; type: string }> = [],
-  cutoutCells: Array<{ row: number; col: number }> = []
+  cutoutCells: Array<{ row: number; col: number }> = [],
+  minSlotLength = 3
 ): GridTemplate {
   const words = findAllWords(mask);
   const slots: ClueSlot[] = [];
 
   let slotIndex = 0;
   for (const word of words) {
-    if (word.length < 3) {
+    if (word.length < minSlotLength) {
       throw new Error(
         `Template has short word of length ${word.length} at (${word.definitionRow},${word.definitionCol}) type ${word.definitionType}`
       );
@@ -1975,6 +2240,12 @@ export interface GenerateTemplateOptions {
   crossoverSamples?: number;
   /** Slot lengths above this are treated as unfillable (penalty 5000). */
   maxSlotLength?: number;
+  /** Shortest legal slot (default 3; 2 for dense Hebrew packing). */
+  minSlotLength?: number;
+  /** Crank single-coverage penalties and dual-first repair. */
+  densePacking?: boolean;
+  /** Fraction of slots that may be length 2 when minSlotLength is 2. */
+  maxTwoLetterShare?: number;
   /** Allow more uncovered/blocked cells so a smaller word pool can fill the grid. */
   sparse?: boolean;
   /** How many times to rerun the GA if the mask fails boundary checks. */
@@ -2007,6 +2278,9 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     maxIterations: maxIterationsOpt,
     quiet = false,
     maxSlotLength,
+    minSlotLength = 3,
+    densePacking = false,
+    maxTwoLetterShare = 0.15,
     sparse = false,
     maxBoundaryRetries = 3,
     simpleArrows = false,
@@ -2036,6 +2310,9 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     protectedCells,
     simpleArrows,
     maxSlotLength,
+    minSlotLength,
+    densePacking,
+    maxTwoLetterShare,
     crossoverSamples,
     weights: {
       ...DEFAULT_CONFIG.weights!,
@@ -2101,6 +2378,50 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     config.weights.singleCoveredOpen = 450;
   }
 
+  if (densePacking) {
+    // Treat uncrossed letters almost like validity errors so masks interlock.
+    config.weights.uncoveredField = 3200;
+    config.weights.singleCoveredEnclosed = 1200;
+    config.weights.singleCoveredOpen = 1800;
+  }
+
+  if (minSlotLength <= 2) {
+    config.weights.wordLength = {
+      ...config.weights.wordLength,
+      2: 80,
+    };
+  }
+
+  const toTemplate = (packed: Mask) =>
+    maskToGridTemplate(packed, name, difficulty, lockedCells, cutoutCells, minSlotLength);
+
+  if (densePacking && !newspaper && !lattice) {
+    let lastDenseError: unknown;
+    for (let attempt = 0; attempt < maxBoundaryRetries; attempt++) {
+      try {
+        const mask = createEmptyMask(rows, cols);
+        paintDenseDualMask(mask, attempt % 2 === 0 ? 3 : 4);
+        applyFixedCells(mask, config);
+        pinSimpleArrowCorner(mask, minSlotLength);
+        const packed = repairPackedMask(mask, config);
+        const crossing = maskCrossingRatio(packed);
+        if (crossing < 0.55) {
+          throw new Error(`Dense lattice crossing ${crossing.toFixed(2)} too low`);
+        }
+        return toTemplate(packed);
+      } catch (e) {
+        lastDenseError = e;
+        if (!quiet) {
+          const message = e instanceof Error ? e.message : String(e);
+          console.warn(`Dense template retry ${attempt + 1}/${maxBoundaryRetries}: ${message}`);
+        }
+      }
+    }
+    if (!quiet && lastDenseError instanceof Error) {
+      console.warn(`Dense lattice failed, falling back to GA: ${lastDenseError.message}`);
+    }
+  }
+
   if (newspaper && rows >= 13 && cols >= 13 && rows <= 15 && cols <= 15) {
     let lastError: unknown;
     for (let attempt = 0; attempt < maxBoundaryRetries; attempt++) {
@@ -2114,10 +2435,10 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
           sprinkleBentArrows(bentMask, Math.max(3, Math.floor((rows * cols) / 55)));
           applyFixedCells(bentMask, config);
           const bentPacked = repairPackedMask(bentMask, config);
-          return maskToGridTemplate(bentPacked, name, difficulty, lockedCells, cutoutCells);
+          return toTemplate(bentPacked);
         } catch {
           // Bent sprinkle sometimes leaves holes around image cutouts — use →↓ lattice.
-          return maskToGridTemplate(plainPacked, name, difficulty, lockedCells, cutoutCells);
+          return toTemplate(plainPacked);
         }
       } catch (e) {
         lastError = e;
@@ -2136,14 +2457,14 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     const mask = createEmptyMask(rows, cols);
     paintLatticeMask(mask);
     applyFixedCells(mask, config);
-    return maskToGridTemplate(mask, name, difficulty, lockedCells, cutoutCells);
+    return toTemplate(mask);
   }
 
   for (let attempt = 0; attempt < maxBoundaryRetries; attempt++) {
     const bestMask = memeticAlgorithm(config);
     const packed = repairPackedMask(bestMask, config);
     try {
-      return maskToGridTemplate(packed, name, difficulty, lockedCells, cutoutCells);
+      return toTemplate(packed);
     } catch (e) {
       const retryable =
         e instanceof Error &&
@@ -2163,6 +2484,176 @@ export function generateTemplate(options: GenerateTemplateOptions): GridTemplate
     }
   }
   throw new Error('Template boundary validation failed after retries');
+}
+
+const DIRECTION_TO_ARROW: Record<Direction, ArrowType> = {
+  across: '1',
+  down: '2',
+  'right-down': '3',
+  'left-down': '4',
+  'down-across': '5',
+  'up-across': '6',
+};
+
+function isHorizontalDirection(direction: Direction): boolean {
+  return direction === 'across' || direction === 'down-across' || direction === 'up-across';
+}
+
+function templateToMask(template: GridTemplate): Mask {
+  const mask = createEmptyMask(template.rows, template.cols);
+  const byCell = new Map<string, ArrowType[]>();
+  for (const slot of template.slots) {
+    if (slot.clueType === 'image') {
+      for (let dr = 0; dr < 3; dr++) {
+        for (let dc = 0; dc < 3; dc++) {
+          const r = slot.startRow + dr;
+          const c = slot.startCol + dc;
+          if (r === slot.exitRow && c === slot.exitCol) continue;
+          if (isValidCoord(mask, r, c)) mask.grid[r][c] = '#';
+        }
+      }
+    }
+    const row = slot.clueType === 'image' && slot.exitRow != null ? slot.exitRow : slot.startRow;
+    const col = slot.clueType === 'image' && slot.exitCol != null ? slot.exitCol : slot.startCol;
+    const arrow = DIRECTION_TO_ARROW[slot.direction];
+    if (!arrow || !isValidCoord(mask, row, col) || mask.grid[row][col] === '#') continue;
+    const key = `${row},${col}`;
+    const existing = byCell.get(key) ?? [];
+    if (!existing.includes(arrow)) existing.push(arrow);
+    byCell.set(key, existing);
+  }
+  for (const [key, arrows] of byCell) {
+    const [r, c] = key.split(',').map(Number);
+    if (mask.grid[r][c] === '#') continue;
+    mask.grid[r][c] = encodeArrows(arrows);
+  }
+  return mask;
+}
+
+/** Letter indices that can become a clue and leave both pieces >= minLen. */
+function splitIndices(length: number, minLen: number): number[] {
+  const lo = minLen;
+  const hi = length - minLen - 1;
+  if (lo > hi) return [];
+  const mid = Math.floor((lo + hi) / 2);
+  const out = [mid];
+  for (let d = 1; d <= hi - lo; d++) {
+    if (mid - d >= lo) out.push(mid - d);
+    if (mid + d <= hi) out.push(mid + d);
+  }
+  return out;
+}
+
+export interface RepairTemplateOptions {
+  minSlotLength?: number;
+  maxSlotLength?: number;
+  simpleArrows?: boolean;
+  maxTwoLetterShare?: number;
+}
+
+/**
+ * Locally split a dead slot (or a longer crossing slot) and re-pack duals so
+ * fill can retry the same layout instead of throwing the template away.
+ */
+export function repairTemplateAroundSlot(
+  template: GridTemplate,
+  failedSlot: ClueSlot,
+  options: RepairTemplateOptions = {}
+): GridTemplate | null {
+  if (template.slots.some((slot) => slot.clueType === 'image')) return null;
+
+  const minSlotLength = options.minSlotLength ?? 2;
+  const maxSlotLength = options.maxSlotLength ?? 8;
+  const simpleArrows = options.simpleArrows ?? true;
+  const maxTwoLetterShare = options.maxTwoLetterShare ?? 0.15;
+
+  const slot =
+    template.slots.find((s) => s.id === failedSlot.id) ??
+    template.slots.find(
+      (s) =>
+        s.startRow === failedSlot.startRow &&
+        s.startCol === failedSlot.startCol &&
+        s.direction === failedSlot.direction
+    );
+  if (!slot) return null;
+
+  const cells = slot.cells && slot.cells.length > 0 ? slot.cells : failedSlot.cells;
+  if (!cells || cells.length === 0) return null;
+
+  const config: GeneratorConfig = {
+    rows: template.rows,
+    cols: template.cols,
+    populationSize: 1,
+    weakBreakCondition: 1,
+    strongBreakCondition: 1,
+    similarityThreshold: 0.1,
+    simpleArrows,
+    minSlotLength,
+    maxSlotLength,
+    densePacking: true,
+    maxTwoLetterShare,
+    weights: {
+      ...DEFAULT_CONFIG.weights!,
+      wordLength: { ...DEFAULT_CONFIG.weights!.wordLength!, 2: 80 },
+    },
+  };
+
+  const convert = (mask: Mask): GridTemplate | null => {
+    try {
+      const packed = repairPackedMask(mask, config);
+      const next = maskToGridTemplate(
+        packed,
+        template.name,
+        template.difficulty,
+        [],
+        [],
+        minSlotLength
+      );
+      next.metadata = {
+        ...(template.metadata ?? {}),
+        generationMethod: 'dense-fill-repair',
+      };
+      return next;
+    } catch {
+      return null;
+    }
+  };
+
+  const trySplit = (target: ClueSlot): GridTemplate | null => {
+    const targetCells = target.cells && target.cells.length > 0 ? target.cells : [];
+    for (const i of splitIndices(targetCells.length, minSlotLength)) {
+      const mask = templateToMask(template);
+      const cell = targetCells[i];
+      if (!cell || !isLetterField(mask.grid[cell.row][cell.col])) continue;
+      mask.grid[cell.row][cell.col] = isHorizontalDirection(target.direction) ? '1' : '2';
+      const repaired = convert(mask);
+      if (repaired) return repaired;
+    }
+    return null;
+  };
+
+  const direct = trySplit(slot);
+  if (direct) return direct;
+
+  const failedKeys = new Set(cells.map((cell) => `${cell.row},${cell.col}`));
+  const crossing = template.slots
+    .filter((other) => other.id !== slot.id && (other.cells?.length ?? 0) >= minSlotLength * 2 + 1)
+    .filter((other) => (other.cells ?? []).some((cell) => failedKeys.has(`${cell.row},${cell.col}`)))
+    .sort((a, b) => (b.cells?.length ?? 0) - (a.cells?.length ?? 0));
+  for (const other of crossing) {
+    const repaired = trySplit(other);
+    if (repaired) return repaired;
+  }
+
+  if (cells.length >= 2) {
+    const mask = templateToMask(template);
+    const cell = cells[Math.floor(cells.length / 2)];
+    if (cell && isLetterField(mask.grid[cell.row][cell.col])) {
+      mask.grid[cell.row][cell.col] = isHorizontalDirection(slot.direction) ? '1' : '2';
+      return convert(mask);
+    }
+  }
+  return null;
 }
 
 /**

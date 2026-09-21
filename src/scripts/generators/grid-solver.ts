@@ -25,6 +25,11 @@ export interface SolverConfig {
   quiet?: boolean;
 }
 
+export interface SolveGridResult {
+  state: GridState | null;
+  failedSlot?: ClueSlot;
+}
+
 function shuffleArray<T>(array: T[]): T[] {
   const result = [...array];
   for (let i = result.length - 1; i > 0; i--) {
@@ -38,10 +43,11 @@ export function solveGrid(
   template: GridTemplate,
   wordIndex: CrossingIndex,
   config: SolverConfig
-): GridState | null {
+): SolveGridResult {
   let attempts = 0;
   const startTime = Date.now();
   let textDeadline = Number.POSITIVE_INFINITY;
+  let failedSlot: ClueSlot | undefined;
 
   const timedOut = () =>
     (config.maxSolveTimeMs !== undefined && Date.now() - startTime > config.maxSolveTimeMs) ||
@@ -72,7 +78,7 @@ export function solveGrid(
       if (!config.quiet) {
         console.log(`  ❌ Image slot ${slot.id} has no bound answer`);
       }
-      return null;
+      return { state: null, failedSlot: slot };
     }
 
     if (slot.fixedAnswer) {
@@ -97,7 +103,7 @@ export function solveGrid(
         console.log(
           `   … cannot prefill "${normalized}" (${slot.direction} ${slot.length}): ${why}`
         );
-        return null;
+        return { state: null, failedSlot: slot };
       }
       prefilledState = placeWord(prefilledState, slot.id, word, cells, rowDelta, colDelta);
     } else {
@@ -144,6 +150,7 @@ export function solveGrid(
 
   let loggedDeadEnd = false;
   function logDeadEnd(slot: ClueSlot): void {
+    failedSlot = failedSlot ?? slot;
     if (loggedDeadEnd) return;
     loggedDeadEnd = true;
     const at =
@@ -312,11 +319,11 @@ export function solveGrid(
     if (slot.candidateAnswers?.length) {
       if (getCandidates(prefilledState, slot, 80).length === 0) {
         logDeadEnd(slot);
-        return null;
+        return { state: null, failedSlot };
       }
     } else if (!canPlaceWord(prefilledState, 'א'.repeat(slot.length), cells, rowDelta, colDelta)) {
       logDeadEnd(slot);
-      return null;
+      return { state: null, failedSlot };
     }
   }
   const result = fillImages(prefilledState, imageSlots);
@@ -329,5 +336,5 @@ export function solveGrid(
       console.log(`  ❌ Failed to solve "${template.name}" after ${attempts} attempts (${elapsed}s)`);
     }
   }
-  return result;
+  return { state: result, failedSlot: result ? undefined : failedSlot };
 }

@@ -36,7 +36,7 @@ function puzzleIsReady(puzzle: GeneratedPuzzle): boolean {
     (puzzle.puzzleItems?.length ?? 0) > 0 &&
     getUncoveredCells(puzzle).length === 0 &&
     validatePuzzleBoundaries(puzzle).length === 0 &&
-    puzzleQualityOk(scorePuzzle(puzzle), 0)
+    puzzleQualityOk(scorePuzzle(puzzle), 0, true)
   );
 }
 

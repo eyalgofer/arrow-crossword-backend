@@ -1,7 +1,7 @@
 import { Difficulty, Language } from '../../types';
-import { Puzzle, GridTemplate } from '../core/types';
+import { Puzzle, GridTemplate, ClueSlot } from '../core/types';
 import { getClueProvider, ClueProvider } from '../core/clueProvider';
-import { generateTemplate } from './template-generator';
+import { generateTemplate, repairTemplateAroundSlot } from './template-generator';
 import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
 import { generatePuzzleFromGrid } from './puzzle-assembler';
@@ -20,6 +20,7 @@ import {
   PlannedImageClue,
 } from './imageClueCatalog';
 import {
+  DENSE_MAX_TWO_LETTER_SHARE,
   formatQuality,
   puzzleQualityOk,
   scorePuzzle,
@@ -33,6 +34,7 @@ export class PuzzleGenerator {
   private language: Language;
   private clueProvider: ClueProvider;
   private imageClueCatalog: ImageClueCatalogEntry[];
+  private lastFailedSlot?: ClueSlot;
 
   constructor(
     language: Language = 'en',
@@ -198,12 +200,14 @@ export class PuzzleGenerator {
       const protectedCells = imageLocks.length ? imageLocks : undefined;
 
       const t0 = Date.now();
+      const dense = this.language === 'he' && wantImages === 0;
       const template = this.buildTemplate(
         rows,
         cols,
         cutoutCells,
         lockedCells,
-        protectedCells
+        protectedCells,
+        dense
       );
       if (!template) {
         if (wantImages > 0 && attempt < 8) {
@@ -247,18 +251,25 @@ export class PuzzleGenerator {
         }
 
         const maxLen = this.language === 'he' || wantImages > 0 ? 8 : 11;
-        if (template.slots.some((slot) => slot.length > maxLen || slot.length < 3)) {
+        const minLen = dense ? 2 : 3;
+        if (template.slots.some((slot) => slot.length > maxLen || slot.length < minLen)) {
           if (wantImages > 0 && attempt < 8 && bindTry === 0) {
-            const bad = template.slots.filter((slot) => slot.length > maxLen || slot.length < 3);
+            const bad = template.slots.filter((slot) => slot.length > maxLen || slot.length < minLen);
             console.log(
               `   … image attempt ${attempt + 1}: unfillable slot lengths ${bad.map((s) => s.length).join(',')}`
             );
           }
           continue;
         }
+        if (dense && template.slots.length > 0) {
+          const twoLetter = template.slots.filter((slot) => slot.length === 2).length;
+          if (twoLetter / template.slots.length > DENSE_MAX_TWO_LETTER_SHARE) {
+            continue;
+          }
+        }
 
         const templateStats = scoreTemplate(template);
-        if (this.language === 'he' && !templateQualityOk(templateStats, wantImages)) {
+        if (this.language === 'he' && !templateQualityOk(templateStats, wantImages, dense)) {
           if (attempt < 8 && bindTry === 0) {
             console.log(
               `   … attempt ${attempt + 1}: template quality ${formatQuality(templateStats)}`
@@ -267,18 +278,41 @@ export class PuzzleGenerator {
           break;
         }
 
-        if (wantImages > 0 && bindTry === 0) {
+        if ((wantImages > 0 || dense) && bindTry === 0) {
           const images = template.slots
             .filter((slot) => slot.clueType === 'image')
             .map((slot) => `${slot.direction}:${slot.length}`)
             .join(',');
           console.log(
-            `   … image attempt ${attempt + 1}: solving ${template.slots.length} slots [${images}] (${Date.now() - t0}ms tmpl) ${formatQuality(templateStats)}`
+            `   … attempt ${attempt + 1}: solving ${template.slots.length} slots` +
+              (images ? ` [${images}]` : '') +
+              ` (${Date.now() - t0}ms tmpl) ${formatQuality(templateStats)}`
           );
         }
         const solveTries = wantImages > 0 ? 2 : 1;
+        const repairRounds = dense ? 4 : 0;
+        let working = template;
         for (let solveTry = 0; solveTry < solveTries && !puzzle; solveTry++) {
-          puzzle = this.solveTemplate(template, meta);
+          for (let repairRound = 0; repairRound <= repairRounds && !puzzle; repairRound++) {
+            if (repairRound > 0) {
+              const failed = this.lastFailedSlot;
+              if (!failed) break;
+              const repaired = repairTemplateAroundSlot(working, failed, {
+                minSlotLength: 2,
+                maxSlotLength: maxLen,
+                simpleArrows: true,
+                maxTwoLetterShare: DENSE_MAX_TWO_LETTER_SHARE,
+              });
+              if (!repaired) break;
+              working = repaired;
+              if (attempt < 8 && repairRound === 1) {
+                console.log(
+                  `   … attempt ${attempt + 1}: fill-repair ${formatQuality(scoreTemplate(working))}`
+                );
+              }
+            }
+            puzzle = this.solveTemplate(working, meta, dense);
+          }
         }
         if (puzzle) break;
       }
@@ -300,7 +334,7 @@ export class PuzzleGenerator {
         continue;
       }
       const stats = scorePuzzle(puzzle);
-      if (this.language === 'he' && !puzzleQualityOk(stats, wantImages)) {
+      if (this.language === 'he' && !puzzleQualityOk(stats, wantImages, dense)) {
         if (attempt < 8) {
           console.log(
             `   … attempt ${attempt + 1}: filled but quality ${formatQuality(stats)}`
@@ -499,14 +533,15 @@ export class PuzzleGenerator {
       row: number;
       col: number;
       type: '0' | '1' | '2' | '3' | '4' | '5' | '6';
-    }>
+    }>,
+    dense = false
   ): GridTemplate | null {
     const cells = rows * cols;
     const large = cells >= 144;
     const xl = cells >= 225;
     const withImages = (cutoutCells?.length ?? 0) > 0;
     try {
-      return generateTemplate({
+      const template = generateTemplate({
         rows,
         cols,
         name: `${rows}x${cols} arrow crossword`,
@@ -519,23 +554,32 @@ export class PuzzleGenerator {
         populationSize: this.language === 'he' ? 8 : 5,
         weakBreakCondition: this.language === 'he' ? 180 : 80,
         strongBreakCondition: this.language === 'he' ? 420 : 250,
-        maxBoundaryRetries: withImages ? 2 : 3,
+        maxBoundaryRetries: withImages ? 2 : dense ? 4 : 3,
         crossoverSamples: withImages ? 12 : undefined,
         // Cap slot length like image/daily boards — len 9–11 rarely fill in Hebrew.
         maxSlotLength: this.language === 'he' ? 8 : undefined,
+        minSlotLength: dense ? 2 : 3,
+        densePacking: dense,
+        maxTwoLetterShare: dense ? DENSE_MAX_TWO_LETTER_SHARE : undefined,
         sparse: false,
-        simpleArrows: false,
+        simpleArrows: dense,
         lattice: false,
-        // GA + dual packing (newspaper lattice has weak crossing ratios).
+        // Keep the step-5 newspaper lattice off — it has weak crossing ratios.
         newspaper: false,
         cutoutCells,
         lockedCells,
         protectedCells,
       });
+      template.metadata = {
+        ...(template.metadata ?? {}),
+        generationMethod: dense ? 'dense-simple-arrows' : 'ga',
+        minSlotLength: dense ? 2 : 3,
+      };
+      return template;
     } catch (error) {
-      if (withImages) {
+      if (withImages || dense) {
         const message = error instanceof Error ? error.message : String(error);
-        console.log(`   … template error: ${message.slice(0, 120)}`);
+        console.log(`   … template error: ${message.slice(0, 160)}`);
       }
       return null;
     }
@@ -543,10 +587,12 @@ export class PuzzleGenerator {
 
   private solveTemplate(
     template: GridTemplate,
-    config: { title: string; category: string }
+    config: { title: string; category: string },
+    dense = false
   ): Puzzle | null {
+    this.lastFailedSlot = undefined;
     const slotCount = template.slots.length;
-    const maxAttempts = Math.min(80000 + slotCount * 5000, 300000);
+    const maxAttempts = Math.min(80000 + slotCount * 5000, dense ? 360000 : 300000);
     const cells = template.rows * template.cols;
     const hasImages = template.slots.some((slot) => slot.clueType === 'image');
     const imageSlotCount = template.slots.filter((slot) => slot.clueType === 'image').length;
@@ -559,8 +605,9 @@ export class PuzzleGenerator {
           : cells >= 196
             ? 45000
             : 35000
-      : // Text Hebrew: fail faster so more templates get tried (daily-like throughput).
-        (this.language === 'he' ? 14 : 12) * 1000 + cells * (cells >= 256 ? 40 : 25);
+      : // Dense text needs more fill time; otherwise fail faster so more templates get tried.
+        (this.language === 'he' ? (dense ? 22 : 14) : 12) * 1000 +
+        cells * (cells >= 256 ? 40 : 25);
     const jitter = new Map<string, number>();
     const wordScorer = (word: string, _placedWords: string[]) => {
       let j = jitter.get(word);
@@ -573,13 +620,15 @@ export class PuzzleGenerator {
     };
 
     const tSolve = Date.now();
-    const result = solveGrid(template, this.wordIndex, {
+    const solved = solveGrid(template, this.wordIndex, {
       maxAttempts,
       maxSolveTimeMs,
       maxTextSliceMs: hasImages ? (imageSlotCount >= 3 ? 16000 : 10000) : undefined,
       wordScorer,
       quiet: true,
     });
+    this.lastFailedSlot = solved.failedSlot;
+    const result = solved.state;
     if (!result) {
       if (hasImages) {
         console.log(`   … solver empty after ${Date.now() - tSolve}ms`);
