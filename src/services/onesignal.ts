@@ -42,11 +42,11 @@ export function buildGameInviteCopy(params: {
 
   return {
     headings: {
-      en: 'Match invite',
+      en: 'הזמנה למשחק',
       he: 'הזמנה למשחק',
     },
     contents: {
-      en: `${name} invited you for a ${kind} match. Tap to respond.`,
+      en: `${name} מזמין אותך למשחק ${kindHe}! לחצ/י להצטרפות.`,
       he: `${name} מזמין אותך למשחק ${kindHe}! לחצ/י להצטרפות.`,
     },
   };
@@ -63,11 +63,11 @@ export function buildInviteAcceptedCopy(params: {
 
   return {
     headings: {
-      en: 'Invite accepted',
+      en: 'ההזמנה התקבלה',
       he: 'ההזמנה התקבלה',
     },
     contents: {
-      en: `${name} accepted your ${kind} match invite. Tap to play!`,
+      en: `${name} קיבל/ה את ההזמנה למשחק ${kindHe}! לחצ/י כדי לשחק.`,
       he: `${name} קיבל/ה את ההזמנה למשחק ${kindHe}! לחצ/י כדי לשחק.`,
     },
   };
@@ -80,11 +80,11 @@ export function buildInviteDeclinedCopy(params: {
 
   return {
     headings: {
-      en: 'Invite declined',
+      en: 'ההזמנה נדחתה',
       he: 'ההזמנה נדחתה',
     },
     contents: {
-      en: `${name} declined your match invite. Maybe next time!`,
+      en: `${name} דחה/תה את ההזמנה למשחק. אולי בפעם הבאה!`,
       he: `${name} דחה/תה את ההזמנה למשחק. אולי בפעם הבאה!`,
     },
   };
