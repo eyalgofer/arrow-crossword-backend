@@ -3,8 +3,8 @@ import { getAnswerCells, getSlotCells } from './direction-utils';
 
 const HORIZONTAL_DIRS = new Set<Direction>(['across', 'down-across', 'up-across']);
 
-export const MIN_TEMPLATE_CROSSING = 0.5;
-export const MIN_PUZZLE_CROSSING = 0.55;
+export const MIN_TEMPLATE_CROSSING = 0.48;
+export const MIN_PUZZLE_CROSSING = 0.5;
 /** Match image/daily boards — 4 kinds was starving fill on text packages. */
 export const MIN_TEMPLATE_KINDS = 3;
 export const MIN_PUZZLE_KINDS = 3;

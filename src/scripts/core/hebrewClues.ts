@@ -5778,7 +5778,7 @@ export const HEBREW_CLUES: RawHebrewEntry[] = [
   { answer: "תמים", clues: ["נאיבי"], difficulty: 1 },
   { answer: "תמיר", clues: ["גובה קומה"], difficulty: 1 },
   { answer: "תמיר הימן", clues: ["מראשי אמ\"ן"], difficulty: 3 },
-  { answer: "תמיר פרדי", clues: ["מראשי המוסד"], difficulty: 3 },
+  { answer: "תמיר פרדו", clues: ["מראשי המוסד"], difficulty: 3 },
   { answer: "תמכו", clues: ["עזרו סייעו"], difficulty: 1 },
   { answer: "תמלול", clues: ["העלאת קול לכתב", "כתיבת הנאמר"], difficulty: 1 },
   {

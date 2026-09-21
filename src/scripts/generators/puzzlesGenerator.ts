@@ -285,7 +285,7 @@ export class PuzzleGenerator {
       if (!puzzle) {
         if (wantImages > 0) {
           console.log(`   … image attempt ${attempt + 1}: solve/validate failed`);
-        } else if (this.language === 'he' && attempt < 8) {
+        } else if (this.language === 'he' && (attempt < 8 || (attempt + 1) % 8 === 0)) {
           console.log(`   … attempt ${attempt + 1}: solve failed`);
         }
         continue;
@@ -511,20 +511,14 @@ export class PuzzleGenerator {
         cols,
         name: `${rows}x${cols} arrow crossword`,
         quiet: true,
-        // Balanced GA budget: good enough layouts without multi-minute attempts.
+        // Same GA budget for text + image Hebrew — text used to burn minutes per layout.
         maxIterations: this.language === 'he'
-          ? (withImages ? (xl ? 14 : large ? 12 : 12) : large ? 24 : 20)
+          ? (xl ? 14 : large ? 12 : 12)
           : 8,
         minPopulation: 4,
-        populationSize: this.language === 'he'
-          ? (withImages ? 8 : large ? 10 : 8)
-          : 5,
-        weakBreakCondition: this.language === 'he'
-          ? (withImages ? 180 : large ? 280 : 220)
-          : 80,
-        strongBreakCondition: this.language === 'he'
-          ? (withImages ? 420 : large ? 600 : 450)
-          : 250,
+        populationSize: this.language === 'he' ? 8 : 5,
+        weakBreakCondition: this.language === 'he' ? 180 : 80,
+        strongBreakCondition: this.language === 'he' ? 420 : 250,
         maxBoundaryRetries: withImages ? 2 : 3,
         crossoverSamples: withImages ? 12 : undefined,
         // Cap slot length like image/daily boards — len 9–11 rarely fill in Hebrew.

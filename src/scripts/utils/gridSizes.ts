@@ -8,19 +8,20 @@ export interface GridSize {
 }
 
 /**
- * Preferred Hebrew sizes — denser, larger boards (closer to real תשחץ).
+ * Preferred Hebrew sizes — denser boards (closer to real תשחץ).
+ * Prefer 14–15 first so sizeFallbackChain can shrink toward 13 if needed.
  * Never below 13×13.
  */
 export const HEBREW_GRID_SIZE_MIX: GridSize[] = [
-  { rows: 13, cols: 13 },
-  { rows: 14, cols: 13 },
-  { rows: 13, cols: 14 },
   { rows: 14, cols: 14 },
-  { rows: 15, cols: 13 },
-  { rows: 13, cols: 15 },
   { rows: 15, cols: 14 },
   { rows: 14, cols: 15 },
-  { rows: 15, cols: 15 }
+  { rows: 15, cols: 15 },
+  { rows: 14, cols: 13 },
+  { rows: 13, cols: 14 },
+  { rows: 15, cols: 13 },
+  { rows: 13, cols: 15 },
+  { rows: 13, cols: 13 },
 ];
 
 /** Prefer 15×15 first (target layout), then fall back. */

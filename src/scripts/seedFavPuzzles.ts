@@ -1,9 +1,10 @@
 /**
  * Generate 4 fresh Hebrew favorites (14×14 or 15×15, 2–5 images) and wire them
- * as weekly picks. Excludes image answers already used this week.
+ * as weekly picks. Excludes image answers already shown in dailies/favs/multiplayer.
  *
  * Usage:
  *   npm run seed:fav-puzzles
+ *   npx ts-node src/scripts/seedFavPuzzles.ts --size 14 --images 2 --fresh
  */
 
 import dotenv from 'dotenv';
@@ -16,7 +17,6 @@ import mongoose from 'mongoose';
 import { Puzzle } from '../models/Puzzle';
 import { FavPuzzle } from '../models/FavPuzzle';
 import { DailyPuzzle } from '../models/DailyPuzzle';
-import { MultiplayerPuzzle } from '../models/MultiplayerPuzzle';
 import { Difficulty } from '../types';
 import { Puzzle as GeneratedPuzzle } from './core/types';
 import {
@@ -33,8 +33,7 @@ import { FAV_PICK_ACCENTS } from '../utils/puzzlePreview';
 const LANGUAGE = 'he' as const;
 const TARGET = 4;
 const PARALLEL = 4;
-const WORKER_ATTEMPTS = 48;
-const MAX_LAUNCHES = 48;
+const MAX_LAUNCHES = 64;
 const DIFFICULTIES: Difficulty[] = [
   Difficulty.EASY,
   Difficulty.MEDIUM,
@@ -43,7 +42,7 @@ const DIFFICULTIES: Difficulty[] = [
 ];
 
 /** Rotating presets — mostly 2 images for fill reliability; sprinkle 3–4. */
-const FALLBACK_PRESETS: Array<{ size: 14 | 15; images: number }> = [
+const DEFAULT_PRESETS: Array<{ size: 14 | 15; images: number }> = [
   { size: 15, images: 2 },
   { size: 14, images: 2 },
   { size: 15, images: 2 },
@@ -53,6 +52,23 @@ const FALLBACK_PRESETS: Array<{ size: 14 | 15; images: number }> = [
   { size: 15, images: 2 },
   { size: 14, images: 4 },
 ];
+
+function argValue(name: string, fallback?: string): string | undefined {
+  const idx = process.argv.indexOf(name);
+  if (idx === -1) return fallback;
+  return process.argv[idx + 1] ?? fallback;
+}
+
+const FORCE_SIZE = argValue('--size') ? Number(argValue('--size')) : undefined;
+const FORCE_IMAGES = argValue('--images') ? Number(argValue('--images')) : undefined;
+const FALLBACK_PRESETS: Array<{ size: 14 | 15; images: number }> =
+  FORCE_SIZE && FORCE_IMAGES
+    ? [{ size: FORCE_SIZE as 14 | 15, images: FORCE_IMAGES }]
+    : DEFAULT_PRESETS;
+const STRICT_SIZE = FORCE_SIZE;
+const STRICT_IMAGES = FORCE_IMAGES;
+const FRESH = process.argv.includes('--fresh');
+const WORKER_ATTEMPTS = FORCE_IMAGES === 2 ? 96 : 48;
 
 const ROOT = path.join(__dirname, '../..');
 const CATALOG_FILE = path.join(ROOT, 'tmp-fav-catalog.json');
@@ -88,21 +104,16 @@ function puzzleIsReady(puzzle: GeneratedPuzzle, minImages: number, minSize: numb
   );
 }
 
-async function loadUsedImageAnswersThisWeek(): Promise<Set<string>> {
-  const weekAgo = new Date();
-  weekAgo.setUTCDate(weekAgo.getUTCDate() - 7);
-
-  const [dailies, favs, mps, recent] = await Promise.all([
-    DailyPuzzle.find({ language: LANGUAGE, date: { $gte: weekAgo } }).lean(),
+/** Exclude image answers already shown in Hebrew dailies or favorites. */
+async function loadUsedImageAnswers(): Promise<Set<string>> {
+  const [dailies, favs] = await Promise.all([
+    DailyPuzzle.find({ language: LANGUAGE }).lean(),
     FavPuzzle.find({ language: LANGUAGE }).lean(),
-    MultiplayerPuzzle.find({ language: LANGUAGE }).lean(),
-    Puzzle.find({ language: LANGUAGE, createdAt: { $gte: weekAgo } }).lean(),
   ]);
 
   const ids = [
     ...dailies.map((row) => row.puzzleId),
     ...favs.map((row) => row.puzzleId),
-    ...mps.map((row) => row.puzzleId),
   ].filter(Boolean);
 
   const linked = ids.length
@@ -110,7 +121,7 @@ async function loadUsedImageAnswersThisWeek(): Promise<Set<string>> {
     : [];
 
   const used = new Set<string>();
-  for (const puzzle of [...linked, ...recent]) {
+  for (const puzzle of linked) {
     for (const item of (puzzle as any).puzzleItems || []) {
       if (item.clueType === 'image' && item.answer) {
         used.add(normalizeWord(String(item.answer)));
@@ -175,7 +186,17 @@ async function generateFavorites(
 
   const accept = (puzzle: GeneratedPuzzle, label: string): boolean => {
     const answers = imageAnswers(puzzle);
-    if (answers.length < 2) return false;
+    const minImages = STRICT_IMAGES ?? 2;
+    if (answers.length < minImages) return false;
+    if (
+      STRICT_SIZE != null &&
+      (puzzle.grid?.rows !== STRICT_SIZE || puzzle.grid?.cols !== STRICT_SIZE)
+    ) {
+      console.log(
+        `♻️  Skipping ${label}: want ${STRICT_SIZE}x${STRICT_SIZE}, got ${puzzle.grid?.rows}x${puzzle.grid?.cols}`
+      );
+      return false;
+    }
     if (answers.some((answer) => usedImages.has(answer))) {
       console.log(`♻️  Skipping ${label}: image overlap with already-chosen favorites`);
       return false;
@@ -194,8 +215,8 @@ async function generateFavorites(
     return true;
   };
 
-  // Reuse unique ready boards from a prior partial run.
-  if (fs.existsSync(OUT_DIR)) {
+  // Reuse unique ready boards from a prior partial run (unless --fresh).
+  if (!FRESH && fs.existsSync(OUT_DIR)) {
     const files = fs
       .readdirSync(OUT_DIR)
       .filter((name) => /^fav-\d+\.json$/.test(name))
@@ -206,9 +227,9 @@ async function generateFavorites(
         const puzzle = JSON.parse(
           fs.readFileSync(path.join(OUT_DIR, file), 'utf8')
         ) as GeneratedPuzzle;
-        const images = puzzle.puzzleItems.filter((item) => item.clueType === 'image').length;
-        const size = Math.min(puzzle.grid?.rows ?? 0, puzzle.grid?.cols ?? 0);
-        if (puzzleIsReady(puzzle, Math.min(2, images), Math.min(14, size))) {
+        const minImgs = STRICT_IMAGES ?? 2;
+        const minSize = STRICT_SIZE ?? 14;
+        if (puzzleIsReady(puzzle, minImgs, minSize)) {
           accept(puzzle, file);
         }
       } catch {
@@ -295,32 +316,60 @@ async function main() {
   await connectToDatabase();
   console.log('Connected to', mongoose.connection.db?.databaseName);
 
-  const usedThisWeek = await loadUsedImageAnswersThisWeek();
+  const usedImages = await loadUsedImageAnswers();
   const mongoCatalog = await loadImageClueCatalogFromMongo();
   const localCatalog = loadGeneratedImageClueCatalog();
   const merged = mergeCatalogs(mongoCatalog, localCatalog);
-  const catalog = merged.filter((entry) => !usedThisWeek.has(normalizeWord(entry.answer)));
+  const available = merged.filter((entry) => !usedImages.has(normalizeWord(entry.answer)));
+  const byLen = (entry: ImageClueCatalogEntry) => normalizeWord(entry.answer).length;
+  const preferred = available.filter((entry) => {
+    const n = byLen(entry);
+    return n >= 5 && n <= 8;
+  });
+  const rest = available.filter((entry) => {
+    const n = byLen(entry);
+    return n < 5 || n > 8;
+  });
+  const needImages = TARGET * (STRICT_IMAGES ?? 2);
+  const catalog =
+    preferred.length >= Math.max(12, needImages)
+      ? preferred
+      : [...preferred, ...rest];
 
-  if (catalog.length < 12) {
+  if (catalog.length < needImages) {
     throw new Error(
-      `Need unused image clues, found ${catalog.length} after excluding ${usedThisWeek.size} used this week. ` +
+      `Need unused image clues, found ${catalog.length} after excluding ${usedImages.size} previously shown. ` +
         `Run scripts/arrow-image-pipeline \`npm run process\` first.`
     );
   }
 
+  if (FRESH && fs.existsSync(OUT_DIR)) {
+    for (const name of fs.readdirSync(OUT_DIR)) {
+      if (/^fav-\d+\.json$/.test(name)) {
+        fs.unlinkSync(path.join(OUT_DIR, name));
+      }
+    }
+  }
+
+  fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.writeFileSync(CATALOG_FILE, JSON.stringify(catalog));
+  const sizeLabel = STRICT_SIZE ?? '14/15';
+  const imagesLabel = STRICT_IMAGES ?? '2–5';
   console.log(
     `Catalog ${catalog.length} available ` +
-      `(excluded ${usedThisWeek.size} used this week; mongo ${mongoCatalog.length} + local ${localCatalog.length})`
+      `(excluded ${usedImages.size} previously shown; mongo ${mongoCatalog.length} + local ${localCatalog.length})`
   );
   console.log(
-    `Targeting ${TARGET} favorites: sizes 14/15, images 2–5, avoiding this week's image answers\n`
+    `Targeting ${TARGET} favorites: ${sizeLabel}×${sizeLabel}, ${imagesLabel} image(s)\n`
   );
 
   const collected = await generateFavorites(CATALOG_FILE, catalog);
   if (collected.length < TARGET) {
     throw new Error(`Only generated ${collected.length}/${TARGET} favorite puzzles`);
   }
+
+  const previous = await FavPuzzle.find({ language: LANGUAGE }).lean();
+  const previousIds = previous.map((row) => row.puzzleId).filter(Boolean);
 
   await FavPuzzle.deleteMany({ language: LANGUAGE });
 
@@ -348,7 +397,14 @@ async function main() {
     }))
   );
 
-  console.log(`\n✅ Wired ${saved.length} puzzles to fav_puzzles`);
+  if (previousIds.length) {
+    await Puzzle.deleteMany({
+      _id: { $in: previousIds },
+      packageId: { $exists: false },
+    });
+  }
+
+  console.log(`\n✅ Wired ${saved.length} puzzles to fav_puzzles (replaced ${previousIds.length})`);
   for (let i = 0; i < saved.length; i++) {
     const images = collected[i].puzzleItems.filter((item) => item.clueType === 'image');
     const answers = images.map((item) => item.answer).join(', ');
