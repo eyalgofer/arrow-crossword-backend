@@ -62,6 +62,8 @@ export class PuzzleGenerator {
     strictSize?: boolean;
     imageClueCount?: number;
     imageClueAttempts?: number;
+    /** Override attempt budget for text (non-image) boards. */
+    attempts?: number;
   }): Puzzle[] {
     const hebrewFloor = this.language === 'he' ? MIN_GRID_SIZE : 8;
     const defaultRows = Math.min(Math.max(config.rows ?? hebrewFloor, hebrewFloor), MAX_GRID_SIZE);
@@ -90,11 +92,13 @@ export class PuzzleGenerator {
 
       let generated: Puzzle | null = null;
       for (const size of chain) {
-        const attempts = config.imageClueCount
-          ? (config.imageClueAttempts ?? 48)
-          : config.strictSize
-            ? 28
-            : undefined;
+        const attempts =
+          config.attempts ??
+          (config.imageClueCount
+            ? (config.imageClueAttempts ?? 48)
+            : config.strictSize
+              ? 28
+              : undefined);
         generated = this.tryGenerateOne(
           size.rows,
           size.cols,
@@ -242,7 +246,7 @@ export class PuzzleGenerator {
           }
         }
 
-        const maxLen = wantImages > 0 ? 8 : 11;
+        const maxLen = this.language === 'he' || wantImages > 0 ? 8 : 11;
         if (template.slots.some((slot) => slot.length > maxLen || slot.length < 3)) {
           if (wantImages > 0 && attempt < 8 && bindTry === 0) {
             const bad = template.slots.filter((slot) => slot.length > maxLen || slot.length < 3);
@@ -521,7 +525,8 @@ export class PuzzleGenerator {
           : 250,
         maxBoundaryRetries: withImages ? 2 : 3,
         crossoverSamples: withImages ? 12 : undefined,
-        maxSlotLength: this.language === 'he' ? (withImages ? 8 : 11) : undefined,
+        // Cap slot length like image/daily boards — len 9–11 rarely fill in Hebrew.
+        maxSlotLength: this.language === 'he' ? 8 : undefined,
         sparse: false,
         simpleArrows: false,
         lattice: false,
@@ -619,6 +624,7 @@ export function generatePuzzlesBatch(config: {
   imageClueCount?: number;
   imageClueCatalog?: ImageClueCatalogEntry[];
   imageClueAttempts?: number;
+  attempts?: number;
 }): Puzzle[] {
   const language = config.language ?? 'en';
   const generator = new PuzzleGenerator(language, config.imageClueCatalog);
@@ -632,6 +638,7 @@ export function generatePuzzlesBatch(config: {
     strictSize: config.strictSize,
     imageClueCount: config.imageClueCount,
     imageClueAttempts: config.imageClueAttempts,
+    attempts: config.attempts,
   });
 }
 

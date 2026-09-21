@@ -16,6 +16,7 @@ import {
   emptyDailyPuzzleStats,
 } from '../utils/dailyPuzzleStats';
 import { buildPuzzlePreview, FAV_PICK_ACCENTS, toCardDifficulty } from '../utils/puzzlePreview';
+import { FIRST_DAILY_SOLVER_BONUS } from '../constants/daily';
 
 export const getPuzzles = async (req: AuthRequest, res: Response) => {
   try {
@@ -537,6 +538,7 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
 
     const wasAlreadyCompleted = progress?.isCompleted ?? false;
     let coinsAwarded = 0;
+    let isFirstSolver = false;
     let userNeedsSave = false;
 
     // Generate all completed clue IDs in format "number|direction"
@@ -602,7 +604,7 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
       userNeedsSave = true;
     }
 
-    // Lifetime daily-puzzle stats (profile card)
+    // Lifetime daily-puzzle stats (profile card) + first-solver bonus
     const isDailyPuzzle = await DailyPuzzle.exists({ puzzleId });
     if (isDailyPuzzle) {
       if (!user.dailyPuzzleStats) {
@@ -613,6 +615,18 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
         user.dailyPuzzleStats.solvedCount += 1;
         applyDailyStreak(user.dailyPuzzleStats);
         userNeedsSave = true;
+
+        // Atomically claim first solver for this daily (per language assignment)
+        const claimedFirst = await DailyPuzzle.findOneAndUpdate(
+          { puzzleId, firstSolverId: null },
+          { $set: { firstSolverId: user._id, firstSolvedAt: new Date() } },
+          { new: true }
+        );
+        if (claimedFirst) {
+          isFirstSolver = true;
+          coinsAwarded += FIRST_DAILY_SOLVER_BONUS;
+          user.coins += FIRST_DAILY_SOLVER_BONUS;
+        }
       }
 
       const completionSeconds = Math.floor(completionTime);
@@ -642,7 +656,8 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
         bestTime: progress.bestTime,
         completionTime
       },
-      coinsAwarded
+      coinsAwarded,
+      isFirstSolver
     });
   } catch (error) {
     console.error('Complete puzzle error:', error);

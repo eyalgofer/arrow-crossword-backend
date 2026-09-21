@@ -7,6 +7,8 @@ export interface IDailyPuzzle extends Document {
   year: number; // Store year to handle year transitions
   date: Date; // The actual date this puzzle is assigned to
   language: Language; // Each language gets its own daily puzzle
+  firstSolverId?: mongoose.Types.ObjectId | null;
+  firstSolvedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -35,6 +37,15 @@ const dailyPuzzleSchema = new Schema<IDailyPuzzle>({
     type: String,
     enum: ['en', 'he'],
     default: 'en'
+  },
+  firstSolverId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  firstSolvedAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true

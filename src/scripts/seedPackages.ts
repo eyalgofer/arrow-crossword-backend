@@ -207,6 +207,8 @@ function generatePackagePuzzles(
       cols: language === 'he' ? 13 : 8,
       sizes,
       language,
+      // Match daily worker budget so text packages fill reliably.
+      attempts: language === 'he' ? 48 : undefined,
     });
     const validPuzzles = filterValidPuzzles(batch, validatePuzzleBoundaries);
     generatedPuzzles.push(...validPuzzles);
