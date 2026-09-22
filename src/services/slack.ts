@@ -9,9 +9,12 @@ import { User } from '../models/User';
 
 type NewUserSlackFields = {
   displayName?: string | null;
-  email: string;
+  email?: string | null;
   userNumber: number;
   device?: string | null;
+  kind?: 'new' | 'guest' | 'guest_upgrade';
+  provider?: 'google' | 'apple';
+  linkedExisting?: boolean;
 };
 
 export async function getUserNumber(): Promise<number> {
@@ -28,11 +31,26 @@ export async function notifyNewUser(fields: NewUserSlackFields): Promise<void> {
   const device = fields.device === 'ios' || fields.device === 'android'
     ? fields.device
     : 'unknown';
-  const text = [
-    `🎉 New user number ${fields.userNumber}`,
-    `Email: ${fields.email}`,
-    `Device: ${device}`,
-  ].join('\n');
+  const kind = fields.kind ?? 'new';
+  const lines: string[] = [];
+
+  if (kind === 'guest') {
+    lines.push(`👤 Guest user number ${fields.userNumber}`);
+    lines.push(`Device: ${device}`);
+  } else if (kind === 'guest_upgrade') {
+    const providerLabel = fields.provider === 'apple' ? 'Apple' : 'Google';
+    const suffix = fields.linkedExisting ? ' (existing account)' : '';
+    lines.push(`🔗 Guest → ${providerLabel}${suffix}`);
+    lines.push(`Email: ${fields.email || 'unknown'}`);
+    lines.push(`Device: ${device}`);
+    lines.push(`User number: ${fields.userNumber}`);
+  } else {
+    lines.push(`🎉 New user number ${fields.userNumber}`);
+    lines.push(`Email: ${fields.email || 'unknown'}`);
+    lines.push(`Device: ${device}`);
+  }
+
+  const text = lines.join('\n');
 
   try {
     const response = await fetch(webhookUrl, {

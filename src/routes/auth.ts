@@ -7,6 +7,12 @@ import {
   rotateRefreshToken,
   revokeAllRefreshTokens
 } from '../services/authTokens';
+import {
+  applyProviderIdentity,
+  findGuestFromRequest,
+  isValidGuestDeviceId,
+  signInOrCreateGuest,
+} from '../services/guestAuth';
 import { DevicePlatform, User } from '../models/User';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
@@ -21,14 +27,24 @@ function parseDevice(value: unknown): DevicePlatform | null {
   return null;
 }
 
-function notifyNewUserCreated(user: InstanceType<typeof User>) {
+function notifyNewUserCreated(
+  user: InstanceType<typeof User>,
+  extras?: {
+    kind?: 'new' | 'guest' | 'guest_upgrade';
+    provider?: 'google' | 'apple';
+    linkedExisting?: boolean;
+  }
+) {
   void getUserNumber()
     .then((userNumber) =>
       notifyNewUser({
         displayName: user.displayName,
-        email: user.email,
+        email: extras?.kind === 'guest' ? null : user.email,
         userNumber,
         device: user.device,
+        kind: extras?.kind ?? 'new',
+        provider: extras?.provider,
+        linkedExisting: extras?.linkedExisting,
       })
     )
     .catch((err) => {
@@ -48,6 +64,7 @@ function userPayload(user: InstanceType<typeof User>) {
     avatar: user.photoURL,
     coins: user.coins,
     device: user.device ?? null,
+    isGuest: user.isGuest === true,
   };
 }
 
@@ -69,51 +86,33 @@ router.post('/google', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'idToken is required' });
     }
 
-    // Verify the token with Google
     const googleUser = await verifyGoogleToken(idToken);
-
-    // Find user by firebaseUid (Google ID) first
-    let user = await User.findOne({ firebaseUid: googleUser.googleId });
-
-    // If not found, check by email to link accounts from different providers
-    if (!user) {
-      user = await User.findOne({ email: googleUser.email });
-      
-      if (user) {
-        // Link accounts: update firebaseUid to Google ID (or keep original and allow both)
-        // For simplicity, we'll update to the new provider's ID
-        // This allows the user to sign in with either provider going forward
-        user.firebaseUid = googleUser.googleId;
-        console.log('Linked existing account (by email) to Google:', user.email);
-      }
-    }
-
-    if (!user) {
-      // New players pick a nickname after login — do not copy the Google name.
-      user = new User({
+    const guest = await findGuestFromRequest(req);
+    const { user, isNewUser, created, guestUpgrade } = await applyProviderIdentity({
+      guest,
+      identity: {
         firebaseUid: googleUser.googleId,
         email: googleUser.email,
         photoURL: googleUser.picture,
-        device,
-        coins: 100,
-      });
-      await user.save();
+      },
+      device,
+    });
+
+    if (created) {
       console.log('Created new user:', user.email);
       notifyNewUserCreated(user);
-      return res.json(await authPayload(user, true));
+    } else if (guestUpgrade) {
+      console.log('Upgraded guest to Google:', user.email);
+      notifyNewUserCreated(user, {
+        kind: 'guest_upgrade',
+        provider: 'google',
+        linkedExisting: guestUpgrade === 'merged',
+      });
+    } else {
+      console.log('Existing user signed in:', user.email);
     }
 
-    // Existing accounts keep their displayName (chosen nickname or original name).
-    if (googleUser.picture) {
-      user.photoURL = googleUser.picture;
-    }
-    if (device) {
-      user.device = device;
-    }
-    await user.save();
-    console.log('Existing user signed in:', user.email);
-
-    res.json(await authPayload(user, false));
+    res.json(await authPayload(user, isNewUser));
   } catch (error: any) {
     console.error('❌ Google auth error:', error?.message || error);
     console.error('   Full error:', JSON.stringify(error, null, 2));
@@ -151,48 +150,35 @@ router.post('/apple', async (req: Request, res: Response) => {
       console.log('   ✅ device received:', device);
     }
 
-    // Verify the token with Apple
     console.log('   🔍 Verifying token with Apple...');
     const appleUser = await verifyAppleToken(identityToken);
     console.log('   ✅ Token verified. User:', appleUser.email);
 
-    // Find user by firebaseUid (Apple ID) first
-    let user = await User.findOne({ firebaseUid: appleUser.appleId });
-
-    // If not found, check by email to link accounts from different providers
-    if (!user) {
-      user = await User.findOne({ email: appleUser.email });
-      
-      if (user) {
-        // Link accounts: update firebaseUid to Apple ID
-        // This allows the user to sign in with either provider going forward
-        user.firebaseUid = appleUser.appleId;
-        console.log('Linked existing account (by email) to Apple:', user.email);
-      }
-    }
-
-    if (!user) {
-      // New players pick a nickname after login — do not copy the Apple name.
-      user = new User({
+    const guest = await findGuestFromRequest(req);
+    const { user, isNewUser, created, guestUpgrade } = await applyProviderIdentity({
+      guest,
+      identity: {
         firebaseUid: appleUser.appleId,
         email: appleUser.email,
-        photoURL: undefined,
-        device,
-        coins: 100,
-      });
-      await user.save();
+      },
+      device,
+    });
+
+    if (created) {
       console.log('Created new Apple user:', user.email);
       notifyNewUserCreated(user);
-      return res.json(await authPayload(user, true));
+    } else if (guestUpgrade) {
+      console.log('Upgraded guest to Apple:', user.email);
+      notifyNewUserCreated(user, {
+        kind: 'guest_upgrade',
+        provider: 'apple',
+        linkedExisting: guestUpgrade === 'merged',
+      });
+    } else {
+      console.log('Existing Apple user signed in:', user.email);
     }
 
-    if (device) {
-      user.device = device;
-    }
-    await user.save();
-    console.log('Existing Apple user signed in:', user.email);
-
-    res.json(await authPayload(user, false));
+    res.json(await authPayload(user, isNewUser));
   } catch (error: any) {
     console.error('❌ Apple auth error:', error?.message || error);
     console.error('   Full error:', JSON.stringify(error, null, 2));
@@ -212,6 +198,28 @@ router.post('/apple', async (req: Request, res: Response) => {
 
 const DEMO_FIREBASE_UID = 'demo-user';
 const DEMO_EMAIL = 'demo@arrowcrossword.app';
+
+router.post('/guest', async (req: Request, res: Response) => {
+  try {
+    const deviceId = req.body?.deviceId;
+    if (!isValidGuestDeviceId(deviceId)) {
+      return res.status(400).json({ error: 'deviceId is required' });
+    }
+
+    const device = parseDevice(req.body?.device);
+    const { user, isNewUser } = await signInOrCreateGuest({ deviceId, device });
+    if (isNewUser) {
+      notifyNewUserCreated(user, { kind: 'guest' });
+    }
+    res.json(await authPayload(user, isNewUser));
+  } catch (error: any) {
+    console.error('❌ Guest auth error:', error?.message || error);
+    res.status(500).json({
+      error: 'Guest authentication failed',
+      message: error?.message || 'Unknown error',
+    });
+  }
+});
 
 router.post('/demo', async (req: Request, res: Response) => {
   try {

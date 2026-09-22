@@ -13,6 +13,8 @@ export interface IUser extends Document {
   photoURL?: string;
   /** Last known app platform from sign-in (`ios` / `android`). */
   device?: DevicePlatform | null;
+  /** Anonymous device account with no personal information. */
+  isGuest: boolean;
   coins: number;
   stats: UserStats;
   dailyPuzzleStats: DailyPuzzleStats;
@@ -51,6 +53,11 @@ const userSchema = new Schema<IUser>({
     type: String,
     enum: ['ios', 'android'],
     default: null
+  },
+  isGuest: {
+    type: Boolean,
+    default: false,
+    index: true
   },
   coins: {
     type: Number,
