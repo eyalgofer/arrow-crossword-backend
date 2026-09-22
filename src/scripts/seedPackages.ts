@@ -20,17 +20,21 @@ import { GridSize, mixSizes } from './utils/gridSizes';
 
 dotenv.config();
 
-// Usage: ts-node src/scripts/seedPackages.ts [--lang he] [--package 1] [--force]
+// Usage: ts-node src/scripts/seedPackages.ts [--lang he] [--package 1] [--force] [--parallel 10]
 const langArgIndex = process.argv.indexOf('--lang');
 const language: Language = langArgIndex !== -1 && process.argv[langArgIndex + 1] === 'he' ? 'he' : 'en';
 const packageArgIndex = process.argv.indexOf('--package');
 const packageNumber = packageArgIndex !== -1 ? parseInt(process.argv[packageArgIndex + 1], 10) : null;
 const forceReplace = process.argv.includes('--force');
+const parallelArgIndex = process.argv.indexOf('--parallel');
+const parallelArg =
+  parallelArgIndex !== -1 ? parseInt(process.argv[parallelArgIndex + 1], 10) : NaN;
 
 const ROOT = process.cwd();
 const PACKAGE_OUT_DIR = path.join(ROOT, 'tmp-package-puzzles');
-/** Parallel workers — same idea as seedHebrewDailies60. */
-const PACKAGE_PARALLEL = 4;
+/** Default: use most cores (10 on this Mac). Override with --parallel N. */
+const PACKAGE_PARALLEL =
+  Number.isInteger(parallelArg) && parallelArg > 0 ? parallelArg : 10;
 const PACKAGE_WORKER_ATTEMPTS = 48;
 const PACKAGE_MAX_LAUNCHES_PER_SLOT = 12;
 
@@ -315,6 +319,34 @@ function runPackageWorker(
   });
 }
 
+function loadExistingSlotPuzzle(packageOrder: number, slotInPackage: number): any | null {
+  if (!fs.existsSync(PACKAGE_OUT_DIR)) return null;
+  const prefix = `pkg-${packageOrder + 1}-${slotInPackage + 1}-try`;
+  const files = fs
+    .readdirSync(PACKAGE_OUT_DIR)
+    .filter((name) => name.startsWith(prefix) && name.endsWith('.json'))
+    .sort((a, b) => {
+      const tryA = parseInt(a.slice(prefix.length).replace(/\.json$/, ''), 10);
+      const tryB = parseInt(b.slice(prefix.length).replace(/\.json$/, ''), 10);
+      return (Number.isFinite(tryB) ? tryB : 0) - (Number.isFinite(tryA) ? tryA : 0);
+    });
+  for (const file of files) {
+    try {
+      const puzzle = JSON.parse(fs.readFileSync(path.join(PACKAGE_OUT_DIR, file), 'utf8'));
+      if (
+        puzzle?.grid?.rows >= 13 &&
+        puzzle?.grid?.cols >= 13 &&
+        (puzzle.puzzleItems?.length ?? 0) > 0
+      ) {
+        return puzzle;
+      }
+    } catch {
+      // skip corrupt
+    }
+  }
+  return null;
+}
+
 /** Generate all Hebrew package puzzles via parallel workers (daily-style). */
 async function generateAllHebrewPackagesInParallel(): Promise<PreparedPackage[]> {
   fs.mkdirSync(PACKAGE_OUT_DIR, { recursive: true });
@@ -325,11 +357,27 @@ async function generateAllHebrewPackagesInParallel(): Promise<PreparedPackage[]>
   let launchCounter = 0;
   let completed = 0;
 
+  // Resume: reuse ready JSON from a prior run so we don't throw away finished slots.
+  for (let i = 0; i < slots.length; i++) {
+    const existing = loadExistingSlotPuzzle(slots[i].packageOrder, slots[i].slotInPackage);
+    if (!existing) continue;
+    results[i] = existing;
+    completed += 1;
+    console.log(
+      `♻️  Resume package ${slots[i].packageOrder + 1}/#${slots[i].slotInPackage + 1} ` +
+        `(${completed}/${slots.length})`
+    );
+  }
+
   console.log(
     `🚀 Parallel generate ${slots.length} package puzzles ` +
-      `(workers=${PACKAGE_PARALLEL}, attempts=${PACKAGE_WORKER_ATTEMPTS})`
+      `(workers=${PACKAGE_PARALLEL}, attempts=${PACKAGE_WORKER_ATTEMPTS}, ` +
+      `already have ${completed})`
   );
 
+  if (completed >= slots.length) {
+    // fall through to assemble prepared
+  } else {
   await new Promise<void>((resolve) => {
     const maybeDone = () => {
       if (completed >= slots.length) {
@@ -403,6 +451,7 @@ async function generateAllHebrewPackagesInParallel(): Promise<PreparedPackage[]>
 
     pump();
   });
+  }
 
   const missing = results.map((p, i) => (p ? -1 : i)).filter((i) => i >= 0);
   if (missing.length > 0) {
