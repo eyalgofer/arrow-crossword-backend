@@ -1370,7 +1370,7 @@ function memeticAlgorithm(config: GeneratorConfig): Mask {
 /**
  * Convert internal mask to GridTemplate format
  */
-function rebuildSlotCrossings(slots: ClueSlot[]): void {
+export function rebuildSlotCrossings(slots: ClueSlot[]): void {
   for (const slot of slots) {
     slot.crossings = [];
   }

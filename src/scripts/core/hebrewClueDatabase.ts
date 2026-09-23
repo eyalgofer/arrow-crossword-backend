@@ -1,18 +1,26 @@
 /**
  * Hebrew clue database for the puzzle generator.
- * Vocab is the hand-curated list in hebrewClues.ts — used as written.
+ * Vocab is the hand-curated list in hebrewClues.json — used as written.
  */
 
 import { applyHebrewFinalForms } from './hebrewOrthography';
-import { HEBREW_CLUES, RawHebrewEntry } from './hebrewClues';
-
-const HEBREW_ENTRIES: RawHebrewEntry[] = HEBREW_CLUES;
+import {
+  Difficulty,
+  HebrewCategory,
+  RawHebrewEntry,
+  readHebrewClues,
+} from './hebrewClueStore';
+import { ScoredClue, WordMeta } from './clueProvider';
 
 /** Hebrew letters (includes final forms, which sit inside the א-ת range). */
 const HEBREW_ANSWER_PATTERN = /^[\u05D0-\u05EA]{2,11}$/;
 
 /** Must match MAX_CLUE_LENGTH_BY_LANG.he in puzzle-assembler — longer clues never fit. */
 const MAX_HEBREW_CLUE_LENGTH = 28;
+
+/** Unscored entries sit in the middle so scored good words outrank them. */
+export const DEFAULT_FILL_SCORE = 3;
+export const DEFAULT_CLUE_QUALITY = 3;
 
 /**
  * Normalize a Hebrew answer to the form stored in the grid and sent to clients:
@@ -24,10 +32,13 @@ export function normalizeHebrewAnswer(word: string): string {
 
 interface HebrewAnswerEntry {
   answer: string; // normalized, final letterforms applied (map key / grid)
-  display: string; // original from hebrewClues.ts, spaces preserved for (3,4)
+  display: string; // original from hebrewClues.json, spaces preserved for (3,4)
   rank: number; // lower = more common (tier-weighted position)
   tier: number;
-  clues: string[];
+  fillScore: number;
+  category?: HebrewCategory;
+  excludeFromDaily: boolean;
+  clues: ScoredClue[];
 }
 
 function displayForm(raw: string): string {
@@ -42,16 +53,26 @@ function preferSpacedDisplay(current: string, incoming: string): string {
 
 let cached: Map<string, HebrewAnswerEntry> | null = null;
 
-function curatedClues(raw: RawHebrewEntry): string[] {
+function curatedClues(raw: RawHebrewEntry): ScoredClue[] {
+  const fallbackDifficulty: Difficulty = raw.difficulty ?? 1;
   return (raw.clues || [])
-    .map((c) => c.trim())
-    .filter((c) => c.length > 0 && c.length <= MAX_HEBREW_CLUE_LENGTH);
+    .map((clue) =>
+      typeof clue === 'string'
+        ? { text: clue, difficulty: fallbackDifficulty, quality: DEFAULT_CLUE_QUALITY }
+        : {
+            text: clue.text,
+            difficulty: clue.difficulty ?? fallbackDifficulty,
+            quality: clue.quality ?? DEFAULT_CLUE_QUALITY,
+          }
+    )
+    .map((clue) => ({ ...clue, text: clue.text.trim() }))
+    .filter((clue) => clue.text.length > 0 && clue.text.length <= MAX_HEBREW_CLUE_LENGTH);
 }
 
 function buildDatabase(): Map<string, HebrewAnswerEntry> {
   const entries = new Map<string, HebrewAnswerEntry>();
 
-  HEBREW_ENTRIES.forEach((raw: RawHebrewEntry, index: number) => {
+  readHebrewClues().forEach((raw: RawHebrewEntry, index: number) => {
     const answer = normalizeHebrewAnswer(raw.answer);
 
     if (!HEBREW_ANSWER_PATTERN.test(answer)) {
@@ -67,12 +88,14 @@ function buildDatabase(): Map<string, HebrewAnswerEntry> {
     if (entries.has(answer)) {
       const existing = entries.get(answer)!;
       for (const clue of clues) {
-        if (!existing.clues.includes(clue)) existing.clues.push(clue);
+        if (!existing.clues.some((c) => c.text === clue.text)) existing.clues.push(clue);
       }
       existing.display = preferSpacedDisplay(existing.display, display);
-      if (raw.difficulty !== undefined && raw.difficulty > existing.tier) {
-        existing.tier = raw.difficulty;
-      }
+      const tier = Math.min(...clues.map((c) => c.difficulty));
+      if (Number.isFinite(tier) && tier > existing.tier) existing.tier = tier;
+      if (raw.fillScore !== undefined) existing.fillScore = Math.max(existing.fillScore, raw.fillScore);
+      existing.category = existing.category ?? raw.category;
+      existing.excludeFromDaily = existing.excludeFromDaily || raw.excludeFromDaily === true;
       return;
     }
     if (clues.length === 0) {
@@ -80,7 +103,7 @@ function buildDatabase(): Map<string, HebrewAnswerEntry> {
       return;
     }
 
-    const tier = raw.difficulty ?? 1;
+    const tier = Math.min(...clues.map((c) => c.difficulty));
     const length = Array.from(answer).length;
     const lengthPenalty = length > 7 ? 140 : length < 4 ? 25 : 0;
     entries.set(answer, {
@@ -88,7 +111,10 @@ function buildDatabase(): Map<string, HebrewAnswerEntry> {
       display,
       rank: Math.max(1, (tier - 1) * 8000 + 80 + lengthPenalty + (index % 120)),
       tier,
-      clues
+      fillScore: raw.fillScore ?? DEFAULT_FILL_SCORE,
+      category: raw.category,
+      excludeFromDaily: raw.excludeFromDaily === true,
+      clues,
     });
   });
 
@@ -113,14 +139,27 @@ export function getWordPool(): string[] {
   return Array.from(db.values()).map(e => e.display);
 }
 
-/** All clues for an answer. Easy-vocab definitions come first so pickClue uses them. */
+/** All clue texts for an answer, in file order. */
 export function getCluesForWord(word: string): string[] {
-  const db = getDatabase();
-  const entry = db.get(normalizeHebrewAnswer(word));
-  if (!entry) return [];
-  return entry.clues;
+  return getScoredClues(word).map((c) => c.text);
 }
 
+/** Clues with difficulty and quality (defaults applied to unscored clues). */
+export function getScoredClues(word: string): ScoredClue[] {
+  const entry = getDatabase().get(normalizeHebrewAnswer(word));
+  return entry ? entry.clues : [];
+}
+
+export function getWordMeta(word: string): WordMeta | undefined {
+  const entry = getDatabase().get(normalizeHebrewAnswer(word));
+  if (!entry) return undefined;
+  return {
+    fillScore: entry.fillScore,
+    category: entry.category,
+    excludeFromDaily: entry.excludeFromDaily,
+    tier: entry.tier,
+  };
+}
 
 /** Rank of an answer (lower = more common); Infinity if unknown. */
 export function getAnswerRank(word: string): number {

@@ -4,11 +4,13 @@
  *
  * Usage:
  *   npx ts-node src/scripts/generateOneFav.ts --out tmp-fav-1.json --images 2 --attempts 64 --size 15
+ *   npx ts-node src/scripts/generateOneFav.ts --out tmp-daily-1.json --images 2 --size 14 --profile daily --recent tmp-recent.json
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { generateLargestImageCluePuzzle } from './generators/puzzlesGenerator';
+import { generateDailyPuzzle, generateLargestImageCluePuzzle } from './generators/puzzlesGenerator';
+import { readRecentDailyContent } from './utils/recentDailyContent';
 import {
   ImageClueCatalogEntry,
   loadGeneratedImageClueCatalog,
@@ -60,18 +62,35 @@ function main() {
       ? [{ rows: sizeArg, cols: sizeArg }]
       : IMAGE_CLUE_SIZE_LADDER;
 
+  const profile = arg('--profile', 'legacy');
   const catalog = loadCatalog(catalogPath);
   console.log(
-    `[fav ${index}] catalog ${catalog.length}, ${images} image(s), ${attempts} attempts, ${sizes[0].rows}x${sizes[0].cols}`
+    `[fav ${index}] ${profile} profile, catalog ${catalog.length}, ${images} image(s), ` +
+      `${attempts} attempts, ${sizes[0].rows}x${sizes[0].cols}`
   );
-  const puzzle = generateLargestImageCluePuzzle({
-    category: 'כללי',
-    startIndex: index,
-    imageClueCount: images,
-    imageClueCatalog: catalog,
-    imageClueAttempts: attempts,
-    sizes,
-  });
+  let puzzle: GeneratedPuzzle | null;
+  if (profile === 'daily') {
+    const recent = readRecentDailyContent(arg('--recent'));
+    puzzle = generateDailyPuzzle({
+      rows: sizes[0].rows,
+      cols: sizes[0].cols,
+      title: `תשחץ יומי ${index}`,
+      category: 'יומי',
+      imageClueCount: images,
+      imageClueCatalog: catalog,
+      avoidAnswers: recent.answers,
+      avoidClues: recent.clues,
+    });
+  } else {
+    puzzle = generateLargestImageCluePuzzle({
+      category: 'כללי',
+      startIndex: index,
+      imageClueCount: images,
+      imageClueCatalog: catalog,
+      imageClueAttempts: attempts,
+      sizes,
+    });
+  }
 
   if (!puzzle || !puzzleIsReady(puzzle, images, sizeArg >= 13 ? sizeArg : 13)) {
     console.error(`[fav ${index}] FAILED`);

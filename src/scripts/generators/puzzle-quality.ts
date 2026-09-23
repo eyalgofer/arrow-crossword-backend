@@ -21,6 +21,13 @@ export const DENSE_MIN_DUAL_RATIO = 0;
 export const DENSE_MIN_SIMPLE_ARROW_SHARE = 0.85;
 export const DENSE_MAX_TWO_LETTER_SHARE = 0.15;
 
+/** Daily boards: rival-style — nearly every clue block holds two clues, nearly every letter crossed. */
+export const DAILY_MIN_DUAL_RATIO = 0.8;
+export const DAILY_MIN_CROSSING = 0.9;
+export const DAILY_MAX_ORPHAN_WORDS = 0;
+/** Frame letters between two clue blocks stay single (Swedish frame); words must still interlock. */
+export const DAILY_MAX_WEAK_WORDS = 0;
+
 export type Quadrant = 'NW' | 'NE' | 'SW' | 'SE';
 
 export interface LengthHistogram {
@@ -35,6 +42,12 @@ export interface QualityStats {
   letterCells: number;
   crossedCells: number;
   uncrossedCells: number;
+  /** Words where no letter is shared with another word. */
+  orphanWords: number;
+  /** Letters on the outer frame covered by only one word. */
+  edgeUncrossed: number;
+  /** Words where fewer than half the letters are shared with another word. */
+  weakWords: number;
   directionKinds: number;
   kinds: Direction[];
   horizontalShare: number;
@@ -130,8 +143,25 @@ function scoreFromSlots(
   }
 
   let crossedCells = 0;
-  for (const count of letterToCount.values()) {
-    if (count >= 2) crossedCells += 1;
+  let edgeUncrossed = 0;
+  for (const [key, count] of letterToCount) {
+    if (count >= 2) {
+      crossedCells += 1;
+      continue;
+    }
+    const [row, col] = key.split(',').map(Number);
+    if (row === 0 || col === 0 || row === grid.rows - 1 || col === grid.cols - 1) {
+      edgeUncrossed += 1;
+    }
+  }
+  let orphanWords = 0;
+  let weakWords = 0;
+  for (const slot of slots) {
+    const crossed = slot.cells.filter(
+      (cell) => (letterToCount.get(cellKey(cell.row, cell.col)) ?? 0) >= 2
+    ).length;
+    if (crossed === 0) orphanWords += 1;
+    if (crossed * 2 < slot.cells.length) weakWords += 1;
   }
   const letterCells = letterToCount.size;
   const total = horizontal + vertical;
@@ -155,6 +185,9 @@ function scoreFromSlots(
     letterCells,
     crossedCells,
     uncrossedCells: Math.max(0, letterCells - crossedCells),
+    orphanWords,
+    edgeUncrossed,
+    weakWords,
     directionKinds: kinds.size,
     kinds: [...kinds],
     horizontalShare: total === 0 ? 0 : horizontal / total,
@@ -285,13 +318,57 @@ export function puzzleQualityOk(
   });
 }
 
+export interface DailyTargets {
+  minDualRatio: number;
+  minCrossing: number;
+  maxOrphanWords: number;
+  maxWeakWords: number;
+}
+
+export const DAILY_TARGETS: DailyTargets = {
+  minDualRatio: DAILY_MIN_DUAL_RATIO,
+  minCrossing: DAILY_MIN_CROSSING,
+  maxOrphanWords: DAILY_MAX_ORPHAN_WORDS,
+  maxWeakWords: DAILY_MAX_WEAK_WORDS,
+};
+
+/** 3×3 image blocks break the frame lattice, so image boards carry a few more single-clue blocks. */
+export const DAILY_IMAGE_TARGETS: DailyTargets = {
+  ...DAILY_TARGETS,
+  minDualRatio: 0.7,
+  minCrossing: 0.88,
+};
+
+export function dailyTargetsFor(imageCount: number): DailyTargets {
+  return imageCount > 0 ? DAILY_IMAGE_TARGETS : DAILY_TARGETS;
+}
+
+/** Human-readable reasons a board misses the daily targets; empty when it meets them. */
+export function dailyTargetMisses(stats: QualityStats, targets: DailyTargets = DAILY_TARGETS): string[] {
+  const misses: string[] = [];
+  if (stats.dualRatio < targets.minDualRatio) {
+    misses.push(`dual ${stats.dualRatio.toFixed(2)} < ${targets.minDualRatio}`);
+  }
+  if (stats.crossingRatio < targets.minCrossing) {
+    misses.push(`cross ${stats.crossingRatio.toFixed(2)} < ${targets.minCrossing}`);
+  }
+  if (stats.orphanWords > targets.maxOrphanWords) {
+    misses.push(`orphans ${stats.orphanWords} > ${targets.maxOrphanWords}`);
+  }
+  if (stats.weakWords > targets.maxWeakWords) {
+    misses.push(`weak-words ${stats.weakWords} > ${targets.maxWeakWords}`);
+  }
+  return misses;
+}
+
 export function formatQuality(stats: QualityStats): string {
   const kinds = stats.kinds.join(',') || '-';
   const quads = stats.imageQuadrants.length > 0 ? ` imgs=${stats.imageQuadrants.join('+')}` : '';
   const { len2, len3to5, len6to8, len9plus } = stats.lengths;
   return (
     `cross=${stats.crossingRatio.toFixed(2)} ` +
-    `(${stats.crossedCells}/${stats.letterCells} unx=${stats.uncrossedCells}) ` +
+    `(${stats.crossedCells}/${stats.letterCells} unx=${stats.uncrossedCells} ` +
+    `edge=${stats.edgeUncrossed} orphan=${stats.orphanWords} weak=${stats.weakWords}) ` +
     `kinds=${stats.directionKinds}[${kinds}] ` +
     `h=${stats.horizontalShare.toFixed(2)} v=${stats.verticalShare.toFixed(2)} ` +
     `dual=${stats.dualClueCells}/${stats.textClueCells}=${stats.dualRatio.toFixed(2)} ` +

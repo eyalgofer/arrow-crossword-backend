@@ -17,6 +17,10 @@
     "sync:indexes": "ts-node src/scripts/syncIndexes.ts",
     "preview:puzzle": "ts-node src/scripts/previewPuzzle.ts",
     "seed:image-clues": "ts-node src/scripts/seedImageCluePuzzle.ts",
+    "seed:daily-test": "ts-node src/scripts/seedImageCluePuzzle.ts --package 3 --puzzle 1 --profile daily --size 14 --images 2",
+    "audit:puzzles": "ts-node src/scripts/auditPuzzles.ts",
+    "score:clues": "ts-node src/scripts/content/scoreHebrewClues.ts",
+    "review:clues": "ts-node src/scripts/content/reviewHebrewClueScores.ts",
     "seed:fav-puzzles": "ts-node src/scripts/seedFavPuzzles.ts",
     "recreate:he": "ts-node src/scripts/recreateHebrewPuzzles.ts",
     "check:apple": "node scripts/check-apple-config.js"

@@ -6,6 +6,10 @@
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 14 --start 2026-09-16
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 7 --from-tomorrow
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 7 --from-tomorrow --size 14 --images 2 --fresh
+ *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 7 --from-tomorrow --legacy   # old generator
+ *
+ * Default is the daily profile: framed two-clue layout, scored fill, answers/clues from the
+ * last 14 days avoided, and every board must meet the daily audit targets.
  */
 
 import dotenv from 'dotenv';
@@ -28,6 +32,12 @@ import {
 import { Puzzle as GeneratedPuzzle } from './core/types';
 import { normalizeWord } from './generators/validation-utils';
 import { getUncoveredCells } from './generators/direction-utils';
+import { dailyTargetMisses, dailyTargetsFor, scorePuzzle } from './generators/puzzle-quality';
+import {
+  RecentDailyContent,
+  loadRecentDailyContent,
+  writeRecentDailyContent,
+} from './utils/recentDailyContent';
 
 dotenv.config();
 
@@ -37,9 +47,11 @@ const PARALLEL = 4;
 const ROOT = path.join(__dirname, '../..');
 const CATALOG_FILE = path.join(ROOT, 'tmp-daily-catalog.json');
 const OUT_DIR = path.join(ROOT, 'tmp-daily-puzzles');
+const RECENT_FILE = path.join(ROOT, 'tmp-daily-recent.json');
+const LEGACY = process.argv.includes('--legacy');
 
 /** Rotating presets — mostly 2 images for fill reliability; sprinkle 3–5. */
-const DEFAULT_PRESETS: Array<{ size: 14 | 15; images: number }> = [
+const LEGACY_PRESETS: Array<{ size: 14 | 15; images: number }> = [
   { size: 14, images: 2 },
   { size: 14, images: 3 },
   { size: 14, images: 2 },
@@ -47,6 +59,13 @@ const DEFAULT_PRESETS: Array<{ size: 14 | 15; images: number }> = [
   { size: 14, images: 2 },
   { size: 14, images: 3 },
 ];
+/** Framed layouts need room around 3×3 image blocks: 3 images only on 15×15. */
+const DAILY_PRESETS: Array<{ size: 14 | 15; images: number }> = [
+  { size: 14, images: 2 },
+  { size: 14, images: 2 },
+  { size: 15, images: 3 },
+];
+const DEFAULT_PRESETS = LEGACY ? LEGACY_PRESETS : DAILY_PRESETS;
 
 function argValue(name: string, fallback?: string): string | undefined {
   const idx = process.argv.indexOf(name);
@@ -127,9 +146,16 @@ function imageAnswers(puzzle: GeneratedPuzzle): string[] {
     .map((item) => normalizeWord(item.answer));
 }
 
+function meetsDailyTargets(puzzle: GeneratedPuzzle): boolean {
+  if (LEGACY) return true;
+  const images = puzzle.puzzleItems.filter((item) => item.clueType === 'image').length;
+  return dailyTargetMisses(scorePuzzle(puzzle), dailyTargetsFor(images)).length === 0;
+}
+
 function puzzleIsReady(puzzle: GeneratedPuzzle, minImages: number, minSize: number): boolean {
   const images = puzzle.puzzleItems.filter((item) => item.clueType === 'image');
   return (
+    meetsDailyTargets(puzzle) &&
     images.length >= minImages &&
     puzzle.grid?.rows >= minSize &&
     puzzle.grid?.cols >= minSize &&
@@ -225,6 +251,7 @@ function runWorker(
         String(index),
         '--size',
         String(size),
+        ...(LEGACY ? [] : ['--profile', 'daily', '--recent', RECENT_FILE]),
       ],
       { cwd: ROOT, stdio: 'inherit' }
     );
@@ -247,7 +274,8 @@ function runWorker(
 async function generateDailies(
   catalogPath: string,
   baseCatalog: ImageClueCatalogEntry[],
-  target: number
+  target: number,
+  recent: RecentDailyContent
 ): Promise<GeneratedPuzzle[]> {
   fs.mkdirSync(OUT_DIR, { recursive: true });
 
@@ -273,6 +301,12 @@ async function generateDailies(
     }
     for (const answer of answers) usedImages.add(answer);
     collected.push(puzzle);
+    for (const item of puzzle.puzzleItems) {
+      if (item.clueType === 'image') continue;
+      recent.answers.push(item.answer);
+      recent.clues.push(item.clue);
+    }
+    writeRecentDailyContent(RECENT_FILE, recent);
     console.log(
       `✅ Have ${collected.length}/${target} ` +
         `(${puzzle.grid.rows}x${puzzle.grid.cols}, images=${answers.length}: ${answers.join(', ')})`
@@ -435,7 +469,14 @@ const main = async () => {
         `${startDay.toLocaleDateString()} → ${lastDay.toLocaleDateString()}\n`
     );
 
-    const generated = await generateDailies(CATALOG_FILE, catalog, COUNT);
+    const recent = await loadRecentDailyContent(14);
+    writeRecentDailyContent(RECENT_FILE, recent);
+    console.log(
+      `Avoiding ${recent.answers.length} answers / ${recent.clues.length} clues from recent dailies` +
+        (LEGACY ? ' (ignored by --legacy)' : '')
+    );
+
+    const generated = await generateDailies(CATALOG_FILE, catalog, COUNT, recent);
     if (generated.length < COUNT) {
       throw new Error(`Only generated ${generated.length}/${COUNT} daily puzzles`);
     }

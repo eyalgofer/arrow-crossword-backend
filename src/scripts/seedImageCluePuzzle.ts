@@ -4,6 +4,7 @@
  * Usage:
  *   npx ts-node src/scripts/seedImageCluePuzzle.ts --package 3 --puzzle 1
  *   npx ts-node src/scripts/seedImageCluePuzzle.ts --package 3 --puzzle 1 --from tmp-image-clue-puzzle.json
+ *   npx ts-node src/scripts/seedImageCluePuzzle.ts --package 3 --puzzle 1 --profile daily --size 14 --images 2
  *   npm run seed:image-clues
  */
 
@@ -18,13 +19,21 @@ import { PuzzlePackage } from '../models/PuzzlePackage';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { Difficulty } from '../types';
 import { Puzzle as GeneratedPuzzle } from './core/types';
-import { generateLargestImageCluePuzzle } from './generators/puzzlesGenerator';
+import { generateDailyPuzzle, generateLargestImageCluePuzzle } from './generators/puzzlesGenerator';
+import { contentStats } from './generators/content-quality';
+import { loadRecentDailyContent } from './utils/recentDailyContent';
 import {
   ImageClueCatalogEntry,
   loadGeneratedImageClueCatalog,
   loadImageClueCatalogFromMongo,
 } from './generators/imageClueCatalog';
-import { formatQuality, puzzleQualityOk, scorePuzzle } from './generators/puzzle-quality';
+import {
+  dailyTargetMisses,
+  dailyTargetsFor,
+  formatQuality,
+  puzzleQualityOk,
+  scorePuzzle,
+} from './generators/puzzle-quality';
 import { getAnswerCells, getUncoveredCells } from './generators/direction-utils';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import { connectToDatabase } from './utils/scriptUtils';
@@ -49,6 +58,8 @@ const PACKAGE_NUMBER = parseInt(argValue('--package', '3') ?? '3', 10);
 const PUZZLE_NUMBER = parseInt(argValue('--puzzle', '1') ?? '1', 10);
 const MIN_IMAGE_CLUES = parseInt(argValue('--images', '2') ?? '2', 10);
 const FROM_FILE = argValue('--from');
+const PROFILE = argValue('--profile', 'legacy');
+const DAILY_SIZE = parseInt(argValue('--size', '14') ?? '14', 10);
 const PUZZLE_TITLE = `#${PUZZLE_NUMBER}`;
 
 function mergeCatalogs(
@@ -139,6 +150,38 @@ async function generateFresh(catalog: ImageClueCatalogEntry[]): Promise<Generate
   return puzzle;
 }
 
+async function generateDaily(catalog: ImageClueCatalogEntry[]): Promise<GeneratedPuzzle> {
+  const recent = await loadRecentDailyContent(14);
+  console.log(
+    `Generating daily-profile תשחץ ${DAILY_SIZE}x${DAILY_SIZE} with ${MIN_IMAGE_CLUES} image clues ` +
+      `(avoiding ${recent.answers.length} recent answers, ${recent.clues.length} recent clues)...`
+  );
+  const puzzle = generateDailyPuzzle({
+    rows: DAILY_SIZE,
+    cols: DAILY_SIZE,
+    title: PUZZLE_TITLE,
+    category: 'יומי',
+    imageClueCount: MIN_IMAGE_CLUES,
+    imageClueCatalog: catalog,
+    avoidAnswers: recent.answers,
+    avoidClues: recent.clues,
+  });
+  if (!puzzle) throw new Error('Failed to generate daily-profile puzzle');
+  return puzzle;
+}
+
+function printAudit(puzzle: GeneratedPuzzle): void {
+  const images = puzzle.puzzleItems.filter((item) => item.clueType === 'image').length;
+  const misses = dailyTargetMisses(scorePuzzle(puzzle), dailyTargetsFor(images));
+  const content = contentStats(puzzle);
+  console.log(
+    `daily targets: ${misses.length === 0 ? '✅ met' : `❌ ${misses.join('; ')}`} | ` +
+      `fill=${content.avgFillScore.toFixed(2)} clueQ=${content.avgClueQuality.toFixed(2)} ` +
+      `low-fill=${content.lowFillWords.length}${content.lowFillWords.length ? ` [${content.lowFillWords.join(' ')}]` : ''} ` +
+      `top-cat=${content.topCategory}×${content.topCategoryCount}`
+  );
+}
+
 async function main() {
   if (!process.env.MONGODB_URI) {
     console.error('❌ MONGODB_URI is required in .env');
@@ -206,6 +249,8 @@ async function main() {
     }
     console.log(`Loading puzzle from ${filePath}`);
     puzzle = JSON.parse(fs.readFileSync(filePath, 'utf8')) as GeneratedPuzzle;
+  } else if (PROFILE === 'daily') {
+    puzzle = await generateDaily(catalog);
   } else {
     puzzle = await generateFresh(catalog);
   }
@@ -220,6 +265,7 @@ async function main() {
   }
 
   printPuzzle(puzzle);
+  printAudit(puzzle);
 
   if (mongoose.connection.readyState !== 1) {
     await connectToDatabase();

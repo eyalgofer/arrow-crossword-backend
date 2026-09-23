@@ -19,8 +19,12 @@ import {
   planImageClues,
   PlannedImageClue,
 } from './imageClueCatalog';
+import { generateFramedTemplate } from './framed-template';
+import { solveDenseGrid } from './dense-solver';
 import {
   DENSE_MAX_TWO_LETTER_SHARE,
+  dailyTargetMisses,
+  dailyTargetsFor,
   formatQuality,
   puzzleQualityOk,
   scorePuzzle,
@@ -28,6 +32,55 @@ import {
   shuffled,
   templateQualityOk,
 } from './puzzle-quality';
+
+export interface DailyGenerationOptions {
+  rows: number;
+  cols: number;
+  title: string;
+  category: string;
+  imageClueCount?: number;
+  /** 1 easy … 3 hard — clue difficulty the board aims for. */
+  targetDifficulty?: number;
+  /** Normalized answers from recent dailies; words of 4+ letters are kept out of the fill. */
+  avoidAnswers?: Iterable<string>;
+  /** Clue texts from recent dailies; picked only when an answer has nothing else. */
+  avoidClues?: Iterable<string>;
+  /** Max answers per tag on one board (tags: "cat:<category>", "pattern:first-name", "pattern:abbrev"). */
+  tagCaps?: Record<string, number>;
+  timeBudgetMs?: number;
+  solveMsPerTemplate?: number;
+}
+
+export const DEFAULT_DAILY_TAG_CAPS: Record<string, number> = {
+  'cat:geography': 3,
+  'cat:people': 3,
+  'cat:bible': 3,
+  'cat:sport': 2,
+  'pattern:first-name': 2,
+  'pattern:abbrev': 2,
+};
+
+/** Tags used by per-board caps: category plus clue patterns that feel repetitive in bulk. */
+export function dailyTagsFor(provider: ClueProvider, word: string): string[] {
+  const tags: string[] = [];
+  const meta = provider.getWordMeta?.(word);
+  if (meta?.category) tags.push(`cat:${meta.category}`);
+  const clues = provider.getCluesForWord(word).map((c) => c.replace(/[״”“]/g, '"'));
+  if (clues.length > 0 && clues.every((c) => c.includes('ש"מ') || c.includes('שם פרטי'))) {
+    tags.push('pattern:first-name');
+  }
+  if (clues.some((c) => c.includes('ר"ת') || c.includes('בקיצור'))) {
+    tags.push('pattern:abbrev');
+  }
+  return tags;
+}
+
+/** Daily fill preference: fillScore dominates; the legacy rank breaks ties between unscored words. */
+export function dailyWordScore(provider: ClueProvider, word: string): number {
+  const meta = provider.getWordMeta?.(word);
+  const fill = meta?.fillScore ?? 3;
+  return (fill - 3) * 2 - Math.log(Math.max(provider.getAnswerRank(word), 1)) * 0.3;
+}
 
 export class PuzzleGenerator {
   private wordIndex: CrossingIndex;
@@ -347,6 +400,104 @@ export class PuzzleGenerator {
       }
       return puzzle;
     }
+    return null;
+  }
+
+  /**
+   * Daily profile: framed dual-clue layout, fully interlocked fill from well-liked words,
+   * clues picked by quality near the target difficulty. Tries many layouts with a short
+   * solve budget each — fillable layouts solve fast, the rest are not worth waiting on.
+   */
+  generateDaily(options: DailyGenerationOptions): Puzzle | null {
+    const { rows, cols } = options;
+    const wantImages = options.imageClueCount ?? 0;
+    if (wantImages > 0 && this.imageClueCatalog.length < wantImages) {
+      console.error(`Image-clue catalog has ${this.imageClueCatalog.length} entries, need ${wantImages}.`);
+      return null;
+    }
+    const avoid = new Set([...(options.avoidAnswers ?? [])].map((w) => normalizeWord(w)));
+    const words = this.clueProvider
+      .getWordPool()
+      .filter((word) => !this.clueProvider.getWordMeta?.(word)?.excludeFromDaily);
+    // Recent answers stay available (hard exclusion starves the fill) but lose to fresh ones.
+    const wordScore = (word: string) => {
+      const normalized = normalizeWord(word);
+      const recentPenalty = normalized.length >= 4 && avoid.has(normalized) ? 5 : 0;
+      return dailyWordScore(this.clueProvider, word) - recentPenalty;
+    };
+    const tagCaps = options.tagCaps ?? DEFAULT_DAILY_TAG_CAPS;
+    const targets = dailyTargetsFor(wantImages);
+    const clueSelection = {
+      targetDifficulty: options.targetDifficulty ?? 1.5,
+      avoidClues: new Set(options.avoidClues ?? []),
+    };
+
+    const deadline = Date.now() + (options.timeBudgetMs ?? 240000);
+    let attempt = 0;
+    let filled = 0;
+    // Most image placements can't host a framed layout, but one that did once usually does again.
+    const workingPlans: ReturnType<typeof planImageClues>[] = [];
+    while (Date.now() < deadline) {
+      attempt++;
+      const reuse = wantImages > 0 && workingPlans.length > 0 && Math.random() < 0.8;
+      const imagePlan = reuse
+        ? structuredClone(workingPlans[Math.floor(Math.random() * workingPlans.length)])
+        : wantImages > 0
+          ? planImageClues(rows, cols, wantImages, this.catalogPreferredLengths())
+          : [];
+      if (imagePlan.length < wantImages) continue;
+      const pristinePlan = structuredClone(imagePlan);
+      const template = generateFramedTemplate({
+        rows,
+        cols,
+        name: `${rows}x${cols} daily`,
+        cutoutCells: imagePlan.length ? imageBlockCutouts(imagePlan) : undefined,
+        lockedCells: imagePlan.length ? imageExitLocks(imagePlan) : undefined,
+        attempts: wantImages > 0 && !reuse ? 5 : 30,
+      });
+      if (!template) continue;
+      if (wantImages > 0 && !reuse) workingPlans.push(pristinePlan);
+      if (!this.bindImageClues(template, imagePlan, this.imageClueCatalog)) continue;
+      const layoutMisses = dailyTargetMisses(scoreTemplate(template), targets);
+      if (layoutMisses.length > 0) continue;
+
+      const state = solveDenseGrid(template, {
+        words,
+        maxSolveTimeMs: Math.min(options.solveMsPerTemplate ?? 2500, Math.max(0, deadline - Date.now())),
+        wordScore,
+        tagsOf: (word) => dailyTagsFor(this.clueProvider, word),
+        tagCaps,
+        quiet: true,
+      });
+      if (!state) continue;
+      filled++;
+
+      let puzzle: Puzzle;
+      try {
+        puzzle = generatePuzzleFromGrid(template, state, {
+          title: options.title,
+          category: options.category,
+          language: this.language,
+          clueSelection,
+        });
+      } catch (error) {
+        console.log(`   … daily attempt ${attempt}: ${(error as Error).message.slice(0, 120)}`);
+        continue;
+      }
+      if (getUncoveredCells(puzzle).length > 0) continue;
+      const stats = scorePuzzle(puzzle);
+      const misses = dailyTargetMisses(stats, targets);
+      if (misses.length > 0) {
+        console.log(`   … daily attempt ${attempt}: filled but ${misses.join('; ')}`);
+        continue;
+      }
+      puzzle.metadata = { ...(puzzle.metadata ?? {}), generationMethod: 'daily-framed' };
+      console.log(
+        `   ✅ daily ${rows}x${cols} after ${attempt} layouts (${filled} filled): ${formatQuality(stats)}`
+      );
+      return puzzle;
+    }
+    console.log(`   ❌ daily ${rows}x${cols}: no board in budget (${attempt} layouts, ${filled} filled)`);
     return null;
   }
 
@@ -686,6 +837,12 @@ export function generatePuzzlesBatch(config: {
     imageClueAttempts: config.imageClueAttempts,
     attempts: config.attempts,
   });
+}
+
+export function generateDailyPuzzle(
+  options: DailyGenerationOptions & { imageClueCatalog?: ImageClueCatalogEntry[] }
+): Puzzle | null {
+  return new PuzzleGenerator('he', options.imageClueCatalog).generateDaily(options);
 }
 
 /** Prefer 15×15; fall back to smaller only if 15 cannot fill. */

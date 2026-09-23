@@ -19,8 +19,49 @@ const MAX_CLUE_LENGTH_BY_LANG: Record<string, number> = {
  * English clues are already sorted best-first in the CSV database.
  * Hebrew תשחץ cells only fit a short definition, so we keep that pool tight.
  */
-function pickClue(word: string, usedClues: Set<string>, provider: ClueProvider, language: Language): string {
+export interface ClueSelection {
+  /** 1 easy … 3 hard; clues closer to it win. */
+  targetDifficulty: number;
+  /** Clue texts shown recently (e.g. last weeks' dailies) — used only as a last resort. */
+  avoidClues?: Set<string>;
+}
+
+/** Scored pick: best quality near the target difficulty, a little noise so repeats vary. */
+function pickScoredClue(
+  word: string,
+  usedClues: Set<string>,
+  provider: ClueProvider,
+  maxLen: number,
+  selection: ClueSelection
+): string | null {
+  const clues = (provider.getScoredClues?.(word) ?? []).filter((c) => c.text.length <= maxLen);
+  if (clues.length === 0) return null;
+  const ranked = clues
+    .map((c) => ({
+      text: c.text,
+      value:
+        c.quality * 2 -
+        Math.abs(c.difficulty - selection.targetDifficulty) * 1.5 -
+        (usedClues.has(c.text) ? 100 : 0) -
+        (selection.avoidClues?.has(c.text) ? 6 : 0) +
+        Math.random() * 1.2,
+    }))
+    .sort((a, b) => b.value - a.value);
+  return ranked[0].text;
+}
+
+function pickClue(
+  word: string,
+  usedClues: Set<string>,
+  provider: ClueProvider,
+  language: Language,
+  selection?: ClueSelection
+): string {
   const maxLen = MAX_CLUE_LENGTH_BY_LANG[language] ?? 50;
+  if (selection && provider.getScoredClues) {
+    const scored = pickScoredClue(word, usedClues, provider, maxLen, selection);
+    if (scored) return scored;
+  }
   const clues = provider.getCluesForWord(word).filter(c => c.length <= maxLen);
   if (clues.length === 0) {
     throw new Error(`No clue available for word "${word}" - word pool and clue database are out of sync`);
@@ -38,6 +79,7 @@ export function generatePuzzleFromGrid(
     title: string;
     category: string;
     language?: Language;
+    clueSelection?: ClueSelection;
   }
 ): Puzzle {
   const language: Language = config.language ?? 'en';
@@ -96,7 +138,7 @@ export function generatePuzzleFromGrid(
       continue;
     }
 
-    const clueText = pickClue(word, usedClues, clueProvider, language);
+    const clueText = pickClue(word, usedClues, clueProvider, language, config.clueSelection);
     usedClues.add(clueText);
     usedAnswers.add(normalizedAnswer);
 

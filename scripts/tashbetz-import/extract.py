@@ -508,9 +508,9 @@ def extract_image(path: Path) -> list[Pair]:
 def load_known_answers(repo: Path) -> set[str]:
     known: set[str] = set()
     core = repo / "src" / "scripts" / "core"
-    text = (core / "hebrewClues.ts").read_text(encoding="utf-8")
-    for m in re.finditer(r'a:\s*["\']([^"\']+)["\']', text):
-        known.add(apply_final_forms(m.group(1)))
+    entries = json.loads((core / "hebrewClues.json").read_text(encoding="utf-8"))
+    for entry in entries:
+        known.add(apply_final_forms(entry["answer"].replace(" ", "")))
     return known
 
 
