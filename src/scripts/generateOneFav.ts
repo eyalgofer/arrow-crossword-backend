@@ -19,7 +19,7 @@ const DIFFICULTY_TUNING: Partial<
 > = {
   [Difficulty.EASY]: { targetDifficulty: 1, wordDifficultyWeight: 1.5 },
   [Difficulty.MEDIUM]: { targetDifficulty: 1.8, wordDifficultyWeight: 1 },
-  [Difficulty.HARD]: { targetDifficulty: 2.6, wordDifficultyWeight: 1.5 },
+  [Difficulty.HARD]: { targetDifficulty: 3, wordDifficultyWeight: 3 },
 };
 import {
   ImageClueCatalogEntry,
