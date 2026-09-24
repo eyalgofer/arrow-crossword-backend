@@ -41,6 +41,10 @@ export interface DailyGenerationOptions {
   imageClueCount?: number;
   /** 1 easy … 3 hard — clue difficulty the board aims for. */
   targetDifficulty?: number;
+  /** When set, the fill also leans toward words whose easiest clue sits near targetDifficulty. */
+  wordDifficultyWeight?: number;
+  /** Stored on the puzzle; defaults to the generator's usual label. */
+  difficulty?: Difficulty;
   /** Normalized answers from recent dailies; words of 4+ letters are kept out of the fill. */
   avoidAnswers?: Iterable<string>;
   /** Clue texts from recent dailies; picked only when an answer has nothing else. */
@@ -57,7 +61,7 @@ export const DEFAULT_DAILY_TAG_CAPS: Record<string, number> = {
   'cat:bible': 3,
   'cat:sport': 2,
   'pattern:first-name': 2,
-  'pattern:abbrev': 2,
+  'pattern:abbrev': 1,
 };
 
 /** Tags used by per-board caps: category plus clue patterns that feel repetitive in bulk. */
@@ -423,7 +427,12 @@ export class PuzzleGenerator {
     const wordScore = (word: string) => {
       const normalized = normalizeWord(word);
       const recentPenalty = normalized.length >= 4 && avoid.has(normalized) ? 5 : 0;
-      return dailyWordScore(this.clueProvider, word) - recentPenalty;
+      const tier = this.clueProvider.getWordMeta?.(word)?.tier;
+      const difficultyMiss =
+        options.wordDifficultyWeight && tier != null
+          ? Math.abs(tier - (options.targetDifficulty ?? 1.5)) * options.wordDifficultyWeight
+          : 0;
+      return dailyWordScore(this.clueProvider, word) - recentPenalty - difficultyMiss;
     };
     const tagCaps = options.tagCaps ?? DEFAULT_DAILY_TAG_CAPS;
     const targets = dailyTargetsFor(wantImages);
@@ -492,6 +501,7 @@ export class PuzzleGenerator {
         continue;
       }
       puzzle.metadata = { ...(puzzle.metadata ?? {}), generationMethod: 'daily-framed' };
+      if (options.difficulty) puzzle.difficulty = options.difficulty;
       console.log(
         `   ✅ daily ${rows}x${cols} after ${attempt} layouts (${filled} filled): ${formatQuality(stats)}`
       );

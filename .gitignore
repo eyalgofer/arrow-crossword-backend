@@ -18,5 +18,5 @@ src/scripts/core/.clueCache.json
 tmp-image-clue-puzzle.json
 tmp-*-catalog.json
 tmp-*-puzzles/
-tmp-daily-recent.json
+tmp-*-recent.json
 tmp/

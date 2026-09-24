@@ -11,6 +11,16 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { generateDailyPuzzle, generateLargestImageCluePuzzle } from './generators/puzzlesGenerator';
 import { readRecentDailyContent } from './utils/recentDailyContent';
+import { Difficulty } from '../types';
+
+/** Clue difficulty target (1 easy … 3 hard) and how hard the fill leans toward words at that level. */
+const DIFFICULTY_TUNING: Partial<
+  Record<Difficulty, { targetDifficulty: number; wordDifficultyWeight: number }>
+> = {
+  [Difficulty.EASY]: { targetDifficulty: 1, wordDifficultyWeight: 1.5 },
+  [Difficulty.MEDIUM]: { targetDifficulty: 1.8, wordDifficultyWeight: 1 },
+  [Difficulty.HARD]: { targetDifficulty: 2.6, wordDifficultyWeight: 1.5 },
+};
 import {
   ImageClueCatalogEntry,
   loadGeneratedImageClueCatalog,
@@ -71,15 +81,22 @@ function main() {
   let puzzle: GeneratedPuzzle | null;
   if (profile === 'daily') {
     const recent = readRecentDailyContent(arg('--recent'));
+    const difficulty = arg('--difficulty') as Difficulty | undefined;
+    const tuning = difficulty ? DIFFICULTY_TUNING[difficulty] : undefined;
+    if (difficulty && !tuning) {
+      console.error(`Unknown --difficulty ${difficulty}; use easy, medium or hard`);
+      process.exit(1);
+    }
     puzzle = generateDailyPuzzle({
       rows: sizes[0].rows,
       cols: sizes[0].cols,
       title: `תשחץ יומי ${index}`,
-      category: 'יומי',
+      category: arg('--category', 'יומי') ?? 'יומי',
       imageClueCount: images,
       imageClueCatalog: catalog,
       avoidAnswers: recent.answers,
       avoidClues: recent.clues,
+      ...(tuning && difficulty ? { ...tuning, difficulty } : {}),
     });
   } else {
     puzzle = generateLargestImageCluePuzzle({

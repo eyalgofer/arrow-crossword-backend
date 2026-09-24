@@ -5,6 +5,10 @@
  * Usage:
  *   npm run seed:fav-puzzles
  *   npx ts-node src/scripts/seedFavPuzzles.ts --size 14 --images 2 --fresh
+ *   npx ts-node src/scripts/seedFavPuzzles.ts --legacy   # old generator, difficulty is only a label
+ *
+ * Default is the daily profile (framed two-clue layout, scored fill). Each slot is generated
+ * at its own difficulty — clue choice and word choice lean easy / medium / medium / hard.
  */
 
 import dotenv from 'dotenv';
@@ -29,6 +33,12 @@ import { normalizeWord } from './generators/validation-utils';
 import { getUncoveredCells } from './generators/direction-utils';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import { FAV_PICK_ACCENTS } from '../utils/puzzlePreview';
+import { dailyTargetMisses, dailyTargetsFor, scorePuzzle } from './generators/puzzle-quality';
+import {
+  RecentDailyContent,
+  loadRecentDailyContent,
+  writeRecentDailyContent,
+} from './utils/recentDailyContent';
 
 const LANGUAGE = 'he' as const;
 const TARGET = 4;
@@ -42,7 +52,7 @@ const DIFFICULTIES: Difficulty[] = [
 ];
 
 /** Rotating presets — mostly 2 images for fill reliability; sprinkle 3–4. */
-const DEFAULT_PRESETS: Array<{ size: 14 | 15; images: number }> = [
+const LEGACY_PRESETS: Array<{ size: 14 | 15; images: number }> = [
   { size: 15, images: 2 },
   { size: 14, images: 2 },
   { size: 15, images: 2 },
@@ -52,6 +62,9 @@ const DEFAULT_PRESETS: Array<{ size: 14 | 15; images: number }> = [
   { size: 15, images: 2 },
   { size: 14, images: 4 },
 ];
+/** Same boards as the dailies: framed layouts need room around 3×3 image blocks. */
+const DAILY_PRESETS: Array<{ size: 14 | 15; images: number }> = [{ size: 14, images: 2 }];
+const DEFAULT_PRESETS = process.argv.includes('--legacy') ? LEGACY_PRESETS : DAILY_PRESETS;
 
 function argValue(name: string, fallback?: string): string | undefined {
   const idx = process.argv.indexOf(name);
@@ -68,11 +81,14 @@ const FALLBACK_PRESETS: Array<{ size: 14 | 15; images: number }> =
 const STRICT_SIZE = FORCE_SIZE;
 const STRICT_IMAGES = FORCE_IMAGES;
 const FRESH = process.argv.includes('--fresh');
+const LEGACY = process.argv.includes('--legacy');
+const CATEGORY = 'כללי';
 const WORKER_ATTEMPTS = FORCE_IMAGES === 2 ? 96 : 48;
 
 const ROOT = path.join(__dirname, '../..');
 const CATALOG_FILE = path.join(ROOT, 'tmp-fav-catalog.json');
 const OUT_DIR = path.join(ROOT, 'tmp-fav-puzzles');
+const RECENT_FILE = path.join(ROOT, 'tmp-fav-recent.json');
 
 function mergeCatalogs(
   mongo: ImageClueCatalogEntry[],
@@ -92,9 +108,16 @@ function imageAnswers(puzzle: GeneratedPuzzle): string[] {
     .map((item) => normalizeWord(item.answer));
 }
 
+function meetsDailyTargets(puzzle: GeneratedPuzzle): boolean {
+  if (LEGACY) return true;
+  const images = puzzle.puzzleItems.filter((item) => item.clueType === 'image').length;
+  return dailyTargetMisses(scorePuzzle(puzzle), dailyTargetsFor(images)).length === 0;
+}
+
 function puzzleIsReady(puzzle: GeneratedPuzzle, minImages: number, minSize: number): boolean {
   const images = puzzle.puzzleItems.filter((item) => item.clueType === 'image');
   return (
+    meetsDailyTargets(puzzle) &&
     images.length >= minImages &&
     puzzle.grid?.rows >= minSize &&
     puzzle.grid?.cols >= minSize &&
@@ -136,7 +159,8 @@ function runWorker(
   catalogPath: string,
   outPath: string,
   size: number,
-  images: number
+  images: number,
+  difficulty: Difficulty
 ): Promise<GeneratedPuzzle | null> {
   return new Promise((resolve) => {
     const child = spawn(
@@ -156,6 +180,9 @@ function runWorker(
         String(index),
         '--size',
         String(size),
+        ...(LEGACY
+          ? []
+          : ['--profile', 'daily', '--recent', RECENT_FILE, '--difficulty', difficulty, '--category', CATEGORY]),
       ],
       { cwd: ROOT, stdio: 'inherit' }
     );
@@ -177,14 +204,24 @@ function runWorker(
 
 async function generateFavorites(
   catalogPath: string,
-  baseCatalog: ImageClueCatalogEntry[]
+  baseCatalog: ImageClueCatalogEntry[],
+  recent: RecentDailyContent
 ): Promise<GeneratedPuzzle[]> {
   fs.mkdirSync(OUT_DIR, { recursive: true });
 
-  const collected: GeneratedPuzzle[] = [];
+  const slots: Array<GeneratedPuzzle | null> = DIFFICULTIES.map(() => null);
+  const inFlightBySlot = DIFFICULTIES.map(() => 0);
   const usedImages = new Set<string>();
+  const filledCount = () => slots.filter(Boolean).length;
 
-  const accept = (puzzle: GeneratedPuzzle, label: string): boolean => {
+  /** Legacy boards fit any slot; daily-profile boards only a slot of their own difficulty. */
+  const openSlotFor = (puzzle: GeneratedPuzzle, preferred?: number): number => {
+    const fits = (i: number) => !slots[i] && (LEGACY || DIFFICULTIES[i] === puzzle.difficulty);
+    if (preferred != null && fits(preferred)) return preferred;
+    return DIFFICULTIES.findIndex((_, i) => fits(i));
+  };
+
+  const accept = (puzzle: GeneratedPuzzle, label: string, preferred?: number): boolean => {
     const answers = imageAnswers(puzzle);
     const minImages = STRICT_IMAGES ?? 2;
     if (answers.length < minImages) return false;
@@ -197,14 +234,25 @@ async function generateFavorites(
       );
       return false;
     }
+    const slot = openSlotFor(puzzle, preferred);
+    if (slot === -1) {
+      console.log(`♻️  Skipping ${label}: no open ${puzzle.difficulty} slot`);
+      return false;
+    }
     if (answers.some((answer) => usedImages.has(answer))) {
       console.log(`♻️  Skipping ${label}: image overlap with already-chosen favorites`);
       return false;
     }
     for (const answer of answers) usedImages.add(answer);
-    collected.push(puzzle);
+    slots[slot] = puzzle;
+    for (const item of puzzle.puzzleItems) {
+      if (item.clueType === 'image') continue;
+      recent.answers.push(item.answer);
+      recent.clues.push(item.clue);
+    }
+    writeRecentDailyContent(RECENT_FILE, recent);
     console.log(
-      `✅ Have ${collected.length}/${TARGET} ` +
+      `✅ Have ${filledCount()}/${TARGET} — slot ${slot + 1} ${DIFFICULTIES[slot]} ` +
         `(${puzzle.grid.rows}x${puzzle.grid.cols}, images=${answers.length}: ${answers.join(', ')})`
     );
     // Keep later workers off already-chosen image answers.
@@ -222,7 +270,7 @@ async function generateFavorites(
       .filter((name) => /^fav-\d+\.json$/.test(name))
       .sort((a, b) => parseInt(a.replace(/\D/g, ''), 10) - parseInt(b.replace(/\D/g, ''), 10));
     for (const file of files) {
-      if (collected.length >= TARGET) break;
+      if (filledCount() >= TARGET) break;
       try {
         const puzzle = JSON.parse(
           fs.readFileSync(path.join(OUT_DIR, file), 'utf8')
@@ -238,8 +286,8 @@ async function generateFavorites(
     }
   }
 
-  if (collected.length >= TARGET) {
-    return collected.slice(0, TARGET);
+  if (filledCount() >= TARGET) {
+    return slots as GeneratedPuzzle[];
   }
 
   let nextIndex =
@@ -256,9 +304,19 @@ async function generateFavorites(
   let inFlight = 0;
   let launched = 0;
 
+  /** Open slot with the fewest workers on it, so every difficulty makes progress. */
+  const nextSlot = (): number => {
+    let best = -1;
+    for (let i = 0; i < slots.length; i++) {
+      if (slots[i]) continue;
+      if (best === -1 || inFlightBySlot[i] < inFlightBySlot[best]) best = i;
+    }
+    return best;
+  };
+
   await new Promise<void>((resolve) => {
     const maybeDone = () => {
-      if (collected.length >= TARGET) {
+      if (filledCount() >= TARGET) {
         resolve();
         return;
       }
@@ -270,33 +328,31 @@ async function generateFavorites(
     };
 
     const pump = () => {
-      while (
-        collected.length < TARGET &&
-        inFlight < PARALLEL &&
-        launched < MAX_LAUNCHES
-      ) {
+      while (filledCount() < TARGET && inFlight < PARALLEL && launched < MAX_LAUNCHES) {
+        const slot = nextSlot();
+        if (slot === -1) break;
         const index = nextIndex++;
-        // Prefer easier fillable boards; rotate size/image counts for variety.
         const preset = FALLBACK_PRESETS[launched % FALLBACK_PRESETS.length];
+        const difficulty = DIFFICULTIES[slot];
         launched += 1;
         inFlight += 1;
+        inFlightBySlot[slot] += 1;
         const outPath = path.join(OUT_DIR, `fav-${index}.json`);
         console.log(
-          `—— Launch fav-${index}: ${preset.size}×${preset.size}, ${preset.images} image(s) ` +
-            `(in-flight ${inFlight}, have ${collected.length}/${TARGET}) ——`
+          `—— Launch fav-${index}: slot ${slot + 1} ${difficulty}, ${preset.size}×${preset.size}, ` +
+            `${preset.images} image(s) (in-flight ${inFlight}, have ${filledCount()}/${TARGET}) ——`
         );
-        runWorker(index, catalogPath, outPath, preset.size, preset.images)
-          .then((puzzle) => {
-            inFlight -= 1;
-            if (puzzle) accept(puzzle, `fav-${index}`);
-            maybeDone();
-          })
-          .catch(() => {
-            inFlight -= 1;
-            maybeDone();
-          });
+        const done = (puzzle: GeneratedPuzzle | null) => {
+          inFlight -= 1;
+          inFlightBySlot[slot] -= 1;
+          if (puzzle) accept(puzzle, `fav-${index}`, slot);
+          maybeDone();
+        };
+        runWorker(index, catalogPath, outPath, preset.size, preset.images, difficulty)
+          .then(done)
+          .catch(() => done(null));
       }
-      if (collected.length >= TARGET || (inFlight === 0 && launched >= MAX_LAUNCHES)) {
+      if (filledCount() >= TARGET || (inFlight === 0 && launched >= MAX_LAUNCHES)) {
         resolve();
       }
     };
@@ -304,7 +360,7 @@ async function generateFavorites(
     pump();
   });
 
-  return collected.slice(0, TARGET);
+  return slots.filter((puzzle): puzzle is GeneratedPuzzle => puzzle !== null);
 }
 
 async function main() {
@@ -363,7 +419,9 @@ async function main() {
     `Targeting ${TARGET} favorites: ${sizeLabel}×${sizeLabel}, ${imagesLabel} image(s)\n`
   );
 
-  const collected = await generateFavorites(CATALOG_FILE, catalog);
+  const recent = await loadRecentDailyContent(14);
+  writeRecentDailyContent(RECENT_FILE, recent);
+  const collected = await generateFavorites(CATALOG_FILE, catalog, recent);
   if (collected.length < TARGET) {
     throw new Error(`Only generated ${collected.length}/${TARGET} favorite puzzles`);
   }
