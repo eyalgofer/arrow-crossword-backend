@@ -123,6 +123,7 @@ export class PuzzleGenerator {
     imageClueAttempts?: number;
     /** Override attempt budget for text (non-image) boards. */
     attempts?: number;
+    difficulty?: Difficulty;
   }): Puzzle[] {
     const hebrewFloor = this.language === 'he' ? MIN_GRID_SIZE : 8;
     const defaultRows = Math.min(Math.max(config.rows ?? hebrewFloor, hebrewFloor), MAX_GRID_SIZE);
@@ -165,6 +166,7 @@ export class PuzzleGenerator {
             title: config.getTitle(puzzles.length),
             category: config.category,
             imageClueCount: config.imageClueCount,
+            difficulty: config.difficulty,
           },
           attempts
         );
@@ -204,7 +206,7 @@ export class PuzzleGenerator {
   private tryGenerateOne(
     rows: number,
     cols: number,
-    meta: { title: string; category: string; imageClueCount?: number },
+    meta: { title: string; category: string; imageClueCount?: number; difficulty?: Difficulty },
     attemptOverride?: number
   ): Puzzle | null {
     const cells = rows * cols;
@@ -748,7 +750,7 @@ export class PuzzleGenerator {
 
   private solveTemplate(
     template: GridTemplate,
-    config: { title: string; category: string },
+    config: { title: string; category: string; difficulty?: Difficulty },
     dense = false
   ): Puzzle | null {
     this.lastFailedSlot = undefined;
@@ -802,6 +804,7 @@ export class PuzzleGenerator {
         title: config.title,
         category: config.category,
         language: this.language,
+        difficulty: config.difficulty,
       });
     } catch (error) {
       if (
@@ -846,6 +849,7 @@ export function generatePuzzlesBatch(config: {
     imageClueCount: config.imageClueCount,
     imageClueAttempts: config.imageClueAttempts,
     attempts: config.attempts,
+    difficulty: config.difficulty,
   });
 }
 
