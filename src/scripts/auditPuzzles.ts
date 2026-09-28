@@ -31,7 +31,7 @@ function report(label: string, puzzle: GeneratedPuzzle): boolean {
   const stats = scorePuzzle(puzzle);
   const content = contentStats(puzzle);
   const images = puzzle.puzzleItems.filter((i) => i.clueType === 'image').length;
-  const misses = dailyTargetMisses(stats, dailyTargetsFor(images));
+  const misses = dailyTargetMisses(stats, dailyTargetsFor(images, puzzle.grid));
   console.log(
     `${misses.length === 0 ? '✅' : '❌'} ${label} ${puzzle.grid.rows}x${puzzle.grid.cols} ` +
       `${puzzle.puzzleItems.length} clues (${images} img)`

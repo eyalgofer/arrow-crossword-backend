@@ -67,12 +67,12 @@ function main() {
     process.exit(1);
   }
 
+  const profile = arg('--profile', 'legacy');
   const sizes: GridSize[] =
-    sizeArg >= 13
+    sizeArg >= 13 || profile === 'daily'
       ? [{ rows: sizeArg, cols: sizeArg }]
       : IMAGE_CLUE_SIZE_LADDER;
-
-  const profile = arg('--profile', 'legacy');
+  const minSize = profile === 'daily' ? sizeArg : Math.max(13, sizeArg);
   const catalog = loadCatalog(catalogPath);
   console.log(
     `[fav ${index}] ${profile} profile, catalog ${catalog.length}, ${images} image(s), ` +
@@ -109,7 +109,7 @@ function main() {
     });
   }
 
-  if (!puzzle || !puzzleIsReady(puzzle, images, sizeArg >= 13 ? sizeArg : 13)) {
+  if (!puzzle || !puzzleIsReady(puzzle, images, minSize)) {
     console.error(`[fav ${index}] FAILED`);
     process.exit(1);
   }

@@ -437,7 +437,7 @@ export class PuzzleGenerator {
       return dailyWordScore(this.clueProvider, word) - recentPenalty - difficultyMiss;
     };
     const tagCaps = options.tagCaps ?? DEFAULT_DAILY_TAG_CAPS;
-    const targets = dailyTargetsFor(wantImages);
+    const targets = dailyTargetsFor(wantImages, { rows, cols });
     const clueSelection = {
       targetDifficulty: options.targetDifficulty ?? 1.5,
       avoidClues: new Set(options.avoidClues ?? []),
@@ -800,12 +800,13 @@ export class PuzzleGenerator {
     }
 
     try {
-      return generatePuzzleFromGrid(template, result, {
+      const puzzle = generatePuzzleFromGrid(template, result, {
         title: config.title,
         category: config.category,
         language: this.language,
-        difficulty: config.difficulty,
       });
+      if (config.difficulty) puzzle.difficulty = config.difficulty;
+      return puzzle;
     } catch (error) {
       if (
         error instanceof Error &&

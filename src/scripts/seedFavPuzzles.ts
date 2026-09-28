@@ -6,6 +6,8 @@
  *   npm run seed:fav-puzzles
  *   npx ts-node src/scripts/seedFavPuzzles.ts --size 14 --images 2 --fresh
  *   npx ts-node src/scripts/seedFavPuzzles.ts --legacy   # old generator, difficulty is only a label
+ *   npx ts-node src/scripts/seedFavPuzzles.ts --small    # 9 text-only 9×9/8×8 boards: 4 easy, 4 medium, 1 hard
+ *   add --append to keep current favorites, --dry-run to generate without touching the database
  *
  * Default is the daily profile (framed two-clue layout, scored fill). Each slot is generated
  * at its own difficulty — clue choice and word choice lean easy / medium / medium / hard.
@@ -41,18 +43,36 @@ import {
 } from './utils/recentDailyContent';
 
 const LANGUAGE = 'he' as const;
-const TARGET = 4;
-const PARALLEL = 4;
+const SMALL = process.argv.includes('--small');
+const APPEND = process.argv.includes('--append');
+const DRY_RUN = process.argv.includes('--dry-run');
+const PARALLEL = SMALL ? 6 : 4;
 const MAX_LAUNCHES = 64;
-const DIFFICULTIES: Difficulty[] = [
-  Difficulty.EASY,
-  Difficulty.MEDIUM,
-  Difficulty.MEDIUM,
-  Difficulty.HARD,
+const DIFFICULTIES: Difficulty[] = SMALL
+  ? [
+      Difficulty.EASY,
+      Difficulty.EASY,
+      Difficulty.EASY,
+      Difficulty.EASY,
+      Difficulty.MEDIUM,
+      Difficulty.MEDIUM,
+      Difficulty.MEDIUM,
+      Difficulty.MEDIUM,
+      Difficulty.HARD,
+    ]
+  : [Difficulty.EASY, Difficulty.MEDIUM, Difficulty.MEDIUM, Difficulty.HARD];
+const TARGET = DIFFICULTIES.length;
+
+type Preset = { size: number; images: number };
+
+/** 3×3 image blocks cannot fit a framed layout on boards this small — text clues only. */
+const SMALL_PRESETS: Preset[] = [
+  { size: 9, images: 0 },
+  { size: 8, images: 0 },
 ];
 
 /** Rotating presets — mostly 2 images for fill reliability; sprinkle 3–4. */
-const LEGACY_PRESETS: Array<{ size: 14 | 15; images: number }> = [
+const LEGACY_PRESETS: Preset[] = [
   { size: 15, images: 2 },
   { size: 14, images: 2 },
   { size: 15, images: 2 },
@@ -63,8 +83,12 @@ const LEGACY_PRESETS: Array<{ size: 14 | 15; images: number }> = [
   { size: 14, images: 4 },
 ];
 /** Same boards as the dailies: framed layouts need room around 3×3 image blocks. */
-const DAILY_PRESETS: Array<{ size: 14 | 15; images: number }> = [{ size: 14, images: 2 }];
-const DEFAULT_PRESETS = process.argv.includes('--legacy') ? LEGACY_PRESETS : DAILY_PRESETS;
+const DAILY_PRESETS: Preset[] = [{ size: 14, images: 2 }];
+const DEFAULT_PRESETS = SMALL
+  ? SMALL_PRESETS
+  : process.argv.includes('--legacy')
+    ? LEGACY_PRESETS
+    : DAILY_PRESETS;
 
 function argValue(name: string, fallback?: string): string | undefined {
   const idx = process.argv.indexOf(name);
@@ -74,20 +98,24 @@ function argValue(name: string, fallback?: string): string | undefined {
 
 const FORCE_SIZE = argValue('--size') ? Number(argValue('--size')) : undefined;
 const FORCE_IMAGES = argValue('--images') ? Number(argValue('--images')) : undefined;
-const FALLBACK_PRESETS: Array<{ size: 14 | 15; images: number }> =
-  FORCE_SIZE && FORCE_IMAGES
-    ? [{ size: FORCE_SIZE as 14 | 15, images: FORCE_IMAGES }]
+const FALLBACK_PRESETS: Preset[] =
+  FORCE_SIZE && FORCE_IMAGES != null
+    ? [{ size: FORCE_SIZE, images: FORCE_IMAGES }]
     : DEFAULT_PRESETS;
 const STRICT_SIZE = FORCE_SIZE;
 const STRICT_IMAGES = FORCE_IMAGES;
+const MIN_IMAGES = STRICT_IMAGES ?? (SMALL ? 0 : 2);
+const MIN_SIZE = STRICT_SIZE ?? (SMALL ? 8 : 14);
+const MAX_SIZE = STRICT_SIZE ?? (SMALL ? 9 : Infinity);
 const FRESH = process.argv.includes('--fresh');
 const LEGACY = process.argv.includes('--legacy');
 const CATEGORY = 'כללי';
 const WORKER_ATTEMPTS = FORCE_IMAGES === 2 ? 96 : 48;
+const MAX_SHARED_ANSWER_SHARE = 0.1;
 
 const ROOT = path.join(__dirname, '../..');
 const CATALOG_FILE = path.join(ROOT, 'tmp-fav-catalog.json');
-const OUT_DIR = path.join(ROOT, 'tmp-fav-puzzles');
+const OUT_DIR = path.join(ROOT, SMALL ? 'tmp-fav-small-puzzles' : 'tmp-fav-puzzles');
 const RECENT_FILE = path.join(ROOT, 'tmp-fav-recent.json');
 
 function mergeCatalogs(
@@ -108,10 +136,18 @@ function imageAnswers(puzzle: GeneratedPuzzle): string[] {
     .map((item) => normalizeWord(item.answer));
 }
 
+/** Text answers of 3+ letters — two-letter fill repeats unavoidably. */
+function textAnswers(puzzle: GeneratedPuzzle): string[] {
+  return puzzle.puzzleItems
+    .filter((item) => item.clueType !== 'image' && item.answer)
+    .map((item) => normalizeWord(item.answer))
+    .filter((word) => word.length >= 3);
+}
+
 function meetsDailyTargets(puzzle: GeneratedPuzzle): boolean {
   if (LEGACY) return true;
   const images = puzzle.puzzleItems.filter((item) => item.clueType === 'image').length;
-  return dailyTargetMisses(scorePuzzle(puzzle), dailyTargetsFor(images)).length === 0;
+  return dailyTargetMisses(scorePuzzle(puzzle), dailyTargetsFor(images, puzzle.grid)).length === 0;
 }
 
 function puzzleIsReady(puzzle: GeneratedPuzzle, minImages: number, minSize: number): boolean {
@@ -121,6 +157,8 @@ function puzzleIsReady(puzzle: GeneratedPuzzle, minImages: number, minSize: numb
     images.length >= minImages &&
     puzzle.grid?.rows >= minSize &&
     puzzle.grid?.cols >= minSize &&
+    puzzle.grid.rows <= MAX_SIZE &&
+    puzzle.grid.cols <= MAX_SIZE &&
     getUncoveredCells(puzzle).length === 0 &&
     validatePuzzleBoundaries(puzzle).length === 0 &&
     images.every((item) => item.imageUrl && item.answer && /[\u0590-\u05FF]/.test(item.answer))
@@ -212,6 +250,7 @@ async function generateFavorites(
   const slots: Array<GeneratedPuzzle | null> = DIFFICULTIES.map(() => null);
   const inFlightBySlot = DIFFICULTIES.map(() => 0);
   const usedImages = new Set<string>();
+  const usedWords = new Set<string>();
   const filledCount = () => slots.filter(Boolean).length;
 
   /** Legacy boards fit any slot; daily-profile boards only a slot of their own difficulty. */
@@ -223,8 +262,7 @@ async function generateFavorites(
 
   const accept = (puzzle: GeneratedPuzzle, label: string, preferred?: number): boolean => {
     const answers = imageAnswers(puzzle);
-    const minImages = STRICT_IMAGES ?? 2;
-    if (answers.length < minImages) return false;
+    if (answers.length < MIN_IMAGES) return false;
     if (
       STRICT_SIZE != null &&
       (puzzle.grid?.rows !== STRICT_SIZE || puzzle.grid?.cols !== STRICT_SIZE)
@@ -243,7 +281,17 @@ async function generateFavorites(
       console.log(`♻️  Skipping ${label}: image overlap with already-chosen favorites`);
       return false;
     }
+    // Workers launched together share one recent list and can land on near-identical fills.
+    const words = textAnswers(puzzle);
+    const shared = words.filter((word) => usedWords.has(word));
+    if (shared.length > Math.floor(words.length * MAX_SHARED_ANSWER_SHARE)) {
+      console.log(
+        `♻️  Skipping ${label}: ${shared.length}/${words.length} answers already in chosen favorites`
+      );
+      return false;
+    }
     for (const answer of answers) usedImages.add(answer);
+    for (const word of words) usedWords.add(word);
     slots[slot] = puzzle;
     for (const item of puzzle.puzzleItems) {
       if (item.clueType === 'image') continue;
@@ -275,9 +323,7 @@ async function generateFavorites(
         const puzzle = JSON.parse(
           fs.readFileSync(path.join(OUT_DIR, file), 'utf8')
         ) as GeneratedPuzzle;
-        const minImgs = STRICT_IMAGES ?? 2;
-        const minSize = STRICT_SIZE ?? 14;
-        if (puzzleIsReady(puzzle, minImgs, minSize)) {
+        if (puzzleIsReady(puzzle, MIN_IMAGES, MIN_SIZE)) {
           accept(puzzle, file);
         }
       } catch {
@@ -386,7 +432,7 @@ async function main() {
     const n = byLen(entry);
     return n < 5 || n > 8;
   });
-  const needImages = TARGET * (STRICT_IMAGES ?? 2);
+  const needImages = TARGET * MIN_IMAGES;
   const catalog =
     preferred.length >= Math.max(12, needImages)
       ? preferred
@@ -409,8 +455,8 @@ async function main() {
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.writeFileSync(CATALOG_FILE, JSON.stringify(catalog));
-  const sizeLabel = STRICT_SIZE ?? '14/15';
-  const imagesLabel = STRICT_IMAGES ?? '2–5';
+  const sizeLabel = STRICT_SIZE ?? (SMALL ? '8/9' : '14/15');
+  const imagesLabel = STRICT_IMAGES ?? (SMALL ? '0' : '2–5');
   console.log(
     `Catalog ${catalog.length} available ` +
       `(excluded ${usedImages.size} previously shown; mongo ${mongoCatalog.length} + local ${localCatalog.length})`
@@ -426,14 +472,24 @@ async function main() {
     throw new Error(`Only generated ${collected.length}/${TARGET} favorite puzzles`);
   }
 
-  const previous = await FavPuzzle.find({ language: LANGUAGE }).lean();
-  const previousIds = previous.map((row) => row.puzzleId).filter(Boolean);
+  if (DRY_RUN) {
+    collected.forEach((puzzle, index) =>
+      fs.writeFileSync(path.join(OUT_DIR, `chosen-${index + 1}.json`), JSON.stringify(puzzle, null, 2))
+    );
+    console.log(`\n🧪 Dry run — chosen boards in ${OUT_DIR}/chosen-*.json, database untouched`);
+    await closeDatabaseAndExit(0);
+    return;
+  }
 
-  await FavPuzzle.deleteMany({ language: LANGUAGE });
+  const previous = await FavPuzzle.find({ language: LANGUAGE }).lean();
+  const previousIds = APPEND ? [] : previous.map((row) => row.puzzleId).filter(Boolean);
+  const orderBase = APPEND ? Math.max(-1, ...previous.map((row) => row.order)) + 1 : 0;
+
+  if (!APPEND) await FavPuzzle.deleteMany({ language: LANGUAGE });
 
   const saved = await Puzzle.insertMany(
     collected.map((puzzle, index) => ({
-      title: `#${index + 1}`,
+      title: `#${orderBase + index + 1}`,
       difficulty: DIFFICULTIES[index],
       category: puzzle.category,
       language: LANGUAGE,
@@ -448,9 +504,9 @@ async function main() {
   await FavPuzzle.insertMany(
     saved.map((doc, index) => ({
       puzzleId: doc._id,
-      order: index,
+      order: orderBase + index,
       language: LANGUAGE,
-      accent: FAV_PICK_ACCENTS[index % FAV_PICK_ACCENTS.length],
+      accent: FAV_PICK_ACCENTS[(orderBase + index) % FAV_PICK_ACCENTS.length],
       isActive: true,
     }))
   );
@@ -462,13 +518,16 @@ async function main() {
     });
   }
 
-  console.log(`\n✅ Wired ${saved.length} puzzles to fav_puzzles (replaced ${previousIds.length})`);
+  console.log(
+    `\n✅ Wired ${saved.length} puzzles to fav_puzzles ` +
+      (APPEND ? `(appended after ${previous.length})` : `(replaced ${previousIds.length})`)
+  );
   for (let i = 0; i < saved.length; i++) {
     const images = collected[i].puzzleItems.filter((item) => item.clueType === 'image');
     const answers = images.map((item) => item.answer).join(', ');
     console.log(
       `   ${i + 1}. ${saved[i]._id} ${DIFFICULTIES[i]} ${saved[i].grid.rows}x${saved[i].grid.cols} ` +
-        `images=${images.length} [${answers}] ${FAV_PICK_ACCENTS[i]}`
+        `images=${images.length} [${answers}] ${FAV_PICK_ACCENTS[(orderBase + i) % FAV_PICK_ACCENTS.length]}`
     );
   }
 

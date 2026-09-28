@@ -339,7 +339,22 @@ export const DAILY_IMAGE_TARGETS: DailyTargets = {
   minCrossing: 0.88,
 };
 
-export function dailyTargetsFor(imageCount: number): DailyTargets {
+/**
+ * Boards up to 10×10: the frame's single-clue border letters are a bigger share of the grid,
+ * capping framed layouts near 0.85 crossing and ~0.6 dual — words must still all interlock.
+ */
+export const DAILY_SMALL_TARGETS: DailyTargets = {
+  ...DAILY_TARGETS,
+  minDualRatio: 0.6,
+  minCrossing: 0.84,
+};
+export const SMALL_BOARD_MAX_SIDE = 10;
+
+export function dailyTargetsFor(
+  imageCount: number,
+  grid?: { rows: number; cols: number }
+): DailyTargets {
+  if (grid && Math.max(grid.rows, grid.cols) <= SMALL_BOARD_MAX_SIDE) return DAILY_SMALL_TARGETS;
   return imageCount > 0 ? DAILY_IMAGE_TARGETS : DAILY_TARGETS;
 }
 
