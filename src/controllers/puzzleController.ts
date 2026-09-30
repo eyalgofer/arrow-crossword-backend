@@ -4,6 +4,7 @@ import { PuzzlePackage } from '../models/PuzzlePackage';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { DailyPuzzle } from '../models/DailyPuzzle';
 import { FavPuzzle } from '../models/FavPuzzle';
+import { CategoryPuzzle } from '../models/CategoryPuzzle';
 import { User } from '../models/User';
 import { AuthRequest, ProgressSummary } from '../types';
 import { resolveLanguage, languageFilter } from '../utils/language';
@@ -296,6 +297,60 @@ export const getFavoritePuzzles = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Get favorite puzzles error:', error);
     res.status(500).json({ error: 'Failed to get favorite puzzles' });
+  }
+};
+
+/**
+ * GET /api/puzzles/categories
+ * One text board per Hebrew clue category. Lean card payload, same shape as favorites.
+ */
+export const getCategoryPuzzles = async (req: AuthRequest, res: Response) => {
+  try {
+    const language = resolveLanguage(req);
+    if (language !== 'he') {
+      return res.json({ picks: [] });
+    }
+
+    const rows = await CategoryPuzzle.find({
+      language: 'he',
+      isActive: { $ne: false },
+    })
+      .sort({ order: 1 })
+      .populate('puzzleId')
+      .lean();
+
+    const active = rows.filter((row) => row.puzzleId);
+    const puzzleIds = active.map((row) => (row.puzzleId as any)._id);
+
+    const counts = puzzleIds.length
+      ? await UserPuzzleProgress.aggregate<{ _id: unknown; count: number }>([
+          { $match: { puzzleId: { $in: puzzleIds }, isCompleted: true } },
+          { $group: { _id: '$puzzleId', count: { $sum: 1 } } },
+        ])
+      : [];
+    const solvedByPuzzle = new Map(counts.map((row) => [String(row._id), row.count]));
+
+    const picks = active.map((row, index) => {
+      const puzzle = row.puzzleId as any;
+      const preview = buildPuzzlePreview(puzzle.grid, puzzle.puzzleItems || []);
+      const accent = row.accent || FAV_PICK_ACCENTS[index % FAV_PICK_ACCENTS.length];
+      return {
+        id: String(puzzle._id),
+        gridSize: preview.gridSize,
+        difficulty: toCardDifficulty(puzzle.difficulty),
+        solvedCount: solvedByPuzzle.get(String(puzzle._id)) ?? 0,
+        accent,
+        shape: preview.shape,
+        letters: preview.letters,
+        category: row.category,
+        label: row.label,
+      };
+    });
+
+    res.json({ picks });
+  } catch (error) {
+    console.error('Get category puzzles error:', error);
+    res.status(500).json({ error: 'Failed to get category puzzles' });
   }
 };
 

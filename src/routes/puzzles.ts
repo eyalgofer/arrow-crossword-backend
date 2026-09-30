@@ -6,6 +6,7 @@ import {
   getDailyPuzzleSolvedCount,
   getDailyPuzzleStats,
   getFavoritePuzzles,
+  getCategoryPuzzles,
   getRandomPuzzle,
   saveProgress, 
   getProgress,
@@ -23,6 +24,7 @@ router.get('/daily', authenticateToken, getDailyPuzzle);
 router.get('/daily/solved-count', getDailyPuzzleSolvedCount);
 router.get('/daily/stats', authenticateToken, getDailyPuzzleStats);
 router.get('/favorites', authenticateToken, getFavoritePuzzles);
+router.get('/categories', authenticateToken, getCategoryPuzzles);
 router.get('/random', authenticateToken, getRandomPuzzle); 
 router.get('/progress', authenticateToken, getAllProgress);
 router.get('/:id', authenticateToken, getPuzzle);

@@ -92,23 +92,32 @@ export class PuzzleGenerator {
   private clueProvider: ClueProvider;
   private imageClueCatalog: ImageClueCatalogEntry[];
   private lastFailedSlot?: ClueSlot;
+  /** Normalized answers allowed only as filler. Tried after the main pool. */
+  private fillerWords?: Set<string>;
 
   constructor(
     language: Language = 'en',
-    imageClueCatalog?: ImageClueCatalogEntry[]
+    imageClueCatalog?: ImageClueCatalogEntry[],
+    words?: string[],
+    fillerWords?: Iterable<string>
   ) {
     this.language = language;
     this.clueProvider = getClueProvider(language);
     this.imageClueCatalog = imageClueCatalog ?? loadGeneratedImageClueCatalog();
 
-    const words = this.clueProvider.getWordPool();
-    if (words.length === 0) {
+    const pool = words ?? this.clueProvider.getWordPool();
+    if (pool.length === 0) {
       throw new Error(
-        `(${language}) is empty. Check that ` +
-          `the clue database sources exist in src/scripts/core.`
+        words
+          ? `(${language}) word list is empty.`
+          : `(${language}) is empty. Check that ` +
+              `the clue database sources exist in src/scripts/core.`
       );
     }
-    this.wordIndex = buildCrossingIndex(words);
+    this.wordIndex = buildCrossingIndex(pool);
+    if (fillerWords) {
+      this.fillerWords = new Set(Array.from(fillerWords, (word) => normalizeWord(word)));
+    }
   }
 
   generateBatch(config: {
@@ -124,10 +133,15 @@ export class PuzzleGenerator {
     /** Override attempt budget for text (non-image) boards. */
     attempts?: number;
     difficulty?: Difficulty;
+    /**
+     * Hebrew boards normally clamp to MIN_GRID_SIZE (13). Category puzzles pass 12
+     * so a single 12×12 request is legal without lowering the floor for everyone else.
+     */
+    minGridSize?: number;
   }): Puzzle[] {
-    const hebrewFloor = this.language === 'he' ? MIN_GRID_SIZE : 8;
-    const defaultRows = Math.min(Math.max(config.rows ?? hebrewFloor, hebrewFloor), MAX_GRID_SIZE);
-    const defaultCols = Math.min(Math.max(config.cols ?? hebrewFloor, hebrewFloor), MAX_GRID_SIZE);
+    const floor = this.language === 'he' ? (config.minGridSize ?? MIN_GRID_SIZE) : 8;
+    const defaultRows = Math.min(Math.max(config.rows ?? floor, floor), MAX_GRID_SIZE);
+    const defaultCols = Math.min(Math.max(config.cols ?? floor, floor), MAX_GRID_SIZE);
     const puzzles: Puzzle[] = [];
 
     for (let i = 0; i < config.count; i++) {
@@ -138,8 +152,8 @@ export class PuzzleGenerator {
       const requested =
         this.language === 'he'
           ? {
-              rows: Math.max(MIN_GRID_SIZE, Math.min(raw.rows, MAX_GRID_SIZE)),
-              cols: Math.max(MIN_GRID_SIZE, Math.min(raw.cols, MAX_GRID_SIZE)),
+              rows: Math.max(floor, Math.min(raw.rows, MAX_GRID_SIZE)),
+              cols: Math.max(floor, Math.min(raw.cols, MAX_GRID_SIZE)),
             }
           : {
               rows: Math.min(raw.rows, MAX_GRID_SIZE),
@@ -772,6 +786,7 @@ export class PuzzleGenerator {
         (this.language === 'he' ? (dense ? 22 : 14) : 12) * 1000 +
         cells * (cells >= 256 ? 40 : 25);
     const jitter = new Map<string, number>();
+    const fillerWords = this.fillerWords;
     const wordScorer = (word: string, _placedWords: string[]) => {
       let j = jitter.get(word);
       if (j === undefined) {
@@ -779,7 +794,8 @@ export class PuzzleGenerator {
         jitter.set(word, j);
       }
       const rank = this.clueProvider.getAnswerRank(word);
-      return -Math.log(Math.max(rank, 1)) + j;
+      const fillerPenalty = fillerWords?.has(normalizeWord(word)) ? 20 : 0;
+      return -Math.log(Math.max(rank, 1)) + j - fillerPenalty;
     };
 
     const tSolve = Date.now();
@@ -788,6 +804,9 @@ export class PuzzleGenerator {
       maxSolveTimeMs,
       maxTextSliceMs: hasImages ? (imageSlotCount >= 3 ? 16000 : 10000) : undefined,
       wordScorer,
+      preferWord: fillerWords
+        ? (word) => !fillerWords.has(normalizeWord(word))
+        : undefined,
       quiet: true,
     });
     this.lastFailedSlot = solved.failedSlot;
@@ -836,9 +855,19 @@ export function generatePuzzlesBatch(config: {
   imageClueCatalog?: ImageClueCatalogEntry[];
   imageClueAttempts?: number;
   attempts?: number;
+  /** When set, the crossing index is built from this list instead of the full pool. */
+  words?: string[];
+  /** Answers from `words` that may fill a board only after the rest of the list cannot. */
+  fillerWords?: string[];
+  minGridSize?: number;
 }): Puzzle[] {
   const language = config.language ?? 'en';
-  const generator = new PuzzleGenerator(language, config.imageClueCatalog);
+  const generator = new PuzzleGenerator(
+    language,
+    config.imageClueCatalog,
+    config.words,
+    config.fillerWords
+  );
   return generator.generateBatch({
     count: config.count,
     category: config.category,
@@ -851,6 +880,7 @@ export function generatePuzzlesBatch(config: {
     imageClueAttempts: config.imageClueAttempts,
     attempts: config.attempts,
     difficulty: config.difficulty,
+    minGridSize: config.minGridSize,
   });
 }
 

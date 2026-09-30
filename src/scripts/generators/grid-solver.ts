@@ -22,6 +22,12 @@ export interface SolverConfig {
   maxTextSliceMs?: number;
   /** Higher score = tried first. Candidates are shuffled before scoring, so equal scores stay random. */
   wordScorer?: (word: string, placedWords: string[]) => number;
+  /**
+   * When set, matching words that pass are kept ahead of the random candidate cap.
+   * Other matches fill only the remaining room, so a fallback dictionary cannot
+   * crowd out the words the board is supposed to use.
+   */
+  preferWord?: (word: string) => boolean;
   quiet?: boolean;
 }
 
@@ -128,7 +134,18 @@ export function solveGrid(
         (w) => !placedAnswers.has(normalizeWord(w))
       );
     }
-    if (!fromCatalog && candidates.length > limit * 4) {
+    if (!fromCatalog && config.preferWord) {
+      const preferred: string[] = [];
+      const rest: string[] = [];
+      for (const word of candidates) {
+        if (config.preferWord(word)) preferred.push(word);
+        else rest.push(word);
+      }
+      const room = limit * 4;
+      const keptPref = shuffleArray(preferred).slice(0, room);
+      const keptRest = shuffleArray(rest).slice(0, Math.max(0, room - keptPref.length));
+      candidates = [...keptPref, ...keptRest];
+    } else if (!fromCatalog && candidates.length > limit * 4) {
       candidates = shuffleArray(candidates).slice(0, limit * 4);
     } else {
       candidates = shuffleArray(candidates);

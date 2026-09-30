@@ -22,6 +22,7 @@
     "score:clues": "ts-node src/scripts/content/scoreHebrewClues.ts",
     "review:clues": "ts-node src/scripts/content/reviewHebrewClueScores.ts",
     "seed:fav-puzzles": "ts-node src/scripts/seedFavPuzzles.ts",
+    "seed:category-puzzles": "ts-node src/scripts/seedCategoryPuzzles.ts",
     "recreate:he": "ts-node src/scripts/recreateHebrewPuzzles.ts",
     "check:apple": "node scripts/check-apple-config.js"
   },
