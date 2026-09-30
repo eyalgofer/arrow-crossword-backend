@@ -53,6 +53,10 @@ export interface DailyGenerationOptions {
   tagCaps?: Record<string, number>;
   timeBudgetMs?: number;
   solveMsPerTemplate?: number;
+  /** When set, only these answers may be placed. Skips the excludeFromDaily filter. */
+  words?: string[];
+  /** Subset of `words` tried only after the rest of the list. */
+  fillerWords?: string[];
 }
 
 export const DEFAULT_DAILY_TAG_CAPS: Record<string, number> = {
@@ -94,6 +98,11 @@ export class PuzzleGenerator {
   private lastFailedSlot?: ClueSlot;
   /** Normalized answers allowed only as filler. Tried after the main pool. */
   private fillerWords?: Set<string>;
+  /** Category boards use the fixed lattice. The usual search does not fill 12×12. */
+  private useNewspaper = false;
+  /** When set, overrides the dense 2–8 letter slot range. */
+  private slotMin?: number;
+  private slotMax?: number;
 
   constructor(
     language: Language = 'en',
@@ -138,7 +147,14 @@ export class PuzzleGenerator {
      * so a single 12×12 request is legal without lowering the floor for everyone else.
      */
     minGridSize?: number;
+    /** Fixed arrow lattice instead of the search that fails to fill 12×12. */
+    newspaper?: boolean;
+    minSlotLength?: number;
+    maxSlotLength?: number;
   }): Puzzle[] {
+    this.useNewspaper = config.newspaper === true;
+    this.slotMin = config.minSlotLength;
+    this.slotMax = config.maxSlotLength;
     const floor = this.language === 'he' ? (config.minGridSize ?? MIN_GRID_SIZE) : 8;
     const defaultRows = Math.min(Math.max(config.rows ?? floor, floor), MAX_GRID_SIZE);
     const defaultCols = Math.min(Math.max(config.cols ?? floor, floor), MAX_GRID_SIZE);
@@ -323,8 +339,8 @@ export class PuzzleGenerator {
           }
         }
 
-        const maxLen = this.language === 'he' || wantImages > 0 ? 8 : 11;
-        const minLen = dense ? 2 : 3;
+        const maxLen = this.slotMax ?? (this.language === 'he' || wantImages > 0 ? 8 : 11);
+        const minLen = this.slotMin ?? (dense ? 2 : 3);
         if (template.slots.some((slot) => slot.length > maxLen || slot.length < minLen)) {
           if (wantImages > 0 && attempt < 8 && bindTry === 0) {
             const bad = template.slots.filter((slot) => slot.length > maxLen || slot.length < minLen);
@@ -436,19 +452,23 @@ export class PuzzleGenerator {
       return null;
     }
     const avoid = new Set([...(options.avoidAnswers ?? [])].map((w) => normalizeWord(w)));
-    const words = this.clueProvider
-      .getWordPool()
-      .filter((word) => !this.clueProvider.getWordMeta?.(word)?.excludeFromDaily);
+    const filler = new Set([...(options.fillerWords ?? [])].map((w) => normalizeWord(w)));
+    const words = options.words
+      ? options.words
+      : this.clueProvider
+          .getWordPool()
+          .filter((word) => !this.clueProvider.getWordMeta?.(word)?.excludeFromDaily);
     // Recent answers stay available (hard exclusion starves the fill) but lose to fresh ones.
     const wordScore = (word: string) => {
       const normalized = normalizeWord(word);
       const recentPenalty = normalized.length >= 4 && avoid.has(normalized) ? 5 : 0;
+      const fillerPenalty = filler.has(normalized) ? 20 : 0;
       const tier = this.clueProvider.getWordMeta?.(word)?.tier;
       const difficultyMiss =
         options.wordDifficultyWeight && tier != null
           ? Math.abs(tier - (options.targetDifficulty ?? 1.5)) * options.wordDifficultyWeight
           : 0;
-      return dailyWordScore(this.clueProvider, word) - recentPenalty - difficultyMiss;
+      return dailyWordScore(this.clueProvider, word) - recentPenalty - difficultyMiss - fillerPenalty;
     };
     const tagCaps = options.tagCaps ?? DEFAULT_DAILY_TAG_CAPS;
     const targets = dailyTargetsFor(wantImages, { rows, cols });
@@ -734,15 +754,15 @@ export class PuzzleGenerator {
         maxBoundaryRetries: withImages ? 2 : dense ? 4 : 3,
         crossoverSamples: withImages ? 12 : undefined,
         // Cap slot length like image/daily boards — len 9–11 rarely fill in Hebrew.
-        maxSlotLength: this.language === 'he' ? 8 : undefined,
-        minSlotLength: dense ? 2 : 3,
+        maxSlotLength: this.slotMax ?? (this.language === 'he' ? 8 : undefined),
+        minSlotLength: this.slotMin ?? (dense ? 2 : 3),
         densePacking: dense,
         maxTwoLetterShare: dense ? DENSE_MAX_TWO_LETTER_SHARE : undefined,
         sparse: false,
         simpleArrows: dense,
         lattice: false,
-        // Keep the step-5 newspaper lattice off — it has weak crossing ratios.
-        newspaper: false,
+        // Step-5 lattice. Off for normal boards (weak crossings). On for 12×12 category boards.
+        newspaper: dense && this.useNewspaper,
         cutoutCells,
         lockedCells,
         protectedCells,
@@ -860,6 +880,9 @@ export function generatePuzzlesBatch(config: {
   /** Answers from `words` that may fill a board only after the rest of the list cannot. */
   fillerWords?: string[];
   minGridSize?: number;
+  newspaper?: boolean;
+  minSlotLength?: number;
+  maxSlotLength?: number;
 }): Puzzle[] {
   const language = config.language ?? 'en';
   const generator = new PuzzleGenerator(
@@ -881,6 +904,9 @@ export function generatePuzzlesBatch(config: {
     attempts: config.attempts,
     difficulty: config.difficulty,
     minGridSize: config.minGridSize,
+    newspaper: config.newspaper,
+    minSlotLength: config.minSlotLength,
+    maxSlotLength: config.maxSlotLength,
   });
 }
 

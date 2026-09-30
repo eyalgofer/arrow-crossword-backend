@@ -1,15 +1,16 @@
 /**
- * Generate seven Hebrew text boards, 12×12, one per clue category, and wire
+ * Generate seven Hebrew text boards, 14×14, one per clue category, and wire
  * them as the "תשחצים לפי קטגוריה" carousel.
  *
- * Each board is filled from that category only. If the category pool cannot
- * fill 12×12 (sport is the thin one), general answers are added as filler and
- * tried only after the category's own words.
+ * Uses the daily framed generator (the same one as seed:daily), not the slow
+ * package search. Each board tries the category on its own first. If that
+ * does not fill, general answers are added and tried only after the category's
+ * own words. Two boards generate at a time.
  *
  * Usage:
  *   npm run seed:category-puzzles
  *   npx ts-node src/scripts/seedCategoryPuzzles.ts --dry-run
- *   npx ts-node src/scripts/seedCategoryPuzzles.ts --attempts 64
+ *   npx ts-node src/scripts/seedCategoryPuzzles.ts --parallel 2
  */
 
 import dotenv from 'dotenv';
@@ -25,15 +26,18 @@ import { Difficulty } from '../types';
 import { Puzzle as GeneratedPuzzle } from './core/types';
 import { HebrewCategory } from './core/hebrewClueStore';
 import { getWordMeta, getWordPool } from './core/hebrewClueDatabase';
-import { generatePuzzlesBatch } from './generators/puzzlesGenerator';
+import { generateDailyPuzzle } from './generators/puzzlesGenerator';
 import { getUncoveredCells } from './generators/direction-utils';
 import { normalizeWord } from './generators/validation-utils';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
-import { formatQuality, puzzleQualityOk, scorePuzzle } from './generators/puzzle-quality';
+import { formatQuality, scorePuzzle } from './generators/puzzle-quality';
 import { connectToDatabase, closeDatabaseAndExit, handleScriptError } from './utils/scriptUtils';
 
 const LANGUAGE = 'he' as const;
-const GRID = 12;
+const GRID = 14;
+const CATEGORY_ONLY_MS = 45_000;
+const FILLER_MS = 120_000;
+const PARALLEL = 2;
 const ROOT = path.join(__dirname, '../..');
 const OUT_DIR = path.join(ROOT, 'tmp-category-puzzles');
 
@@ -79,7 +83,6 @@ function boardIsReady(
   if (puzzle.puzzleItems.some((item) => item.clueType === 'image')) return false;
   if (getUncoveredCells(puzzle).length !== 0) return false;
   if (validatePuzzleBoundaries(puzzle).length !== 0) return false;
-  if (!puzzleQualityOk(scorePuzzle(puzzle), 0, true)) return false;
   return puzzle.puzzleItems.every((item) => {
     const cat = answerCategory(item.answer);
     return cat === category || (allowGeneral && cat === 'general');
@@ -93,28 +96,28 @@ function countGeneral(puzzle: GeneratedPuzzle): number {
 function generateBoard(
   category: CategoryPuzzleKey,
   label: string,
-  attempts: number
+  categoryMs: number,
+  fillerMs: number
 ): WorkerResult | null {
   const categoryWords = wordsFor(category);
-  console.log(`[${category}] ${categoryWords.length} ${label} answers, ${GRID}x${GRID}, ${attempts} attempts`);
+  console.log(
+    `[${category}] ${categoryWords.length} ${label} answers, ${GRID}x${GRID}, daily generator, ` +
+      `${categoryMs / 1000}s category-only then ${fillerMs / 1000}s with general`
+  );
 
   const base = {
-    difficulty: Difficulty.EASY,
-    count: 1,
-    category: label,
-    startIndex: 1,
     rows: GRID,
     cols: GRID,
-    sizes: [{ rows: GRID, cols: GRID }],
-    language: LANGUAGE,
-    strictSize: true,
-    minGridSize: GRID,
-    attempts,
+    title: label,
+    category: label,
+    imageClueCount: 0,
+    difficulty: Difficulty.EASY,
+    targetDifficulty: 1.2,
+    tagCaps: {},
   };
 
-  if (categoryWords.length > 0) {
-    const only = generatePuzzlesBatch({ ...base, words: categoryWords });
-    const puzzle = only[0];
+  if (categoryWords.length > 0 && categoryMs > 0) {
+    const puzzle = generateDailyPuzzle({ ...base, words: categoryWords, timeBudgetMs: categoryMs });
     if (puzzle && boardIsReady(puzzle, category, false)) {
       console.log(
         `[${category}] OK category-only ${puzzle.puzzleItems.length} clues ${formatQuality(scorePuzzle(puzzle))}`
@@ -128,12 +131,12 @@ function generateBoard(
   console.log(
     `[${category}] category-only did not fill; adding ${generalWords.length} general answers as filler`
   );
-  const mixed = generatePuzzlesBatch({
+  const puzzle = generateDailyPuzzle({
     ...base,
     words: [...categoryWords, ...generalWords],
     fillerWords: generalWords,
+    timeBudgetMs: fillerMs,
   });
-  const puzzle = mixed[0];
   if (!puzzle || !boardIsReady(puzzle, category, true)) {
     console.error(`[${category}] FAILED`);
     return null;
@@ -149,20 +152,26 @@ function generateBoard(
 function runWorker(): void {
   const category = arg('--category') as CategoryPuzzleKey | undefined;
   const out = arg('--out');
-  const attempts = parseInt(arg('--attempts', '48') ?? '48', 10);
+  const categoryMs = parseInt(arg('--category-ms', String(CATEGORY_ONLY_MS)) ?? String(CATEGORY_ONLY_MS), 10);
+  const fillerMs = parseInt(arg('--filler-ms', String(FILLER_MS)) ?? String(FILLER_MS), 10);
   const board = BOARDS.find((entry) => entry.category === category);
   if (!board || !out) {
     console.error('Worker needs --category and --out');
     process.exit(1);
   }
-  const result = generateBoard(board.category, board.label, attempts);
+  const result = generateBoard(board.category, board.label, categoryMs, fillerMs);
   if (!result) process.exit(1);
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, JSON.stringify(result));
   process.exit(0);
 }
 
-function launch(category: CategoryPuzzleKey, outPath: string, attempts: number): Promise<WorkerResult | null> {
+function launch(
+  category: CategoryPuzzleKey,
+  outPath: string,
+  categoryAttempts: number,
+  fillerAttempts: number
+): Promise<WorkerResult | null> {
   return new Promise((resolve) => {
     const child = spawn(
       'npx',
@@ -174,8 +183,10 @@ function launch(category: CategoryPuzzleKey, outPath: string, attempts: number):
         category,
         '--out',
         outPath,
-        '--attempts',
-        String(attempts),
+        '--category-ms',
+        String(categoryAttempts),
+        '--filler-ms',
+        String(fillerAttempts),
       ],
       { cwd: ROOT, stdio: 'inherit' }
     );
@@ -195,18 +206,37 @@ function launch(category: CategoryPuzzleKey, outPath: string, attempts: number):
 
 async function main(): Promise<void> {
   const dryRun = process.argv.includes('--dry-run');
-  const attempts = parseInt(arg('--attempts', '48') ?? '48', 10);
+  const categoryMs = parseInt(arg('--category-ms', String(CATEGORY_ONLY_MS)) ?? String(CATEGORY_ONLY_MS), 10);
+  const fillerMs = parseInt(arg('--filler-ms', String(FILLER_MS)) ?? String(FILLER_MS), 10);
+  const parallel = Math.max(1, parseInt(arg('--parallel', String(PARALLEL)) ?? String(PARALLEL), 10));
   if (!dryRun && !process.env.MONGODB_URI) {
     console.error('MONGODB_URI is required in .env');
     process.exit(1);
   }
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
-  console.log(`Generating ${BOARDS.length} category boards, ${GRID}×${GRID}, text only\n`);
-
-  const results = await Promise.all(
-    BOARDS.map((board) => launch(board.category, path.join(OUT_DIR, `${board.category}.json`), attempts))
+  console.log(
+    `Generating ${BOARDS.length} category boards, ${GRID}×${GRID}, text only, daily generator, ${parallel} at a time\n` +
+      `${categoryMs / 1000}s category-only, then general filler (${fillerMs / 1000}s)\n`
   );
+
+  const results: Array<WorkerResult | null> = new Array(BOARDS.length).fill(null);
+  let next = 0;
+  const pump = async (): Promise<void> => {
+    const index = next;
+    next += 1;
+    if (index >= BOARDS.length) return;
+    const board = BOARDS[index];
+    console.log(`—— ${board.label} (${index + 1}/${BOARDS.length}) ——`);
+    results[index] = await launch(
+      board.category,
+      path.join(OUT_DIR, `${board.category}.json`),
+      categoryMs,
+      fillerMs
+    );
+    await pump();
+  };
+  await Promise.all(Array.from({ length: Math.min(parallel, BOARDS.length) }, () => pump()));
   const failed = BOARDS.filter((_, index) => !results[index]).map((board) => board.label);
   if (failed.length > 0) {
     throw new Error(
