@@ -6746,7 +6746,7 @@
   {"answer":"מזרון","fillScore":4,"category":"general","clues":[{"text":"משטח רך למיטה","difficulty":1,"quality":5},{"text":"בלילה הוא תופס יותר מקום ממך","difficulty":1,"quality":3}]},
   {"answer":"שעון חול","fillScore":3,"category":"general","clues":[{"text":"כשהעליון מתרוקן, הזמן נגמר","difficulty":1,"quality":4},{"text":"מכשיר לקביעת פרק זמן מסוים","difficulty":2,"quality":4}]},
   {"answer":"תער","fillScore":3,"category":"general","clues":[{"text":"סכין קטנה לשיער בפנים","difficulty":1,"quality":5},{"text":"מה שמקרב גבר למראה חלק","difficulty":2,"quality":4},{"text":"חד, קטן, ולא סלחן לזיפים","difficulty":2,"quality":5}]},
-  {"answer":"כף","fillScore":4,"category":"general","clues":[{"text":"אוכלים בה מרק, מוחאים בה","difficulty":1,"quality":5},{"text":"גם כלי במטבח וגם חלק מהיד","difficulty":1,"quality":5},{"text":"יחידת נפח קטנה במתכונים","difficulty":1,"quality":4}]},
+  {"answer":"כף","fillScore":4,"category":"general","clues":[{"text":"אוכלים איתה מרק, מוחאים בה","difficulty":1,"quality":5},{"text":"גם כלי במטבח וגם חלק מהיד","difficulty":1,"quality":5},{"text":"יחידת נפח קטנה במתכונים","difficulty":1,"quality":4}]},
   {"answer":"מצקת","fillScore":4,"category":"food","clues":[{"text":"כף עמוקה למרק","difficulty":1,"quality":5},{"text":"מוציאה מהסיר בלי לקפוץ פנימה","difficulty":2,"quality":4},{"text":"ידית ארוכה ובטן עגולה","difficulty":1,"quality":5}]},
   {"answer":"מערוך","fillScore":3,"category":"food","clues":[{"text":"גלגלת בצק","difficulty":1,"quality":5}]},
   {"answer":"מלחיה","fillScore":3,"category":"food","clues":[{"text":"כלי קטן למלח על השולחן","difficulty":1,"quality":5},{"text":"שותפה קבועה של הפלפלת","difficulty":1,"quality":4}]},
