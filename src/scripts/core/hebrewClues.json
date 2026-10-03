@@ -82,7 +82,7 @@
   {"answer":"אודם","fillScore":4,"category":"general","clues":[{"text":"שפתון","difficulty":1,"quality":4},{"text":"צבע לשפתיים","difficulty":1,"quality":4},{"text":"יישוב בצפון הגולן","difficulty":3,"quality":4},{"text":"יישוב בצפון רמת הגולן","difficulty":3,"quality":4},{"text":"גוון אדום לפנים או לשפתיים","difficulty":2,"quality":4}]},
   {"answer":"אווטאר","fillScore":3,"category":"culture","clues":[{"text":"דמות וירטואלית","difficulty":2,"quality":4}]},
   {"answer":"אווילי","fillScore":3,"category":"language","clues":[{"text":"טיפשי","difficulty":1,"quality":5}]},
-  {"answer":"אוסם","fillScore":2,"category":"food","excludeFromDaily":true,"clues":[{"text":"חברת מזון ישראלית","difficulty":1,"quality":1},{"text":"יצרנית במבה, כתיב מלא","difficulty":2,"quality":3}]},
+  {"answer":"אוסם","fillScore":2,"category":"food","clues":[{"text":"חברת מזון ישראלית","difficulty":1,"quality":3},{"text":"יצרנית במבה, כתיב מלא","difficulty":2,"quality":3}]},
   {"answer":"אוז","fillScore":3,"category":"culture","clues":[{"text":"סדרת בית כלא","difficulty":2,"quality":4},{"text":"סדרה מאחורי סורגים","difficulty":2,"quality":4}]},
   {"answer":"אוטיזם","fillScore":3,"category":"science","clues":[{"text":"הפרעה נוירו התפתחותית","difficulty":2,"quality":4}]},
   {"answer":"אוי","fillScore":3,"category":"language","clues":[{"text":"אמירת צער","difficulty":1,"quality":4},{"text":"מה שיוצא כשכואב","difficulty":1,"quality":4}]},
@@ -160,7 +160,7 @@
   {"answer":"איש עכביש","fillScore":2,"category":"culture","clues":[{"text":"כינויו של ספיידרמן בעברית","difficulty":3,"quality":4}]},
   {"answer":"אישור","fillScore":5,"category":"general","clues":[{"text":"הסכמה לביצוע פעולה","difficulty":2,"quality":4}]},
   {"answer":"איתן כבל","fillScore":2,"category":"people","clues":[{"text":"ח\"כ בעבר ממפלגת העבודה","difficulty":3,"quality":4}]},
-  {"answer":"אכול","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"טעמו ונגסו ממנו","difficulty":1,"quality":1},{"text":"שנגסו בו","difficulty":1,"quality":4},{"text":"מלא קנאה, למשל","difficulty":2,"quality":5},{"text":"מלא ברגשות שליליים","difficulty":2,"quality":3}]},
+  {"answer":"אכול","fillScore":2,"category":"general","clues":[{"text":"טעמו ונגסו ממנו","difficulty":1,"quality":3},{"text":"שנגסו בו","difficulty":1,"quality":4},{"text":"מלא קנאה, למשל","difficulty":2,"quality":5},{"text":"מלא ברגשות שליליים","difficulty":2,"quality":3}]},
   {"answer":"אכזרי","fillScore":4,"category":"language","clues":[{"text":"רשע, חסר רחמים","difficulty":2,"quality":4}]},
   {"answer":"אכלנו","fillScore":3,"category":"language","clues":[{"text":"השתתפנו בסעודה","difficulty":2,"quality":3}]},
   {"answer":"אכסניה","fillScore":3,"category":"general","clues":[{"text":"מקום לינה צנוע","difficulty":2,"quality":4}]},
@@ -240,7 +240,7 @@
   {"answer":"ניקוז","fillScore":3,"category":"science","clues":[{"text":"איסוף עודפי נוזלים","difficulty":1,"quality":4},{"text":"העברת מים עודפים ממקום למקום","difficulty":2,"quality":4}]},
   {"answer":"אנרגטי","fillScore":3,"category":"language","clues":[{"text":"בעל מרץ","difficulty":2,"quality":5}]},
   {"answer":"אנתולוגיה","fillScore":3,"category":"culture","clues":[{"text":"כינוס כתבים ספרתיים","difficulty":3,"quality":3},{"text":"אוסף יצירות ספרותיות","difficulty":2,"quality":4}]},
-  {"answer":"אסד","fillScore":3,"category":"people","clues":[{"text":"שליט במזה\"ת","difficulty":2,"quality":1},{"text":"נשיא סוריה לשעבר","difficulty":2,"quality":4},{"text":"שליט סוריה","difficulty":1,"quality":4}]},
+  {"answer":"אסד","fillScore":3,"category":"people","clues":[{"text":"שליט במזה\"ת","difficulty":2,"quality":3},{"text":"נשיא סוריה לשעבר","difficulty":2,"quality":4},{"text":"שליט סוריה","difficulty":1,"quality":4}]},
   {"answer":"אספסוף","fillScore":3,"category":"language","clues":[{"text":"ערב רב","difficulty":1,"quality":5}]},
   {"answer":"אסור","fillScore":3,"category":"general","clues":[{"text":"לא מותר","difficulty":1,"quality":4},{"text":"אינו מותר","difficulty":1,"quality":4}]},
   {"answer":"אסורה","fillScore":4,"category":"language","clues":[{"text":"אינה מותרת","difficulty":1,"quality":4}]},
@@ -292,7 +292,7 @@
   {"answer":"ארדנים","fillScore":2,"category":"geography","clues":[{"text":"אזור עטור יערות באירופה","difficulty":2,"quality":4}]},
   {"answer":"ארו","fillScore":1,"category":"geography","excludeFromDaily":true,"clues":[{"text":"מחוז בצרפת","difficulty":3,"quality":3},{"text":"מחוז בדרום צרפת","difficulty":3,"quality":3},{"text":"קטף תאנים","difficulty":3,"quality":4}]},
   {"answer":"ארובה","fillScore":3,"category":"general","clues":[{"text":"אי בים הקריבי","difficulty":2,"quality":4},{"text":"פתח לפליטת עשן","difficulty":1,"quality":5}]},
-  {"answer":"ארוז","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"קישור בחבילה","difficulty":1,"quality":1},{"text":"מוכן למשלוח","difficulty":1,"quality":4},{"text":"עטוף; כרוך","difficulty":1,"quality":3}]},
+  {"answer":"ארוז","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"מוכן למשלוח","difficulty":1,"quality":4},{"text":"עטוף; כרוך","difficulty":1,"quality":3}]},
   {"answer":"ארוכה","fillScore":4,"category":"language","clues":[{"text":"אינה קצרה","difficulty":1,"quality":3}]},
   {"answer":"ארונית","fillScore":3,"category":"general","clues":[{"text":"ריהוט לאחסון","difficulty":2,"quality":4},{"text":"שידה","difficulty":2,"quality":4}]},
   {"answer":"ארון","fillScore":4,"category":"general","clues":[{"text":"רהיט בחדר שינה","difficulty":1,"quality":4},{"text":"רהיט לבגדים","difficulty":1,"quality":5},{"text":"תיבה","difficulty":2,"quality":3}]},
@@ -331,7 +331,7 @@
   {"answer":"אשתקד","fillScore":3,"category":"language","clues":[{"text":"בשנה שעברה","difficulty":1,"quality":5}]},
   {"answer":"אשתר","fillScore":3,"category":"people","clues":[{"text":"מכוכבי הקומדי סטור ש\"מ","difficulty":2,"quality":4},{"text":"אסף מהקומדי סטור","difficulty":1,"quality":5}]},
   {"answer":"אתא","fillScore":3,"category":"culture","clues":[{"text":"מפעל טקסטיל ישראלי","difficulty":2,"quality":4},{"text":"מותג בגדי עבודה נוסטלגי","difficulty":2,"quality":4}]},
-  {"answer":"אתני","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"קישור לעם זר","difficulty":1,"quality":1},{"text":"קשור לקבוצה עדתית","difficulty":1,"quality":4}]},
+  {"answer":"אתני","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"קשור לקבוצה עדתית","difficulty":1,"quality":4}]},
   {"answer":"אתי אנקרי","fillScore":2,"category":"people","clues":[{"text":"זמרת ישראלית","difficulty":3,"quality":4}]},
   {"answer":"אתון","fillScore":3,"category":"science","clues":[{"text":"נקבת החמור","difficulty":1,"quality":5},{"text":"החמור - בגרסה נשית","difficulty":1,"quality":4},{"text":"תנור גדול","difficulty":3,"quality":4}]},
   {"answer":"אתור","fillScore":2,"category":"general","clues":[{"text":"אשוטט, אלקט","difficulty":2,"quality":2},{"text":"אשוטט בחיפוש","difficulty":2,"quality":4}]},
@@ -371,7 +371,7 @@
   {"answer":"נגיעות","fillScore":2,"category":"culture","clues":[{"text":"שיר של ברי סחרוף","difficulty":2,"quality":4}]},
   {"answer":"נגף","fillScore":2,"category":"language","clues":[{"text":"נכשל","difficulty":2,"quality":3},{"text":"מכשול","difficulty":2,"quality":3},{"text":"אבן ___","difficulty":2,"quality":5},{"text":"הובס, בלשון מקרא","difficulty":3,"quality":3},{"text":"מכה קשה המפילה חללים רבים","difficulty":2,"quality":4}]},
   {"answer":"בדבש","fillScore":3,"category":"food","clues":[{"text":"ממאכלי ראש השנה תפוח","difficulty":1,"quality":4},{"text":"כך טובלים תפוח בחג","difficulty":1,"quality":5}]},
-  {"answer":"בדה","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"הממציא סיפור","difficulty":1,"quality":1},{"text":"המציא מהלב","difficulty":1,"quality":4},{"text":"רקם סיפור דמיוני","difficulty":2,"quality":5}]},
+  {"answer":"בדה","fillScore":2,"category":"general","clues":[{"text":"הממציא סיפור","difficulty":1,"quality":3},{"text":"המציא מהלב","difficulty":1,"quality":4},{"text":"רקם סיפור דמיוני","difficulty":2,"quality":5}]},
   {"answer":"בדידות","fillScore":3,"category":"language","clues":[{"text":"שיר של דודו אהרון","difficulty":2,"quality":3},{"text":"ערירות","difficulty":2,"quality":4}]},
   {"answer":"בדיל","fillScore":3,"category":"science","clues":[{"text":"מין יסוד כימי","difficulty":1,"quality":3},{"text":"Sn בטבלה המחזורית","difficulty":2,"quality":5}]},
   {"answer":"בדים","fillScore":3,"category":"general","clues":[{"text":"אריגים","difficulty":1,"quality":4},{"text":"טקסטילים","difficulty":1,"quality":4},{"text":"ענפים עבים","difficulty":3,"quality":4}]},
@@ -385,14 +385,14 @@
   {"answer":"בהד","fillScore":2,"category":"language","clues":[{"text":"בסיס הדרכה ר\"ת","difficulty":1,"quality":5},{"text":"בסיס הדרכה, ר\"ת","difficulty":1,"quality":5},{"text":"מחנה הכשרה צבאי, ר\"ת","difficulty":2,"quality":4}]},
   {"answer":"בהה","fillScore":3,"category":"general","clues":[{"text":"הסתכל ממושכות","difficulty":1,"quality":5},{"text":"נעץ מבט","difficulty":1,"quality":5},{"text":"לטש עיניים","difficulty":1,"quality":5},{"text":"הביט בחוסר ריכוז","difficulty":2,"quality":4}]},
   {"answer":"בהיר","fillScore":3,"category":"general","clues":[{"text":"לא כהה","difficulty":1,"quality":4},{"text":"לא כהה בכלל","difficulty":1,"quality":4}]},
-  {"answer":"בהס","fillScore":1,"category":"language","excludeFromDaily":true,"clues":[{"text":"בית הספר ר\"ת","difficulty":1,"quality":1},{"text":"ביה\"ס, חסר יו\"ד","difficulty":3,"quality":3},{"text":"מוסד לימוד, ר\"ת חסר","difficulty":3,"quality":2}]},
+  {"answer":"בהס","fillScore":1,"category":"language","clues":[{"text":"בית הספר ר\"ת","difficulty":1,"quality":3},{"text":"ביה\"ס, חסר יו\"ד","difficulty":3,"quality":3},{"text":"מוסד לימוד, ר\"ת חסר","difficulty":3,"quality":2}]},
   {"answer":"בהק","fillScore":2,"category":"general","clues":[{"text":"האיר, זרח","difficulty":1,"quality":5},{"text":"נצץ","difficulty":1,"quality":4},{"text":"זרח בחוזקה","difficulty":1,"quality":5}]},
   {"answer":"בהר","fillScore":3,"category":"bible","clues":[{"text":"פרשה בספר ויקרא","difficulty":2,"quality":5},{"text":"סדרה לפני בחוקותי","difficulty":3,"quality":5},{"text":"פרשת שמיטה ויובל","difficulty":2,"quality":4}]},
   {"answer":"נהר האהבה","fillScore":2,"category":"culture","clues":[{"text":"שיר של אוהד חיטמן","difficulty":3,"quality":4}]},
   {"answer":"נהרס","fillScore":2,"category":"general","clues":[{"text":"נחרב","difficulty":1,"quality":4},{"text":"קרס עד היסוד","difficulty":2,"quality":4}]},
   {"answer":"בוא","fillScore":2,"category":"general","clues":[{"text":"תגיע","difficulty":1,"quality":5},{"text":"התקרב הנה!","difficulty":1,"quality":4},{"text":"גש לכאן","difficulty":1,"quality":5},{"text":"גש הנה","difficulty":1,"quality":4}]},
   {"answer":"בואי אמא","fillScore":2,"category":"culture","clues":[{"text":"שיר בביצוע של שלומי שבת","difficulty":3,"quality":4}]},
-  {"answer":"בואש","fillScore":4,"category":"science","excludeFromDaily":true,"clues":[{"text":"מעלה ריח רע","difficulty":1,"quality":3},{"text":"'חס' ציבור ר\"ת","difficulty":3,"quality":1},{"text":"יורה ריח להגנה","difficulty":1,"quality":5},{"text":"מסריח מפוספס","difficulty":1,"quality":4}]},
+  {"answer":"בואש","fillScore":4,"category":"science","excludeFromDaily":true,"clues":[{"text":"מעלה ריח רע","difficulty":1,"quality":3},{"text":"יורה ריח להגנה","difficulty":1,"quality":5},{"text":"מסריח, מפוספס","difficulty":1,"quality":4}]},
   {"answer":"בוב דילן","fillScore":2,"category":"people","clues":[{"text":"זמר יהודי אמריקאי","difficulty":3,"quality":4},{"text":"זמר ויוצר אמריקאי שזכה בנובל","difficulty":2,"quality":5}]},
   {"answer":"בוסטון","fillScore":3,"category":"geography","clues":[{"text":"עיר במזרח ארה\"ב","difficulty":2,"quality":4},{"text":"בירת מסצ'וסטס","difficulty":2,"quality":5}]},
   {"answer":"בוג","fillScore":1,"category":"geography","excludeFromDaily":true,"clues":[{"text":"נהר באוקראינה","difficulty":3,"quality":3},{"text":"נהר מזרח־אירופי","difficulty":3,"quality":3},{"text":"זורם באוקראינה","difficulty":3,"quality":3}]},
@@ -579,7 +579,7 @@
   {"answer":"בצק","fillScore":4,"category":"food","clues":[{"text":"עיסה לאפיה","difficulty":1,"quality":4},{"text":"עיסת קמח ומים","difficulty":1,"quality":5}]},
   {"answer":"בצקת","fillScore":3,"category":"science","clues":[{"text":"הצטברות נוזלים בגוף","difficulty":2,"quality":5},{"text":"נפיחות מנוזלים","difficulty":2,"quality":4}]},
   {"answer":"בצר","fillScore":2,"category":"food","clues":[{"text":"עסק בתהליך ייצור יין","difficulty":2,"quality":3},{"text":"קטף ענבים","difficulty":2,"quality":5},{"text":"אסף אשכולות בכרם","difficulty":2,"quality":4}]},
-  {"answer":"בצרה","fillScore":3,"category":"geography","excludeFromDaily":true,"clues":[{"text":"אימת כ\"ח","difficulty":3,"quality":1},{"text":"מושב בשרון","difficulty":2,"quality":4},{"text":"עיר גדולה בעיראק","difficulty":2,"quality":4}]},
+  {"answer":"בצרה","fillScore":3,"category":"geography","excludeFromDaily":true,"clues":[{"text":"מושב בשרון","difficulty":2,"quality":4},{"text":"עיר גדולה בעיראק","difficulty":2,"quality":4}]},
   {"answer":"בקו","fillScore":3,"category":"geography","clues":[{"text":"בירת אזרבייג'ן","difficulty":1,"quality":4},{"text":"על חוף הים הכספי","difficulty":2,"quality":4}]},
   {"answer":"בקיא","fillScore":3,"category":"general","clues":[{"text":"יודע, מכיר","difficulty":1,"quality":4},{"text":"שולט בחומר","difficulty":1,"quality":4}]},
   {"answer":"בקיאות","fillScore":4,"category":"general","clues":[{"text":"ידע רב ועמוק","difficulty":2,"quality":5}]},
@@ -596,7 +596,7 @@
   {"answer":"ברז","fillScore":4,"category":"general","clues":[{"text":"התקן מווסת מים","difficulty":1,"quality":4},{"text":"התקן מווסת זרם","difficulty":1,"quality":4},{"text":"התקן לוויסות מים","difficulty":1,"quality":4}]},
   {"answer":"ברד","fillScore":4,"category":"science","clues":[{"text":"מהמשקעים","difficulty":2,"quality":4},{"text":"קרח שיורד מהשמיים","difficulty":1,"quality":5},{"text":"משקע שמכה בשמשה","difficulty":2,"quality":4}]},
   {"answer":"ברדה","fillScore":4,"category":"people","clues":[{"text":"כדורגלן עבר ישראלי ש\"מ","difficulty":2,"quality":4},{"text":"אליניב, חלוץ עבר","difficulty":1,"quality":5}]},
-  {"answer":"ברו","fillScore":1,"category":"people","excludeFromDaily":true,"clues":[{"text":"אמריקאית ש\"מ","difficulty":3,"quality":1},{"text":"טניסאית עבר אמריקאית ש\"מ","difficulty":3,"quality":2},{"text":"לואיז, טניסאית עבר","difficulty":3,"quality":3},{"text":"לואיז, אלופת טניס עבר","difficulty":3,"quality":3}]},
+  {"answer":"ברו","fillScore":1,"category":"people","clues":[{"text":"אמריקאית ש\"מ","difficulty":3,"quality":3},{"text":"טניסאית עבר אמריקאית ש\"מ","difficulty":3,"quality":2},{"text":"לואיז, טניסאית עבר","difficulty":3,"quality":3},{"text":"לואיז, אלופת טניס עבר","difficulty":3,"quality":3}]},
   {"answer":"זיהה","fillScore":2,"category":"general","clues":[{"text":"הכיר","difficulty":1,"quality":4},{"text":"קלט מי זה","difficulty":1,"quality":4}]},
   {"answer":"ברוטו","fillScore":4,"category":"general","clues":[{"text":"סכום ללא ניכויים","difficulty":2,"quality":5}]},
   {"answer":"ברוטלי","fillScore":4,"category":"language","clues":[{"text":"אלים","difficulty":1,"quality":4}]},
@@ -701,7 +701,7 @@
   {"answer":"גוברין","fillScore":2,"category":"geography","clues":[{"text":"נחל בשפלת יהודה","difficulty":2,"quality":4}]},
   {"answer":"גוברת","fillScore":3,"category":"language","clues":[{"text":"מתעצמת מתחזקת","difficulty":2,"quality":4}]},
   {"answer":"גוהר","fillScore":3,"category":"general","clues":[{"text":"רוכן","difficulty":2,"quality":4},{"text":"מתכופף קדימה","difficulty":2,"quality":4},{"text":"רוכן, גוחן","difficulty":2,"quality":4}]},
-  {"answer":"גוטה","fillScore":1,"category":"geography","excludeFromDaily":true,"clues":[{"text":"מאכל איטלקי","difficulty":3,"quality":1},{"text":"עיר בתורינגיה","difficulty":3,"quality":3},{"text":"משובח, טוב מאוד","difficulty":2,"quality":4}]},
+  {"answer":"גוטה","fillScore":1,"category":"geography","excludeFromDaily":true,"clues":[{"text":"עיר בתורינגיה","difficulty":3,"quality":3},{"text":"משובח, טוב מאוד","difficulty":2,"quality":4}]},
   {"answer":"גול","fillScore":4,"category":"sport","clues":[{"text":"שער בכדורגל","difficulty":1,"quality":5},{"text":"זה שמקפיץ יציע","difficulty":2,"quality":5}]},
   {"answer":"גולני","fillScore":5,"category":"general","clues":[{"text":"חטיבת חי\"ר בצה\"ל","difficulty":1,"quality":5},{"text":"חטיבה בצה\"ל","difficulty":1,"quality":4}]},
   {"answer":"גולם","fillScore":5,"category":"science","clues":[{"text":"מגלגולי הפרפר","difficulty":2,"quality":4},{"text":"שלב בחיי חרק בין זחל לבוגר","difficulty":1,"quality":5},{"text":"מישהו קצת שלומיאלי, בסלנג","difficulty":2,"quality":4}]},
@@ -716,7 +716,7 @@
   {"answer":"גופני","fillScore":4,"category":"science","clues":[{"text":"פיזי","difficulty":1,"quality":4},{"text":"סומטי","difficulty":3,"quality":4}]},
   {"answer":"גופרית","fillScore":3,"category":"science","clues":[{"text":"מין מינרל כימי","difficulty":3,"quality":2},{"text":"סולפור","difficulty":2,"quality":4}]},
   {"answer":"גוץ","fillScore":3,"category":"general","clues":[{"text":"שמן ונמוך","difficulty":1,"quality":4},{"text":"נמוך ומוצק","difficulty":1,"quality":4}]},
-  {"answer":"גורן","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"אסם ממגורה","difficulty":2,"quality":1},{"text":"לאחסון תבואה","difficulty":2,"quality":1},{"text":"רחבת הדיש","difficulty":2,"quality":5},{"text":"מקום לדישת תבואה","difficulty":2,"quality":5}]},
+  {"answer":"גורן","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"רחבת הדיש","difficulty":2,"quality":5},{"text":"מקום לדישת תבואה","difficulty":2,"quality":5}]},
   {"answer":"גורגיה","fillScore":3,"category":"geography","clues":[{"text":"מדינה בארה\"ב","difficulty":2,"quality":4}]},
   {"answer":"גורד שחקים","fillScore":4,"category":"general","clues":[{"text":"בנין גבוה","difficulty":3,"quality":4}]},
   {"answer":"גורו","fillScore":4,"category":"culture","clues":[{"text":"מדריך רוחני","difficulty":1,"quality":4},{"text":"מורה רוחני מהודו","difficulty":1,"quality":4}]},
@@ -775,7 +775,7 @@
   {"answer":"גלר","fillScore":1,"category":"people","excludeFromDaily":true,"clues":[{"text":"מראשי העיר כפר סבא ש\"מ","difficulty":3,"quality":3},{"text":"אורי, מכופף הכפיות","difficulty":2,"quality":5}]},
   {"answer":"גלשן","fillScore":4,"category":"sport","clues":[{"text":"כלי לספורט ימי","difficulty":1,"quality":4},{"text":"קרש לרכיבה על גלים","difficulty":1,"quality":4}]},
   {"answer":"במיה","fillScore":4,"category":"food","clues":[{"text":"פרי הנתפס אצל רבים כירק","difficulty":2,"quality":5},{"text":"ירוקה במרק קוסקוס","difficulty":1,"quality":5}]},
-  {"answer":"גמגום","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"דיבור לא ברור","difficulty":1,"quality":3},{"text":"לא ברור","difficulty":1,"quality":1},{"text":"תקיעות בדיבור","difficulty":1,"quality":5},{"text":"כשהמילים נתקעות","difficulty":2,"quality":5}]},
+  {"answer":"גמגום","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"דיבור לא ברור","difficulty":1,"quality":3},{"text":"תקיעות בדיבור","difficulty":1,"quality":5},{"text":"כשהמילים נתקעות","difficulty":2,"quality":5}]},
   {"answer":"גמגם","fillScore":3,"category":"general","clues":[{"text":"דיבר באופן לא ברור","difficulty":1,"quality":3},{"text":"נתקע בין הברות","difficulty":1,"quality":5}]},
   {"answer":"גמדים","fillScore":4,"category":"food","clues":[{"text":"מעדן גבינה מוכר לילדים","difficulty":1,"quality":5},{"text":"שלגיה פגשה שבעה","difficulty":1,"quality":5},{"text":"מעדן שטראוס לילדים","difficulty":1,"quality":5}]},
   {"answer":"גמור","fillScore":3,"category":"general","clues":[{"text":"שלם, מושלם","difficulty":1,"quality":3},{"text":"עשוי עד הסוף","difficulty":1,"quality":4},{"text":"הרוס מעייפות, בסלנג","difficulty":2,"quality":5}]},
@@ -805,7 +805,7 @@
   {"answer":"גרב","fillScore":3,"category":"general","clues":[{"text":"מכסה את כף הרגל","difficulty":1,"quality":4},{"text":"פריט לבוש","difficulty":1,"quality":2},{"text":"פוזמק","difficulty":2,"quality":4}]},
   {"answer":"גרביון","fillScore":3,"category":"general","clues":[{"text":"בד צמוד לרגליים","difficulty":2,"quality":3},{"text":"פריט לבוש צמוד לגוף","difficulty":2,"quality":2}]},
   {"answer":"גרביל","fillScore":3,"category":"science","clues":[{"text":"מין מכרסם","difficulty":2,"quality":4},{"text":"מכרסם מדברי קטן","difficulty":2,"quality":5}]},
-  {"answer":"גרג","fillScore":2,"category":"culture","excludeFromDaily":true,"clues":[{"text":"מחוז באוסטריה","difficulty":3,"quality":1},{"text":"קפה בישראל","difficulty":1,"quality":4}]},
+  {"answer":"גרג","fillScore":2,"category":"culture","clues":[{"text":"מחוז באוסטריה","difficulty":3,"quality":3},{"text":"קפה בישראל","difficulty":1,"quality":4}]},
   {"answer":"גרדום","fillScore":4,"category":"general","clues":[{"text":"במה להוצאה להורג","difficulty":2,"quality":5},{"text":"במת התלייה","difficulty":2,"quality":5},{"text":"במת הוצאה להורג","difficulty":2,"quality":4}]},
   {"answer":"גרו","fillScore":2,"category":"general","clues":[{"text":"דרו","difficulty":2,"quality":3},{"text":"חיו במקום","difficulty":1,"quality":4},{"text":"שכנו","difficulty":2,"quality":4}]},
   {"answer":"גריז","fillScore":4,"category":"general","clues":[{"text":"משחת סיכה","difficulty":1,"quality":5},{"text":"חומר לסיכת צירים","difficulty":1,"quality":5}]},
@@ -900,7 +900,7 @@
   {"answer":"דילול","fillScore":3,"category":"general","clues":[{"text":"הפחתת כמות","difficulty":1,"quality":4},{"text":"הפחתת צפיפות","difficulty":2,"quality":5}]},
   {"answer":"דילמת האסיר","fillScore":2,"category":"science","clues":[{"text":"בעיה פרדוקסלית בתורת המשחקים","difficulty":3,"quality":4}]},
   {"answer":"דילר","fillScore":3,"category":"general","clues":[{"text":"מעובדי הקזינו","difficulty":1,"quality":4},{"text":"מחלק קלפים בקזינו","difficulty":1,"quality":5},{"text":"סוחר סמים; מי שמוכר סמים","difficulty":2,"quality":4}]},
-  {"answer":"סיר","fillScore":4,"category":"general","excludeFromDaily":true,"clues":[{"text":"תואר כבוד בריטי","difficulty":1,"quality":1},{"text":"כלי לבישול מרק","difficulty":1,"quality":5}]},
+  {"answer":"סיר","fillScore":4,"category":"general","clues":[{"text":"תואר כבוד בריטי","difficulty":1,"quality":3},{"text":"כלי לבישול מרק","difficulty":1,"quality":5}]},
   {"answer":"דימום","fillScore":3,"category":"science","clues":[{"text":"הפרשה מהגוף בעקבות פציעה","difficulty":1,"quality":3},{"text":"הפרשה מהגוף","difficulty":2,"quality":2},{"text":"תוצאה של חתך עמוק","difficulty":2,"quality":4}]},
   {"answer":"דימונה","fillScore":4,"category":"geography","clues":[{"text":"עיר בדרום","difficulty":1,"quality":3},{"text":"עיר בנגב, נוסדה ב-1955","difficulty":2,"quality":4}]},
   {"answer":"דין","fillScore":4,"category":"general","clues":[{"text":"משפט","difficulty":1,"quality":4},{"text":"פסק בבית משפט","difficulty":1,"quality":4}]},
@@ -1014,12 +1014,12 @@
   {"answer":"הגא","fillScore":2,"category":"language","clues":[{"text":"הגנה אזרחית ר\"ת","difficulty":3,"quality":4},{"text":"פיקוד העורף של פעם","difficulty":3,"quality":4}]},
   {"answer":"הגנו","fillScore":2,"category":"general","clues":[{"text":"שמרו, אבטחו","difficulty":1,"quality":4},{"text":"עמדו בפרץ","difficulty":2,"quality":4},{"text":"שמרו מפני סכנה","difficulty":1,"quality":4}]},
   {"answer":"הגבלה","fillScore":3,"category":"general","clues":[{"text":"סייג, עצר","difficulty":1,"quality":3},{"text":"צמצום חופש הפעולה","difficulty":2,"quality":5}]},
-  {"answer":"הגד","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"אמירה","difficulty":2,"quality":1},{"text":"אמור נא!","difficulty":2,"quality":4}]},
+  {"answer":"הגד","fillScore":2,"category":"general","clues":[{"text":"אמירה","difficulty":2,"quality":3},{"text":"אמור נא!","difficulty":2,"quality":4}]},
   {"answer":"הגה","fillScore":3,"category":"general","clues":[{"text":"חלק ברכב","difficulty":1,"quality":4},{"text":"מסובבים כדי לפנות","difficulty":1,"quality":4}]},
   {"answer":"הגון","fillScore":3,"category":"general","clues":[{"text":"ישר","difficulty":1,"quality":3},{"text":"לא מושחת","difficulty":1,"quality":4},{"text":"פועל ביושר","difficulty":1,"quality":4}]},
   {"answer":"זקוף","fillScore":3,"category":"general","clues":[{"text":"ישר","difficulty":1,"quality":3},{"text":"עומד בקומה מלאה","difficulty":1,"quality":4},{"text":"לא כפוף","difficulty":1,"quality":4}]},
   {"answer":"הגירה","fillScore":4,"category":"general","clues":[{"text":"מעבר למדינה אחרת","difficulty":1,"quality":5},{"text":"עזיבת מולדת לארץ אחרת","difficulty":1,"quality":5}]},
-  {"answer":"הגית","fillScore":1,"category":"language","excludeFromDaily":true,"clues":[{"text":"מחשבה","difficulty":2,"quality":1},{"text":"חשבת בלבך","difficulty":2,"quality":4},{"text":"ביטאת בקול","difficulty":2,"quality":4}]},
+  {"answer":"הגית","fillScore":1,"category":"language","clues":[{"text":"מחשבה","difficulty":2,"quality":3},{"text":"חשבת בלבך","difficulty":2,"quality":4},{"text":"ביטאת בקול","difficulty":2,"quality":4}]},
   {"answer":"הגנה","fillScore":3,"category":"general","clues":[{"text":"שמירה על הביטחון","difficulty":1,"quality":3},{"text":"שמירה, אבטחה","difficulty":1,"quality":3},{"text":"קו אחורי בכדורגל","difficulty":2,"quality":4},{"text":"הצד שלא תוקף","difficulty":2,"quality":4}]},
   {"answer":"הגר","fillScore":4,"category":"bible","clues":[{"text":"שפחת אברהם","difficulty":1,"quality":4},{"text":"אם ישמעאל","difficulty":1,"quality":5}]},
   {"answer":"הגשם הצהוב","fillScore":1,"category":"culture","clues":[{"text":"ספר מאת חוליו לימאסארס","difficulty":3,"quality":3}]},
@@ -1079,7 +1079,7 @@
   {"answer":"הורס","fillScore":3,"category":"general","clues":[{"text":"נאה, יפה (עגה)","difficulty":1,"quality":4},{"text":"יפה עד כאב, בסלנג","difficulty":2,"quality":5},{"text":"חתיך ממש, בעגה","difficulty":2,"quality":4},{"text":"מחריב","difficulty":1,"quality":4}]},
   {"answer":"הותרו","fillScore":3,"category":"language","clues":[{"text":"אפשרו להם","difficulty":1,"quality":3}]},
   {"answer":"הזדמנות","fillScore":4,"category":"general","clues":[{"text":"מצב העשוי להביא תועלת","difficulty":2,"quality":4},{"text":"צ'אנס","difficulty":1,"quality":4}]},
-  {"answer":"הזנק","fillScore":1,"category":"language","excludeFromDaily":true,"clues":[{"text":"זינוק","difficulty":1,"quality":1},{"text":"שלח למרוץ!","difficulty":2,"quality":4},{"text":"תן את אות הפתיחה","difficulty":2,"quality":4}]},
+  {"answer":"הזנק","fillScore":1,"category":"language","clues":[{"text":"זינוק","difficulty":1,"quality":3},{"text":"שלח למרוץ!","difficulty":2,"quality":4},{"text":"תן את אות הפתיחה","difficulty":2,"quality":4}]},
   {"answer":"הזעת לילה","fillScore":2,"category":"science","clues":[{"text":"תגובה גופנית במהלך שינה","difficulty":3,"quality":2}]},
   {"answer":"החיים יפים","fillScore":3,"category":"culture","clues":[{"text":"סרט בבימויו של רוברטו בניני","difficulty":3,"quality":5},{"text":"סרט איטלקי מ- 1997","difficulty":2,"quality":4}]},
   {"answer":"החלטי","fillScore":3,"category":"language","clues":[{"text":"בטוח בדעתו","difficulty":1,"quality":4}]},
@@ -1102,7 +1102,7 @@
   {"answer":"הלהיבה","fillScore":3,"category":"language","clues":[{"text":"יצרה עניין והתרגשות","difficulty":2,"quality":4}]},
   {"answer":"הלהיט","fillScore":3,"category":"language","clues":[{"text":"הסעיר, ריגש","difficulty":1,"quality":4}]},
   {"answer":"הלו","fillScore":2,"category":"language","clues":[{"text":"אמירה טלפונית","difficulty":1,"quality":4},{"text":"פתיחה בשיחה","difficulty":1,"quality":4}]},
-  {"answer":"הלוא","fillScore":2,"category":"language","excludeFromDaily":true,"clues":[{"text":"הרי הן","difficulty":2,"quality":1},{"text":"הרי, בשאלה רטורית","difficulty":2,"quality":4}]},
+  {"answer":"הלוא","fillScore":2,"category":"language","excludeFromDaily":true,"clues":[{"text":"הרי, בשאלה רטורית","difficulty":2,"quality":4}]},
   {"answer":"הליום","fillScore":4,"category":"science","clues":[{"text":"גז אצילי","difficulty":2,"quality":5},{"text":"גז שמעיף בלונים למעלה","difficulty":2,"quality":4}]},
   {"answer":"הלין","fillScore":2,"category":"general","clues":[{"text":"בא בטענות","difficulty":2,"quality":4},{"text":"קיטר רשמית","difficulty":2,"quality":4}]},
   {"answer":"הלימה","fillScore":3,"category":"language","clues":[{"text":"התאמה","difficulty":1,"quality":4}]},
@@ -1139,7 +1139,7 @@
   {"answer":"הסוואה","fillScore":3,"category":"general","clues":[{"text":"היטמעות בשטח","difficulty":1,"quality":4}]},
   {"answer":"הסטה","fillScore":3,"category":"general","clues":[{"text":"הזזה הצידה","difficulty":1,"quality":4},{"text":"שינוי כיוון קל","difficulty":2,"quality":4}]},
   {"answer":"הסמיק","fillScore":3,"category":"language","clues":[{"text":"האדים","difficulty":1,"quality":4}]},
-  {"answer":"הסק","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"הבנה מתוך עובדות ובדיקה","difficulty":3,"quality":3},{"text":"נובע מתוך הנחה מוקדמת","difficulty":3,"quality":1},{"text":"גזירה לוגית","difficulty":3,"quality":5}]},
+  {"answer":"הסק","fillScore":3,"category":"general","clues":[{"text":"הבנה מתוך עובדות ובדיקה","difficulty":3,"quality":3},{"text":"נובע מתוך הנחה מוקדמת","difficulty":3,"quality":3},{"text":"גזירה לוגית","difficulty":3,"quality":5}]},
   {"answer":"הסרחנו","fillScore":2,"category":"language","clues":[{"text":"עוררנו חשד (בהשאלה)","difficulty":2,"quality":3}]},
   {"answer":"הסתיימה","fillScore":4,"category":"language","clues":[{"text":"נגמרה","difficulty":1,"quality":5}]},
   {"answer":"העז","fillScore":2,"category":"general","clues":[{"text":"פעל באומץ","difficulty":1,"quality":4},{"text":"לא פחד לפעול","difficulty":1,"quality":4}]},
@@ -1159,7 +1159,7 @@
   {"answer":"הרגל","fillScore":4,"category":"general","clues":[{"text":"טבע שני","difficulty":1,"quality":5},{"text":"משהו שעושים בלי לחשוב","difficulty":1,"quality":4}]},
   {"answer":"הרדוף","fillScore":3,"category":"science","clues":[{"text":"מין שיח גבוה","difficulty":1,"quality":3}]},
   {"answer":"הרה","fillScore":3,"category":"general","clues":[{"text":"היא לקראת לידה","difficulty":1,"quality":4},{"text":"נושאת עובר","difficulty":1,"quality":5}]},
-  {"answer":"הרי","fillScore":2,"category":"language","excludeFromDaily":true,"clues":[{"text":"מילת תמיהה","difficulty":2,"quality":1},{"text":"הלא, הנה","difficulty":2,"quality":4}]},
+  {"answer":"הרי","fillScore":2,"category":"language","clues":[{"text":"מילת תמיהה","difficulty":2,"quality":3},{"text":"הלא, הנה","difficulty":2,"quality":4}]},
   {"answer":"הרואי","fillScore":3,"category":"language","clues":[{"text":"מלא גבורה","difficulty":1,"quality":4}]},
   {"answer":"הרודיון","fillScore":2,"category":"geography","clues":[{"text":"דרומית לבית לחם","difficulty":2,"quality":4}]},
   {"answer":"הרם","fillScore":2,"category":"general","clues":[{"text":"העבר מעלה","difficulty":1,"quality":4},{"text":"העלה!","difficulty":1,"quality":4}]},
@@ -1253,7 +1253,7 @@
   {"answer":"וייס","fillScore":3,"category":"people","clues":[{"text":"מיו\"ר הכנסת","difficulty":3,"quality":3},{"text":"שבח, יו\"ר כנסת לשעבר","difficulty":2,"quality":5}]},
   {"answer":"סוכר","fillScore":5,"category":"food","clues":[{"text":"משמש להמתקה","difficulty":1,"quality":4},{"text":"קפה מר מבקש אותו","difficulty":1,"quality":5},{"text":"מי שבונה או מקים סכר","difficulty":3,"quality":4},{"text":"חומר גבישי מתוק","difficulty":1,"quality":4}]},
   {"answer":"ויל","fillScore":1,"category":"people","excludeFromDaily":true,"clues":[{"text":"צייר דני ש\"מ","difficulty":3,"quality":2},{"text":"רצון, באנגלית","difficulty":2,"quality":3}]},
-  {"answer":"וילה","fillScore":4,"category":"general","excludeFromDaily":true,"clues":[{"text":"בית","difficulty":1,"quality":2},{"text":"בית רחב ידיים","difficulty":1,"quality":4},{"text":"דירה רחבה","difficulty":1,"quality":1}]},
+  {"answer":"וילה","fillScore":4,"category":"general","clues":[{"text":"בית","difficulty":1,"quality":2},{"text":"בית רחב ידיים","difficulty":1,"quality":4},{"text":"דירה רחבה","difficulty":1,"quality":3}]},
   {"answer":"וילון","fillScore":4,"category":"general","clues":[{"text":"מחיצת בד תלויה","difficulty":1,"quality":5},{"text":"כיסוי לחלון","difficulty":1,"quality":4},{"text":"מסך, פרגוד","difficulty":2,"quality":4}]},
   {"answer":"יולי","fillScore":4,"category":"general","clues":[{"text":"חודש לועזי","difficulty":1,"quality":3},{"text":"חודש של חופש גדול","difficulty":1,"quality":5}]},
   {"answer":"סימן","fillScore":3,"category":"language","clues":[{"text":"תו, אות","difficulty":1,"quality":4},{"text":"מה שמותיר עקבות","difficulty":2,"quality":5}]},
@@ -1297,7 +1297,7 @@
   {"answer":"סניו","fillScore":1,"category":"geography","excludeFromDaily":true,"clues":[{"text":"נהר באיטליה","difficulty":3,"quality":3},{"text":"יובל של הרנו, באיטליה","difficulty":3,"quality":4}]},
   {"answer":"ונצואלה","fillScore":4,"category":"geography","clues":[{"text":"בירתה קראקס","difficulty":1,"quality":4}]},
   {"answer":"ונציה","fillScore":5,"category":"geography","clues":[{"text":"עיר באיטליה","difficulty":1,"quality":5},{"text":"עיר התעלות באיטליה","difficulty":1,"quality":5}]},
-  {"answer":"וסל","fillScore":1,"category":"general","excludeFromDaily":true,"clues":[{"text":"איכר משועבד","difficulty":3,"quality":1},{"text":"בן חסות פיאודלי","difficulty":3,"quality":4}]},
+  {"answer":"וסל","fillScore":1,"category":"general","clues":[{"text":"איכר משועבד","difficulty":3,"quality":3},{"text":"בן חסות פיאודלי","difficulty":3,"quality":4}]},
   {"answer":"וסת","fillScore":3,"category":"science","clues":[{"text":"רגולטור","difficulty":2,"quality":4},{"text":"דימום נשי","difficulty":2,"quality":3}]},
   {"answer":"ועד","fillScore":3,"category":"general","clues":[{"text":"קבוצת ייצוג נבחרת","difficulty":1,"quality":4},{"text":"קבוצת ייצוג","difficulty":1,"quality":3}]},
   {"answer":"ועדה","fillScore":3,"category":"general","clues":[{"text":"הרכב ממונים לקבלת החלטות","difficulty":1,"quality":4},{"text":"גוף שבודק וממליץ","difficulty":1,"quality":5}]},
@@ -1322,7 +1322,7 @@
   {"answer":"ותיקים","fillScore":3,"category":"general","clues":[{"text":"נמצאים זמן רב בארגון","difficulty":2,"quality":3},{"text":"נמצאים בארגון זמן רב","difficulty":2,"quality":3}]},
   {"answer":"ותק","fillScore":3,"category":"general","clues":[{"text":"משך זמן במקום עבודה","difficulty":1,"quality":4},{"text":"זמן בארגון","difficulty":1,"quality":3}]},
   {"answer":"זאב","fillScore":4,"category":"science","clues":[{"text":"מין טורף","difficulty":2,"quality":2},{"text":"קרוב פראי של הכלב","difficulty":1,"quality":5},{"text":"מיילל ביער","difficulty":1,"quality":4}]},
-  {"answer":"זבד","fillScore":1,"category":"language","excludeFromDaily":true,"clues":[{"text":"בחלב","difficulty":3,"quality":1},{"text":"מתנה, בלשון המקרא","difficulty":3,"quality":4},{"text":"יונק המפיק בושם","difficulty":3,"quality":4}]},
+  {"answer":"זבד","fillScore":1,"category":"language","excludeFromDaily":true,"clues":[{"text":"מתנה, בלשון המקרא","difficulty":3,"quality":4},{"text":"יונק המפיק בושם","difficulty":3,"quality":4}]},
   {"answer":"זבוב","fillScore":4,"category":"science","clues":[{"text":"חרק מעופף","difficulty":1,"quality":4},{"text":"מטריד סביב האוכל","difficulty":1,"quality":5}]},
   {"answer":"זבולון","fillScore":3,"category":"bible","clues":[{"text":"משבטי ישראל","difficulty":2,"quality":4}]},
   {"answer":"זברה","fillScore":5,"category":"science","clues":[{"text":"בע\"ח נפוץ באפריקה","difficulty":1,"quality":4},{"text":"סוס אפריקאי בפיג׳מת פסים","difficulty":1,"quality":5},{"text":"סוס שהטבע צייר עליו פסים","difficulty":1,"quality":5},{"text":"חיה אפריקאית בשחור ולבן","difficulty":1,"quality":5},{"text":"מעבר חציה, בכינוי עממי","difficulty":1,"quality":5}]},
@@ -1370,7 +1370,7 @@
   {"answer":"זקני צפת","fillScore":2,"category":"culture","clues":[{"text":"להקת רוק ישראלית","difficulty":3,"quality":3}]},
   {"answer":"זרד","fillScore":3,"category":"general","clues":[{"text":"ענף דק","difficulty":1,"quality":4},{"text":"מקלון יבש","difficulty":1,"quality":4}]},
   {"answer":"זרה","fillScore":2,"category":"general","clues":[{"text":"לא מוכרת","difficulty":1,"quality":4},{"text":"שאינה מוכרת","difficulty":1,"quality":4}]},
-  {"answer":"זרו","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"רכב איטלקי חשמלי","difficulty":3,"quality":1},{"text":"העיפו באוויר","difficulty":2,"quality":4}]},
+  {"answer":"זרו","fillScore":2,"category":"general","clues":[{"text":"רכב איטלקי חשמלי","difficulty":3,"quality":3},{"text":"העיפו באוויר","difficulty":2,"quality":4}]},
   {"answer":"זרובבל","fillScore":2,"category":"bible","clues":[{"text":"דמות מקראית","difficulty":2,"quality":3},{"text":"ממנהיגי שיבת ציון","difficulty":2,"quality":4}]},
   {"answer":"זרם","fillScore":4,"category":"general","clues":[{"text":"תנועת נוזל","difficulty":1,"quality":4},{"text":"שטף מים","difficulty":1,"quality":4}]},
   {"answer":"זרנוק","fillScore":4,"category":"general","clues":[{"text":"צינור המשמש לוחמי אש","difficulty":1,"quality":5},{"text":"צינור כיבוי","difficulty":1,"quality":5}]},
@@ -1442,7 +1442,7 @@
   {"answer":"חילק","fillScore":2,"category":"general","clues":[{"text":"הפריד למספר יחידות","difficulty":1,"quality":4},{"text":"נתן לכל אחד מנה","difficulty":2,"quality":5}]},
   {"answer":"חיל תותחנים","fillScore":3,"category":"general","clues":[{"text":"אחראים בצבא על ירי ארטילרי","difficulty":3,"quality":4}]},
   {"answer":"חימר","fillScore":4,"category":"general","clues":[{"text":"חומר קדרות","difficulty":1,"quality":5},{"text":"בוץ לקדרים","difficulty":1,"quality":5}]},
-  {"answer":"חינם","fillScore":4,"category":"general","excludeFromDaily":true,"clues":[{"text":"ללא תשלום","difficulty":1,"quality":4},{"text":"ללא תשלום כ\"ח","difficulty":3,"quality":1},{"text":"ללא תמורה","difficulty":1,"quality":4}]},
+  {"answer":"חינם","fillScore":4,"category":"general","clues":[{"text":"ללא תשלום","difficulty":1,"quality":4},{"text":"ללא תשלום כ\"ח","difficulty":3,"quality":3},{"text":"ללא תמורה","difficulty":1,"quality":4}]},
   {"answer":"חיס","fillScore":1,"category":"geography","excludeFromDaily":true,"clues":[{"text":"עיר בהולנד","difficulty":3,"quality":2},{"text":"עיירה בצפון בראבנט","difficulty":3,"quality":3}]},
   {"answer":"חוסל","fillScore":2,"category":"general","clues":[{"text":"הושמד","difficulty":1,"quality":4},{"text":"נגמר עד הסוף","difficulty":2,"quality":5}]},
   {"answer":"חיפה","fillScore":5,"category":"geography","clues":[{"text":"עיר בצפון","difficulty":1,"quality":4},{"text":"עיר הכרמל","difficulty":1,"quality":5}]},
@@ -1450,7 +1450,7 @@
   {"answer":"חיר","fillScore":2,"category":"language","clues":[{"text":"חיל רגלים ר\"ת","difficulty":1,"quality":5},{"text":"לוחמי היבשה, בקיצור","difficulty":1,"quality":5}]},
   {"answer":"חלב","fillScore":4,"category":"food","clues":[{"text":"משקה לבן","difficulty":1,"quality":4},{"text":"שותים עם קורנפלקס","difficulty":1,"quality":5}]},
   {"answer":"חלו","fillScore":2,"category":"general","clues":[{"text":"הפכו ללא בריאים","difficulty":1,"quality":3},{"text":"נפלו למשכב","difficulty":1,"quality":5},{"text":"התרחשו","difficulty":2,"quality":4}]},
-  {"answer":"חלוד","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"לא כשיר ומאומן","difficulty":2,"quality":1},{"text":"לא מאומנ מספיק","difficulty":2,"quality":2},{"text":"כבר לא בכושר","difficulty":2,"quality":5}]},
+  {"answer":"חלוד","fillScore":3,"category":"general","clues":[{"text":"לא כשיר ומאומן","difficulty":2,"quality":3},{"text":"לא מאומנ מספיק","difficulty":2,"quality":2},{"text":"כבר לא בכושר","difficulty":2,"quality":5}]},
   {"answer":"חלודים","fillScore":2,"category":"language","clues":[{"text":"לא נמצאים בכושר טוב","difficulty":2,"quality":3}]},
   {"answer":"חלול","fillScore":3,"category":"general","clues":[{"text":"אין בו תוכן","difficulty":1,"quality":4},{"text":"ריק מבפנים","difficulty":1,"quality":5}]},
   {"answer":"חלום","fillScore":4,"category":"general","clues":[{"text":"הזיית שינה","difficulty":1,"quality":4},{"text":"סרט פרטי בלילה","difficulty":2,"quality":5}]},
@@ -1520,7 +1520,7 @@
   {"answer":"חציל","fillScore":4,"category":"food","clues":[{"text":"ירק מאכל סגול שחור","difficulty":1,"quality":4},{"text":"כוכב הסביח","difficulty":2,"quality":5},{"text":"ירק סגול על האש","difficulty":1,"quality":5},{"text":"ירק מאכל ממשפחת הסולניים","difficulty":2,"quality":5}]},
   {"answer":"חציר","fillScore":3,"category":"general","clues":[{"text":"עשב מאכל לבהמות","difficulty":1,"quality":4},{"text":"מזון יבש לבהמות","difficulty":1,"quality":5},{"text":"נערם ברפת בקיץ","difficulty":2,"quality":4},{"text":"שחת","difficulty":2,"quality":4}]},
   {"answer":"חצפורי","fillScore":3,"category":"food","clues":[{"text":"מאפה גאורגי","difficulty":1,"quality":4}]},
-  {"answer":"חצר","fillScore":4,"category":"general","excludeFromDaily":true,"clues":[{"text":"שטח בנוי למבנה","difficulty":1,"quality":1},{"text":"שטח צמוד למבנה","difficulty":1,"quality":4},{"text":"מעונות המלך ופמלייתו","difficulty":2,"quality":4}]},
+  {"answer":"חצר","fillScore":4,"category":"general","clues":[{"text":"שטח בנוי למבנה","difficulty":1,"quality":3},{"text":"שטח צמוד למבנה","difficulty":1,"quality":4},{"text":"מעונות המלך ופמלייתו","difficulty":2,"quality":4}]},
   {"answer":"חקי","fillScore":3,"category":"general","clues":[{"text":"גוון במדים צבאיים","difficulty":1,"quality":4},{"text":"צבע המשמש להסוואה בשטח","difficulty":2,"quality":4}]},
   {"answer":"חקר","fillScore":3,"category":"general","clues":[{"text":"בדק לעומק","difficulty":1,"quality":4},{"text":"ירד לעומק הדברים","difficulty":2,"quality":5},{"text":"בדק בשיטתיות","difficulty":1,"quality":4}]},
   {"answer":"חקרה","fillScore":2,"category":"general","clues":[{"text":"בדקה לעומק","difficulty":1,"quality":4},{"text":"ניסתה לברר","difficulty":1,"quality":4},{"text":"ירדה לשורש העניין","difficulty":2,"quality":5},{"text":"מצודה עתיקה","difficulty":2,"quality":4}]},
@@ -1539,7 +1539,7 @@
   {"answer":"חשה","fillScore":2,"category":"general","clues":[{"text":"מרגישה","difficulty":1,"quality":3},{"text":"מרגישה בגופה","difficulty":1,"quality":4},{"text":"קולטת בתחושה","difficulty":2,"quality":3}]},
   {"answer":"חשוף","fillScore":3,"category":"general","clues":[{"text":"גלוי לכל","difficulty":1,"quality":4},{"text":"בלי כיסוי","difficulty":1,"quality":5},{"text":"פתוח לעיני כול","difficulty":1,"quality":5}]},
   {"answer":"חשים","fillScore":2,"category":"general","clues":[{"text":"מרגישים","difficulty":1,"quality":4},{"text":"מרגישים כאב","difficulty":1,"quality":4},{"text":"קולטים בגוף","difficulty":2,"quality":3}]},
-  {"answer":"חשוב","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"קרדינל","difficulty":2,"quality":1},{"text":"בעל ערך רב","difficulty":1,"quality":5},{"text":"לא שולי","difficulty":1,"quality":5}]},
+  {"answer":"חשוב","fillScore":3,"category":"general","clues":[{"text":"קרדינל","difficulty":2,"quality":3},{"text":"בעל ערך רב","difficulty":1,"quality":5},{"text":"לא שולי","difficulty":1,"quality":5}]},
   {"answer":"חשקו","fillScore":2,"category":"general","clues":[{"text":"רצו עד מאוד","difficulty":2,"quality":4},{"text":"התאוו","difficulty":2,"quality":4}]},
   {"answer":"חשתי","fillScore":2,"category":"general","clues":[{"text":"הרגשתי","difficulty":1,"quality":4},{"text":"הרגשתי זאת","difficulty":1,"quality":4},{"text":"זה עבר עליי בגוף","difficulty":2,"quality":4}]},
   {"answer":"חתול","fillScore":5,"category":"general","clues":[{"text":"מחיות המחמד","difficulty":1,"quality":4},{"text":"מגרגר על הספה","difficulty":1,"quality":5},{"text":"אויבו המיתולוגי של העכבר","difficulty":1,"quality":5},{"text":"שונרא","difficulty":3,"quality":4}]},
@@ -1577,7 +1577,7 @@
   {"answer":"טורינו","fillScore":3,"category":"geography","clues":[{"text":"עיר באיטליה","difficulty":1,"quality":4}]},
   {"answer":"טורקיה","fillScore":5,"category":"geography","clues":[{"text":"גובלת עם בולגריה","difficulty":2,"quality":4},{"text":"בירתה אנקרה","difficulty":1,"quality":5}]},
   {"answer":"טוש","fillScore":3,"category":"general","clues":[{"text":"מצבע","difficulty":2,"quality":3},{"text":"עט לסימון","difficulty":1,"quality":4},{"text":"כותבים בו על הלוח","difficulty":1,"quality":4}]},
-  {"answer":"טיב","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"ציון בתעודת","difficulty":2,"quality":1},{"text":"איכות","difficulty":1,"quality":4}]},
+  {"answer":"טיב","fillScore":3,"category":"general","clues":[{"text":"ציון בתעודת","difficulty":2,"quality":3},{"text":"איכות","difficulty":1,"quality":4}]},
   {"answer":"טיול","fillScore":4,"category":"general","clues":[{"text":"מסע בטבע לשם הנאה","difficulty":1,"quality":4},{"text":"יציאה בשביל הכיף","difficulty":1,"quality":5},{"text":"שביל, תרמיל וחיוך","difficulty":1,"quality":5}]},
   {"answer":"טיט","fillScore":3,"category":"general","clues":[{"text":"תערובת עפר ומים","difficulty":1,"quality":4},{"text":"בוצ","difficulty":1,"quality":3}]},
   {"answer":"טייב","fillScore":4,"category":"people","clues":[{"text":"זמרת ישראלית ש\"מ","difficulty":2,"quality":4},{"text":"נינט, בשם משפחתה","difficulty":1,"quality":5},{"text":"זוכת כוכב נולד הראשונה","difficulty":2,"quality":5}]},
@@ -1593,7 +1593,7 @@
   {"answer":"טיף","fillScore":3,"category":"general","clues":[{"text":"תשר","difficulty":1,"quality":4},{"text":"כסף למלצר","difficulty":1,"quality":4},{"text":"עודף קטן לשירות","difficulty":2,"quality":4}]},
   {"answer":"טיפול","fillScore":5,"category":"general","clues":[{"text":"תהליך מרפא","difficulty":1,"quality":4}]},
   {"answer":"טיפי","fillScore":3,"category":"culture","clues":[{"text":"אוהל אינדיאני","difficulty":2,"quality":4},{"text":"אוהל שבטי חרוטי","difficulty":2,"quality":5},{"text":"מגורי נוודים במערבונים","difficulty":2,"quality":5}]},
-  {"answer":"טיפס","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"מסמר מובנה","difficulty":3,"quality":1},{"text":"עלה בהר","difficulty":1,"quality":5},{"text":"עשה דרכו למעלה","difficulty":2,"quality":4}]},
+  {"answer":"טיפס","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"עלה בהר","difficulty":1,"quality":5},{"text":"עשה דרכו למעלה","difficulty":2,"quality":4}]},
   {"answer":"טיש","fillScore":3,"category":"culture","excludeFromDaily":true,"clues":[{"text":"כדורגלן עבר ישראלי ש\"מ","difficulty":3,"quality":2},{"text":"סעודת חסידים","difficulty":2,"quality":4},{"text":"מפגש סביב האדמו״ר","difficulty":2,"quality":4}]},
   {"answer":"טישו","fillScore":4,"category":"general","clues":[{"text":"ממחטת נייר","difficulty":1,"quality":4},{"text":"נייר לאף מנוזל","difficulty":1,"quality":5},{"text":"נשלף בעת הצטננות","difficulty":2,"quality":4}]},
   {"answer":"טל בן חיים","fillScore":2,"category":"sport","clues":[{"text":"כדורגלן עבר ישראלי בצלסי","difficulty":3,"quality":4}]},
@@ -1617,7 +1617,7 @@
   {"answer":"טעם","fillScore":4,"category":"general","clues":[{"text":"מהחושים","difficulty":1,"quality":4},{"text":"ללשון יש אותו","difficulty":1,"quality":5},{"text":"סיבה או נימוק","difficulty":2,"quality":4}]},
   {"answer":"טעם גן עדן","fillScore":2,"category":"language","clues":[{"text":"ביטוי לחוויה מענגת לאחר מאכל","difficulty":3,"quality":3}]},
   {"answer":"טען","fillScore":3,"category":"general","clues":[{"text":"מלחמי הטנק","difficulty":2,"quality":3},{"text":"הכניס פגז לקנה","difficulty":2,"quality":4},{"text":"אמר שיש לו הוכחה","difficulty":2,"quality":4}]},
-  {"answer":"יפו","fillScore":5,"category":"geography","excludeFromDaily":true,"clues":[{"text":"עיר סמוכה לבת ים","difficulty":1,"quality":4},{"text":"עיר בת של תל אביב","difficulty":2,"quality":1},{"text":"משערי ירושלים","difficulty":2,"quality":4}]},
+  {"answer":"יפו","fillScore":5,"category":"geography","excludeFromDaily":true,"clues":[{"text":"עיר סמוכה לבת ים","difficulty":1,"quality":4},{"text":"משערי ירושלים","difficulty":2,"quality":4}]},
   {"answer":"טפלון","fillScore":3,"category":"science","clues":[{"text":"חומר פלסטי עמיד","difficulty":2,"quality":4}]},
   {"answer":"טקילה","fillScore":4,"category":"food","clues":[{"text":"משקה אלכוהולי","difficulty":1,"quality":4}]},
   {"answer":"טקס","fillScore":4,"category":"culture","clues":[{"text":"אירוע רשמי","difficulty":1,"quality":4},{"text":"אירוע חגיגי ורשמי","difficulty":1,"quality":4}]},
@@ -1628,7 +1628,7 @@
   {"answer":"טרור","fillScore":4,"category":"general","clues":[{"text":"פעילות רצחנית","difficulty":1,"quality":3},{"text":"פעולת אלימות רחבה","difficulty":2,"quality":3},{"text":"אלימות להפחדת ציבור","difficulty":1,"quality":5},{"text":"פחד כשיטה פוליטית","difficulty":2,"quality":5}]},
   {"answer":"טרי","fillScore":3,"category":"general","clues":[{"text":"רענן","difficulty":1,"quality":4},{"text":"לא משומר","difficulty":1,"quality":4},{"text":"יצא עכשיו מהתנור","difficulty":2,"quality":4},{"text":"נקטף זה עתה","difficulty":1,"quality":4}]},
   {"answer":"טריו","fillScore":4,"category":"culture","clues":[{"text":"שלישייה לעז","difficulty":1,"quality":4},{"text":"הרכב של שלושה","difficulty":1,"quality":5},{"text":"שלושה על במה","difficulty":2,"quality":4}]},
-  {"answer":"טריף","fillScore":3,"category":"food","excludeFromDaily":true,"clues":[{"text":"הזיה לאחר שימוש בסם","difficulty":2,"quality":1},{"text":"לא כשר","difficulty":1,"quality":5},{"text":"פסול לאכילה לפי ההלכה","difficulty":2,"quality":5}]},
+  {"answer":"טריף","fillScore":3,"category":"food","clues":[{"text":"הזיה לאחר שימוש בסם","difficulty":2,"quality":3},{"text":"לא כשר","difficulty":1,"quality":5},{"text":"פסול לאכילה לפי ההלכה","difficulty":2,"quality":5}]},
   {"answer":"טריקה","fillScore":3,"category":"language","clues":[{"text":"סגירה בעוצמה","difficulty":1,"quality":4},{"text":"סגירה בחבטה","difficulty":1,"quality":4}]},
   {"answer":"טריקו","fillScore":3,"category":"general","clues":[{"text":"מין חולצה","difficulty":1,"quality":4}]},
   {"answer":"טרנסילבניה","fillScore":3,"category":"geography","clues":[{"text":"אזור היסטורי ברומניה","difficulty":3,"quality":4}]},
@@ -1648,7 +1648,7 @@
   {"answer":"יאשיהו","fillScore":3,"category":"bible","clues":[{"text":"ממלכי יהודה","difficulty":2,"quality":4}]},
   {"answer":"יבב","fillScore":2,"category":"general","clues":[{"text":"בכה ממושכות","difficulty":1,"quality":4},{"text":"השמיע קול בכי","difficulty":2,"quality":4}]},
   {"answer":"יבדיל","fillScore":3,"category":"language","clues":[{"text":"יבחין","difficulty":1,"quality":4}]},
-  {"answer":"יבדל","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"יראה שוני","difficulty":2,"quality":1},{"text":"יהיה שונה מהשאר","difficulty":1,"quality":5},{"text":"לא יהיה כמו כולם","difficulty":2,"quality":4}]},
+  {"answer":"יבדל","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"יהיה שונה מהשאר","difficulty":1,"quality":5},{"text":"לא יהיה כמו כולם","difficulty":2,"quality":4}]},
   {"answer":"יבהיר","fillScore":3,"category":"language","clues":[{"text":"יספק הסברים","difficulty":1,"quality":4}]},
   {"answer":"יבוא","fillScore":3,"category":"general","clues":[{"text":"הכנסת סחורה","difficulty":1,"quality":4},{"text":"סחורה מחו״ל","difficulty":1,"quality":5},{"text":"ההפך מיצוא","difficulty":1,"quality":5}]},
   {"answer":"יבול","fillScore":4,"category":"food","clues":[{"text":"תוצרת חקלאית","difficulty":1,"quality":5},{"text":"תנובה","difficulty":1,"quality":4}]},
@@ -1679,7 +1679,7 @@
   {"answer":"יגניב","fillScore":3,"category":"language","clues":[{"text":"יכניס בסתר","difficulty":1,"quality":4}]},
   {"answer":"יגשש","fillScore":2,"category":"general","clues":[{"text":"יחפש בזהירות","difficulty":2,"quality":4},{"text":"יחפש באפלה","difficulty":1,"quality":5},{"text":"ימשש כדי למצוא","difficulty":2,"quality":4}]},
   {"answer":"יד אבשלום","fillScore":3,"category":"bible","clues":[{"text":"מצבה בירושלים","difficulty":3,"quality":4}]},
-  {"answer":"יוד","fillScore":3,"category":"science","excludeFromDaily":true,"clues":[{"text":"מין יסוד כימי","difficulty":2,"quality":3},{"text":"נוזל לחיטוי רפואי","difficulty":1,"quality":4},{"text":"חומר חיטוי","difficulty":1,"quality":3},{"text":"סוג כלי הנמצא במלחמים","difficulty":3,"quality":1}]},
+  {"answer":"יוד","fillScore":3,"category":"science","clues":[{"text":"מין יסוד כימי","difficulty":2,"quality":3},{"text":"נוזל לחיטוי רפואי","difficulty":1,"quality":4},{"text":"חומר חיטוי","difficulty":1,"quality":3},{"text":"סוג כלי הנמצא במלחמים","difficulty":3,"quality":3}]},
   {"answer":"ידוע","fillScore":3,"category":"general","clues":[{"text":"מוכר לכל","difficulty":1,"quality":5},{"text":"מפורסם","difficulty":1,"quality":4},{"text":"לא סוד לאיש","difficulty":2,"quality":5}]},
   {"answer":"ודי","fillScore":2,"category":"geography","clues":[{"text":"גיא","difficulty":2,"quality":3},{"text":"ערוץ מדברי","difficulty":2,"quality":4}]},
   {"answer":"ידידים","fillScore":3,"category":"general","clues":[{"text":"לסיוע בדרכים","difficulty":2,"quality":3},{"text":"חברים","difficulty":1,"quality":3}]},
@@ -1727,7 +1727,7 @@
   {"answer":"יחמם","fillScore":2,"category":"general","clues":[{"text":"יעלה טמפרטורה","difficulty":1,"quality":3},{"text":"יעלה את המעלות","difficulty":1,"quality":4}]},
   {"answer":"יחס","fillScore":3,"category":"general","clues":[{"text":"קשר זיקה","difficulty":1,"quality":4},{"text":"זיקה בין דברים","difficulty":1,"quality":4}]},
   {"answer":"יחף","fillScore":3,"category":"general","clues":[{"text":"ללא נעליים","difficulty":1,"quality":4},{"text":"בלי סנדלים אפילו","difficulty":1,"quality":4}]},
-  {"answer":"יחץ","fillScore":2,"category":"language","excludeFromDaily":true,"clues":[{"text":"יחסי ציבור ר\"ת","difficulty":1,"quality":5},{"text":"יחס ציבור ר\"ת","difficulty":1,"quality":1}]},
+  {"answer":"יחץ","fillScore":2,"category":"language","clues":[{"text":"יחסי ציבור ר\"ת","difficulty":1,"quality":5},{"text":"יחס ציבור ר\"ת","difficulty":1,"quality":3}]},
   {"answer":"יטבעו","fillScore":2,"category":"general","clues":[{"text":"יוצפו במים","difficulty":1,"quality":4}]},
   {"answer":"יטהרו","fillScore":2,"category":"general","clues":[{"text":"ינקו יזכו","difficulty":1,"quality":4}]},
   {"answer":"יטי","fillScore":4,"category":"culture","clues":[{"text":"יצור מיתולוגי דמוי קוף","difficulty":2,"quality":4},{"text":"איש השלג מההימלאיה","difficulty":1,"quality":5}]},
@@ -1738,7 +1738,7 @@
   {"answer":"ייחל","fillScore":2,"category":"general","clues":[{"text":"יצפה לטוב","difficulty":2,"quality":4},{"text":"יקווה לטוב","difficulty":1,"quality":4}]},
   {"answer":"ייטמן","fillScore":2,"category":"general","clues":[{"text":"יונח באדמה","difficulty":1,"quality":4}]},
   {"answer":"יישומי","fillScore":3,"category":"general","clues":[{"text":"ניתן לביצוע","difficulty":2,"quality":3}]},
-  {"answer":"יישם","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"יוצא לפועל","difficulty":1,"quality":1},{"text":"יהפוך רעיון למעשה","difficulty":1,"quality":5}]},
+  {"answer":"יישם","fillScore":2,"category":"general","clues":[{"text":"הוציא לפועל","difficulty":1,"quality":3},{"text":"יהפוך רעיון למעשה","difficulty":1,"quality":5}]},
   {"answer":"יכול","fillScore":3,"category":"general","clues":[{"text":"מסוגל","difficulty":1,"quality":4},{"text":"יש לו הכוח","difficulty":1,"quality":4}]},
   {"answer":"יכולת","fillScore":4,"category":"general","clues":[{"text":"אפשרות ביצוע","difficulty":1,"quality":4},{"text":"מידת אפשרות ביצוע","difficulty":1,"quality":3}]},
   {"answer":"יכניעו","fillScore":2,"category":"general","clues":[{"text":"ישברו התנגדות","difficulty":2,"quality":4}]},
@@ -1747,7 +1747,7 @@
   {"answer":"ילדותי","fillScore":3,"category":"language","clues":[{"text":"לא מתנהג כבוגר","difficulty":2,"quality":4},{"text":"אינפנטילי","difficulty":2,"quality":4}]},
   {"answer":"ילו","fillScore":3,"category":"culture","clues":[{"text":"רשת חנויות נוחות בישראל","difficulty":1,"quality":4},{"text":"חנות נוחות בתחנה","difficulty":1,"quality":4}]},
   {"answer":"ילוד","fillScore":3,"category":"general","clues":[{"text":"עולל רך","difficulty":1,"quality":4},{"text":"יוצא לאוויר העולם","difficulty":1,"quality":3}]},
-  {"answer":"ילון","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"יתגורר","difficulty":2,"quality":1},{"text":"יעביר לילה במקום","difficulty":2,"quality":4}]},
+  {"answer":"ילון","fillScore":2,"category":"general","clues":[{"text":"יתגורר","difficulty":2,"quality":3},{"text":"יעביר לילה במקום","difficulty":2,"quality":4}]},
   {"answer":"ילחץ","fillScore":2,"category":"general","clues":[{"text":"יפעיל באמצעות כפתור או מקש","difficulty":1,"quality":4},{"text":"יקיש על מקש","difficulty":1,"quality":4}]},
   {"answer":"ילך","fillScore":2,"category":"general","clues":[{"text":"יתקדם ברגל","difficulty":1,"quality":4},{"text":"יצעד הלאה","difficulty":1,"quality":4}]},
   {"answer":"ילל","fillScore":2,"category":"general","clues":[{"text":"בכה","difficulty":1,"quality":4},{"text":"קונן בקול","difficulty":2,"quality":4}]},
@@ -1762,7 +1762,7 @@
   {"answer":"ימין","fillScore":3,"category":"general","clues":[{"text":"מהצדדים","difficulty":1,"quality":2},{"text":"הצד מול שמאל","difficulty":1,"quality":4}]},
   {"answer":"ימלא","fillScore":2,"category":"general","clues":[{"text":"יהפוך לגדוש","difficulty":1,"quality":4},{"text":"יוסיף עד הקצה","difficulty":1,"quality":4}]},
   {"answer":"ימם","fillScore":3,"category":"language","clues":[{"text":"יחידת משטרה מיוחדת ר\"ת","difficulty":1,"quality":5},{"text":"כוח עילית משטרתי, ר״ת","difficulty":2,"quality":4}]},
-  {"answer":"יממה","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"שעות","difficulty":1,"quality":1},{"text":"עשרים וארבע שעות","difficulty":1,"quality":5}]},
+  {"answer":"יממה","fillScore":3,"category":"general","clues":[{"text":"שעות","difficulty":1,"quality":3},{"text":"עשרים וארבע שעות","difficulty":1,"quality":5}]},
   {"answer":"ימנו","fillScore":2,"category":"general","clues":[{"text":"ישימו בתפקיד","difficulty":1,"quality":4},{"text":"יבחרו לתפקיד","difficulty":1,"quality":4}]},
   {"answer":"ימס","fillScore":2,"category":"language","clues":[{"text":"יחידת מסתערבים ר\"ת","difficulty":1,"quality":5},{"text":"מסתערבי מג״ב, ר״ת","difficulty":1,"quality":5}]},
   {"answer":"ימסגרו","fillScore":2,"category":"general","clues":[{"text":"יקבעו בתוך תמונה","difficulty":2,"quality":4}]},
@@ -1833,7 +1833,7 @@
   {"answer":"ירא","fillScore":3,"category":"general","clues":[{"text":"פוחד","difficulty":1,"quality":4},{"text":"חושש בלבו","difficulty":1,"quality":4}]},
   {"answer":"יראיין","fillScore":2,"category":"general","clues":[{"text":"יבצע שיחה כעיתונאי","difficulty":2,"quality":4}]},
   {"answer":"ירדן","fillScore":5,"category":"geography","clues":[{"text":"נהר בישראל","difficulty":1,"quality":4},{"text":"גובלת עם ישראל","difficulty":1,"quality":4}]},
-  {"answer":"ירדי","fillScore":1,"category":"general","excludeFromDaily":true,"clues":[{"text":"נעו מטה","difficulty":1,"quality":1}]},
+  {"answer":"ירדי","fillScore":1,"category":"general","clues":[{"text":"נעו מטה","difficulty":1,"quality":3}]},
   {"answer":"ירדן גרבי","fillScore":2,"category":"sport","clues":[{"text":"ג'ודאית עבר ישראלית","difficulty":3,"quality":4}]},
   {"answer":"ירדנה","fillScore":3,"category":"geography","excludeFromDaily":true,"clues":[{"text":"מושב בבקעת בית שאן","difficulty":3,"quality":3},{"text":"הזמרת ארזי, בשם פרטי","difficulty":1,"quality":5}]},
   {"answer":"ירדנה ארזי","fillScore":2,"category":"culture","clues":[{"text":"זמרת ישראלית","difficulty":3,"quality":4}]},
@@ -1845,7 +1845,7 @@
   {"answer":"ירושה","fillScore":4,"category":"general","clues":[{"text":"המועבר לקרובים","difficulty":1,"quality":3},{"text":"מה שמקבלים בצוואה","difficulty":1,"quality":5},{"text":"רכוש שעובר במשפחה","difficulty":1,"quality":5}]},
   {"answer":"ירח","fillScore":4,"category":"science","clues":[{"text":"לבנה","difficulty":1,"quality":4},{"text":"בן לוויית הארץ","difficulty":2,"quality":5}]},
   {"answer":"ירחים","fillScore":3,"category":"general","clues":[{"text":"חודשים","difficulty":2,"quality":4},{"text":"חודשים, בלשון גבוהה","difficulty":2,"quality":5},{"text":"לוויינים טבעיים","difficulty":2,"quality":4}]},
-  {"answer":"ירט","fillScore":1,"category":"general","excludeFromDaily":true,"clues":[{"text":"הפיל כלי טיס","difficulty":2,"quality":1},{"text":"בלם טיל באוויר","difficulty":2,"quality":3}]},
+  {"answer":"ירט","fillScore":1,"category":"general","clues":[{"text":"הפיל כלי טיס","difficulty":2,"quality":3},{"text":"בלם טיל באוויר","difficulty":2,"quality":3}]},
   {"answer":"ורטיגו","fillScore":3,"category":"science","clues":[{"text":"תחושת היפוך","difficulty":2,"quality":4}]},
   {"answer":"ירי","fillScore":3,"category":"general","clues":[{"text":"שימוש בנשק חם","difficulty":1,"quality":4},{"text":"שימוש ברובה","difficulty":1,"quality":4},{"text":"שימוש באקדח","difficulty":1,"quality":4}]},
   {"answer":"יריב","fillScore":4,"category":"general","clues":[{"text":"מתחרה","difficulty":1,"quality":4},{"text":"מתמודד מולך","difficulty":1,"quality":4}]},
@@ -1887,7 +1887,7 @@
   {"answer":"כבה","fillScore":2,"category":"general","clues":[{"text":"הפסיק לבעור","difficulty":1,"quality":4},{"text":"האור חדל לדלוק","difficulty":1,"quality":4}]},
   {"answer":"כבוד","fillScore":4,"category":"general","clues":[{"text":"מעמד יוקרתי","difficulty":2,"quality":3},{"text":"יחס של הערכה","difficulty":1,"quality":4}]},
   {"answer":"כבילה","fillScore":3,"category":"general","clues":[{"text":"כפיתה","difficulty":1,"quality":4},{"text":"קשירה בשלשלאות","difficulty":1,"quality":5},{"text":"שלילת חופש תנועה","difficulty":2,"quality":4}]},
-  {"answer":"כבל","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"עטוף","difficulty":1,"quality":1},{"text":"חוט חשמל עבה","difficulty":1,"quality":4}]},
+  {"answer":"כבל","fillScore":3,"category":"general","clues":[{"text":"עטוף","difficulty":1,"quality":3},{"text":"חוט חשמל עבה","difficulty":1,"quality":4}]},
   {"answer":"כבלים","fillScore":3,"category":"general","clues":[{"text":"שלשלאות","difficulty":1,"quality":4},{"text":"חוטי חשמל עבים","difficulty":1,"quality":5},{"text":"אזיקים ושלשלאות","difficulty":1,"quality":4}]},
   {"answer":"כדאי","fillScore":3,"category":"general","clues":[{"text":"מילת המלצה","difficulty":2,"quality":3},{"text":"עדיף מומלץ","difficulty":1,"quality":4}]},
   {"answer":"כדאיים","fillScore":2,"category":"general","clues":[{"text":"עדיפים מומלצים","difficulty":2,"quality":4}]},
@@ -1930,7 +1930,7 @@
   {"answer":"כלה","fillScore":4,"category":"general","clues":[{"text":"אישה ביום נישואיה","difficulty":1,"quality":4},{"text":"צועדת לחופה בלבן","difficulty":1,"quality":5}]},
   {"answer":"כלוב","fillScore":4,"category":"general","clues":[{"text":"מבנה מסורג","difficulty":1,"quality":4},{"text":"בית מסורג לחיה","difficulty":1,"quality":4}]},
   {"answer":"כלום","fillScore":3,"category":"general","clues":[{"text":"שום דבר מאומה","difficulty":1,"quality":4},{"text":"אפילו לא משהו","difficulty":1,"quality":4}]},
-  {"answer":"כלור","fillScore":4,"category":"science","excludeFromDaily":true,"clues":[{"text":"משמש כחומר","difficulty":1,"quality":1},{"text":"חומר המשמש לחיטוי","difficulty":1,"quality":4},{"text":"מין חומר חיטוי","difficulty":1,"quality":3}]},
+  {"answer":"כלור","fillScore":4,"category":"science","clues":[{"text":"משמש כחומר","difficulty":1,"quality":3},{"text":"חומר המשמש לחיטוי","difficulty":1,"quality":4},{"text":"מין חומר חיטוי","difficulty":1,"quality":3}]},
   {"answer":"כלוא","fillScore":3,"category":"general","clues":[{"text":"נמצא בבית סוהר","difficulty":1,"quality":4},{"text":"מאחורי סורגים","difficulty":1,"quality":5}]},
   {"answer":"כללי","fillScore":2,"category":"general","clues":[{"text":"לא ייחודי","difficulty":1,"quality":4},{"text":"לא פרטי או מסוים","difficulty":1,"quality":5},{"text":"עקרוני ולא נקודתי","difficulty":2,"quality":4}]},
   {"answer":"כלנית","fillScore":5,"category":"geography","excludeFromDaily":true,"clues":[{"text":"ישוב גליל","difficulty":3,"quality":2},{"text":"פרח אדום בשדה","difficulty":1,"quality":5},{"text":"אדומה אחרי הגשם","difficulty":2,"quality":5},{"text":"פרח בר אדום","difficulty":1,"quality":4}]},
@@ -1968,7 +1968,7 @@
   {"answer":"כרס","fillScore":3,"category":"general","clues":[{"text":"בטן","difficulty":1,"quality":3},{"text":"בטן בולטת","difficulty":1,"quality":4}]},
   {"answer":"כרעה","fillScore":2,"category":"general","clues":[{"text":"ירדה על ברכיה","difficulty":1,"quality":5},{"text":"נפלה על הברכיים","difficulty":1,"quality":4},{"text":"התכופפה בתפילה","difficulty":2,"quality":4}]},
   {"answer":"כרת","fillScore":2,"category":"general","clues":[{"text":"גדע","difficulty":1,"quality":4},{"text":"חתך עץ מן השורש","difficulty":1,"quality":4}]},
-  {"answer":"כרתו","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"גדעו","difficulty":1,"quality":4},{"text":"גזעו","difficulty":2,"quality":1},{"text":"הפילו עץ בגרזן","difficulty":1,"quality":5},{"text":"חתכו גזע","difficulty":1,"quality":4},{"text":"חתכו, גדעו","difficulty":1,"quality":4}]},
+  {"answer":"כרתו","fillScore":2,"category":"general","clues":[{"text":"גדעו","difficulty":1,"quality":4},{"text":"גזעו","difficulty":2,"quality":3},{"text":"הפילו עץ בגרזן","difficulty":1,"quality":5},{"text":"חתכו גזע","difficulty":1,"quality":4},{"text":"חתכו, גדעו","difficulty":1,"quality":4}]},
   {"answer":"כשיר","fillScore":3,"category":"general","clues":[{"text":"מסוגל לפעול","difficulty":1,"quality":4},{"text":"לא פסול לתפקיד","difficulty":1,"quality":5},{"text":"ראוי לעלות למגרש","difficulty":2,"quality":4},{"text":"עומד בדרישות","difficulty":1,"quality":4}]},
   {"answer":"כשל","fillScore":3,"category":"general","clues":[{"text":"פעולה לא תקינה","difficulty":2,"quality":3},{"text":"חוסר הצלחה","difficulty":1,"quality":4}]},
   {"answer":"כשר","fillScore":4,"category":"food","clues":[{"text":"מאושר מוסמך","difficulty":2,"quality":3},{"text":"מזון לאכילה","difficulty":1,"quality":2},{"text":"ראוי לפי ההלכה","difficulty":1,"quality":5}]},
@@ -2045,7 +2045,7 @@
   {"answer":"לובש","fillScore":2,"category":"general","clues":[{"text":"עוטה בגד","difficulty":1,"quality":4},{"text":"שם עליו בגדים","difficulty":1,"quality":3}]},
   {"answer":"לוגי","fillScore":3,"category":"general","clues":[{"text":"הגיוני","difficulty":1,"quality":5},{"text":"על פי השכל הישר","difficulty":1,"quality":5},{"text":"מסודר לפי היגיון","difficulty":2,"quality":4}]},
   {"answer":"לוגו","fillScore":4,"category":"culture","clues":[{"text":"סמליל","difficulty":1,"quality":5},{"text":"סימן של מותג","difficulty":1,"quality":5},{"text":"הפנים של המותג","difficulty":2,"quality":5}]},
-  {"answer":"לוו","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"השאילו","difficulty":1,"quality":1},{"text":"קיבלו כסף זמנית","difficulty":2,"quality":4}]},
+  {"answer":"לוו","fillScore":2,"category":"general","clues":[{"text":"השאילו","difficulty":1,"quality":3},{"text":"קיבלו כסף זמנית","difficulty":2,"quality":4}]},
   {"answer":"לוח","fillScore":3,"category":"general","clues":[{"text":"משטח לכתיבה","difficulty":1,"quality":4},{"text":"כותבים עליו בכיתה","difficulty":1,"quality":4}]},
   {"answer":"לוחם","fillScore":4,"category":"general","clues":[{"text":"חייל קרבי","difficulty":1,"quality":4},{"text":"משתתף בקרב","difficulty":1,"quality":4}]},
   {"answer":"לוחם קרבי","fillScore":2,"category":"general","clues":[{"text":"סוג של שירות בצה\"ל","difficulty":3,"quality":4}]},
@@ -2055,14 +2055,14 @@
   {"answer":"ליים","fillScore":4,"category":"food","clues":[{"text":"מפירות ההדר","difficulty":1,"quality":4},{"text":"הדר ירוק בקוקטייל","difficulty":1,"quality":5},{"text":"חמוץ קטן מההדרים","difficulty":2,"quality":4}]},
   {"answer":"לוכד","fillScore":3,"category":"general","clues":[{"text":"תופס","difficulty":1,"quality":4},{"text":"תופס ברשת","difficulty":1,"quality":5},{"text":"צד בלי לתת לברוח","difficulty":2,"quality":4}]},
   {"answer":"לולאה","fillScore":3,"category":"general","clues":[{"text":"קשר","difficulty":1,"quality":3}]},
-  {"answer":"לולב","fillScore":4,"category":"bible","excludeFromDaily":true,"clues":[{"text":"מערבת המינים","difficulty":1,"quality":1},{"text":"מארבעת המינים בסוכות","difficulty":1,"quality":5}]},
+  {"answer":"לולב","fillScore":4,"category":"bible","clues":[{"text":"מערבת המינים","difficulty":1,"quality":3},{"text":"מארבעת המינים בסוכות","difficulty":1,"quality":5}]},
   {"answer":"לום","fillScore":3,"category":"general","clues":[{"text":"מוט ברזל","difficulty":2,"quality":4},{"text":"כלי פריצה מברזל","difficulty":2,"quality":5},{"text":"מוט ברזל ארוך המשמש לפריצה","difficulty":1,"quality":4},{"text":"מוט ברזל מעוקם לפריצה","difficulty":2,"quality":4}]},
   {"answer":"לומדה","fillScore":2,"category":"general","clues":[{"text":"תוכנה בבית ספר","difficulty":2,"quality":4},{"text":"תוכנה חינוכית","difficulty":1,"quality":5},{"text":"תוכנת הוראה במחשב","difficulty":1,"quality":4}]},
   {"answer":"לונה","fillScore":3,"category":"culture","clues":[{"text":"אלת הירח במיתולוגיה הרומית","difficulty":2,"quality":4},{"text":"אלת הירח ברומא","difficulty":2,"quality":4},{"text":"ירח","difficulty":1,"quality":3}]},
   {"answer":"לועס","fillScore":2,"category":"general","clues":[{"text":"טוחן מזון בפיו","difficulty":1,"quality":4},{"text":"מפעיל שיניים על אוכל","difficulty":1,"quality":4}]},
   {"answer":"לוף","fillScore":3,"category":"food","clues":[{"text":"בשר משומר","difficulty":2,"quality":4},{"text":"ירק מאכל","difficulty":2,"quality":3}]},
   {"answer":"לוקה","fillScore":3,"category":"general","clues":[{"text":"פגוע או חולה","difficulty":1,"quality":4},{"text":"סובל ממחלה","difficulty":1,"quality":4}]},
-  {"answer":"לוקו","fillScore":1,"category":"language","excludeFromDaily":true,"clues":[{"text":"תא אישי לחפצים","difficulty":1,"quality":1},{"text":"משוגע בספרדית","difficulty":3,"quality":3}]},
+  {"answer":"לוקו","fillScore":1,"category":"language","excludeFromDaily":true,"clues":[{"text":"משוגע בספרדית","difficulty":3,"quality":3}]},
   {"answer":"לוקח","fillScore":2,"category":"general","clues":[{"text":"נוטל לרשותו","difficulty":1,"quality":4},{"text":"שם בכיסו","difficulty":1,"quality":4}]},
   {"answer":"לוקר","fillScore":3,"category":"general","clues":[{"text":"תא לאחסון חפצים","difficulty":1,"quality":4},{"text":"ארון קטן בחדר כושר","difficulty":1,"quality":4}]},
   {"answer":"לורן","fillScore":3,"category":"geography","clues":[{"text":"חבל בצרפת","difficulty":2,"quality":4},{"text":"חבל צרפתי ליד גרמניה","difficulty":2,"quality":4},{"text":"כוכבת קולנוע איטלקייה","difficulty":2,"quality":5}]},
@@ -2123,7 +2123,7 @@
   {"answer":"למור","fillScore":4,"category":"science","clues":[{"text":"בע\"ח נפוץ במדגסקר","difficulty":2,"quality":4},{"text":"קוף למחצה ממדגסקר","difficulty":2,"quality":4}]},
   {"answer":"למי","fillScore":2,"category":"language","clues":[{"text":"מילת שאלה","difficulty":1,"quality":2},{"text":"לאיזה אדם?","difficulty":1,"quality":4}]},
   {"answer":"למיין","fillScore":3,"category":"general","clues":[{"text":"לחלק לקבוצות","difficulty":1,"quality":4}]},
-  {"answer":"למצב","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"להניח במקום בטוח","difficulty":2,"quality":1},{"text":"לקבוע מיקום או מעמד","difficulty":2,"quality":5}]},
+  {"answer":"למצב","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"לקבוע מיקום או מעמד","difficulty":2,"quality":5}]},
   {"answer":"למצוא","fillScore":4,"category":"general","clues":[{"text":"לאתר","difficulty":1,"quality":4}]},
   {"answer":"למקם","fillScore":3,"category":"general","clues":[{"text":"למצב בנקודה מסוימת","difficulty":1,"quality":4},{"text":"לקבוע איפה יעמוד","difficulty":1,"quality":4}]},
   {"answer":"לנה דל ריי","fillScore":2,"category":"culture","clues":[{"text":"זמרת אמריקאית שם במה","difficulty":3,"quality":4}]},
@@ -2146,10 +2146,10 @@
   {"answer":"לפת","fillScore":3,"category":"food","clues":[{"text":"מין ירק גינה","difficulty":2,"quality":3},{"text":"שורש לבן במרק","difficulty":2,"quality":4}]},
   {"answer":"לפתות","fillScore":3,"category":"general","clues":[{"text":"לשדל לגרות","difficulty":1,"quality":4}]},
   {"answer":"לפתן","fillScore":3,"category":"food","clues":[{"text":"קומפוט","difficulty":2,"quality":4},{"text":"קינוח פירות מבושלים","difficulty":2,"quality":4}]},
-  {"answer":"לפתע","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"קרה ללא תכנון","difficulty":1,"quality":1},{"text":"באופן בלתי צפוי","difficulty":1,"quality":4},{"text":"כרעם ביום בהיר","difficulty":2,"quality":5}]},
+  {"answer":"לפתע","fillScore":3,"category":"general","clues":[{"text":"קרה ללא תכנון","difficulty":1,"quality":3},{"text":"באופן בלתי צפוי","difficulty":1,"quality":4},{"text":"כרעם ביום בהיר","difficulty":2,"quality":5}]},
   {"answer":"לצאת","fillScore":3,"category":"general","clues":[{"text":"לנוע החוצה","difficulty":1,"quality":4},{"text":"לעבור החוצה","difficulty":1,"quality":4}]},
-  {"answer":"לצי","fillScore":1,"category":"language","excludeFromDaily":true,"clues":[{"text":"תבשיל הונגרי","difficulty":2,"quality":1},{"text":"לחיל הים","difficulty":1,"quality":4}]},
-  {"answer":"לקה","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"ציפוי דק ושקוף","difficulty":1,"quality":1},{"text":"סבל מפגם","difficulty":2,"quality":4},{"text":"סבל מ-, נפגע, חלה","difficulty":1,"quality":4},{"text":"היה בו פגם או חסרון","difficulty":2,"quality":3}]},
+  {"answer":"לצי","fillScore":1,"category":"language","clues":[{"text":"תבשיל הונגרי","difficulty":2,"quality":3},{"text":"לחיל הים","difficulty":1,"quality":4}]},
+  {"answer":"לקה","fillScore":2,"category":"general","clues":[{"text":"ציפוי דק ושקוף","difficulty":1,"quality":3},{"text":"סבל מפגם","difficulty":2,"quality":4},{"text":"סבל מ-, נפגע, חלה","difficulty":1,"quality":4},{"text":"היה בו פגם או חסרון","difficulty":2,"quality":3}]},
   {"answer":"לקוי","fillScore":3,"category":"general","clues":[{"text":"יש בו מום","difficulty":1,"quality":4},{"text":"לא תקין","difficulty":1,"quality":4}]},
   {"answer":"לקות","fillScore":3,"category":"general","clues":[{"text":"פגם מום","difficulty":1,"quality":4},{"text":"מום או חסר","difficulty":1,"quality":4}]},
   {"answer":"לקח","fillScore":3,"category":"general","clues":[{"text":"שיעור מסקנה","difficulty":2,"quality":3},{"text":"נטל לעצמו","difficulty":1,"quality":4}]},
@@ -2162,7 +2162,7 @@
   {"answer":"לרר","fillScore":3,"category":"people","clues":[{"text":"מגיש טלוויזיה ישראלי ש\"מ","difficulty":2,"quality":4},{"text":"גיא מ'הצינור' ש\"מ","difficulty":2,"quality":5},{"text":"מייסד נס ציונה","difficulty":3,"quality":5}]},
   {"answer":"לרשת","fillScore":3,"category":"general","clues":[{"text":"לקבל בנחלה","difficulty":2,"quality":4},{"text":"לקבל רכוש בצוואה","difficulty":2,"quality":5}]},
   {"answer":"לשו","fillScore":2,"category":"general","clues":[{"text":"הידקו בצק","difficulty":1,"quality":2},{"text":"עיבדו בצק בידיים","difficulty":1,"quality":5},{"text":"גלגלו בצק","difficulty":1,"quality":4}]},
-  {"answer":"לשוק","fillScore":1,"category":"sport","excludeFromDaily":true,"clues":[{"text":"קופץ מוט פולני ש\"מ","difficulty":3,"quality":1},{"text":"למחנה יהודה, למשל","difficulty":2,"quality":4}]},
+  {"answer":"לשוק","fillScore":1,"category":"sport","clues":[{"text":"קופץ מוט פולני ש\"מ","difficulty":3,"quality":3},{"text":"למחנה יהודה, למשל","difficulty":2,"quality":4}]},
   {"answer":"לשכה","fillScore":3,"category":"general","clues":[{"text":"חדר עבודה משרד","difficulty":1,"quality":3},{"text":"חלל עבודה של בכירים","difficulty":1,"quality":4}]},
   {"answer":"לשפשף","fillScore":3,"category":"general","clues":[{"text":"לקרצף","difficulty":1,"quality":4}]},
   {"answer":"לשקם","fillScore":2,"category":"general","clues":[{"text":"לסייע בעבור החזרה למצב קודם","difficulty":2,"quality":3},{"text":"להחזיר למצב תקין","difficulty":2,"quality":4}]},
@@ -2387,7 +2387,7 @@
   {"answer":"מחולק","fillScore":4,"category":"language","clues":[{"text":"מבוזר מפוצל","difficulty":1,"quality":3},{"text":"מפוצל לחלקים רבים","difficulty":1,"quality":3}]},
   {"answer":"מחומש","fillScore":3,"category":"general","clues":[{"text":"מין מצולע","difficulty":1,"quality":3},{"text":"יש לו נשק","difficulty":1,"quality":4},{"text":"מצולע בעל חמש צלעות","difficulty":1,"quality":5},{"text":"פנטגון","difficulty":2,"quality":4}]},
   {"answer":"מחושב","fillScore":4,"category":"language","clues":[{"text":"שקול","difficulty":1,"quality":5}]},
-  {"answer":"מחט","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"מכני התפירה","difficulty":1,"quality":1},{"text":"לה יש קוף וחוד","difficulty":2,"quality":5}]},
+  {"answer":"מחט","fillScore":3,"category":"general","clues":[{"text":"מכני התפירה","difficulty":1,"quality":3},{"text":"לה יש קוף וחוד","difficulty":2,"quality":5}]},
   {"answer":"מחייך","fillScore":4,"category":"language","clues":[{"text":"פי בזווית המביעה שמחה","difficulty":2,"quality":3},{"text":"צוחק קלות","difficulty":1,"quality":4}]},
   {"answer":"מחית","fillScore":3,"category":"food","clues":[{"text":"רסק","difficulty":1,"quality":3},{"text":"רסק תפוחים, למשל","difficulty":1,"quality":4},{"text":"פירה","difficulty":1,"quality":5}]},
   {"answer":"מחל","fillScore":2,"category":"general","clues":[{"text":"סלח","difficulty":1,"quality":3},{"text":"ויתר על עלבון","difficulty":2,"quality":4}]},
@@ -2408,14 +2408,14 @@
   {"answer":"מחר","fillScore":4,"category":"culture","clues":[{"text":"בעוד יממה","difficulty":1,"quality":4},{"text":"שיר מאת נעמי שמר","difficulty":2,"quality":4}]},
   {"answer":"מחר לנצח","fillScore":2,"category":"culture","clues":[{"text":"מסרטי ג'יימס בונד","difficulty":3,"quality":4}]},
   {"answer":"מחרתיים","fillScore":3,"category":"language","clues":[{"text":"בעוד יומיים","difficulty":2,"quality":5}]},
-  {"answer":"מחש","fillScore":2,"category":"language","excludeFromDaily":true,"clues":[{"text":"חייל צעיר","difficulty":2,"quality":1},{"text":"חוקרת שוטרים, ר״ת","difficulty":2,"quality":4}]},
+  {"answer":"מחש","fillScore":2,"category":"language","excludeFromDaily":true,"clues":[{"text":"חוקרת שוטרים, ר״ת","difficulty":2,"quality":4}]},
   {"answer":"מחשוף","fillScore":3,"category":"general","clues":[{"text":"פתח בבגד","difficulty":1,"quality":4}]},
   {"answer":"מחששה","fillScore":2,"category":"general","clues":[{"text":"כינוי לאזור עישון","difficulty":2,"quality":3}]},
   {"answer":"מטאור","fillScore":2,"category":"general","clues":[{"text":"מטוס קרב בריטי","difficulty":2,"quality":4}]},
   {"answer":"מטאטא","fillScore":4,"category":"general","clues":[{"text":"כלי לניקוי הרצפה","difficulty":2,"quality":5}]},
-  {"answer":"מטה","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"חדר פיקוד","difficulty":1,"quality":1},{"text":"מרכז ניהול מבצעי","difficulty":2,"quality":4}]},
+  {"answer":"מטה","fillScore":3,"category":"general","clues":[{"text":"חדר פיקוד","difficulty":1,"quality":3},{"text":"מרכז ניהול מבצעי","difficulty":2,"quality":4}]},
   {"answer":"מטוגנת","fillScore":3,"category":"food","clues":[{"text":"מבושלת בשמן בישול","difficulty":2,"quality":4}]},
-  {"answer":"מטול","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"משמש לירי מרגמות","difficulty":2,"quality":1},{"text":"משגר רימונים","difficulty":2,"quality":4}]},
+  {"answer":"מטול","fillScore":3,"category":"general","clues":[{"text":"משמש לירי מרגמות","difficulty":2,"quality":3},{"text":"משגר רימונים","difficulty":2,"quality":4}]},
   {"answer":"מטולה","fillScore":2,"category":"geography","clues":[{"text":"ישוב בצפון","difficulty":2,"quality":3},{"text":"מושבה בגליל העליון","difficulty":2,"quality":4}]},
   {"answer":"מטומטמת","fillScore":2,"category":"culture","clues":[{"text":"סדרת פשע ישראלית","difficulty":2,"quality":4}]},
   {"answer":"מטופל","fillScore":4,"category":"language","clues":[{"text":"נבדק על ידי רופא","difficulty":2,"quality":4}]},
@@ -2550,10 +2550,9 @@
   {"answer":"ממיס","fillScore":2,"category":"science","clues":[{"text":"הופך חומר לנוזלי","difficulty":1,"quality":4},{"text":"הופך קרח למים","difficulty":1,"quality":4}]},
   {"answer":"ממלא","fillScore":2,"category":"general","clues":[{"text":"משביע בהשאלה","difficulty":2,"quality":3},{"text":"שם תוכן בכלי","difficulty":1,"quality":4},{"text":"משביע מאוד","difficulty":1,"quality":4}]},
   {"answer":"ממליטה","fillScore":2,"category":"science","clues":[{"text":"יולדת גורים","difficulty":2,"quality":4}]},
-  {"answer":"מממש","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"נועד לפועל","difficulty":2,"quality":1},{"text":"מוציא מן הכוח אל הפועל","difficulty":2,"quality":5},{"text":"מגשים תוכנית","difficulty":1,"quality":4}]},
+  {"answer":"מממש","fillScore":2,"category":"general","clues":[{"text":"נועד לפועל","difficulty":2,"quality":3},{"text":"מוציא מן הכוח אל הפועל","difficulty":2,"quality":5},{"text":"מגשים תוכנית","difficulty":1,"quality":4}]},
   {"answer":"ממן","fillScore":2,"category":"sport","clues":[{"text":"כדורגלן עבר ישראלי ש\"מ","difficulty":3,"quality":3},{"text":"ברוך מהכדורגל, ש״מ","difficulty":3,"quality":4},{"text":"משקיע כספים","difficulty":2,"quality":4}]},
   {"answer":"ממנף","fillScore":2,"category":"general","clues":[{"text":"מבצע פעולות מקדמות","difficulty":2,"quality":2},{"text":"הופך יתרון למקפצה","difficulty":2,"quality":4}]},
-  {"answer":"ממעף","fillScore":1,"category":"language","excludeFromDaily":true,"clues":[{"text":"פועל לייצור יותר מהקיים","difficulty":3,"quality":1},{"text":"מעלה לאוויר, נדיר","difficulty":3,"quality":2}]},
   {"answer":"ממצא","fillScore":3,"category":"science","clues":[{"text":"פריט מידע במחקר","difficulty":2,"quality":4},{"text":"גילוי במחקר","difficulty":1,"quality":4},{"text":"ראיה שעלתה בבדיקה","difficulty":2,"quality":4}]},
   {"answer":"ממק","fillScore":2,"category":"language","clues":[{"text":"מרחב מוגן קומתי ר\"ת","difficulty":3,"quality":4},{"text":"מקלט קומתי, בקיצור","difficulty":3,"quality":4}]},
   {"answer":"ממקם","fillScore":2,"category":"general","clues":[{"text":"מניח בנקודה","difficulty":1,"quality":4},{"text":"מציב בנקודה","difficulty":1,"quality":4}]},
@@ -2564,7 +2563,7 @@
   {"answer":"ממתקים","fillScore":4,"category":"food","clues":[{"text":"חטיפים מסוכרים","difficulty":2,"quality":4}]},
   {"answer":"מנבא","fillScore":3,"category":"general","clues":[{"text":"חוזה את העתיד","difficulty":1,"quality":4},{"text":"רואה את שיבוא","difficulty":1,"quality":4},{"text":"כמו חזאי לעתיד","difficulty":1,"quality":4}]},
   {"answer":"מנביט","fillScore":2,"category":"science","clues":[{"text":"מוציא ניצנים מתחיל לפרוח","difficulty":1,"quality":4}]},
-  {"answer":"מנדל","fillScore":4,"category":"people","excludeFromDaily":true,"clues":[{"text":"ביולוג גרמני ש\"מ","difficulty":2,"quality":1},{"text":"אבי הגנטיקה ש״מ","difficulty":2,"quality":5},{"text":"הנזיר של האפונים ש״מ","difficulty":2,"quality":5}]},
+  {"answer":"מנדל","fillScore":4,"category":"people","clues":[{"text":"ביולוג גרמני ש\"מ","difficulty":2,"quality":3},{"text":"אבי הגנטיקה ש״מ","difficulty":2,"quality":5},{"text":"הנזיר של האפונים ש״מ","difficulty":2,"quality":5}]},
   {"answer":"מנה","fillScore":4,"category":"food","clues":[{"text":"חלק בתפריט","difficulty":1,"quality":4},{"text":"לא כולה, רק חלק בצלחת","difficulty":1,"quality":4}]},
   {"answer":"מנהל","fillScore":3,"category":"general","clues":[{"text":"עומד בראש משרד","difficulty":1,"quality":3},{"text":"בוס במשרד","difficulty":1,"quality":4}]},
   {"answer":"מנו","fillScore":2,"category":"general","clues":[{"text":"ספרו","difficulty":1,"quality":4},{"text":"קבעו כמה יש","difficulty":1,"quality":4}]},
@@ -2580,7 +2579,7 @@
   {"answer":"מנור","fillScore":4,"category":"people","clues":[{"text":"פזמונאי ישראלי","difficulty":2,"quality":4},{"text":"אהוד, חתן פרס ישראל","difficulty":2,"quality":5}]},
   {"answer":"מנזר","fillScore":3,"category":"general","clues":[{"text":"משכן דתי","difficulty":1,"quality":3},{"text":"מין מוסד דתי","difficulty":1,"quality":2},{"text":"בית תפילה מבודד","difficulty":2,"quality":4}]},
   {"answer":"מנחית","fillScore":3,"category":"language","clues":[{"text":"מוריד לקרקע","difficulty":1,"quality":4}]},
-  {"answer":"מנחם","fillScore":3,"category":"people","excludeFromDaily":true,"clues":[{"text":"מ\"י\"ר ההתאחדות לכדורגל ש\"מ","difficulty":3,"quality":1},{"text":"בגין, בשמו הפרטי","difficulty":1,"quality":5},{"text":"מרגיע אבלים","difficulty":2,"quality":4}]},
+  {"answer":"מנחם","fillScore":3,"category":"people","excludeFromDaily":true,"clues":[{"text":"בגין, בשמו הפרטי","difficulty":1,"quality":5},{"text":"מרגיע אבלים","difficulty":2,"quality":4}]},
   {"answer":"מנחש","fillScore":3,"category":"general","clues":[{"text":"מעלה השערה","difficulty":1,"quality":4},{"text":"יורה תשובה באפלה","difficulty":2,"quality":4}]},
   {"answer":"מנטור","fillScore":3,"category":"general","clues":[{"text":"מדריך חונך","difficulty":1,"quality":4}]},
   {"answer":"מנטרל","fillScore":3,"category":"language","clues":[{"text":"מונע","difficulty":1,"quality":2},{"text":"מוציא מכלל שימוש","difficulty":1,"quality":4},{"text":"מוציא מכלל פעולה","difficulty":1,"quality":4}]},
@@ -2592,7 +2591,7 @@
   {"answer":"מניע","fillScore":3,"category":"general","clues":[{"text":"סיבה לפעולה","difficulty":1,"quality":5},{"text":"הסיבה שמאחורי המעשה","difficulty":1,"quality":5}]},
   {"answer":"מניף","fillScore":3,"category":"general","clues":[{"text":"מרים מעלה","difficulty":1,"quality":4},{"text":"מרים דגל בטקס","difficulty":1,"quality":4},{"text":"תולה כדי שיתנוסס","difficulty":2,"quality":4}]},
   {"answer":"מניפות","fillScore":3,"category":"general","clues":[{"text":"משמשות ליצירת רוח","difficulty":2,"quality":4}]},
-  {"answer":"מנל","fillScore":1,"category":"people","excludeFromDaily":true,"clues":[{"text":"שחקן קנדי ש\"מ","difficulty":3,"quality":1},{"text":"קנדי מהמסך, ש״מ","difficulty":3,"quality":2}]},
+  {"answer":"מנל","fillScore":1,"category":"people","clues":[{"text":"שחקן קנדי ש\"מ","difficulty":3,"quality":3},{"text":"קנדי מהמסך, ש״מ","difficulty":3,"quality":2}]},
   {"answer":"מנמיך","fillScore":3,"category":"language","clues":[{"text":"מוריד גובה","difficulty":1,"quality":4}]},
   {"answer":"מנמק","fillScore":3,"category":"general","clues":[{"text":"מסביר","difficulty":1,"quality":3},{"text":"נותן טעם לדבריו","difficulty":2,"quality":5}]},
   {"answer":"מנסה","fillScore":2,"category":"general","clues":[{"text":"משתדלת","difficulty":1,"quality":4},{"text":"בודק אם זה יעבוד","difficulty":1,"quality":4}]},
@@ -2668,7 +2667,7 @@
   {"answer":"מערב אירופה","fillScore":2,"category":"geography","clues":[{"text":"מיקומן של בלגיה וצרפת למשל","difficulty":3,"quality":4}]},
   {"answer":"מערבון","fillScore":3,"category":"culture","clues":[{"text":"ז'אנר קולנועי","difficulty":2,"quality":4}]},
   {"answer":"מערבל","fillScore":3,"category":"general","clues":[{"text":"מיקסר","difficulty":1,"quality":4}]},
-  {"answer":"מעש","fillScore":1,"category":"general","excludeFromDaily":true,"clues":[{"text":"פעולה אקט","difficulty":1,"quality":1},{"text":"פעולה, בלי ה׳ בסוף","difficulty":3,"quality":2}]},
+  {"answer":"מעש","fillScore":1,"category":"general","clues":[{"text":"פעולה אקט","difficulty":1,"quality":3},{"text":"פעולה, בלי ה׳ בסוף","difficulty":3,"quality":2}]},
   {"answer":"מעשי","fillScore":3,"category":"general","clues":[{"text":"פרקטי","difficulty":1,"quality":5},{"text":"לא תיאורטי","difficulty":1,"quality":4}]},
   {"answer":"מעתיק","fillScore":3,"category":"language","clues":[{"text":"מייצר קופי","difficulty":1,"quality":3}]},
   {"answer":"מפארת","fillScore":3,"category":"language","clues":[{"text":"משבחת, מהללת","difficulty":1,"quality":4}]},
@@ -2725,7 +2724,7 @@
   {"answer":"מצוד","fillScore":4,"category":"general","clues":[{"text":"מרדף","difficulty":2,"quality":4},{"text":"חיפוש אחר נמלט","difficulty":2,"quality":4},{"text":"מרדף אחר חשוד","difficulty":1,"quality":4}]},
   {"answer":"מצולמת","fillScore":3,"category":"language","clues":[{"text":"לוקחים תמונה שלה","difficulty":2,"quality":4}]},
   {"answer":"מצונזר","fillScore":3,"category":"language","clues":[{"text":"הוסר ממנו תוכן","difficulty":2,"quality":4}]},
-  {"answer":"מצוק","fillScore":3,"category":"geography","excludeFromDaily":true,"clues":[{"text":"הר גבוה","difficulty":1,"quality":1},{"text":"קיר סלע תלול","difficulty":1,"quality":5}]},
+  {"answer":"מצוק","fillScore":3,"category":"geography","clues":[{"text":"הר גבוה","difficulty":1,"quality":3},{"text":"קיר סלע תלול","difficulty":1,"quality":5}]},
   {"answer":"מצור","fillScore":4,"category":"general","clues":[{"text":"הקפת אויב","difficulty":2,"quality":4},{"text":"טבעת לוחמים סביב עיר","difficulty":2,"quality":4}]},
   {"answer":"מצורעת","fillScore":2,"category":"language","clues":[{"text":"מוחרמת חברתית","difficulty":2,"quality":3}]},
   {"answer":"מצורפת","fillScore":3,"category":"language","clues":[{"text":"חוברה, מוזגה","difficulty":2,"quality":4}]},
@@ -2801,7 +2800,7 @@
   {"answer":"מקרן","fillScore":4,"category":"science","clues":[{"text":"מכשיר להצגת תמונות","difficulty":1,"quality":4},{"text":"כלי להצגת תמונות","difficulty":1,"quality":3}]},
   {"answer":"מקרר","fillScore":4,"category":"general","clues":[{"text":"כלי חשמלי במטבח","difficulty":1,"quality":4},{"text":"שומר על החלב","difficulty":1,"quality":4}]},
   {"answer":"מקש","fillScore":3,"category":"general","clues":[{"text":"חלק במקלדת","difficulty":1,"quality":5},{"text":"לוחצים עליו במקלדת","difficulty":1,"quality":5}]},
-  {"answer":"מרא","fillScore":1,"category":"general","excludeFromDaily":true,"clues":[{"text":"הביטו","difficulty":1,"quality":1},{"text":"חזות, חסר ה׳","difficulty":3,"quality":3}]},
+  {"answer":"מרא","fillScore":1,"category":"general","clues":[{"text":"הביטו","difficulty":1,"quality":3},{"text":"חזות, חסר ה׳","difficulty":3,"quality":3}]},
   {"answer":"מרב","fillScore":3,"category":"bible","clues":[{"text":"הכי הרבה","difficulty":1,"quality":4},{"text":"בתו של שאול המלך","difficulty":2,"quality":5}]},
   {"answer":"מרבד","fillScore":3,"category":"general","clues":[{"text":"שטיח כינוי","difficulty":2,"quality":2},{"text":"שטיח עבה","difficulty":1,"quality":4},{"text":"שטיח קיר אמנותי","difficulty":2,"quality":4}]},
   {"answer":"מרבדים","fillScore":3,"category":"general","clues":[{"text":"שטיחים","difficulty":1,"quality":4}]},
@@ -2822,7 +2821,7 @@
   {"answer":"מרוצה","fillScore":4,"category":"general","clues":[{"text":"מסופק","difficulty":1,"quality":3},{"text":"שבע רצון מסופק","difficulty":1,"quality":3},{"text":"מלא סיפוק והנאה","difficulty":1,"quality":4}]},
   {"answer":"מרושש","fillScore":3,"category":"general","clues":[{"text":"אין לו כסף","difficulty":1,"quality":4},{"text":"חסר פרוטה","difficulty":1,"quality":4},{"text":"אדם שירד מנכסיו","difficulty":1,"quality":4}]},
   {"answer":"מרחב","fillScore":4,"category":"general","clues":[{"text":"שטח פתוח וגדול","difficulty":1,"quality":4},{"text":"שטח פתוח","difficulty":1,"quality":3}]},
-  {"answer":"מרט","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"שיערות","difficulty":2,"quality":1},{"text":"שיערו","difficulty":2,"quality":1},{"text":"תלש שערה","difficulty":1,"quality":5}]},
+  {"answer":"מרט","fillScore":2,"category":"general","clues":[{"text":"שיערו","difficulty":2,"quality":3},{"text":"תלש שערה","difficulty":1,"quality":5}]},
   {"answer":"מרטיני","fillScore":4,"category":"food","clues":[{"text":"קוקטייל המורכב מג'ין","difficulty":2,"quality":5}]},
   {"answer":"מרטין שין","fillScore":3,"category":"people","clues":[{"text":"שחקן קולנוע אמריקאי","difficulty":3,"quality":3}]},
   {"answer":"מרי","fillScore":3,"category":"general","clues":[{"text":"התמרדות","difficulty":2,"quality":4},{"text":"סירוב לציית לשלטון","difficulty":2,"quality":4}]},
@@ -2841,10 +2840,10 @@
   {"answer":"מזמור","fillScore":3,"category":"bible","clues":[{"text":"שיר","difficulty":1,"quality":2}]},
   {"answer":"מרמלדה","fillScore":4,"category":"food","clues":[{"text":"מין ממתק","difficulty":2,"quality":3}]},
   {"answer":"מרנינה","fillScore":2,"category":"general","clues":[{"text":"משמחת","difficulty":1,"quality":4}]},
-  {"answer":"מרסק","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"סובב ומנתץ","difficulty":3,"quality":1},{"text":"כותש עד דק","difficulty":1,"quality":4},{"text":"לוחץ ומועך","difficulty":1,"quality":4}]},
+  {"answer":"מרסק","fillScore":2,"category":"general","clues":[{"text":"סובב ומנתץ","difficulty":3,"quality":3},{"text":"כותש עד דק","difficulty":1,"quality":4},{"text":"לוחץ ומועך","difficulty":1,"quality":4}]},
   {"answer":"מרעה","fillScore":3,"category":"general","clues":[{"text":"שטח פתוח לבהמות","difficulty":1,"quality":4},{"text":"שם הצאן אוכל עשב","difficulty":1,"quality":4},{"text":"שדה לבהמות","difficulty":1,"quality":4},{"text":"אחו, כר","difficulty":2,"quality":4}]},
   {"answer":"מרעום","fillScore":2,"category":"general","clues":[{"text":"התקן לפיצוץ מטען","difficulty":2,"quality":4}]},
-  {"answer":"מרץ","fillScore":4,"category":"culture","excludeFromDaily":true,"clues":[{"text":"מפלגה ישראלית","difficulty":1,"quality":3},{"text":"מפלגה ישראלית מחברי","difficulty":2,"quality":1},{"text":"מפלגה","difficulty":1,"quality":2},{"text":"השמאל עם עלה הזית","difficulty":2,"quality":5},{"text":"מפלגת שמאל ותיקה","difficulty":1,"quality":4}]},
+  {"answer":"מרץ","fillScore":4,"category":"culture","excludeFromDaily":true,"clues":[{"text":"מפלגה ישראלית","difficulty":1,"quality":3},{"text":"מפלגה","difficulty":1,"quality":2},{"text":"השמאל עם עלה הזית","difficulty":2,"quality":5},{"text":"מפלגת שמאל ותיקה","difficulty":1,"quality":4}]},
   {"answer":"מרצה","fillScore":3,"category":"general","clues":[{"text":"מורה באוניברסיטה","difficulty":1,"quality":4},{"text":"עומד מול סטודנטים","difficulty":1,"quality":4}]},
   {"answer":"מרצים","fillScore":3,"category":"general","clues":[{"text":"עובדים באקדמיה","difficulty":2,"quality":3}]},
   {"answer":"מרציפן","fillScore":4,"category":"food","clues":[{"text":"רקיחה מסוכר ושקדים","difficulty":2,"quality":4},{"text":"ממתק משקדים","difficulty":1,"quality":4},{"text":"בצק שקדים","difficulty":1,"quality":4}]},
@@ -2854,11 +2853,11 @@
   {"answer":"מרקידה","fillScore":2,"category":"general","clues":[{"text":"גורמת לרקוד","difficulty":2,"quality":4}]},
   {"answer":"מרקל","fillScore":4,"category":"people","clues":[{"text":"מראשי ממשלת גרמניה ש\"מ","difficulty":2,"quality":3},{"text":"קנצלרית גרמניה בעבר ש\"מ","difficulty":2,"quality":5}]},
   {"answer":"מרקם","fillScore":3,"category":"general","clues":[{"text":"טקסטורה","difficulty":1,"quality":4},{"text":"תחושת פני החומר","difficulty":2,"quality":4}]},
-  {"answer":"מרקע","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"מסר","difficulty":1,"quality":1},{"text":"מסך הטלוויזיה","difficulty":1,"quality":5}]},
+  {"answer":"מרקע","fillScore":3,"category":"general","clues":[{"text":"מסך","difficulty":1,"quality":3},{"text":"מסך הטלוויזיה","difficulty":1,"quality":5}]},
   {"answer":"מרשים","fillScore":4,"category":"general","clues":[{"text":"מעורר התפעלות","difficulty":2,"quality":4}]},
   {"answer":"מרשימה","fillScore":3,"category":"general","clues":[{"text":"מעוררת התפעלות","difficulty":2,"quality":4}]},
   {"answer":"מרשיע","fillScore":3,"category":"general","clues":[{"text":"קובע אשמה","difficulty":1,"quality":4},{"text":"מאשים, מפליל","difficulty":1,"quality":4}]},
-  {"answer":"מרשק","fillScore":1,"category":"people","excludeFromDaily":true,"clues":[{"text":"חזון ישראלי ש\"מ","difficulty":3,"quality":1},{"text":"מיקי, שחקן ישראלי ש\"מ","difficulty":3,"quality":3}]},
+  {"answer":"מרשק","fillScore":1,"category":"people","clues":[{"text":"חזון ישראלי ש\"מ","difficulty":3,"quality":3},{"text":"מיקי, שחקן ישראלי ש\"מ","difficulty":3,"quality":3}]},
   {"answer":"מרשרש","fillScore":3,"category":"general","clues":[{"text":"משמיע קול עמום","difficulty":2,"quality":3}]},
   {"answer":"מרשתת","fillScore":4,"category":"general","clues":[{"text":"אינטרנט","difficulty":1,"quality":5}]},
   {"answer":"מרתון","fillScore":5,"category":"sport","clues":[{"text":"תחרות ריצה הכוללת עשרות ק\"מ","difficulty":1,"quality":4},{"text":"מתחרויות הריצה","difficulty":1,"quality":3},{"text":"נקרא על שם מקום ביוון","difficulty":1,"quality":4},{"text":"ריצה תחרותית ארוכה","difficulty":1,"quality":4},{"text":"תחרות ריצה למרחק ארוך","difficulty":1,"quality":4}]},
@@ -2876,7 +2875,7 @@
   {"answer":"משהה","fillScore":2,"category":"general","clues":[{"text":"גורם לעיכוב","difficulty":1,"quality":4},{"text":"דוחה לזמן מאוחר","difficulty":1,"quality":4}]},
   {"answer":"משהו","fillScore":3,"category":"general","clues":[{"text":"דבר מה","difficulty":1,"quality":4},{"text":"דבר לא מוגדר","difficulty":1,"quality":4}]},
   {"answer":"משה חזן","fillScore":2,"category":"people","clues":[{"text":"כלכלן ישראלי","difficulty":2,"quality":3}]},
-  {"answer":"משהי","fillScore":1,"category":"language","excludeFromDaily":true,"clues":[{"text":"דבר מה","difficulty":1,"quality":1},{"text":"אחת לא ידועה","difficulty":1,"quality":4}]},
+  {"answer":"משהי","fillScore":1,"category":"language","clues":[{"text":"דבר מה","difficulty":1,"quality":3},{"text":"אחת לא ידועה","difficulty":1,"quality":4}]},
   {"answer":"משה כחלון","fillScore":3,"category":"people","clues":[{"text":"משרי האוצר","difficulty":3,"quality":4}]},
   {"answer":"משו","fillScore":2,"category":"general","clues":[{"text":"הוציאו מהמים","difficulty":2,"quality":4},{"text":"חילצו מהמים","difficulty":2,"quality":4},{"text":"שלפו מן הים","difficulty":2,"quality":4}]},
   {"answer":"משוחד","fillScore":3,"category":"general","clues":[{"text":"קיבל טובות הנאה","difficulty":2,"quality":3},{"text":"שדעתו מוטה","difficulty":1,"quality":4},{"text":"לא אובייקטיבי","difficulty":1,"quality":4}]},
@@ -2915,7 +2914,7 @@
   {"answer":"משמרת","fillScore":2,"category":"geography","clues":[{"text":"מושב סמוך לכפר סבא","difficulty":2,"quality":4}]},
   {"answer":"משנה תורה","fillScore":4,"category":"bible","clues":[{"text":"חיבור הלכתי של הרמב\"ם","difficulty":3,"quality":5}]},
   {"answer":"משנס","fillScore":2,"category":"general","clues":[{"text":"חוגר אוזר","difficulty":2,"quality":4},{"text":"נערך: ___ מותניים","difficulty":2,"quality":4}]},
-  {"answer":"משנק","fillScore":1,"category":"science","excludeFromDaily":true,"clues":[{"text":"צוק","difficulty":1,"quality":1},{"text":"וסת אוויר במנוע","difficulty":3,"quality":4},{"text":"צ'וק","difficulty":2,"quality":3}]},
+  {"answer":"משנק","fillScore":1,"category":"science","clues":[{"text":"צוק","difficulty":1,"quality":3},{"text":"וסת אוויר במנוע","difficulty":3,"quality":4},{"text":"צ'וק","difficulty":2,"quality":3}]},
   {"answer":"משעול","fillScore":3,"category":"general","clues":[{"text":"שביל דרך","difficulty":1,"quality":4}]},
   {"answer":"משק","fillScore":3,"category":"general","clues":[{"text":"חווה חקלאית","difficulty":1,"quality":4},{"text":"חווה עם לול ורפת","difficulty":1,"quality":4},{"text":"רפת ולול במקום אחד","difficulty":2,"quality":5}]},
   {"answer":"משקה","fillScore":4,"category":"food","clues":[{"text":"נוזל לשתייה","difficulty":1,"quality":4},{"text":"לא אוכלים, שותים","difficulty":1,"quality":4}]},
@@ -2991,7 +2990,7 @@
   {"answer":"נאנק","fillScore":2,"category":"general","clues":[{"text":"משמיע קול סבל","difficulty":1,"quality":4},{"text":"גנח מכאב","difficulty":1,"quality":4},{"text":"משמיע נאקות כאב","difficulty":1,"quality":4}]},
   {"answer":"נאספו","fillScore":3,"category":"general","clues":[{"text":"לוקטו קובצו","difficulty":1,"quality":4},{"text":"התכנסו, נקהלו","difficulty":1,"quality":4}]},
   {"answer":"נאף","fillScore":2,"category":"general","clues":[{"text":"בגד ברעייתו","difficulty":2,"quality":4},{"text":"עבר על הדיבר השביעי","difficulty":2,"quality":5},{"text":"לא שמר אמונים","difficulty":2,"quality":4}]},
-  {"answer":"נאש","fillScore":3,"category":"people","excludeFromDaily":true,"clues":[{"text":"כדורגלן עבר קנדי ש\"מ","difficulty":3,"quality":1},{"text":"סטיב, אגדת NBA ש״מ","difficulty":2,"quality":5},{"text":"ג׳ון מ״נפלאות התבונה״","difficulty":2,"quality":5},{"text":"מתמטיקאי אמריקאי","difficulty":2,"quality":4},{"text":"מתמטיקאי אמריקני בעבר","difficulty":2,"quality":3}]},
+  {"answer":"נאש","fillScore":3,"category":"people","clues":[{"text":"כדורגלן עבר קנדי ש\"מ","difficulty":3,"quality":3},{"text":"סטיב, אגדת NBA ש״מ","difficulty":2,"quality":5},{"text":"ג׳ון מ״נפלאות התבונה״","difficulty":2,"quality":5},{"text":"מתמטיקאי אמריקאי","difficulty":2,"quality":4},{"text":"מתמטיקאי אמריקני בעבר","difficulty":2,"quality":3}]},
   {"answer":"נבדק","fillScore":2,"category":"general","clues":[{"text":"נבחן","difficulty":1,"quality":4},{"text":"עבר בחינה","difficulty":1,"quality":4}]},
   {"answer":"נבהיל","fillScore":2,"category":"general","clues":[{"text":"נגרום לפחד","difficulty":1,"quality":4}]},
   {"answer":"נבהל","fillScore":2,"category":"general","clues":[{"text":"נפחד","difficulty":1,"quality":4},{"text":"קפץ מפחד","difficulty":1,"quality":4}]},
@@ -2999,7 +2998,7 @@
   {"answer":"נבול","fillScore":2,"category":"general","clues":[{"text":"כמוש קמל","difficulty":1,"quality":4},{"text":"פרח שכבר התעייף","difficulty":1,"quality":5}]},
   {"answer":"נבח","fillScore":3,"category":"general","clues":[{"text":"השמיע קול של כלב","difficulty":1,"quality":5},{"text":"אמר הב־הב","difficulty":1,"quality":5},{"text":"השמיע קול כלבי","difficulty":1,"quality":4}]},
   {"answer":"נבט","fillScore":3,"category":"science","clues":[{"text":"צמח בתחילתו","difficulty":1,"quality":4},{"text":"זרע שהתעורר","difficulty":2,"quality":5},{"text":"התחלתו של צמח","difficulty":1,"quality":4}]},
-  {"answer":"נבי","fillScore":2,"category":"language","excludeFromDaily":true,"clues":[{"text":"אל בבלי","difficulty":3,"quality":1},{"text":"שליח האל בערבית","difficulty":3,"quality":4}]},
+  {"answer":"נבי","fillScore":2,"category":"language","excludeFromDaily":true,"clues":[{"text":"שליח האל בערבית","difficulty":3,"quality":4}]},
   {"answer":"נביא הכפר","fillScore":2,"category":"culture","clues":[{"text":"אופרה מאת ז'אן ז'אק רוסו","difficulty":3,"quality":4}]},
   {"answer":"נביא השעמום","fillScore":3,"category":"culture","clues":[{"text":"שיר של \"איפה הילד\"","difficulty":3,"quality":5}]},
   {"answer":"נביס","fillScore":2,"category":"general","clues":[{"text":"ננצח באופן מוחץ","difficulty":1,"quality":4},{"text":"ננצח בענק","difficulty":1,"quality":4}]},
@@ -3170,7 +3169,7 @@
   {"answer":"נמים","fillScore":2,"category":"general","clues":[{"text":"ישנים","difficulty":1,"quality":4},{"text":"שקועים בשינה","difficulty":1,"quality":4}]},
   {"answer":"נמל","fillScore":4,"category":"geography","clues":[{"text":"מקום עגינה","difficulty":1,"quality":4},{"text":"משמש לעגינת כלי שייט","difficulty":1,"quality":3}]},
   {"answer":"נמנע","fillScore":3,"category":"general","clues":[{"text":"לא משתתף","difficulty":2,"quality":4},{"text":"לא הצביע בעד או נגד","difficulty":2,"quality":4}]},
-  {"answer":"נמס","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"לנוזל","difficulty":1,"quality":2},{"text":"הפר ממוצק לנוזל","difficulty":1,"quality":1},{"text":"הפך לטיפות","difficulty":1,"quality":4},{"text":"חום עשה ממנו שלולית","difficulty":2,"quality":4}]},
+  {"answer":"נמס","fillScore":3,"category":"general","clues":[{"text":"לנוזל","difficulty":1,"quality":2},{"text":"הפר ממוצק לנוזל","difficulty":1,"quality":3},{"text":"הפך לטיפות","difficulty":1,"quality":4},{"text":"חום עשה ממנו שלולית","difficulty":2,"quality":4}]},
   {"answer":"נמעך","fillScore":3,"category":"general","clues":[{"text":"נרמס","difficulty":1,"quality":4},{"text":"נהיה פיתה","difficulty":2,"quality":4}]},
   {"answer":"נמענים","fillScore":3,"category":"general","clues":[{"text":"אליהם נשלח דואר","difficulty":2,"quality":4}]},
   {"answer":"נמצא","fillScore":2,"category":"general","clues":[{"text":"קיים","difficulty":1,"quality":3},{"text":"ישנו בשטח","difficulty":1,"quality":4}]},
@@ -3222,7 +3221,7 @@
   {"answer":"נפש","fillScore":4,"category":"general","clues":[{"text":"חלק רוחני באדם","difficulty":1,"quality":4},{"text":"לא גוף אלא רוח","difficulty":1,"quality":5}]},
   {"answer":"נפתלי","fillScore":4,"category":"bible","clues":[{"text":"משבטי ישראל","difficulty":1,"quality":5}]},
   {"answer":"נפתר","fillScore":2,"category":"general","clues":[{"text":"התגברו על בעייתו","difficulty":2,"quality":3},{"text":"החידה מאחורינו","difficulty":2,"quality":4},{"text":"מפוצח, פתור","difficulty":1,"quality":3}]},
-  {"answer":"נץ","fillScore":3,"category":"science","excludeFromDaily":true,"clues":[{"text":"מין עוף דורס עיט","difficulty":2,"quality":1},{"text":"דורס מהיר בשמי העיר","difficulty":2,"quality":4}]},
+  {"answer":"נץ","fillScore":3,"category":"science","clues":[{"text":"מין עוף דורס עיט","difficulty":2,"quality":3},{"text":"דורס מהיר בשמי העיר","difficulty":2,"quality":4}]},
   {"answer":"נציגה","fillScore":3,"category":"general","clues":[{"text":"פועלת בשם אחרים","difficulty":2,"quality":4}]},
   {"answer":"נצמיד","fillScore":2,"category":"general","clues":[{"text":"ניצור מגע קרוב","difficulty":2,"quality":4}]},
   {"answer":"נצפו","fillScore":2,"category":"general","clues":[{"text":"נראו","difficulty":1,"quality":4},{"text":"ראו אותם","difficulty":1,"quality":4}]},
@@ -3233,7 +3232,7 @@
   {"answer":"נקודה","fillScore":5,"category":"language","clues":[{"text":"מסימני הפיסוק","difficulty":2,"quality":5},{"text":"סימן בסוף משפט","difficulty":1,"quality":5}]},
   {"answer":"נקום","fillScore":2,"category":"general","clues":[{"text":"נעמוד","difficulty":1,"quality":4},{"text":"נהיה על הרגליים","difficulty":1,"quality":4}]},
   {"answer":"נקז","fillScore":2,"category":"general","clues":[{"text":"אסף עודפי נוזלים כ\"ח","difficulty":2,"quality":3},{"text":"הוביל מים החוצה","difficulty":2,"quality":4}]},
-  {"answer":"נקטי","fillScore":1,"category":"general","excludeFromDaily":true,"clues":[{"text":"פעלו עשו","difficulty":1,"quality":1},{"text":"אמצי דרך, בציווי","difficulty":3,"quality":3}]},
+  {"answer":"נקטי","fillScore":1,"category":"general","excludeFromDaily":true,"clues":[{"text":"אמצי דרך, בציווי","difficulty":3,"quality":3}]},
   {"answer":"נקי","fillScore":3,"category":"general","clues":[{"text":"טהור זך","difficulty":1,"quality":4},{"text":"בלי לכלוך","difficulty":1,"quality":4}]},
   {"answer":"נקיק","fillScore":3,"category":"general","clues":[{"text":"סדק חרך","difficulty":1,"quality":4},{"text":"חריץ בסלע","difficulty":1,"quality":4}]},
   {"answer":"נקניק","fillScore":4,"category":"food","clues":[{"text":"מאכל מבשר","difficulty":1,"quality":4}]},
@@ -3344,7 +3343,7 @@
   {"answer":"סילוף","fillScore":3,"category":"general","clues":[{"text":"שינוי לרעה של מה שנאמר","difficulty":2,"quality":4}]},
   {"answer":"סולם","fillScore":4,"category":"general","clues":[{"text":"משמש לטיפוס","difficulty":1,"quality":3},{"text":"יכול להגיע לגג או מדו לרה","difficulty":2,"quality":5},{"text":"גם כלי טיפוס וגם סדרת צלילים","difficulty":1,"quality":5}]},
   {"answer":"סים","fillScore":3,"category":"science","clues":[{"text":"כרטיס טלפון","difficulty":1,"quality":3},{"text":"השבב שמזהה את הנייד","difficulty":2,"quality":5}]},
-  {"answer":"סימל","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"שימש כמשל","difficulty":2,"quality":1},{"text":"ייצג רעיון","difficulty":1,"quality":4},{"text":"שימש כסימבול למשהו","difficulty":1,"quality":3}]},
+  {"answer":"סימל","fillScore":2,"category":"general","clues":[{"text":"שימש כמשל","difficulty":2,"quality":3},{"text":"ייצג רעיון","difficulty":1,"quality":4},{"text":"שימש כסימבול למשהו","difficulty":1,"quality":3}]},
   {"answer":"סימפול","fillScore":2,"category":"culture","clues":[{"text":"מקטע מוזיקלי והדבקתו","difficulty":2,"quality":3}]},
   {"answer":"סין","fillScore":5,"category":"geography","clues":[{"text":"מדינה באסיה","difficulty":1,"quality":5},{"text":"בייג׳ינג בירתה","difficulty":1,"quality":5},{"text":"מדינה במזרח אסיה","difficulty":1,"quality":3}]},
   {"answer":"סינון","fillScore":3,"category":"general","clues":[{"text":"הפרדת המרכיבים מחומר","difficulty":2,"quality":3}]},
@@ -3380,7 +3379,7 @@
   {"answer":"סמוי","fillScore":3,"category":"general","clues":[{"text":"לא גלוי","difficulty":1,"quality":3},{"text":"לא נראה לעין","difficulty":1,"quality":3},{"text":"פועל בלי להיראות","difficulty":1,"quality":4}]},
   {"answer":"סמויה","fillScore":3,"category":"general","clues":[{"text":"חבויה, נסתרת","difficulty":1,"quality":4},{"text":"לא גלויה לעין","difficulty":1,"quality":4}]},
   {"answer":"סמוראי","fillScore":3,"category":"culture","clues":[{"text":"לוחם יפני","difficulty":1,"quality":5}]},
-  {"answer":"סמי","fillScore":2,"category":"people","excludeFromDaily":true,"clues":[{"text":"קומיקאי ישראלי ש\"מ","difficulty":3,"quality":1},{"text":"כינוי לשמואל","difficulty":1,"quality":5}]},
+  {"answer":"סמי","fillScore":2,"category":"people","excludeFromDaily":true,"clues":[{"text":"כינוי לשמואל","difficulty":1,"quality":5}]},
   {"answer":"סמינר","fillScore":3,"category":"general","clues":[{"text":"בית ספר גבוה להכשרת מורים","difficulty":2,"quality":4},{"text":"בית ספר למורים","difficulty":1,"quality":3},{"text":"בי\"ס למורים","difficulty":1,"quality":3}]},
   {"answer":"סמי ברדוגו","fillScore":2,"category":"people","clues":[{"text":"סופר ישראלי","difficulty":3,"quality":4}]},
   {"answer":"סמיך","fillScore":3,"category":"general","clues":[{"text":"מעובה צמיגי","difficulty":1,"quality":3},{"text":"לא דליל","difficulty":1,"quality":4}]},
@@ -3422,7 +3421,7 @@
   {"answer":"סקיני","fillScore":3,"category":"general","clues":[{"text":"כינוי למכנסים צמודים","difficulty":2,"quality":4}]},
   {"answer":"סקל","fillScore":2,"category":"general","clues":[{"text":"ידה אבנים","difficulty":3,"quality":4},{"text":"הרג באבנים","difficulty":2,"quality":4}]},
   {"answer":"סקסופון","fillScore":3,"category":"culture","clues":[{"text":"מכלי הנשיפה","difficulty":1,"quality":3},{"text":"כלי שמזוהה במיוחד עם ג'אז","difficulty":1,"quality":4}]},
-  {"answer":"סרו","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"גזו הצידה","difficulty":3,"quality":1},{"text":"פנו הצידה","difficulty":2,"quality":3},{"text":"זזו הצידה","difficulty":2,"quality":3},{"text":"נטו מן הדרך","difficulty":2,"quality":4},{"text":"סוג של עז באסיה","difficulty":3,"quality":3}]},
+  {"answer":"סרו","fillScore":2,"category":"general","clues":[{"text":"זזו הצידה","difficulty":3,"quality":3},{"text":"פנו הצידה","difficulty":2,"quality":3},{"text":"זזו הצידה","difficulty":2,"quality":3},{"text":"נטו מן הדרך","difficulty":2,"quality":4},{"text":"סוג של עז באסיה","difficulty":3,"quality":3}]},
   {"answer":"סרח","fillScore":2,"category":"general","clues":[{"text":"חלק עודף","difficulty":3,"quality":3},{"text":"העלה ריח רע","difficulty":1,"quality":5}]},
   {"answer":"סרי לנקה","fillScore":3,"category":"geography","clues":[{"text":"מדינת אי ליד הודו","difficulty":1,"quality":4},{"text":"בירתה קולומבו","difficulty":1,"quality":5},{"text":"מדינת אי באוקיינוס ההודי","difficulty":1,"quality":4}]},
   {"answer":"סרן","fillScore":3,"category":"general","clues":[{"text":"דרגה בצהל","difficulty":1,"quality":4},{"text":"דרגה מעל סגן","difficulty":1,"quality":5}]},
@@ -3439,7 +3438,6 @@
   {"answer":"עגל","fillScore":4,"category":"general","clues":[{"text":"בקר צעיר","difficulty":1,"quality":5},{"text":"בן הפרה","difficulty":1,"quality":5}]},
   {"answer":"עגלון","fillScore":2,"category":"general","clues":[{"text":"עיר מקראית","difficulty":1,"quality":4},{"text":"נהג בכלי רכב הרתום לבהמה","difficulty":1,"quality":4}]},
   {"answer":"עגמי","fillScore":3,"category":"geography","clues":[{"text":"שכונה ביפו","difficulty":2,"quality":4},{"text":"שכונת דו־קיום ביפו","difficulty":2,"quality":4}]},
-  {"answer":"עדב","fillScore":1,"category":"geography","excludeFromDaily":true,"clues":[{"text":"עיר נמל בתימן","difficulty":2,"quality":1}]},
   {"answer":"עדי","fillScore":3,"category":"general","clues":[{"text":"תכשיט","difficulty":1,"quality":5},{"text":"תכשיט לנוי","difficulty":1,"quality":4},{"text":"מחרוזת","difficulty":2,"quality":3},{"text":"יישוב קהילתי בצפון הארץ","difficulty":2,"quality":4}]},
   {"answer":"עדן חסון","fillScore":2,"category":"people","clues":[{"text":"זמר ישראלי","difficulty":3,"quality":4}]},
   {"answer":"עדנים","fillScore":2,"category":"geography","clues":[{"text":"מושב בדרום השרון","difficulty":2,"quality":3},{"text":"מושב ליד הוד השרון","difficulty":2,"quality":3}]},
@@ -3505,7 +3503,7 @@
   {"answer":"ענבל","fillScore":3,"category":"general","clues":[{"text":"לשון הפעמון","difficulty":2,"quality":4},{"text":"לשון שמצלצלת","difficulty":2,"quality":5}]},
   {"answer":"ענבר לביא","fillScore":2,"category":"people","clues":[{"text":"מכוכבות \"פאודה\"","difficulty":3,"quality":4}]},
   {"answer":"סנוב","fillScore":3,"category":"general","clues":[{"text":"כינוי למתנשא","difficulty":1,"quality":4},{"text":"מרים את האף","difficulty":1,"quality":5},{"text":"שחצן רברבן","difficulty":1,"quality":3},{"text":"כינוי לאדם שחצן ומתנשא","difficulty":1,"quality":3}]},
-  {"answer":"ענוג","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"דבר מה בו הנאה","difficulty":2,"quality":2},{"text":"מושב בגליל","difficulty":3,"quality":1},{"text":"נעים ורך","difficulty":1,"quality":4}]},
+  {"answer":"ענוג","fillScore":3,"category":"general","clues":[{"text":"דבר מה בו הנאה","difficulty":2,"quality":2},{"text":"מושב בגליל","difficulty":3,"quality":3},{"text":"נעים ורך","difficulty":1,"quality":4}]},
   {"answer":"עני","fillScore":3,"category":"general","clues":[{"text":"חסר אמצעים","difficulty":1,"quality":4},{"text":"דל באמצעים","difficulty":1,"quality":4}]},
   {"answer":"ענישה","fillScore":3,"category":"general","clues":[{"text":"גמול על מעשה רע","difficulty":2,"quality":4}]},
   {"answer":"ענן לבן","fillScore":2,"category":"culture","clues":[{"text":"שיר של אהוד מנור","difficulty":3,"quality":4}]},
@@ -3556,7 +3554,7 @@
   {"answer":"פול","fillScore":3,"category":"food","clues":[{"text":"מין צמח מאכל","difficulty":1,"quality":3},{"text":"קטנית בחומוס מצרי","difficulty":1,"quality":4}]},
   {"answer":"פולג","fillScore":3,"category":"geography","clues":[{"text":"נחל בשרון","difficulty":2,"quality":4},{"text":"זורם ליד נתניה","difficulty":2,"quality":4}]},
   {"answer":"פולו","fillScore":4,"category":"culture","clues":[{"text":"ממשחקי הכדור","difficulty":2,"quality":3},{"text":"חולצה עם צווארון","difficulty":1,"quality":5},{"text":"משחק קבוצתי על גבי סוסים","difficulty":1,"quality":5},{"text":"דגם קטן של פולקסווגן","difficulty":2,"quality":4}]},
-  {"answer":"פולט","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"הוציא מקרבו","difficulty":1,"quality":1},{"text":"מוציא מתוכו","difficulty":1,"quality":4},{"text":"משחרר גז, למשל","difficulty":2,"quality":4}]},
+  {"answer":"פולט","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"מוציא מתוכו","difficulty":1,"quality":4},{"text":"משחרר גז, למשל","difficulty":2,"quality":4}]},
   {"answer":"פולטבה","fillScore":2,"category":"geography","clues":[{"text":"מחוז באוקראינה","difficulty":2,"quality":4}]},
   {"answer":"פוליגמיה","fillScore":2,"category":"general","clues":[{"text":"נישואין למספר נשים במקביל","difficulty":3,"quality":4}]},
   {"answer":"פולין","fillScore":4,"category":"geography","clues":[{"text":"בירתה ורשה","difficulty":1,"quality":5}]},
@@ -3622,13 +3620,13 @@
   {"answer":"פלומות","fillScore":2,"category":"general","clues":[{"text":"קבוצות של שיערות רכות","difficulty":2,"quality":3}]},
   {"answer":"פלונטר","fillScore":3,"category":"general","clues":[{"text":"תסבוכת","difficulty":1,"quality":5}]},
   {"answer":"פלוני","fillScore":3,"category":"language","clues":[{"text":"אדם מסוים","difficulty":1,"quality":4}]},
-  {"answer":"פלוף","fillScore":1,"category":"language","excludeFromDaily":true,"clues":[{"text":"ביטוי לכישלון מוחלט","difficulty":2,"quality":1}]},
+  {"answer":"פלוף","fillScore":1,"category":"language","clues":[{"text":"ביטוי לכישלון מוחלט","difficulty":2,"quality":3}]},
   {"answer":"פלט","fillScore":3,"category":"general","clues":[{"text":"מידע ממחשב","difficulty":1,"quality":3},{"text":"תוצר ממחשב","difficulty":1,"quality":4}]},
-  {"answer":"פלי","fillScore":1,"category":"language","excludeFromDaily":true,"clues":[{"text":"מצידי המטבע","difficulty":3,"quality":1},{"text":"נצר המטבע","difficulty":3,"quality":1},{"text":"צדי מטבע, בלשון נדירה","difficulty":3,"quality":2}]},
+  {"answer":"פלי","fillScore":1,"category":"language","clues":[{"text":"מצידי המטבע","difficulty":3,"quality":3},{"text":"צדי מטבע, בלשון נדירה","difficulty":3,"quality":2}]},
   {"answer":"פליאה","fillScore":3,"category":"general","clues":[{"text":"השתוממות","difficulty":1,"quality":4}]},
   {"answer":"פלירט","fillScore":3,"category":"general","clues":[{"text":"שעשועי חיזורים","difficulty":2,"quality":4}]},
   {"answer":"פלל","fillScore":2,"category":"general","clues":[{"text":"קיווה ייחל","difficulty":2,"quality":3},{"text":"ייחל בלבו","difficulty":2,"quality":4},{"text":"ביקש בליבו; קיווה; ייחל","difficulty":2,"quality":4}]},
-  {"answer":"פלס","fillScore":3,"category":"people","clues":[{"text":"ישראלית","difficulty":1,"quality":1},{"text":"זמרת ישראלית ש\"מ","difficulty":2,"quality":2},{"text":"קרן, זמרת (ש\"מ)","difficulty":1,"quality":5}]},
+  {"answer":"פלס","fillScore":3,"category":"people","clues":[{"text":"זמרת ישראלית ש\"מ","difficulty":2,"quality":2},{"text":"קרן, זמרת (ש\"מ)","difficulty":1,"quality":5}]},
   {"answer":"פלסבו","fillScore":3,"category":"science","clues":[{"text":"תרופת דמה","difficulty":1,"quality":5}]},
   {"answer":"פלסטיק","fillScore":4,"category":"science","clues":[{"text":"מין חומר תעשייתי","difficulty":2,"quality":3},{"text":"חומר תעשייתי גמיש","difficulty":2,"quality":4}]},
   {"answer":"פלסטר","fillScore":4,"category":"general","clues":[{"text":"אגד","difficulty":1,"quality":4}]},
@@ -3659,7 +3657,7 @@
   {"answer":"פסיק","fillScore":3,"category":"language","clues":[{"text":"מורה על הפסקה בין חלקי המשפט","difficulty":2,"quality":5},{"text":"משמש להפסקה בתוך משפט","difficulty":1,"quality":4},{"text":"סימן במשפט","difficulty":1,"quality":3},{"text":"כמות קטנה מאוד; קמצוץ","difficulty":2,"quality":4}]},
   {"answer":"פסל","fillScore":4,"category":"culture","clues":[{"text":"דמות מעוצבת באבן","difficulty":1,"quality":4},{"text":"יצירה מאבן או ברונזה","difficulty":1,"quality":4}]},
   {"answer":"פסע","fillScore":2,"category":"general","clues":[{"text":"צעד","difficulty":1,"quality":4},{"text":"הלך צעד אחד","difficulty":1,"quality":4}]},
-  {"answer":"פסק","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"קובע","difficulty":1,"quality":1},{"text":"חדל","difficulty":1,"quality":4}]},
+  {"answer":"פסק","fillScore":2,"category":"general","clues":[{"text":"קובע","difficulty":1,"quality":3},{"text":"חדל","difficulty":1,"quality":4}]},
   {"answer":"פסקו","fillScore":2,"category":"general","clues":[{"text":"החליטו","difficulty":1,"quality":4},{"text":"נתנו הכרעה","difficulty":2,"quality":4}]},
   {"answer":"פעיל","fillScore":3,"category":"general","clues":[{"text":"אקטיבי","difficulty":1,"quality":4},{"text":"לא יושב בחיבוק ידיים","difficulty":2,"quality":5}]},
   {"answer":"פעל","fillScore":2,"category":"general","clues":[{"text":"עשה התנהג","difficulty":1,"quality":3},{"text":"עשה מעשה","difficulty":1,"quality":4}]},
@@ -3690,7 +3688,7 @@
   {"answer":"פרוטזה","fillScore":3,"category":"science","clues":[{"text":"תותב","difficulty":1,"quality":5}]},
   {"answer":"פרויד","fillScore":3,"category":"people","clues":[{"text":"אבי הפסיכואנליזה","difficulty":3,"quality":5},{"text":"מאבות הפסיכותרפיה","difficulty":2,"quality":4}]},
   {"answer":"פרולוג","fillScore":3,"category":"culture","clues":[{"text":"הקדמה מבוא","difficulty":2,"quality":4}]},
-  {"answer":"פרום","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"תפרין הותרו","difficulty":2,"quality":1},{"text":"בגד עם חוטים בחוץ","difficulty":1,"quality":4}]},
+  {"answer":"פרום","fillScore":3,"category":"general","clues":[{"text":"תפרין הותרו","difficulty":2,"quality":3},{"text":"בגד עם חוטים בחוץ","difficulty":1,"quality":4}]},
   {"answer":"פרומו","fillScore":3,"category":"culture","clues":[{"text":"קדימון","difficulty":1,"quality":5}]},
   {"answer":"פרופגנדה","fillScore":3,"category":"general","clues":[{"text":"תעמולה","difficulty":2,"quality":5}]},
   {"answer":"פרור","fillScore":3,"category":"general","clues":[{"text":"חלקיק קטן כ\"ח","difficulty":1,"quality":4},{"text":"גרגיר לחם קטן","difficulty":1,"quality":4}]},
@@ -3700,7 +3698,7 @@
   {"answer":"פריזורה","fillScore":2,"category":"general","clues":[{"text":"כינוי לתסרוקת ייחודית","difficulty":2,"quality":3},{"text":"כינוי לתסרוקת מנופחת","difficulty":2,"quality":4}]},
   {"answer":"פריטה","fillScore":2,"category":"culture","clues":[{"text":"נגינה על גיטרה למשל","difficulty":2,"quality":4},{"text":"נגינה בכלי מיתר","difficulty":2,"quality":4},{"text":"הפרדה למרכיבים","difficulty":3,"quality":3}]},
   {"answer":"פריך","fillScore":4,"category":"food","clues":[{"text":"קריספי","difficulty":1,"quality":4},{"text":"נשבר בקראנץ׳","difficulty":1,"quality":5},{"text":"בעל מרקם מתפורר","difficulty":1,"quality":4}]},
-  {"answer":"פריץ","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"כינוי למושחת","difficulty":2,"quality":1},{"text":"אציל בפולין של פעם","difficulty":2,"quality":4}]},
+  {"answer":"פריץ","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"אציל בפולין של פעם","difficulty":2,"quality":4}]},
   {"answer":"פריצות","fillScore":2,"category":"general","clues":[{"text":"העדר צניעות הפקרות","difficulty":2,"quality":3}]},
   {"answer":"פרלמנט","fillScore":3,"category":"general","clues":[{"text":"בית נבחרים","difficulty":2,"quality":5},{"text":"בית מחוקקים","difficulty":2,"quality":5}]},
   {"answer":"פרמה","fillScore":3,"category":"geography","clues":[{"text":"נפה באיטליה","difficulty":2,"quality":4},{"text":"עיר גבינות באיטליה","difficulty":2,"quality":4}]},
@@ -3755,7 +3753,7 @@
   {"answer":"צהוב","fillScore":3,"category":"general","clues":[{"text":"מהצבעים","difficulty":1,"quality":4},{"text":"צבע המתקשר לרכילות","difficulty":1,"quality":4},{"text":"צבע החלמון","difficulty":1,"quality":4}]},
   {"answer":"צהובון","fillScore":2,"category":"culture","clues":[{"text":"עיתון העוסק ברכילות","difficulty":2,"quality":4}]},
   {"answer":"צהלולים","fillScore":3,"category":"language","clues":[{"text":"קולות שמחה בגלגול לשון","difficulty":2,"quality":4},{"text":"קולות שמחה מסולסלים","difficulty":1,"quality":5}]},
-  {"answer":"צהלי","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"שמחו","difficulty":1,"quality":1},{"text":"שמחי מאוד, בלשון שיר","difficulty":2,"quality":4}]},
+  {"answer":"צהלי","fillScore":2,"category":"general","clues":[{"text":"שמחו","difficulty":1,"quality":3},{"text":"שמחי מאוד, בלשון שיר","difficulty":2,"quality":4}]},
   {"answer":"צהרון","fillScore":4,"category":"general","clues":[{"text":"מסגרת לילדים","difficulty":1,"quality":4},{"text":"מועדונית לאחר שעות הלימודים","difficulty":1,"quality":5}]},
   {"answer":"צודק","fillScore":3,"category":"general","clues":[{"text":"טענתו נכונה","difficulty":1,"quality":4},{"text":"לא טועה בוויכוח","difficulty":1,"quality":4}]},
   {"answer":"צוהלת","fillScore":3,"category":"general","clues":[{"text":"שמחה","difficulty":1,"quality":4}]},
@@ -3763,7 +3761,7 @@
   {"answer":"צומחת","fillScore":3,"category":"general","clues":[{"text":"גדלה מתפתחת","difficulty":1,"quality":4}]},
   {"answer":"צומת","fillScore":4,"category":"general","clues":[{"text":"מפגש דרכים","difficulty":1,"quality":4},{"text":"מפגש כבישים","difficulty":1,"quality":4}]},
   {"answer":"צוף","fillScore":3,"category":"science","clues":[{"text":"חומר סוכרי בפרח","difficulty":1,"quality":4},{"text":"חומר בפרחים","difficulty":1,"quality":3},{"text":"בפרחים","difficulty":1,"quality":2}]},
-  {"answer":"צוק","fillScore":4,"category":"geography","excludeFromDaily":true,"clues":[{"text":"סלע תלול וזקוף","difficulty":1,"quality":5},{"text":"סלע זקוף","difficulty":1,"quality":4},{"text":"משנק","difficulty":2,"quality":1},{"text":"קיר סלעים זקור","difficulty":1,"quality":4}]},
+  {"answer":"צוק","fillScore":4,"category":"geography","clues":[{"text":"סלע תלול וזקוף","difficulty":1,"quality":5},{"text":"סלע זקוף","difficulty":1,"quality":4},{"text":"משנק","difficulty":2,"quality":3},{"text":"קיר סלעים זקור","difficulty":1,"quality":4}]},
   {"answer":"צור","fillScore":3,"category":"geography","clues":[{"text":"עיר בלבנון","difficulty":1,"quality":4},{"text":"טירוס המקראית","difficulty":2,"quality":4}]},
   {"answer":"צור הדסה","fillScore":2,"category":"geography","clues":[{"text":"מועצה מקומית סמוכה לירושלים","difficulty":3,"quality":4}]},
   {"answer":"צורית","fillScore":2,"category":"general","clues":[{"text":"ישוב בגליל","difficulty":2,"quality":3},{"text":"עשב בשרני","difficulty":3,"quality":3}]},
@@ -3783,7 +3781,7 @@
   {"answer":"צין","fillScore":3,"category":"geography","clues":[{"text":"נחל בנגב","difficulty":2,"quality":4},{"text":"נחל גדול בהר הנגב","difficulty":2,"quality":4}]},
   {"answer":"צינוק","fillScore":3,"category":"general","clues":[{"text":"חלל בבית כלא","difficulty":1,"quality":4}]},
   {"answer":"ציניקן","fillScore":2,"category":"language","clues":[{"text":"מאופיין בלי אמון כלפי סביבתו","difficulty":2,"quality":3}]},
-  {"answer":"ציפו","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"יחלו","difficulty":2,"quality":1},{"text":"קיוו שיקרה","difficulty":1,"quality":4},{"text":"חיכו בתקווה","difficulty":2,"quality":4}]},
+  {"answer":"ציפו","fillScore":2,"category":"general","clues":[{"text":"יחלו","difficulty":2,"quality":3},{"text":"קיוו שיקרה","difficulty":1,"quality":4},{"text":"חיכו בתקווה","difficulty":2,"quality":4}]},
   {"answer":"ציפורן","fillScore":4,"category":"science","clues":[{"text":"רקמה קשה באצבעות","difficulty":2,"quality":4}]},
   {"answer":"ציפי שביט","fillScore":2,"category":"culture","clues":[{"text":"שחקנית וקומיקאית ישראלית","difficulty":3,"quality":4}]},
   {"answer":"ציציות","fillScore":3,"category":"bible","clues":[{"text":"פריט לבוש ביהדות","difficulty":2,"quality":4}]},
@@ -3822,13 +3820,13 @@
   {"answer":"צפון אפריקה","fillScore":2,"category":"geography","clues":[{"text":"אזור גאוגרפי סמוך לים התיכון","difficulty":3,"quality":4}]},
   {"answer":"צפיר","fillScore":4,"category":"people","clues":[{"text":"שחקן ישראלי ש\"מ","difficulty":2,"quality":4},{"text":"טוביה, בדרן ש\"מ","difficulty":1,"quality":5},{"text":"תיש צעיר","difficulty":2,"quality":5},{"text":"חקיין ואמן בידור ישראלי","difficulty":2,"quality":4}]},
   {"answer":"צפע","fillScore":4,"category":"science","clues":[{"text":"מין נחש ארסי","difficulty":1,"quality":4},{"text":"נחש מסוכן בארץ","difficulty":1,"quality":4},{"text":"נחש ארסי בעל ראש קצר ומשולש","difficulty":2,"quality":4}]},
-  {"answer":"צפר","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"מטה גפנים","difficulty":3,"quality":1},{"text":"השמיע קול חד","difficulty":2,"quality":3},{"text":"עשה ביפ־ביפ ברכב","difficulty":2,"quality":4}]},
+  {"answer":"צפר","fillScore":2,"category":"general","clues":[{"text":"מטה גפנים","difficulty":3,"quality":3},{"text":"השמיע קול חד","difficulty":2,"quality":3},{"text":"עשה ביפ־ביפ ברכב","difficulty":2,"quality":4}]},
   {"answer":"צפת","fillScore":4,"category":"geography","clues":[{"text":"עיר בצפון","difficulty":1,"quality":4},{"text":"עיר המקובלים בגליל","difficulty":1,"quality":5}]},
   {"answer":"צצה","fillScore":2,"category":"general","clues":[{"text":"הופיעה פתאום","difficulty":1,"quality":4},{"text":"עלתה לפתע","difficulty":1,"quality":4}]},
   {"answer":"מרבצים","fillScore":3,"category":"general","clues":[{"text":"משטחים מרופדים לשכיבה נוחה","difficulty":2,"quality":4}]},
   {"answer":"צרה","fillScore":3,"category":"general","clues":[{"text":"איד","difficulty":3,"quality":4},{"text":"בעיה גדולה","difficulty":1,"quality":4}]},
   {"answer":"צרו","fillScore":2,"category":"general","clues":[{"text":"עטו על מקום בכל פתחיו","difficulty":3,"quality":3},{"text":"ביצעו מצור","difficulty":2,"quality":4},{"text":"הקיפו מכל הצדדים","difficulty":2,"quality":4}]},
-  {"answer":"צרוף","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"הוסיפו","difficulty":1,"quality":1},{"text":"מזוקק, טהור","difficulty":2,"quality":4}]},
+  {"answer":"צרוף","fillScore":2,"category":"general","clues":[{"text":"הוסיפו","difficulty":1,"quality":3},{"text":"מזוקק, טהור","difficulty":2,"quality":4}]},
   {"answer":"צרות עין","fillScore":3,"category":"language","clues":[{"text":"קנאה","difficulty":2,"quality":5}]},
   {"answer":"צריף","fillScore":4,"category":"general","clues":[{"text":"מבנה צנוע","difficulty":1,"quality":4},{"text":"בית קטן ודל","difficulty":1,"quality":4}]},
   {"answer":"צרור","fillScore":3,"category":"general","clues":[{"text":"אשכול","difficulty":2,"quality":4},{"text":"חבילה קטנה","difficulty":1,"quality":4}]},
@@ -3855,7 +3853,7 @@
   {"answer":"קדוש","fillScore":4,"category":"bible","clues":[{"text":"בעל חשיבות דתית","difficulty":1,"quality":4},{"text":"לא חולין","difficulty":2,"quality":4},{"text":"שיש בו שכינה","difficulty":2,"quality":4}]},
   {"answer":"קדט","fillScore":3,"category":"general","clues":[{"text":"טירון","difficulty":2,"quality":3},{"text":"צוער","difficulty":2,"quality":5},{"text":"תלמיד צוער","difficulty":2,"quality":4}]},
   {"answer":"קדו","fillScore":2,"category":"general","clues":[{"text":"השתחוו קלות","difficulty":2,"quality":4},{"text":"הרכינו ראש","difficulty":2,"quality":4}]},
-  {"answer":"קדים","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"שייך לעבר","difficulty":2,"quality":1},{"text":"נוצר לפני זמן רב","difficulty":2,"quality":1},{"text":"משתחווים","difficulty":2,"quality":4}]},
+  {"answer":"קדים","fillScore":2,"category":"general","clues":[{"text":"שייך לעבר","difficulty":2,"quality":3},{"text":"נוצר לפני זמן רב","difficulty":2,"quality":3},{"text":"משתחווים","difficulty":2,"quality":4}]},
   {"answer":"קדיס","fillScore":3,"category":"geography","clues":[{"text":"עיר בספרד","difficulty":2,"quality":4},{"text":"עיר נמל באנדלוסיה","difficulty":3,"quality":4}]},
   {"answer":"קדיש","fillScore":4,"category":"bible","clues":[{"text":"תפילה למת","difficulty":1,"quality":3},{"text":"תפילה ביהדות","difficulty":1,"quality":2},{"text":"תפילת אבלים","difficulty":1,"quality":5}]},
   {"answer":"קדמה","fillScore":1,"category":"geography","excludeFromDaily":true,"clues":[{"text":"כפר נוער טיפולי בדרום","difficulty":3,"quality":3},{"text":"הפך הנחשלות","difficulty":2,"quality":4},{"text":"מזרחה","difficulty":2,"quality":4},{"text":"הצד הקדמי","difficulty":2,"quality":3}]},
@@ -3910,7 +3908,7 @@
   {"answer":"קטש","fillScore":4,"category":"sport","clues":[{"text":"מאמן כדורסל ישראלי ש\"מ","difficulty":2,"quality":4},{"text":"עודד מכדורסל ישראלי","difficulty":1,"quality":5}]},
   {"answer":"קובי אפללו","fillScore":2,"category":"culture","clues":[{"text":"זמר ישראלי","difficulty":3,"quality":4}]},
   {"answer":"קיבל","fillScore":2,"category":"general","clues":[{"text":"נמסר לידו","difficulty":1,"quality":4},{"text":"לא נתן, להפך","difficulty":1,"quality":4},{"text":"תמך בעמדה של מישהו","difficulty":2,"quality":3}]},
-  {"answer":"קידם","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"ביצע תכניות","difficulty":2,"quality":1},{"text":"עזר לנושא להתפתח","difficulty":2,"quality":4}]},
+  {"answer":"קידם","fillScore":2,"category":"general","clues":[{"text":"ביצע תכניות","difficulty":2,"quality":3},{"text":"עזר לנושא להתפתח","difficulty":2,"quality":4}]},
   {"answer":"קיו","fillScore":2,"category":"language","clues":[{"text":"אות אנגלית","difficulty":1,"quality":4},{"text":"Q בעברית","difficulty":1,"quality":4}]},
   {"answer":"קיטו","fillScore":4,"category":"geography","clues":[{"text":"בירת אקוודור","difficulty":1,"quality":5},{"text":"בירה בהרי האנדים","difficulty":2,"quality":4}]},
   {"answer":"קיטר","fillScore":3,"category":"general","clues":[{"text":"התלונן","difficulty":1,"quality":5},{"text":"לא הפסיק להתלונן","difficulty":1,"quality":4},{"text":"התלונן ללא הרף (בסלנג)","difficulty":2,"quality":4}]},
@@ -3958,7 +3956,7 @@
   {"answer":"קמפוס","fillScore":4,"category":"general","clues":[{"text":"שטח האוניברסיטה","difficulty":2,"quality":4},{"text":"קריה אקדמית","difficulty":1,"quality":5}]},
   {"answer":"קמפר","fillScore":1,"category":"geography","excludeFromDaily":true,"clues":[{"text":"עיר במערב צרפת","difficulty":3,"quality":3},{"text":"קרוואן לטיולים","difficulty":2,"quality":4}]},
   {"answer":"קמץ","fillScore":3,"category":"language","clues":[{"text":"מסימני הניקוד","difficulty":1,"quality":4},{"text":"הקו והנקודה שמתחת","difficulty":2,"quality":5}]},
-  {"answer":"קמר","fillScore":1,"category":"language","excludeFromDaily":true,"clues":[{"text":"רבוע ר\"ת","difficulty":2,"quality":1},{"text":"קילומטר רבוע, ר״ת","difficulty":1,"quality":5}]},
+  {"answer":"קמר","fillScore":1,"category":"language","clues":[{"text":"רבוע ר\"ת","difficulty":2,"quality":3},{"text":"קילומטר רבוע, ר״ת","difficulty":1,"quality":5}]},
   {"answer":"קמרון","fillScore":3,"category":"geography","clues":[{"text":"גובלת עם צ'אד","difficulty":2,"quality":4}]},
   {"answer":"קנדה","fillScore":5,"category":"geography","clues":[{"text":"גובלת עם ארה\"ב","difficulty":1,"quality":4},{"text":"מדינת עלה האדר","difficulty":1,"quality":5},{"text":"שכנת ארה\"ב מצפון","difficulty":1,"quality":5},{"text":"מדינה בצפון אמריקה","difficulty":1,"quality":5},{"text":"בירתה אוטווה","difficulty":1,"quality":5}]},
   {"answer":"קנדי מן","fillScore":2,"category":"culture","clues":[{"text":"סרט אימה","difficulty":2,"quality":4}]},
@@ -4001,7 +3999,7 @@
   {"answer":"קרואטיה","fillScore":3,"category":"geography","clues":[{"text":"גובלת עם הונגריה","difficulty":2,"quality":4},{"text":"בירתה זאגרב","difficulty":1,"quality":5}]},
   {"answer":"קרוב","fillScore":3,"category":"general","clues":[{"text":"נמצא בסמוך","difficulty":1,"quality":3},{"text":"לא רחוק","difficulty":1,"quality":5},{"text":"כמעט כאן","difficulty":1,"quality":4}]},
   {"answer":"קרוהן","fillScore":2,"category":"science","clues":[{"text":"מין מחלת מעיים","difficulty":2,"quality":4}]},
-  {"answer":"קרוי","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"השם שלו","difficulty":1,"quality":1},{"text":"נקרא בשם","difficulty":1,"quality":5},{"text":"נושא את השם","difficulty":2,"quality":4}]},
+  {"answer":"קרוי","fillScore":2,"category":"general","clues":[{"text":"השם שלו","difficulty":1,"quality":3},{"text":"נקרא בשם","difficulty":1,"quality":5},{"text":"נושא את השם","difficulty":2,"quality":4}]},
   {"answer":"קרום","fillScore":3,"category":"science","clues":[{"text":"שכבה דקה על גבי נוזל","difficulty":1,"quality":4},{"text":"מעטה דקיק","difficulty":1,"quality":4},{"text":"שכבה דקה על חלב","difficulty":1,"quality":5}]},
   {"answer":"קריא","fillScore":3,"category":"general","clues":[{"text":"ניתן להבין את הכתוב","difficulty":1,"quality":4},{"text":"אפשר לפענח את הכתב","difficulty":1,"quality":5},{"text":"לא כתב חרטומים","difficulty":2,"quality":5},{"text":"טקסט ברור ומובן","difficulty":1,"quality":4}]},
   {"answer":"קריז","fillScore":3,"category":"general","clues":[{"text":"צורך בלתי נשלט בסמים","difficulty":2,"quality":4},{"text":"דחף של מכור","difficulty":2,"quality":4},{"text":"הגוף דורש מנה","difficulty":3,"quality":5}]},
@@ -4026,7 +4024,7 @@
   {"answer":"קרנף","fillScore":5,"category":"science","clues":[{"text":"יונק מפריס פרסה","difficulty":2,"quality":3},{"text":"יונק ענק עם קרן על האף","difficulty":1,"quality":5}]},
   {"answer":"קרסה","fillScore":2,"category":"general","clues":[{"text":"התמוטטה","difficulty":1,"quality":3},{"text":"נפלה תחת עומס","difficulty":1,"quality":4},{"text":"התמוטטה בבת אחת","difficulty":1,"quality":4}]},
   {"answer":"קרסו","fillScore":2,"category":"general","clues":[{"text":"התמוטטו","difficulty":1,"quality":3},{"text":"נפלו תחת עומס","difficulty":1,"quality":4},{"text":"התמוטטו יחד","difficulty":1,"quality":4}]},
-  {"answer":"קרף","fillScore":1,"category":"food","excludeFromDaily":true,"clues":[{"text":"פנקייק","difficulty":1,"quality":1}]},
+  {"answer":"קרף","fillScore":1,"category":"food","clues":[{"text":"פנקייק","difficulty":1,"quality":3}]},
   {"answer":"קר פול","fillScore":2,"category":"general","clues":[{"text":"נסיעה משותפת","difficulty":2,"quality":5}]},
   {"answer":"קרקס","fillScore":5,"category":"culture","clues":[{"text":"מופע נודד","difficulty":1,"quality":4},{"text":"אוהל של לוליינים","difficulty":1,"quality":5},{"text":"זירה לליצנים ואריות","difficulty":1,"quality":5}]},
   {"answer":"קרקע","fillScore":3,"category":"general","clues":[{"text":"אדמה","difficulty":1,"quality":3},{"text":"מה שמתחת לרגליים","difficulty":1,"quality":5},{"text":"שטח לבנייה או חקלאות","difficulty":2,"quality":4}]},
@@ -4068,7 +4066,7 @@
   {"answer":"רבץ","fillScore":3,"category":"general","clues":[{"text":"שכב ללא מעש","difficulty":1,"quality":4},{"text":"שכב בלי לזוז","difficulty":1,"quality":4}]},
   {"answer":"רבצה","fillScore":2,"category":"general","clues":[{"text":"שכבה ללא מעש","difficulty":1,"quality":3},{"text":"שכבה בנחת","difficulty":1,"quality":4},{"text":"לא זזה מהספה","difficulty":2,"quality":5}]},
   {"answer":"רבקה","fillScore":5,"category":"bible","clues":[{"text":"דמות בספר בראשית","difficulty":1,"quality":4},{"text":"מהאימהות","difficulty":1,"quality":4}]},
-  {"answer":"רבשץ","fillScore":2,"category":"language","excludeFromDaily":true,"clues":[{"text":"רכז ביטחון שוטף צה\"לי ר\"ת","difficulty":2,"quality":1},{"text":"איש הביטחון של היישוב","difficulty":2,"quality":4}]},
+  {"answer":"רבשץ","fillScore":2,"category":"language","clues":[{"text":"רכז ביטחון שוטף צה\"לי ר\"ת","difficulty":2,"quality":3},{"text":"איש הביטחון של היישוב","difficulty":2,"quality":4}]},
   {"answer":"רגב","fillScore":3,"category":"general","clues":[{"text":"גוש אדמה","difficulty":1,"quality":4},{"text":"פיסת עפר","difficulty":1,"quality":4}]},
   {"answer":"רגבה","fillScore":2,"category":"geography","excludeFromDaily":true,"clues":[{"text":"מושב בגליל המערבי","difficulty":3,"quality":4},{"text":"ליד נהריה, מושב שיתופי","difficulty":3,"quality":4},{"text":"יישוב בין עכו לנהריה","difficulty":2,"quality":4}]},
   {"answer":"רגבים","fillScore":2,"category":"geography","clues":[{"text":"קיבוץ סמוך לבנימינה","difficulty":2,"quality":4}]},
@@ -4083,7 +4081,7 @@
   {"answer":"רגעי","fillScore":2,"category":"general","clues":[{"text":"לזמן קצר","difficulty":1,"quality":4},{"text":"לא לאורך זמן","difficulty":1,"quality":4}]},
   {"answer":"רגע עם דודלי","fillScore":2,"category":"culture","clues":[{"text":"תוכנית טלוויזיה לילדים","difficulty":3,"quality":5}]},
   {"answer":"רדאר","fillScore":4,"category":"science","clues":[{"text":"מכשיר לגילוי","difficulty":1,"quality":3},{"text":"קולט מטוסים מרחוק","difficulty":1,"quality":4},{"text":"מכ\"ם","difficulty":1,"quality":5}]},
-  {"answer":"רדו","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"לכו מטה","difficulty":1,"quality":4},{"text":"שטו בכוחנות","difficulty":2,"quality":1},{"text":"שלטו ביד חזקה","difficulty":2,"quality":4}]},
+  {"answer":"רדו","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"לכו מטה","difficulty":1,"quality":4},{"text":"שלטו ביד חזקה","difficulty":2,"quality":4}]},
   {"answer":"רדוד","fillScore":3,"category":"general","clues":[{"text":"לא מעמיק שטחי","difficulty":1,"quality":4},{"text":"מים עד הברכיים","difficulty":1,"quality":5}]},
   {"answer":"רדום","fillScore":3,"category":"general","clues":[{"text":"לא ער","difficulty":1,"quality":4},{"text":"במצב שינה","difficulty":1,"quality":4}]},
   {"answer":"רדי","fillScore":2,"category":"general","clues":[{"text":"לכי מטה","difficulty":1,"quality":4},{"text":"הנמיכי קומה","difficulty":2,"quality":4}]},
@@ -4100,7 +4098,7 @@
   {"answer":"רובוט","fillScore":4,"category":"science","clues":[{"text":"מכונה אוטומטית","difficulty":2,"quality":4}]},
   {"answer":"רוגמים","fillScore":2,"category":"general","clues":[{"text":"מיידים אבנים","difficulty":2,"quality":4}]},
   {"answer":"רוגש","fillScore":3,"category":"general","clues":[{"text":"רועש סוער","difficulty":2,"quality":4},{"text":"סוער כים בחורף","difficulty":2,"quality":4}]},
-  {"answer":"רוו","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"סיפקו צימאון","difficulty":2,"quality":1},{"text":"שתו די והותר","difficulty":2,"quality":5},{"text":"שברו את צימאונם","difficulty":1,"quality":4}]},
+  {"answer":"רוו","fillScore":2,"category":"general","clues":[{"text":"סיפקו צימאון","difficulty":2,"quality":3},{"text":"שתו די והותר","difficulty":2,"quality":5},{"text":"שברו את צימאונם","difficulty":1,"quality":4}]},
   {"answer":"רווק","fillScore":4,"category":"general","clues":[{"text":"לא נשוי","difficulty":1,"quality":4},{"text":"בלי טבעת נישואין","difficulty":1,"quality":4}]},
   {"answer":"רוורס","fillScore":3,"category":"general","clues":[{"text":"נסיעה לאחור","difficulty":1,"quality":5}]},
   {"answer":"רוז","fillScore":2,"category":"culture","excludeFromDaily":true,"clues":[{"text":"סרט דרמה מוזיקלי","difficulty":3,"quality":2},{"text":"סרט עם בט מידלר","difficulty":3,"quality":5}]},
@@ -4133,14 +4131,14 @@
   {"answer":"רופין","fillScore":2,"category":"geography","clues":[{"text":"מרכז אקדמי בעמק חפר","difficulty":2,"quality":4}]},
   {"answer":"רוצח","fillScore":4,"category":"general","clues":[{"text":"הורג במזיד","difficulty":1,"quality":4},{"text":"משחק בגידה סביב השולחן","difficulty":2,"quality":4}]},
   {"answer":"רוצחת","fillScore":3,"category":"general","clues":[{"text":"הורגת בכוונה תחילה","difficulty":2,"quality":4}]},
-  {"answer":"רוק","fillScore":4,"category":"culture","excludeFromDaily":true,"clues":[{"text":"ז'אנר מוזיקלי","difficulty":1,"quality":4},{"text":"מחית","difficulty":1,"quality":1}]},
+  {"answer":"רוק","fillScore":4,"category":"culture","clues":[{"text":"ז'אנר מוזיקלי","difficulty":1,"quality":4},{"text":"מחית","difficulty":1,"quality":3}]},
   {"answer":"רוקח","fillScore":4,"category":"science","clues":[{"text":"עובד בית המרקחת","difficulty":1,"quality":4},{"text":"מכין תרופות","difficulty":1,"quality":4}]},
   {"answer":"רוקי","fillScore":4,"category":"culture","clues":[{"text":"גיבור קולנועי","difficulty":2,"quality":3},{"text":"המתאגרף של סטאלון","difficulty":1,"quality":5}]},
   {"answer":"רוקר","fillScore":4,"category":"culture","clues":[{"text":"סוג של זמר","difficulty":1,"quality":4},{"text":"שחקן אמריקאי ש\"מ","difficulty":3,"quality":3},{"text":"זמר או נגן רוק, רוקיסט","difficulty":1,"quality":4},{"text":"זמר רוק","difficulty":1,"quality":4}]},
   {"answer":"רור","fillScore":2,"category":"geography","excludeFromDaily":true,"clues":[{"text":"חבל בגרמניה","difficulty":3,"quality":3},{"text":"אזור תעשייה גרמני","difficulty":3,"quality":4}]},
   {"answer":"רושם","fillScore":2,"category":"general","clues":[{"text":"מעלה על הכתב","difficulty":1,"quality":4},{"text":"כותב במחברת","difficulty":1,"quality":4}]},
   {"answer":"רושף","fillScore":3,"category":"general","clues":[{"text":"יש בו כעס רב","difficulty":2,"quality":3},{"text":"יורה אש מהעיניים","difficulty":2,"quality":4},{"text":"מתיז ניצוצות","difficulty":2,"quality":4}]},
-  {"answer":"רות","fillScore":4,"category":"bible","excludeFromDaily":true,"clues":[{"text":"מגילה מקראית","difficulty":1,"quality":5},{"text":"מגילה מקראית מהווה סיפור של","difficulty":2,"quality":1}]},
+  {"answer":"רות","fillScore":4,"category":"bible","clues":[{"text":"מגילה מקראית","difficulty":1,"quality":5},{"text":"מגילה מקראית מהווה סיפור של","difficulty":2,"quality":3}]},
   {"answer":"רותחת","fillScore":3,"category":"language","clues":[{"text":"עצבנית","difficulty":1,"quality":4}]},
   {"answer":"רותק","fillScore":2,"category":"general","clues":[{"text":"הוצמד, נקשר","difficulty":2,"quality":4},{"text":"נקבע למקום","difficulty":2,"quality":4}]},
   {"answer":"רזה","fillScore":3,"category":"general","clues":[{"text":"דק גזרה","difficulty":2,"quality":3},{"text":"לא שמן","difficulty":1,"quality":4},{"text":"בעל אחוז שומן נמוך","difficulty":2,"quality":4}]},
@@ -4162,7 +4160,7 @@
   {"answer":"ריטואל","fillScore":3,"category":"culture","clues":[{"text":"טקס פולחני","difficulty":2,"quality":5}]},
   {"answer":"ריטואלים","fillScore":2,"category":"culture","clues":[{"text":"טקסים פולחניים","difficulty":3,"quality":4}]},
   {"answer":"ריינר","fillScore":2,"category":"culture","clues":[{"text":"מנצח יהודי הונגרי ש\"מ","difficulty":2,"quality":3}]},
-  {"answer":"ריל","fillScore":2,"category":"culture","excludeFromDaily":true,"clues":[{"text":"גליל לעיצוב תלתל","difficulty":2,"quality":1},{"text":"סרטון קצר באינסטגרם","difficulty":2,"quality":5}]},
+  {"answer":"ריל","fillScore":2,"category":"culture","excludeFromDaily":true,"clues":[{"text":"סרטון קצר באינסטגרם","difficulty":2,"quality":5}]},
   {"answer":"רימון","fillScore":4,"category":"general","clues":[{"text":"מסמלי ראש השנה","difficulty":1,"quality":4},{"text":"בית ספר למוזיקה במרכז","difficulty":1,"quality":4},{"text":"פרי מלא גרגרים","difficulty":1,"quality":4},{"text":"אחד משבעת המינים","difficulty":1,"quality":5},{"text":"גם נשק שמתפוצץ לאחר השלכה","difficulty":1,"quality":4}]},
   {"answer":"רימיתי","fillScore":2,"category":"general","clues":[{"text":"פעלתי באופן לא הוגן","difficulty":2,"quality":4}]},
   {"answer":"רימל","fillScore":3,"category":"general","clues":[{"text":"מסקרה","difficulty":1,"quality":4},{"text":"צבע לריסים","difficulty":1,"quality":4},{"text":"כלי איפור לריסים","difficulty":1,"quality":4}]},
@@ -4182,14 +4180,14 @@
   {"answer":"רירית","fillScore":3,"category":"science","clues":[{"text":"שכבת רקמה בגוף","difficulty":2,"quality":4},{"text":"קרום בגוף האדם","difficulty":2,"quality":3},{"text":"קרום המרפד איבר פנימי","difficulty":2,"quality":5},{"text":"מוקוזה","difficulty":2,"quality":3}]},
   {"answer":"ריסקנו","fillScore":2,"category":"general","clues":[{"text":"שברנו, ניתצנו","difficulty":2,"quality":4}]},
   {"answer":"רישוי","fillScore":3,"category":"general","clues":[{"text":"מתן תוקף חוקי","difficulty":2,"quality":4}]},
-  {"answer":"רישם","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"מעלה על הכתב","difficulty":1,"quality":1},{"text":"שרבט סקיצה","difficulty":2,"quality":4}]},
+  {"answer":"רישם","fillScore":2,"category":"general","clues":[{"text":"מעלה על הכתב","difficulty":1,"quality":3},{"text":"שרבט סקיצה","difficulty":2,"quality":4}]},
   {"answer":"ריתוק","fillScore":3,"category":"general","clues":[{"text":"עונש צה\"לי","difficulty":1,"quality":4},{"text":"הצמדה לקרקע של יריב בג'ודו","difficulty":3,"quality":4},{"text":"הצמדה למקום","difficulty":2,"quality":3}]},
   {"answer":"רכבת","fillScore":4,"category":"general","clues":[{"text":"מכלי התחבורה","difficulty":1,"quality":3},{"text":"קרונות על פסים","difficulty":1,"quality":5}]},
   {"answer":"רכוס","fillScore":3,"category":"general","clues":[{"text":"סגור בכפתורים","difficulty":1,"quality":4},{"text":"מהודק בלולאות וכפתור","difficulty":2,"quality":4},{"text":"סגור ברוכסן","difficulty":1,"quality":5},{"text":"פרוף","difficulty":2,"quality":3}]},
   {"answer":"רכוש","fillScore":4,"category":"general","clues":[{"text":"כלל הנכסים","difficulty":1,"quality":4},{"text":"הון ונכסים","difficulty":1,"quality":5}]},
   {"answer":"רכיב","fillScore":3,"category":"general","clues":[{"text":"חלק במכונה","difficulty":1,"quality":4},{"text":"חלק בתוך מערכת","difficulty":1,"quality":4}]},
   {"answer":"רכיכה","fillScore":2,"category":"language","clues":[{"text":"כינוי מעליב לפחדן","difficulty":2,"quality":4},{"text":"כינוי מעליב לאדם חלש","difficulty":2,"quality":4},{"text":"כינוי מעליב לאדם שאינו אמיץ","difficulty":2,"quality":4}]},
-  {"answer":"רכיש","fillScore":1,"category":"general","excludeFromDaily":true,"clues":[{"text":"קניין","difficulty":2,"quality":1},{"text":"ניתן לקנותו","difficulty":3,"quality":3}]},
+  {"answer":"רכיש","fillScore":1,"category":"general","clues":[{"text":"קניין","difficulty":2,"quality":3},{"text":"ניתן לקנותו","difficulty":3,"quality":3}]},
   {"answer":"רכשו","fillScore":2,"category":"general","clues":[{"text":"קנו","difficulty":1,"quality":4},{"text":"שילמו וקיבלו","difficulty":1,"quality":4},{"text":"ביצעו קנייה","difficulty":1,"quality":4}]},
   {"answer":"רלש","fillScore":2,"category":"language","clues":[{"text":"ראש לשכה ר\"ת","difficulty":2,"quality":4},{"text":"מנהל יומן בלשכה, בקיצור","difficulty":3,"quality":4}]},
   {"answer":"רם אורן","fillScore":2,"category":"culture","clues":[{"text":"סופר ישראלי","difficulty":2,"quality":4}]},
@@ -4209,7 +4207,7 @@
   {"answer":"רמי פורטיס","fillScore":2,"category":"culture","clues":[{"text":"זמר ישראלי","difficulty":3,"quality":4}]},
   {"answer":"רמירז","fillScore":2,"category":"science","clues":[{"text":"דג במים מתוקים","difficulty":1,"quality":3},{"text":"מין דג במים מתוקים","difficulty":1,"quality":3}]},
   {"answer":"רמירס","fillScore":2,"category":"sport","clues":[{"text":"כדורגלן עבר ברזילאי","difficulty":2,"quality":3}]},
-  {"answer":"רמס","fillScore":2,"category":"general","excludeFromDaily":true,"clues":[{"text":"מער דרס","difficulty":2,"quality":1},{"text":"נעל בדריכה","difficulty":2,"quality":2},{"text":"מערך בדריסה","difficulty":2,"quality":1},{"text":"דרס ברגליו","difficulty":1,"quality":5}]},
+  {"answer":"רמס","fillScore":2,"category":"general","clues":[{"text":"מער דרס","difficulty":2,"quality":3},{"text":"נעל בדריכה","difficulty":2,"quality":2},{"text":"מערך בדריסה","difficulty":2,"quality":3},{"text":"דרס ברגליו","difficulty":1,"quality":5}]},
   {"answer":"רמסתי","fillScore":2,"category":"general","clues":[{"text":"מעכתי, דרסתי","difficulty":1,"quality":4}]},
   {"answer":"רמסתן","fillScore":2,"category":"general","clues":[{"text":"מעכתן, דרסתן","difficulty":1,"quality":4}]},
   {"answer":"רמקול","fillScore":4,"category":"general","clues":[{"text":"מכשיר מגביר קול","difficulty":2,"quality":4}]},
@@ -4439,7 +4437,7 @@
   {"answer":"שמות","fillScore":4,"category":"bible","clues":[{"text":"מספרי התנ\"ך","difficulty":2,"quality":4},{"text":"הספר שאחרי בראשית","difficulty":1,"quality":5}]},
   {"answer":"שמחה","fillScore":4,"category":"general","clues":[{"text":"דיצה","difficulty":2,"quality":4},{"text":"אושר בלב","difficulty":1,"quality":4}]},
   {"answer":"שמחו","fillScore":2,"category":"general","clues":[{"text":"צהלו","difficulty":1,"quality":4},{"text":"הביעו גיל","difficulty":1,"quality":4}]},
-  {"answer":"שמט","fillScore":1,"category":"people","excludeFromDaily":true,"clues":[{"text":"משוררת ישראלית ש\"מ","difficulty":3,"quality":1},{"text":"הפיל מידיו","difficulty":2,"quality":4},{"text":"איבד אחיזה, הפיל","difficulty":1,"quality":4}]},
+  {"answer":"שמט","fillScore":1,"category":"people","clues":[{"text":"משוררת ישראלית ש\"מ","difficulty":3,"quality":3},{"text":"הפיל מידיו","difficulty":2,"quality":4},{"text":"איבד אחיזה, הפיל","difficulty":1,"quality":4}]},
   {"answer":"שמי","fillScore":2,"category":"language","clues":[{"text":"נומינלי","difficulty":2,"quality":4},{"text":"להלכה, לא ממשי","difficulty":2,"quality":4}]},
   {"answer":"שמיר","fillScore":4,"category":"people","clues":[{"text":"מראשי הממשלה ש\"מ","difficulty":2,"quality":3},{"text":"יצחק, רה״מ לשעבר","difficulty":2,"quality":4}]},
   {"answer":"שמירה","fillScore":4,"category":"general","clues":[{"text":"הגנה אבטחה","difficulty":1,"quality":3}]},
@@ -4455,7 +4453,7 @@
   {"answer":"שמרנו","fillScore":3,"category":"general","clues":[{"text":"השגחנו פיקחנו","difficulty":2,"quality":3}]},
   {"answer":"שמש","fillScore":5,"category":"science","clues":[{"text":"חמה","difficulty":1,"quality":4},{"text":"סדרה קומית ישראלית","difficulty":2,"quality":5}]},
   {"answer":"שמשייה","fillScore":4,"category":"general","clues":[{"text":"מגנה מפני שמש","difficulty":2,"quality":4}]},
-  {"answer":"שנה","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"ירחים","difficulty":2,"quality":1},{"text":"תריסר חודשים","difficulty":1,"quality":4}]},
+  {"answer":"שנה","fillScore":3,"category":"general","clues":[{"text":"ירחים","difficulty":2,"quality":3},{"text":"תריסר חודשים","difficulty":1,"quality":4}]},
   {"answer":"שנוא","fillScore":3,"category":"general","clues":[{"text":"לא אהוב","difficulty":1,"quality":4},{"text":"מעורר סלידה","difficulty":1,"quality":4},{"text":"נתעב","difficulty":1,"quality":4}]},
   {"answer":"שניהם","fillScore":4,"category":"general","clues":[{"text":"צמד האנשים","difficulty":1,"quality":3}]},
   {"answer":"שנים","fillScore":3,"category":"general","clues":[{"text":"שיר של נסרין קדרי עברו","difficulty":3,"quality":2},{"text":"תקופות של 365 יום","difficulty":1,"quality":4}]},
@@ -4544,7 +4542,7 @@
   {"answer":"תחנו","fillScore":2,"category":"general","clues":[{"text":"תמקמו את רכבכם","difficulty":1,"quality":3},{"text":"תעמידו את האוטו","difficulty":1,"quality":4}]},
   {"answer":"תחקירן","fillScore":3,"category":"general","clues":[{"text":"עובד בדסק חדשות","difficulty":2,"quality":4}]},
   {"answer":"חיוני","fillScore":4,"category":"general","clues":[{"text":"מלא חיים מרגש","difficulty":2,"quality":3}]},
-  {"answer":"תיוק","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"סידר מסמכים בקלסר","difficulty":1,"quality":1},{"text":"ארגון ניירת בקלסר","difficulty":1,"quality":4},{"text":"סידור מסמכים","difficulty":1,"quality":4}]},
+  {"answer":"תיוק","fillScore":3,"category":"general","clues":[{"text":"סידר מסמכים בקלסר","difficulty":1,"quality":3},{"text":"ארגון ניירת בקלסר","difficulty":1,"quality":4},{"text":"סידור מסמכים","difficulty":1,"quality":4}]},
   {"answer":"תייר","fillScore":3,"category":"general","clues":[{"text":"מבקר במדינה אחרת","difficulty":1,"quality":4},{"text":"מטייל עם דרכון","difficulty":1,"quality":5},{"text":"טוריסט","difficulty":1,"quality":4}]},
   {"answer":"תיל","fillScore":3,"category":"general","clues":[{"text":"חוט מתכת","difficulty":1,"quality":4},{"text":"חוט ברזל","difficulty":1,"quality":4}]},
   {"answer":"תימן","fillScore":4,"category":"geography","clues":[{"text":"מדינה במזה\"ת","difficulty":1,"quality":4},{"text":"צנעא בירתה","difficulty":1,"quality":4}]},
@@ -4571,12 +4569,12 @@
   {"answer":"תמורה","fillScore":3,"category":"general","clues":[{"text":"גמול שכר","difficulty":1,"quality":4}]},
   {"answer":"תמיד","fillScore":3,"category":"general","clues":[{"text":"בכל פעם","difficulty":1,"quality":4},{"text":"בלי הפסקה","difficulty":1,"quality":4},{"text":"בכל עת","difficulty":1,"quality":5},{"text":"כל הזמן","difficulty":1,"quality":5}]},
   {"answer":"תמים","fillScore":3,"category":"general","clues":[{"text":"נאיבי","difficulty":1,"quality":4},{"text":"מאמין לכל דבר","difficulty":1,"quality":4},{"text":"שלם, מלא","difficulty":2,"quality":4},{"text":"חף מפשע, נקי, טהור","difficulty":2,"quality":4},{"text":"בר לבב","difficulty":2,"quality":5}]},
-  {"answer":"תמיר","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"גובה קומה","difficulty":1,"quality":1},{"text":"גבוה ודק","difficulty":1,"quality":4}]},
+  {"answer":"תמיר","fillScore":3,"category":"general","clues":[{"text":"גובה קומה","difficulty":1,"quality":3},{"text":"גבוה ודק","difficulty":1,"quality":4}]},
   {"answer":"תמיר הימן","fillScore":2,"category":"people","clues":[{"text":"מראשי אמ\"ן","difficulty":3,"quality":4}]},
   {"answer":"תמיר פרדו","fillScore":2,"category":"people","clues":[{"text":"מראשי המוסד","difficulty":3,"quality":4}]},
   {"answer":"תמכו","fillScore":2,"category":"general","clues":[{"text":"עזרו סייעו","difficulty":1,"quality":3},{"text":"נתנו גב","difficulty":1,"quality":4},{"text":"סיפקו סעד","difficulty":2,"quality":4}]},
   {"answer":"תמלול","fillScore":3,"category":"general","clues":[{"text":"העלאת קול לכתב","difficulty":1,"quality":4},{"text":"כתיבת הנאמר","difficulty":1,"quality":4},{"text":"תיעוד כתוב של שיחה","difficulty":1,"quality":5}]},
-  {"answer":"תמם","fillScore":1,"category":"people","excludeFromDaily":true,"clues":[{"text":"שחקן ישראלי ש\"מ","difficulty":3,"quality":3},{"text":"שחקן קולנוע ישראלי ש\"מ","difficulty":3,"quality":3},{"text":"מערבב","difficulty":1,"quality":1},{"text":"מאור, שחקן ישראלי","difficulty":3,"quality":4}]},
+  {"answer":"תמם","fillScore":1,"category":"people","excludeFromDaily":true,"clues":[{"text":"שחקן ישראלי ש\"מ","difficulty":3,"quality":3},{"text":"שחקן קולנוע ישראלי ש\"מ","difficulty":3,"quality":3},{"text":"מאור, שחקן ישראלי","difficulty":3,"quality":4}]},
   {"answer":"תמנע","fillScore":4,"category":"geography","clues":[{"text":"בקעה בנגב","difficulty":2,"quality":4},{"text":"בקעה בערבה","difficulty":2,"quality":4}]},
   {"answer":"תמסח","fillScore":1,"category":"bible","excludeFromDaily":true,"clues":[{"text":"מין תנין","difficulty":3,"quality":3},{"text":"תנין, במילה מקראית","difficulty":3,"quality":4},{"text":"מילה עתיקה לזוחל מים גדול","difficulty":3,"quality":4}]},
   {"answer":"תמר","fillScore":4,"category":"food","clues":[{"text":"פרי יבש בט\"ו בשבט","difficulty":1,"quality":4},{"text":"נחל בנגב","difficulty":2,"quality":4},{"text":"פרי הדקל","difficulty":1,"quality":5}]},
@@ -4606,7 +4604,7 @@
   {"answer":"תקדים","fillScore":3,"category":"general","clues":[{"text":"מקרה ראשון","difficulty":1,"quality":3}]},
   {"answer":"תקיעת שופר","fillScore":3,"category":"bible","clues":[{"text":"מצווה בראש השנה","difficulty":3,"quality":5}]},
   {"answer":"תקן","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"רמת ביצוע","difficulty":2,"quality":2},{"text":"סטנדרט מחייב","difficulty":1,"quality":5},{"text":"משרה מאושרת","difficulty":2,"quality":4}]},
-  {"answer":"תקני","fillScore":3,"category":"language","excludeFromDaily":true,"clues":[{"text":"אינו לקוי","difficulty":1,"quality":1},{"text":"לפי הכללים הרשמיים","difficulty":2,"quality":4}]},
+  {"answer":"תקני","fillScore":3,"category":"language","clues":[{"text":"אינו לקוי","difficulty":1,"quality":3},{"text":"לפי הכללים הרשמיים","difficulty":2,"quality":4}]},
   {"answer":"תקר","fillScore":3,"category":"general","clues":[{"text":"פנצ'ר","difficulty":1,"quality":5},{"text":"צרה בגלגל","difficulty":1,"quality":5}]},
   {"answer":"תקרית","fillScore":4,"category":"general","clues":[{"text":"אירוע לרוב שלילי","difficulty":2,"quality":4}]},
   {"answer":"תרד","fillScore":4,"category":"food","clues":[{"text":"ירק מאכל ירוק","difficulty":1,"quality":4},{"text":"פופאי היה אוהב","difficulty":1,"quality":5}]},
@@ -4614,7 +4612,7 @@
   {"answer":"תרו","fillScore":2,"category":"general","clues":[{"text":"חיפשו","difficulty":2,"quality":4},{"text":"חיפשו בעקבות רמז","difficulty":2,"quality":4},{"text":"סיירו","difficulty":2,"quality":3}]},
   {"answer":"תרנגול","fillScore":4,"category":"general","clues":[{"text":"מין עוף","difficulty":2,"quality":4}]},
   {"answer":"תרמו","fillScore":2,"category":"general","clues":[{"text":"נידבו כסף","difficulty":1,"quality":3},{"text":"נידבו כספים","difficulty":1,"quality":3},{"text":"נתנו לצדקה","difficulty":1,"quality":4},{"text":"תחילית שמשמעותה חום","difficulty":2,"quality":5}]},
-  {"answer":"תרמי","fillScore":3,"category":"science","excludeFromDaily":true,"clues":[{"text":"נידבו כספים","difficulty":1,"quality":1},{"text":"קשור לחום","difficulty":1,"quality":4}]},
+  {"answer":"תרמי","fillScore":3,"category":"science","excludeFromDaily":true,"clues":[{"text":"קשור לחום","difficulty":1,"quality":4}]},
   {"answer":"תרמיות","fillScore":3,"category":"general","clues":[{"text":"רמאויות","difficulty":2,"quality":4}]},
   {"answer":"תרמית","fillScore":3,"category":"general","clues":[{"text":"מעשה הונאה","difficulty":1,"quality":5}]},
   {"answer":"תרן","fillScore":3,"category":"general","clues":[{"text":"עמוד גבוה","difficulty":1,"quality":4},{"text":"נושא מפרש בספינה","difficulty":1,"quality":5}]},
@@ -5080,7 +5078,7 @@
   {"answer":"סירק","fillScore":2,"category":"general","clues":[{"text":"סידר שיער במסרק","difficulty":1,"quality":4},{"text":"עשה סדר בשיער","difficulty":1,"quality":4},{"text":"טיפל בתלתלים","difficulty":1,"quality":4}]},
   {"answer":"קיפל","fillScore":2,"category":"general","clues":[{"text":"עשה שכבות מבד או נייר","difficulty":1,"quality":3},{"text":"הפך דף לשניים","difficulty":1,"quality":4},{"text":"הכין חולצה לארון","difficulty":1,"quality":4}]},
   {"answer":"ערבב","fillScore":2,"category":"general","clues":[{"text":"סובב בכף בקערה","difficulty":1,"quality":4},{"text":"בחַש בכף","difficulty":1,"quality":4},{"text":"איחד מצרכים בקערה","difficulty":1,"quality":4}]},
-  {"answer":"טגן","fillScore":2,"category":"food","excludeFromDaily":true,"clues":[{"text":"בישל בשמן במחבת","difficulty":1,"quality":1},{"text":"הכן חביתה במחבת!","difficulty":2,"quality":4}]},
+  {"answer":"טגן","fillScore":2,"category":"food","clues":[{"text":"בישל בשמן במחבת","difficulty":1,"quality":3},{"text":"הכן חביתה במחבת!","difficulty":2,"quality":4}]},
   {"answer":"הרתיח","fillScore":3,"category":"general","clues":[{"text":"חימם מים עד בועות","difficulty":2,"quality":4},{"text":"הרגיז מאוד; הכעיס","difficulty":2,"quality":4}]},
   {"answer":"קפא","fillScore":2,"category":"general","clues":[{"text":"נהפך לקרח מקור","difficulty":1,"quality":3},{"text":"נעשה קרח","difficulty":1,"quality":4}]},
   {"answer":"חימם","fillScore":2,"category":"general","clues":[{"text":"עשה שיהיה חם","difficulty":1,"quality":4},{"text":"העלה את הטמפרטורה","difficulty":1,"quality":4},{"text":"שם במיקרוגל","difficulty":1,"quality":4}]},
@@ -6759,7 +6757,7 @@
   {"answer":"שרוך","fillScore":4,"category":"general","clues":[{"text":"חוט שסוגר נעל","difficulty":1,"quality":5},{"text":"נקשר בקשת ומתייבש בגשם","difficulty":2,"quality":4}]},
   {"answer":"ידית","fillScore":3,"category":"general","clues":[{"text":"תופסים בה כדי לפתוח או להרים","difficulty":1,"quality":4},{"text":"יש לדלת, לסיר ולמגירה","difficulty":1,"quality":4}]},
   {"answer":"מקדחה","fillScore":3,"category":"general","clues":[{"text":"כלי שעושה חורים בקיר","difficulty":1,"quality":4},{"text":"מסתובבת, רועשת ומפילה טיח","difficulty":1,"quality":3}]},
-  {"answer":"קרס","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"גם מפרק ברגל וגם וו לתפיסה","difficulty":2,"quality":1},{"text":"כואב כשמקפלים אותו לא טוב","difficulty":1,"quality":1},{"text":"וו קטן לחכה","difficulty":1,"quality":5},{"text":"נתפס בו הדג","difficulty":2,"quality":4}]},
+  {"answer":"קרס","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"וו קטן לחכה","difficulty":1,"quality":5},{"text":"נתפס בו הדג","difficulty":2,"quality":4}]},
   {"answer":"כספת","fillScore":4,"category":"general","clues":[{"text":"ארגז מבוצר לדברי ערך","difficulty":1,"quality":4},{"text":"צופן, פלדה ותחושת סודיות","difficulty":2,"quality":4}]},
   {"answer":"לפיד","fillScore":4,"category":"general","clues":[{"text":"אש על מקל","difficulty":1,"quality":4},{"text":"מאיר את הדרך בלי חשמל","difficulty":1,"quality":4},{"text":"בטקסים מעבירים אותו מיד ליד","difficulty":2,"quality":5}]},
   {"answer":"מלקחיים","fillScore":3,"category":"general","clues":[{"text":"הכלי שמציל כשחם מדי לגעת","difficulty":2,"quality":4},{"text":"מצבטיים","difficulty":2,"quality":4}]},
@@ -6782,7 +6780,7 @@
   {"answer":"דפדפת","fillScore":3,"category":"general","clues":[{"text":"מחברת קטנה לתלישה","difficulty":2,"quality":4},{"text":"דפים שנפרדים בקלות אחרי פתק","difficulty":2,"quality":3}]},
   {"answer":"זרקור","fillScore":3,"category":"culture","clues":[{"text":"פנס חזק שמכוון אלומה רחוקה","difficulty":2,"quality":4},{"text":"על הבמה הוא עוקב אחרי הזמר","difficulty":2,"quality":4}]},
   {"answer":"צנרת","fillScore":3,"category":"general","clues":[{"text":"מערכת הצינורות בבית","difficulty":1,"quality":4},{"text":"ורידי המים של הבית","difficulty":2,"quality":5},{"text":"דרכה מגיעים מים לברז","difficulty":1,"quality":4},{"text":"אינסטלציה","difficulty":1,"quality":4}]},
-  {"answer":"נסר","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"להב לחיתוך עץ","difficulty":1,"quality":1},{"text":"מסור בקיצור ישן","difficulty":2,"quality":1},{"text":"שיניים חדות בשורה אחת","difficulty":2,"quality":1},{"text":"קרש דק מן העץ","difficulty":1,"quality":5},{"text":"לוח עץ מנוסר","difficulty":2,"quality":4}]},
+  {"answer":"נסר","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"קרש דק מן העץ","difficulty":1,"quality":5},{"text":"לוח עץ מנוסר","difficulty":2,"quality":4}]},
   {"answer":"מעגל","fillScore":3,"category":"general","clues":[{"text":"צורה בלי פינות","difficulty":1,"quality":4},{"text":"חוג בלי התחלה וסוף","difficulty":2,"quality":5},{"text":"קו הסוגר על עצמו","difficulty":2,"quality":4}]},
   {"answer":"טיפה","fillScore":4,"category":"general","clues":[{"text":"יחידת מים קטנה","difficulty":1,"quality":4},{"text":"נופלת מהברז ומהעין","difficulty":1,"quality":5},{"text":"מעט מאוד, אבל מצטברת לשלולית","difficulty":2,"quality":5},{"text":"רסיס של נוזל","difficulty":1,"quality":4}]},
   {"answer":"בועה","fillScore":4,"category":"general","clues":[{"text":"כדור אוויר בתוך נוזל","difficulty":1,"quality":4},{"text":"גם מצב כלכלי שמנופח מדי","difficulty":2,"quality":5}]},
@@ -6829,11 +6827,11 @@
   {"answer":"בת קול","fillScore":3,"category":"bible","clues":[{"text":"במקורות: קול משמים","difficulty":2,"quality":5}]},
   {"answer":"דחפור","fillScore":3,"category":"general","clues":[{"text":"כלי רכב עם להב קדמי כבד","difficulty":1,"quality":5},{"text":"דוחף עפר, סלעים ובעיות תשתית","difficulty":1,"quality":4},{"text":"באתר בנייה הוא המלך הצהוב","difficulty":1,"quality":4}]},
   {"answer":"הליקס","fillScore":2,"category":"science","clues":[{"text":"סליל תלת־ממדי","difficulty":3,"quality":4},{"text":"הדנ\"א מפורסם בזכותו הכפול","difficulty":3,"quality":5}]},
-  {"answer":"התזה","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"עבודה אקדמית מקיפה","difficulty":2,"quality":1},{"text":"גם התזת מים לצדדים","difficulty":1,"quality":4},{"text":"נתז, שפריץ","difficulty":2,"quality":4}]},
+  {"answer":"התזה","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"נתז, שפריץ","difficulty":2,"quality":4}]},
   {"answer":"הליקופטר","fillScore":3,"category":"general","clues":[{"text":"כלי טיס עם מדחף מעל הראש","difficulty":1,"quality":5},{"text":"נוחת בלי מסלול ארוך","difficulty":1,"quality":4},{"text":"מסוק","difficulty":1,"quality":5}]},
   {"answer":"טחנה","fillScore":4,"category":"general","clues":[{"text":"מקום שטוחנים בו דגן","difficulty":1,"quality":4},{"text":"אבני ריחיים וקמח באוויר","difficulty":2,"quality":5},{"text":"לפני המפעל היא הייתה על נחל","difficulty":2,"quality":5}]},
   {"answer":"נווט","fillScore":3,"category":"general","clues":[{"text":"מי שמוצא את הדרך","difficulty":1,"quality":4},{"text":"קורא מפה בלי להתבייש","difficulty":2,"quality":5}]},
-  {"answer":"עלי","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"החלק העליון של מכתש","difficulty":2,"quality":1},{"text":"כותשים בו שום ותבלינים","difficulty":1,"quality":5}]},
+  {"answer":"עלי","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"כותשים בו שום ותבלינים","difficulty":1,"quality":5}]},
   {"answer":"משואה","fillScore":3,"category":"culture","clues":[{"text":"לפיד טקס גדול","difficulty":2,"quality":4},{"text":"אש של זיכרון, לא של בישול","difficulty":2,"quality":4}]},
   {"answer":"גזר דין","fillScore":3,"category":"general","clues":[{"text":"החלטת בית משפט בסוף המשפט","difficulty":2,"quality":5},{"text":"לא הירק הכתום, למרות השם","difficulty":2,"quality":4},{"text":"קובע עונש או זיכוי","difficulty":2,"quality":4},{"text":"החלטה של בית משפט","difficulty":1,"quality":4}]},
   {"answer":"תשובה","fillScore":5,"category":"general","clues":[{"text":"מה שמשיבים על שאלה","difficulty":1,"quality":5},{"text":"מענה לבעיה","difficulty":1,"quality":3}]},
@@ -6867,7 +6865,7 @@
   {"answer":"רועה","fillScore":4,"category":"general","clues":[{"text":"שומר על הצאן בשדה","difficulty":1,"quality":4},{"text":"מקל, כלב ועדר מאחוריו","difficulty":2,"quality":5},{"text":"גם תואר למי שמוביל קהילה","difficulty":2,"quality":4}]},
   {"answer":"צייד","fillScore":3,"category":"general","clues":[{"text":"מי שרודף אחרי טרף","difficulty":1,"quality":4},{"text":"קשת פעם, רובה היום","difficulty":2,"quality":4}]},
   {"answer":"שרברב","fillScore":3,"category":"general","clues":[{"text":"מתקן ברזים וסתימות","difficulty":1,"quality":5},{"text":"חבר הכי טוב של הצנרת","difficulty":1,"quality":3},{"text":"אינסטלטור","difficulty":1,"quality":5}]},
-  {"answer":"טייח","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"מטיח טיח על קירות","difficulty":1,"quality":4},{"text":"מלקט, מגהץ ומחליק משטחים","difficulty":2,"quality":1}]},
+  {"answer":"טייח","fillScore":3,"category":"general","excludeFromDaily":true,"clues":[{"text":"מטיח טיח על קירות","difficulty":1,"quality":4}]},
   {"answer":"בנאי","fillScore":3,"category":"general","clues":[{"text":"בונה בתים בידיים ובכלים","difficulty":1,"quality":4},{"text":"לבנים, בטון וקסדה על הראש","difficulty":1,"quality":5},{"text":"גם כינוי למי שבונה משהו מאפס","difficulty":2,"quality":4}]},
   {"answer":"קבלן","fillScore":3,"category":"general","clues":[{"text":"מי שמקבל פרויקט ומבצע אותו","difficulty":1,"quality":3},{"text":"אחראי על פרויקט בנייה","difficulty":1,"quality":4},{"text":"מסיים שלד, אם הכול הולך","difficulty":2,"quality":5}]},
   {"answer":"מכונאי","fillScore":3,"category":"general","clues":[{"text":"מתקן מכונות ורכב","difficulty":1,"quality":5},{"text":"שמן על הידיים הוא חלק מהמדים","difficulty":1,"quality":3}]},
@@ -6902,7 +6900,7 @@
   {"answer":"חום","fillScore":4,"category":"general","clues":[{"text":"גם צבע, גם טמפרטורה וגם קדחת","difficulty":1,"quality":5},{"text":"שוקולד, אדמה וסתיו","difficulty":2,"quality":5}]},
   {"answer":"תקווה","fillScore":5,"category":"general","clues":[{"text":"ציפייה שמשהו טוב יקרה","difficulty":1,"quality":5},{"text":"ההמנון הלאומי נושא את שמה","difficulty":1,"quality":5},{"text":"ההפך מייאוש","difficulty":1,"quality":4}]},
   {"answer":"חרדה","fillScore":3,"category":"science","clues":[{"text":"פחד מתמשך בלי איום ברור תמיד","difficulty":2,"quality":4},{"text":"הלב רץ והמחשבות לא נחות","difficulty":2,"quality":3}]},
-  {"answer":"מלח","fillScore":4,"category":"food","excludeFromDaily":true,"clues":[{"text":"גם תבלין לבן וגם ימאי","difficulty":2,"quality":5},{"text":"על השולחן ובתוך הים","difficulty":2,"quality":5},{"text":"בלי הוא, האוכל נשאר פלסטי","difficulty":2,"quality":1}]},
+  {"answer":"מלח","fillScore":4,"category":"food","excludeFromDaily":true,"clues":[{"text":"גם תבלין לבן וגם ימאי","difficulty":2,"quality":5},{"text":"על השולחן ובתוך הים","difficulty":2,"quality":5}]},
   {"answer":"הודו","fillScore":4,"category":"general","clues":[{"text":"בירתה ניו דלהי, כנפיה בתנור","difficulty":1,"quality":5},{"text":"מארצות אחשורוש","difficulty":3,"quality":4}]},
   {"answer":"סול","fillScore":3,"category":"culture","clues":[{"text":"בסולם הצלילים הוא אחרי פה","difficulty":1,"quality":4},{"text":"במחבת הוא עדין","difficulty":2,"quality":4}]},
   {"answer":"בונה","fillScore":4,"category":"general","clues":[{"text":"שיניים קדמיות וזנב שטוח בנהר","difficulty":2,"quality":5},{"text":"פועל באתר, או חיה בקנדה","difficulty":2,"quality":5}]},
@@ -7053,7 +7051,7 @@
   {"answer":"שב","fillScore":2,"category":"general","clues":[{"text":"חזר","difficulty":1,"quality":4},{"text":"ישב","difficulty":1,"quality":3}]},
   {"answer":"שד","fillScore":3,"category":"general","clues":[{"text":"יצור מרושע","difficulty":1,"quality":4},{"text":"דייר מפחיד במעשיות","difficulty":1,"quality":4}]},
   {"answer":"שה","fillScore":3,"category":"general","clues":[{"text":"כבש קטן","difficulty":1,"quality":4},{"text":"בן הצאן הקטן","difficulty":1,"quality":4}]},
-  {"answer":"שי","fillScore":3,"category":"general","clues":[{"text":"מתנה","difficulty":1,"quality":5},{"text":"שי לחג","difficulty":1,"quality":1}]},
+  {"answer":"שי","fillScore":3,"category":"general","clues":[{"text":"מתנה","difficulty":1,"quality":5}]},
   {"answer":"של","fillScore":2,"category":"language","clues":[{"text":"שייך ל...","difficulty":1,"quality":4},{"text":"מילת שייכות","difficulty":1,"quality":4}]},
   {"answer":"שם","fillScore":3,"category":"language","clues":[{"text":"כינוי לאדם","difficulty":1,"quality":3},{"text":"הניח","difficulty":1,"quality":4}]},
   {"answer":"שק","fillScore":3,"category":"general","clues":[{"text":"כלי בד לסחורה","difficulty":1,"quality":4},{"text":"סוחבים אותו על הגב","difficulty":1,"quality":4}]},
@@ -19208,7 +19206,7 @@
   {"answer":"נצולה","fillScore":2,"category":"general","clues":[{"text":"אסם, ממגורה","difficulty":2,"quality":5},{"text":"אסם ממגורה","difficulty":2,"quality":4},{"text":"ממגורה","difficulty":2,"quality":4}]},
   {"answer":"נצח נצחים","fillScore":3,"category":"general","clues":[{"text":"זמן אינסופי, תמיד","difficulty":1,"quality":5},{"text":"עולמי עולמים","difficulty":2,"quality":4}]},
   {"answer":"נצחיות","fillScore":3,"category":"general","clues":[{"text":"קיום לעולם","difficulty":1,"quality":5}]},
-  {"answer":"נציב","fillScore":3,"category":"general","clues":[{"text":"גוש זקוף","difficulty":2,"quality":4},{"text":"גוש זקיף","difficulty":2,"quality":3},{"text":"מושל מטעם שלטון מרכזי","difficulty":2,"quality":5}]},
+  {"answer":"נציב","fillScore":3,"category":"general","clues":[{"text":"מושל מטעם שלטון מרכזי","difficulty":2,"quality":5}]},
   {"answer":"נציב מלח","fillScore":3,"category":"bible","clues":[{"text":"למה שהפכה אשת לוט","difficulty":1,"quality":5},{"text":"למה הפכה אשת לוט","difficulty":1,"quality":5}]},
   {"answer":"נציגות","fillScore":3,"category":"general","clues":[{"text":"באות כח","difficulty":2,"quality":3},{"text":"באות כוח","difficulty":2,"quality":4}]},
   {"answer":"נציונלי","fillScore":2,"category":"language","clues":[{"text":"לאומי","difficulty":1,"quality":5}]},
@@ -24618,3794 +24616,3 @@
   {"answer":"תתח","fillScore":2,"category":"science","clues":[{"text":"תקשורת תומכת חלופית","difficulty":2,"quality":4},{"text":"תקשורת תומכת וחליפית","difficulty":2,"quality":5}]},
   {"answer":"תתרן","fillScore":2,"category":"science","clues":[{"text":"חסר חוש ריח","difficulty":2,"quality":5},{"text":"נטול חוש ריח","difficulty":2,"quality":5},{"text":"נטול חוש הריח","difficulty":2,"quality":4}]}
 ]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

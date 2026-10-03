@@ -1,4 +1,5 @@
 import { User } from '../models/User';
+import { containsBlockedDisplayName } from './displayNameProfanity';
 
 export const DISPLAY_NAME_MIN = 3;
 export const DISPLAY_NAME_MAX = 16;
@@ -24,6 +25,9 @@ export function validateDisplayName(raw: unknown): { ok: true; value: string } |
       ok: false,
       error: `displayName must be ${DISPLAY_NAME_MIN}–${DISPLAY_NAME_MAX} characters`,
     };
+  }
+  if (containsBlockedDisplayName(value)) {
+    return { ok: false, error: 'Display name is not allowed' };
   }
   return { ok: true, value };
 }
