@@ -8,6 +8,7 @@ import { isMatchTimedOut } from '../utils/matchTiming';
 import { removeActiveGame } from '../sockets/activeGames';
 import { isBoardFullyClaimed, serializeClaimedWords, winnerIdFromClaimedCount } from './wordClaims';
 import { isQuickMatch } from '../utils/matchSettings';
+import { isGhostOpponentId } from '../utils/ghost';
 
 export interface MatchCompletedPlayer {
   userId: string;
@@ -213,7 +214,7 @@ async function awardMatchRewards(
 
   await Promise.all(match.players.map(async (player) => {
     const playerId = toObjectId(player.userId);
-    if (!playerId) {
+    if (!playerId || isGhostOpponentId(playerId)) {
       return;
     }
 

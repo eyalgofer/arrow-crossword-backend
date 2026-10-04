@@ -14,6 +14,7 @@ import matchRoutes from './routes/matches';
 import inviteRoutes from './routes/invites';
 import { setupSocketHandlers } from './sockets/gameHandler';
 import { startMatchTimeoutJob } from './jobs/matchTimeoutJob';
+import { startGhostTicker } from './services/ghostMatch';
 import './models/MatchWordClaim';
 
 dotenv.config();
@@ -166,6 +167,9 @@ const startServer = async () => {
 
     startMatchTimeoutJob(io);
     console.log('✅ Match timeout job started');
+
+    startGhostTicker(io);
+    console.log('✅ Ghost opponent ticker started');
 
     const PORT = process.env.PORT || 3000;
     server.listen(PORT, () => {

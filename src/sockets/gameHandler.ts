@@ -4,12 +4,14 @@ import { isAccessTokenExpiredError, verifyAccessToken } from '../services/authTo
 import { User } from '../models/User';
 import { Match } from '../models/Match';
 import { Puzzle, IPuzzle } from '../models/Puzzle';
-import { MatchStatus, GameState, Language, DEFAULT_LANGUAGE, MatchCompletionReason, MatchMode } from '../types';
+import { MatchStatus, GameState, Language, MatchCompletionReason, MatchMode } from '../types';
 import { IMatch } from '../models/Match';
 import { resolveLanguageFromValues } from '../utils/language';
-import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
-import { createMatchTiming, getMatchTimingFields, serializeTimingFields } from '../utils/matchTiming';
-import { isQuickMatch, matchSettingsKey, parseMatchSettings } from '../utils/matchSettings';
+import { getMatchTimingFields, serializeTimingFields } from '../utils/matchTiming';
+import { isQuickMatch } from '../utils/matchSettings';
+import { isGhostKind } from '../utils/ghost';
+import { advanceGhostMatch } from '../services/ghostMatch';
+import { cancelRandomSearch, handleFindMatch } from './randomQueue';
 import { activeGames } from './activeGames';
 import {
   buildMatchCompletedPayload,
@@ -32,14 +34,6 @@ interface SocketWithAuth extends Socket {
   language?: Language;
 }
 
-const waitingPlayers = new Map<string, {
-  userId: string;
-  socketId: string;
-  displayName: string;
-  language: Language;
-  mode: MatchMode;
-  timed: boolean;
-}>();
 // Track active sockets by userId (firebaseUid)
 const userSockets = new Map<string, Set<string>>(); // userId -> Set of socketIds
 
@@ -97,130 +91,12 @@ export const setupSocketHandlers = (io: Server) => {
       console.warn(`Socket ${socket.id} connected without userId!`);
     }
 
-    // Find match
-    socket.on('find_match', async (data) => {
-      try {
-        const user = await User.findOne({ firebaseUid: socket.userId });
-        if (!user) {
-          socket.emit('error', { message: 'User not found' });
-          return;
-        }
-
-        // Check if already in queue
-        if (waitingPlayers.has(socket.userId!)) {
-          socket.emit('error', { message: 'Already in matchmaking queue' });
-          return;
-        }
-
-        if (!user.displayName) {
-          socket.emit('error', { message: 'Display name required' });
-          return;
-        }
-
-        const language: Language = socket.language ?? DEFAULT_LANGUAGE;
-        const settings = parseMatchSettings(data);
-        const queueKey = matchSettingsKey(settings);
-
-        // Add to waiting pool
-        waitingPlayers.set(socket.userId!, {
-          userId: user._id.toString(),
-          socketId: socket.id,
-          displayName: user.displayName,
-          language,
-          mode: settings.mode,
-          timed: settings.timed
-        });
-
-        // Match with another player who wants the same language, mode, and timer
-        const opponentEntry = Array.from(waitingPlayers.entries()).find(
-          ([uid, waiting]) =>
-            uid !== socket.userId
-            && waiting.language === language
-            && matchSettingsKey(waiting) === queueKey
-        );
-
-        if (opponentEntry) {
-          const [opponentUid, opponent] = opponentEntry;
-          const me = waitingPlayers.get(socket.userId!)!;
-          waitingPlayers.delete(socket.userId!);
-          waitingPlayers.delete(opponentUid);
-
-          const picked = await pickMultiplayerPuzzle(language);
-          if (!picked) {
-            waitingPlayers.set(opponentUid, opponent);
-            waitingPlayers.set(socket.userId!, me);
-            socket.emit('error', { message: 'No multiplayer puzzles configured' });
-            return;
-          }
-          const players = [opponent, me];
-          const randomPuzzle = picked.puzzle;
-          const timing = createMatchTiming(settings);
-
-          // Create match
-          const match = new Match({
-            players: players.map(p => ({
-              userId: p.userId,
-              displayName: p.displayName,
-              progress: 0,
-              claimedCount: 0
-            })),
-            puzzleId: randomPuzzle._id,
-            claimedWords: [],
-            mode: settings.mode,
-            timed: timing.timed,
-            startedAt: timing.startedAt,
-            durationSeconds: timing.durationSeconds,
-            endsAt: timing.endsAt,
-            status: MatchStatus.IN_PROGRESS
-          });
-
-          await match.save();
-
-          // Create game state
-          const gameState: GameState = {
-            matchId: match._id.toString(),
-            players: players.map(p => ({
-              userId: p.userId,
-              displayName: p.displayName,
-              progress: 0,
-              claimedCount: 0
-            })),
-            puzzleId: randomPuzzle._id.toString(),
-            moves: [],
-            claimedWords: [],
-            lockedCells: new Set<string>(),
-            mode: settings.mode,
-            ...timing
-          };
-
-          activeGames.set(match._id.toString(), gameState);
-
-          // Notify both players
-          players.forEach(p => {
-            const playerSocket = io.sockets.sockets.get(p.socketId);
-            if (playerSocket) {
-              playerSocket.join(match._id.toString());
-              playerSocket.emit('match_found', {
-                matchId: match._id,
-                puzzle: randomPuzzle,
-                opponent: players.find(pl => pl.userId !== p.userId),
-                mode: settings.mode,
-                ...serializeTimingFields(timing)
-              });
-            }
-          });
-        } else {
-          socket.emit('searching', { message: 'Searching for opponent...' });
-        }
-      } catch (error) {
-        console.error('Find match error:', error);
-        socket.emit('error', { message: 'Failed to find match' });
-      }
+    socket.on('find_match', () => {
+      void handleFindMatch(io, socket);
     });
 
-    // Cancel matchmaking
     socket.on('cancel_matchmaking', () => {
-      waitingPlayers.delete(socket.userId!);
+      cancelRandomSearch(socket.userId);
       socket.emit('matchmaking_cancelled');
     });
 
@@ -233,10 +109,15 @@ export const setupSocketHandlers = (io: Server) => {
           return;
         }
 
-        const matchDoc = await Match.findById(matchId);
+        let matchDoc = await Match.findById(matchId);
         if (!matchDoc) {
           socket.emit('error', { message: 'Match not found' });
           return;
+        }
+
+        if (isGhostKind(matchDoc.opponentKind) && matchDoc.status === MatchStatus.IN_PROGRESS) {
+          await advanceGhostMatch(io, matchId, { emit: false });
+          matchDoc = await Match.findById(matchId) ?? matchDoc;
         }
 
         const match = await ensureMatchNotExpired(io, matchDoc);
@@ -360,6 +241,7 @@ export const setupSocketHandlers = (io: Server) => {
           moves: opponentMoves,
           userMoves,
           mode,
+          opponentKind: match.opponentKind ?? 'live',
           ...serializeTimingFields(timing)
         });
 
@@ -662,7 +544,7 @@ export const setupSocketHandlers = (io: Server) => {
     // Disconnect
     socket.on('disconnect', () => {
       console.log(`User disconnected: ${socket.userId} (socket: ${socket.id})`);
-      waitingPlayers.delete(socket.userId!);
+      cancelRandomSearch(socket.userId);
       
       // Remove socket from tracking
       if (socket.userId && userSockets.has(socket.userId)) {

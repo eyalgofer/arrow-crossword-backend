@@ -1,10 +1,12 @@
 import { Server } from 'socket.io';
 import { MATCH_TIMEOUT_POLL_MS } from '../constants/match';
+import { advanceDueGhostMatches } from '../services/ghostMatch';
 import { completeExpiredMatches } from '../services/matchCompletion';
 
 export function startMatchTimeoutJob(io: Server): NodeJS.Timeout {
   const tick = async () => {
     try {
+      await advanceDueGhostMatches(io);
       const completedIds = await completeExpiredMatches(io);
       if (completedIds.length > 0) {
         console.log(`⏱️  Timed out ${completedIds.length} match(es): ${completedIds.join(', ')}`);

@@ -9,6 +9,8 @@ import { withMatchTiming, isMatchTimedOut } from '../utils/matchTiming';
 import { resolveMatchMode } from '../utils/matchSettings';
 import { completeExpiredMatches, completeMatch, ensureMatchNotExpired } from '../services/matchCompletion';
 import { serializeClaimedWords } from '../services/wordClaims';
+import { advanceGhostMatch } from '../services/ghostMatch';
+import { isGhostKind, resolvePlayerId } from '../utils/ghost';
 
 export const getMatchHistory = async (req: AuthRequest, res: Response) => {
   try {
@@ -50,13 +52,27 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
 
     await completeExpiredMatches(io);
 
-    const matches = await Match.find({
+    let matches = await Match.find({
       'players.userId': user._id,
       status: MatchStatus.IN_PROGRESS
     })
       .populate('puzzleId', 'title difficulty')
       .populate('players.userId', 'displayName photoURL')
       .sort({ startedAt: -1 });
+
+    const ghostIds = matches
+      .filter(match => isGhostKind(match.opponentKind))
+      .map(match => match._id.toString());
+    if (ghostIds.length > 0) {
+      await Promise.all(ghostIds.map(id => advanceGhostMatch(io, id, { emit: false })));
+      matches = await Match.find({
+        _id: { $in: matches.map(match => match._id) },
+        status: MatchStatus.IN_PROGRESS
+      })
+        .populate('puzzleId', 'title difficulty')
+        .populate('players.userId', 'displayName photoURL')
+        .sort({ startedAt: -1 });
+    }
 
     const activeMatches = matches.filter(match => !isMatchTimedOut(match));
 
@@ -66,11 +82,11 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
       
       // Ensure players array includes photoURL (from populated userId or stored value)
       const enhancedPlayers = match.players.map(p => {
-        const populatedUser = p.userId as any; // userId is populated
+        const populatedUser = p.userId && typeof p.userId === 'object' ? p.userId as any : null;
         return {
-          userId: populatedUser._id || populatedUser.userId,
-          displayName: p.displayName || populatedUser.displayName,
-          photoURL: p.photoURL || populatedUser.photoURL,
+          userId: resolvePlayerId(p.userId, match.opponentKind),
+          displayName: p.displayName || populatedUser?.displayName,
+          photoURL: p.photoURL || populatedUser?.photoURL,
           progress: p.progress,
           claimedCount: p.claimedCount ?? 0,
           completedAt: p.completedAt
@@ -78,16 +94,10 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
       });
 
       const opponent = match.players.find(
-        p => {
-          const playerUserId = (p.userId as any)?._id || p.userId;
-          return playerUserId.toString() !== user._id.toString();
-        }
+        p => resolvePlayerId(p.userId, match.opponentKind) !== user._id.toString()
       );
       const currentUserPlayer = match.players.find(
-        p => {
-          const playerUserId = (p.userId as any)?._id || p.userId;
-          return playerUserId.toString() === user._id.toString();
-        }
+        p => resolvePlayerId(p.userId, match.opponentKind) === user._id.toString()
       );
       
       const timeElapsed = match.startedAt 
@@ -95,8 +105,10 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
         : 0;
 
       // Get opponent photoURL from populated user or stored value
-      const opponentUserId = opponent ? ((opponent.userId as any)?._id || opponent.userId) : null;
-      const opponentPopulated = opponent ? (opponent.userId as any) : null;
+      const opponentUserId = opponent ? resolvePlayerId(opponent.userId, match.opponentKind) : null;
+      const opponentPopulated = opponent?.userId && typeof opponent.userId === 'object'
+        ? opponent.userId as any
+        : null;
 
       const userProgress = currentUserPlayer?.progress || 0;
       const opponentProgress = opponent?.progress || 0;
@@ -142,12 +154,19 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const matchDoc = await Match.findById(matchId)
+    let matchDoc = await Match.findById(matchId)
       .populate('puzzleId')
       .populate('players.userId', 'displayName photoURL');
 
     if (!matchDoc) {
       return res.status(404).json({ error: 'Match not found' });
+    }
+
+    if (isGhostKind(matchDoc.opponentKind) && matchDoc.status === MatchStatus.IN_PROGRESS) {
+      await advanceGhostMatch(io, matchId, { emit: false });
+      matchDoc = await Match.findById(matchId)
+        .populate('puzzleId')
+        .populate('players.userId', 'displayName photoURL') ?? matchDoc;
     }
 
     let match = matchDoc;
@@ -166,10 +185,7 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
     console.log('match players', match.players);
     // Verify user is part of this match
     const isPlayer = match.players.some(
-      p => {
-        const playerUserId = (p.userId as any)?._id || p.userId;
-        return playerUserId.toString() === user._id.toString();
-      }
+      p => resolvePlayerId(p.userId, match.opponentKind) === user._id.toString()
     );
 
     if (!isPlayer) {
@@ -178,25 +194,20 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
 
     // Enhance with opponent info and time elapsed
     const opponent = match.players.find(
-      p => {
-        const playerUserId = (p.userId as any)?._id || p.userId;
-        return playerUserId.toString() !== user._id.toString();
-      }
+      p => resolvePlayerId(p.userId, match.opponentKind) !== user._id.toString()
     );
     const currentUserPlayer = match.players.find(
-      p => {
-        const playerUserId = (p.userId as any)?._id || p.userId;
-        return playerUserId.toString() === user._id.toString();
-      }
+      p => resolvePlayerId(p.userId, match.opponentKind) === user._id.toString()
     );
     
     const timeElapsed = match.startedAt 
       ? Math.floor((Date.now() - match.startedAt.getTime()) / 1000) // seconds
       : 0;
 
-    // Get opponent userId from populated user or stored value
-    const opponentUserId = opponent ? ((opponent.userId as any)?._id || opponent.userId) : null;
-    const opponentPopulated = opponent ? (opponent.userId as any) : null;
+    const opponentUserId = opponent ? resolvePlayerId(opponent.userId, match.opponentKind) : null;
+    const opponentPopulated = opponent?.userId && typeof opponent.userId === 'object'
+      ? opponent.userId as any
+      : null;
 
     const userProgress = currentUserPlayer?.progress || 0;
     const opponentProgress = opponent?.progress || 0;

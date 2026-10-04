@@ -66,6 +66,18 @@ export enum MatchMode {
   NORMAL = 'normal'
 }
 
+/** Live person, a past player's replay, or a paced solver standing in for one. */
+export type OpponentKind = 'live' | 'replay' | 'solver';
+
+export interface GhostEvent {
+  atMs: number;
+  type: 'move' | 'progress' | 'finish';
+  progress?: number;
+  row?: number;
+  col?: number;
+  letter?: string;
+}
+
 export enum MatchCompletionReason {
   COMPLETED = 'completed',
   BOARD_COMPLETED = 'board_completed',
