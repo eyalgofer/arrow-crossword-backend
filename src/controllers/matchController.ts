@@ -9,7 +9,7 @@ import { withMatchTiming, isMatchTimedOut } from '../utils/matchTiming';
 import { resolveMatchMode } from '../utils/matchSettings';
 import { completeExpiredMatches, completeMatch, ensureMatchNotExpired } from '../services/matchCompletion';
 import { serializeClaimedWords } from '../services/wordClaims';
-import { advanceGhostMatch } from '../services/ghostMatch';
+import { advanceGhostMatch, ensureSolverNickname } from '../services/ghostMatch';
 import { isGhostKind, resolvePlayerId } from '../utils/ghost';
 
 export const getMatchHistory = async (req: AuthRequest, res: Response) => {
@@ -28,6 +28,8 @@ export const getMatchHistory = async (req: AuthRequest, res: Response) => {
       .populate('puzzleId', 'title difficulty')
       .sort({ completedAt: -1 })
       .limit(limit);
+
+    await Promise.all(matches.map((match) => ensureSolverNickname(match)));
 
     res.json({
       matches: matches.map((match) =>
@@ -74,6 +76,8 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
         .sort({ startedAt: -1 });
     }
 
+    await Promise.all(matches.map((match) => ensureSolverNickname(match)));
+
     const activeMatches = matches.filter(match => !isMatchTimedOut(match));
 
     // Enhance matches with opponent info and time elapsed
@@ -109,6 +113,7 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
       const opponentPopulated = opponent?.userId && typeof opponent.userId === 'object'
         ? opponent.userId as any
         : null;
+      const opponentName = opponent?.displayName || opponentPopulated?.displayName || '';
 
       const userProgress = currentUserPlayer?.progress || 0;
       const opponentProgress = opponent?.progress || 0;
@@ -121,7 +126,9 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
         players: enhancedPlayers,
         opponent: opponent ? {
           userId: opponentUserId,
-          displayName: opponent.displayName || opponentPopulated?.displayName,
+          _id: opponentUserId,
+          displayName: opponentName,
+          name: opponentName,
           photoURL: opponent.photoURL || opponentPopulated?.photoURL,
           progress: opponentProgress,
           claimedCount: opponent.claimedCount ?? 0
@@ -181,6 +188,8 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
         }
       }
     }
+    await ensureSolverNickname(match);
+
     console.log('user id', user._id);
     console.log('match players', match.players);
     // Verify user is part of this match
@@ -208,6 +217,7 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
     const opponentPopulated = opponent?.userId && typeof opponent.userId === 'object'
       ? opponent.userId as any
       : null;
+    const opponentName = opponent?.displayName || opponentPopulated?.displayName || '';
 
     const userProgress = currentUserPlayer?.progress || 0;
     const opponentProgress = opponent?.progress || 0;
@@ -219,7 +229,9 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
       claimedWords: serializeClaimedWords(match.claimedWords),
       opponent: opponent ? {
         userId: opponentUserId,
-        displayName: opponent.displayName || opponentPopulated?.displayName,
+        _id: opponentUserId,
+        displayName: opponentName,
+        name: opponentName,
         photoURL: opponent.photoURL || opponentPopulated?.photoURL,
         progress: opponentProgress,
         claimedCount: opponent.claimedCount ?? 0

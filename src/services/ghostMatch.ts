@@ -257,6 +257,45 @@ export function startGhostTicker(io: Server): NodeJS.Timeout {
   }, GHOST_TICK_MS);
 }
 
+const GENERIC_OPPONENT_NAMES = new Set([
+  '',
+  'יריב',
+  'יריב לתרגול',
+  'opponent',
+  'practice opponent',
+]);
+
+function isGenericOpponentName(name: string | null | undefined): boolean {
+  return GENERIC_OPPONENT_NAMES.has((name ?? '').trim().toLocaleLowerCase());
+}
+
+/** Older fallback matches stored the label "יריב". Give them a signup-style name. */
+export async function ensureSolverNickname(match: IMatch): Promise<void> {
+  if (match.opponentKind !== 'solver') {
+    return;
+  }
+
+  const index = match.players.findIndex((player) => {
+    if (isGhostOpponentId(player.userId)) {
+      return true;
+    }
+    return player.userId == null;
+  });
+  if (index < 0 || !isGenericOpponentName(match.players[index].displayName)) {
+    return;
+  }
+
+  const puzzle = await Puzzle.findById(match.puzzleId).select('language').lean();
+  const language: Language = puzzle?.language === 'he' ? 'he' : 'en';
+  const other = match.players.find((_, playerIndex) => playerIndex !== index);
+  const name = await pickSolverNickname(language, other?.displayName);
+  match.players[index].displayName = name;
+  await Match.updateOne(
+    { _id: match._id },
+    { $set: { [`players.${index}.displayName`]: name } }
+  );
+}
+
 async function pickSolverNickname(language: Language, avoid?: string): Promise<string> {
   const blocked = avoid?.trim().toLocaleLowerCase();
   let last = generateThemedNickname(language);

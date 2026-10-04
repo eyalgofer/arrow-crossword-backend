@@ -10,7 +10,7 @@ import { resolveLanguageFromValues } from '../utils/language';
 import { getMatchTimingFields, serializeTimingFields } from '../utils/matchTiming';
 import { isQuickMatch } from '../utils/matchSettings';
 import { isGhostKind } from '../utils/ghost';
-import { advanceGhostMatch } from '../services/ghostMatch';
+import { advanceGhostMatch, ensureSolverNickname } from '../services/ghostMatch';
 import { cancelRandomSearch, handleFindMatch } from './randomQueue';
 import { activeGames } from './activeGames';
 import {
@@ -121,6 +121,7 @@ export const setupSocketHandlers = (io: Server) => {
         }
 
         const match = await ensureMatchNotExpired(io, matchDoc);
+        await ensureSolverNickname(match);
 
         const user = await User.findOne({ firebaseUid: socket.userId });
         if (!user) {
