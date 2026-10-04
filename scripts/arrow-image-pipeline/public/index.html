@@ -9,7 +9,8 @@
     body { margin: 0; background:#0b1020; color:#f7f8fb; }
     header { position:sticky; top:0; z-index:10; background:#0b1020ee; backdrop-filter: blur(12px); padding:18px 24px; border-bottom:1px solid #26304b; }
     h1 { margin:0 0 4px; font-size:22px; }
-    #stats { color:#aab4d0; }
+    #stats, .sub { color:#aab4d0; }
+    .sub { margin:6px 0 0; font-size:14px; }
     main { max-width:1180px; margin:auto; padding:24px; }
     .clue { margin-bottom:30px; padding:18px; border:1px solid #26304b; border-radius:18px; background:#11182b; }
     .title { display:flex; gap:14px; align-items:baseline; margin-bottom:14px; }
@@ -19,7 +20,9 @@
     .card { overflow:hidden; border:2px solid transparent; border-radius:14px; background:#0a0f1e; cursor:pointer; }
     .card.approved { border-color:#74e0a5; }
     .card.blocked { opacity:.55; }
-    .card img { width:100%; height:190px; object-fit:cover; display:block; background:#151d32; }
+    .frame { position:relative; aspect-ratio:1; background:#151d32; }
+    .frame img { width:100%; height:100%; object-fit:contain; display:block; }
+    .flag { position:absolute; left:8px; top:8px; padding:3px 8px; border-radius:999px; background:#5c3b00; color:#ffca85; font-size:11px; font-weight:700; }
     .meta { padding:10px; font-size:12px; line-height:1.35; }
     .license { font-weight:700; }
     .bad { color:#ff9c9c; }
@@ -27,73 +30,203 @@
     a { color:#9bbcff; }
     .empty { color:#ffca85; }
     .pill { display:inline-block; margin-left:8px; padding:3px 8px; border-radius:999px; background:#26304b; font-size:12px; }
+    #more { height: 1px; }
   </style>
 </head>
 <body>
 <header>
   <h1>Arrow Image Clue Approval</h1>
+  <p class="sub">People only. Israeli names are mixed through the list. Cards load as you scroll. Each card is the square crop that will be uploaded. An orange badge means no face was found — skip that photo.</p>
   <div id="stats">Loading…</div>
 </header>
 <main id="app"></main>
 <script>
+  const BATCH = 2;
   let approvals = new Map();
+  let queue = [];
+  let rendered = 0;
+  let israeliCount = 0;
+  let otherCount = 0;
+
+  const imageObserver = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      const img = entry.target;
+      imageObserver.unobserve(img);
+      if (!img.getAttribute("src")) img.src = img.dataset.src;
+    }
+  }, { rootMargin: "200px 0px" });
+
+  const moreObserver = new IntersectionObserver((entries) => {
+    if (entries.some((entry) => entry.isIntersecting)) renderMore();
+  }, { rootMargin: "240px 0px" });
+
+  function isIsraeli(clue) {
+    return clue.country === "Israel";
+  }
+
+  function hasPhoto(group) {
+    return (group.candidates || []).some((candidate) => candidate.allowed);
+  }
+
+  function buildQueue(groups) {
+    const pending = groups.filter((group) =>
+      group.clue?.type === "person" &&
+      !approvals.has(group.clue.id) &&
+      hasPhoto(group)
+    );
+    const israeli = pending.filter((group) => isIsraeli(group.clue));
+    const other = pending.filter((group) => !isIsraeli(group.clue));
+    israeliCount = israeli.length;
+    otherCount = other.length;
+    if (!israeli.length || !other.length) return israeli.concat(other);
+    const mixed = [];
+    const gap = other.length / israeli.length;
+    let nextIsraeli = 0;
+    let israeliIndex = 0;
+    for (let i = 0; i < other.length; i++) {
+      if (israeliIndex < israeli.length && i >= nextIsraeli) {
+        mixed.push(israeli[israeliIndex]);
+        israeliIndex += 1;
+        nextIsraeli += gap;
+      }
+      mixed.push(other[i]);
+    }
+    return mixed;
+  }
+
+  function updateStats() {
+    const approvedCount = queue.filter((group) => approvals.has(group.clue.id)).length;
+    document.querySelector("#stats").textContent =
+      `${queue.length} people · ${israeliCount} Israeli · ${otherCount} not · ${approvedCount} approved · ${rendered} loaded`;
+  }
 
   async function load() {
     const [groups, approved] = await Promise.all([
-      fetch("/api/candidates").then(r=>r.json()),
-      fetch("/api/approvals").then(r=>r.json())
+      fetch("/api/candidates").then((r) => r.json()),
+      fetch("/api/approvals").then((r) => r.json()),
     ]);
-    approvals = new Map(approved.map(x => [x.clueId, x.candidateId]));
-    render(groups);
+    approvals = new Map(approved.map((item) => [item.clueId, item.candidateId]));
+    queue = buildQueue(groups);
+    rendered = 0;
+    document.querySelector("#app").innerHTML = queue.length
+      ? `<div id="more"></div>`
+      : `<div class="empty">No people left to review.</div>`;
+    updateStats();
+    if (!queue.length) return;
+    renderMore();
+    moreObserver.observe(document.querySelector("#more"));
   }
 
   async function approve(clueId, candidateId) {
-    await fetch("/api/approve", {
-      method:"POST",
-      headers:{"content-type":"application/json"},
-      body:JSON.stringify({clueId,candidateId})
+    const response = await fetch("/api/approve", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ clueId, candidateId }),
     });
-    approvals.set(clueId,candidateId);
-    load();
+    if (!response.ok) return;
+    approvals.set(clueId, candidateId);
+    document.querySelectorAll(`.card[data-clue="${CSS.escape(clueId)}"]`).forEach((card) => {
+      card.classList.toggle("approved", card.dataset.candidate === candidateId);
+    });
+    updateStats();
   }
 
-  function esc(x="") {
-    return x.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  function esc(value = "") {
+    return String(value).replace(/[&<>"']/g, (ch) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[ch]));
   }
 
-  function render(groups) {
-    const approvedCount = groups.filter(g => approvals.has(g.clue.id)).length;
-    document.querySelector("#stats").textContent =
-      `${groups.length} clues · ${approvedCount} approved · ${groups.length-approvedCount} remaining`;
+  function previewSrc(id) {
+    return "/api/preview/" + encodeURIComponent(id);
+  }
 
-    document.querySelector("#app").innerHTML = groups.map(g => {
-      const c = g.clue;
-      const cards = (g.candidates || []).map(x => `
-        <div class="card ${approvals.get(c.id)===x.id ? "approved":""} ${x.allowed ? "":"blocked"}"
-             onclick="${x.allowed ? `approve('${c.id}','${x.id}')` : ""}">
-          <img src="${esc(x.thumbUrl)}" alt="">
-          <div class="meta">
-            <div class="${x.allowed ? "good":"bad"}">${x.allowed ? "✓ reusable candidate" : "⚠ manual/rejected"}</div>
-            <div class="license">${esc(x.license || "Unknown license")}</div>
-            <div>${esc(x.author || "Unknown author")}</div>
-            ${x.rejectReason ? `<div class="bad">${esc(x.rejectReason)}</div>` : ""}
-            <a href="${esc(x.descriptionUrl)}" target="_blank" onclick="event.stopPropagation()">Commons page</a>
-          </div>
+  async function markFace(img) {
+    const frame = img.closest(".frame");
+    if (!frame || frame.querySelector(".flag")) return;
+    try {
+      const meta = await fetch("/api/preview-meta/" + encodeURIComponent(img.dataset.candidate)).then((r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      });
+      if (meta.mode === "cover") {
+        frame.insertAdjacentHTML("beforeend", `<div class="flag">No face detected</div>`);
+      } else if (meta.mode === "letterbox") {
+        frame.insertAdjacentHTML("beforeend", `<div class="flag">Whole photo kept</div>`);
+      }
+    } catch {
+      frame.insertAdjacentHTML("beforeend", `<div class="flag">Preview failed</div>`);
+    }
+  }
+
+  function previewFailed(img) {
+    const frame = img.closest(".frame");
+    if (!frame || frame.querySelector(".flag")) return;
+    frame.insertAdjacentHTML("beforeend", `<div class="flag">Preview failed</div>`);
+  }
+
+  function sectionHtml(group) {
+    const clue = group.clue;
+    const origin = isIsraeli(clue) ? "Israeli" : clue.country || "Other";
+    const cards = (group.candidates || []).map((candidate) => `
+      <div class="card ${approvals.get(clue.id) === candidate.id ? "approved" : ""} ${candidate.allowed ? "" : "blocked"}"
+           data-clue="${esc(clue.id)}" data-candidate="${esc(candidate.id)}" ${candidate.allowed ? `data-allowed="1"` : ""}>
+        <div class="frame">
+          <img data-src="${esc(previewSrc(candidate.id))}" data-candidate="${esc(candidate.id)}" alt="" onload="markFace(this)" onerror="previewFailed(this)">
         </div>
-      `).join("");
+        <div class="meta">
+          <div class="${candidate.allowed ? "good" : "bad"}">${candidate.allowed ? "✓ reusable candidate" : "⚠ manual/rejected"}</div>
+          <div class="license">${esc(candidate.license || "Unknown license")}</div>
+          <div>${esc(candidate.author || "Unknown author")}</div>
+          ${candidate.rejectReason ? `<div class="bad">${esc(candidate.rejectReason)}</div>` : ""}
+          <a href="${esc(candidate.descriptionUrl)}" target="_blank">Commons page</a>
+        </div>
+      </div>
+    `).join("");
 
-      return `
-        <section class="clue">
-          <div class="title">
-            <span class="he">${esc(c.answer_hebrew)}</span>
-            <span class="subject">${esc(c.subject)}</span>
-            <span class="pill">${esc(c.type)} / ${esc(c.category)}</span>
-          </div>
-          ${cards ? `<div class="cards">${cards}</div>` : `<div class="empty">No candidates found${g.error ? ": "+esc(g.error) : ""}</div>`}
-        </section>
-      `;
-    }).join("");
+    return `
+      <section class="clue">
+        <div class="title">
+          <span class="he">${esc(clue.answer_hebrew)}</span>
+          <span class="subject">${esc(clue.subject)}</span>
+          <span class="pill">${esc(origin)}</span>
+        </div>
+        <div class="cards">${cards}</div>
+      </section>
+    `;
   }
+
+  function renderMore() {
+    const slice = queue.slice(rendered, rendered + BATCH);
+    const sentinel = document.querySelector("#more");
+    if (!slice.length || !sentinel) {
+      moreObserver.disconnect();
+      sentinel?.remove();
+      return;
+    }
+    sentinel.insertAdjacentHTML("beforebegin", slice.map(sectionHtml).join(""));
+    document.querySelectorAll("img[data-src]:not([src])").forEach((img) => imageObserver.observe(img));
+    rendered += slice.length;
+    updateStats();
+    if (rendered >= queue.length) {
+      moreObserver.disconnect();
+      sentinel.remove();
+      return;
+    }
+    requestAnimationFrame(() => {
+      const box = sentinel.getBoundingClientRect();
+      if (box.top < window.innerHeight + 240) renderMore();
+    });
+  }
+
+  document.querySelector("#app").addEventListener("click", (event) => {
+    if (event.target.closest("a")) return;
+    const card = event.target.closest(".card[data-allowed]");
+    if (!card) return;
+    approve(card.dataset.clue, card.dataset.candidate);
+  });
+
   load();
 </script>
 </body>

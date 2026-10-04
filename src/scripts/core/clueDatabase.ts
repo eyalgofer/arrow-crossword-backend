@@ -60,7 +60,6 @@ const ANSWER_BLACKLIST = new Set([
   'PUSSY', 'HELL', 'CRAP', 'SEXY', 'NAKED', 'BOOB', 'BOOBS', 'HORNY',
 ]);
 
-const MIN_ANSWER_LENGTH = 2;
 const MIN_CLUE_LENGTH = 3;
 const MAX_CLUE_LENGTH = 32;
 const MAX_CLUE_WORDS = 4;

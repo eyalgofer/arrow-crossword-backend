@@ -20,3 +20,5 @@ tmp-*-catalog.json
 tmp-*-puzzles/
 tmp-*-recent.json
 tmp/
+scripts/arrow-image-pipeline/models/
+scripts/arrow-image-pipeline/data/previews/

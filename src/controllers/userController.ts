@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { User } from '../models/User';
+import { UserIdea, SUGGESTION_MAX_LENGTH } from '../models/UserIdea';
 import { Invite, InviteStatus } from '../models/Invite';
 import { AuthRequest } from '../types';
 import {
@@ -234,5 +235,34 @@ export const getReferralInfo = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('[REFERRAL] Get referral info error:', error);
     res.status(500).json({ error: 'Failed to get referral info' });
+  }
+};
+
+export const submitIdea = async (req: AuthRequest, res: Response) => {
+  try {
+    const raw = typeof req.body?.suggestion === 'string' ? req.body.suggestion.trim() : '';
+    if (!raw) {
+      return res.status(400).json({ error: 'Suggestion is required' });
+    }
+    if (raw.length > SUGGESTION_MAX_LENGTH) {
+      return res.status(400).json({ error: 'Suggestion is too long' });
+    }
+
+    const user = await User.findOne({ firebaseUid: req.user!.uid });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await UserIdea.create({
+      user_id: user._id,
+      user_name: user.displayName ?? '',
+      user_email: user.email,
+      suggestion: raw
+    });
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Submit idea error:', error);
+    res.status(500).json({ error: 'Failed to save suggestion' });
   }
 };

@@ -1,8 +1,9 @@
 import path from "node:path";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { MongoClient } from "mongodb";
-import sharp from "sharp";
 import { config, pipelineRoot } from "./config.js";
+import { renderSquareJpeg } from "./crop.js";
+import { fetchOriginal } from "./fetch-image.js";
 import { ApprovalRecord, CommonsCandidate, ImageClueSeed } from "./types.js";
 import { readJson, safeSlug, writeJson } from "./utils.js";
 
@@ -33,28 +34,6 @@ function parseArgs(argv: string[]) {
   };
 }
 
-async function fetchOriginal(url: string, userAgent: string): Promise<Buffer> {
-  // Commons sometimes appends tracking query params; upload.wikimedia.org prefers a clean URL + Referer.
-  const cleanUrl = url.split("?")[0];
-  const delaysMs = [0, 4000, 10000, 20000];
-  let lastError = "";
-  for (const delay of delaysMs) {
-    if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
-    const response = await fetch(cleanUrl, {
-      headers: {
-        "User-Agent": userAgent,
-        Accept: "image/avif,image/webp,image/*,*/*;q=0.8",
-        Referer: "https://commons.wikimedia.org/",
-      },
-    });
-    if (response.ok) return Buffer.from(await response.arrayBuffer());
-    lastError = `Download failed ${response.status} ${cleanUrl}`;
-    if (response.status !== 429 && response.status !== 503 && response.status !== 403) break;
-    console.warn(`  retry after ${response.status}`);
-  }
-  throw new Error(lastError);
-}
-
 if (!config.s3Bucket) throw new Error("S3_BUCKET is required");
 if (!config.mongoUri) throw new Error("MONGODB_URI is required");
 
@@ -78,10 +57,26 @@ async function loadCandidateGroups(): Promise<CandidateGroup[]> {
   return [...byId.values()];
 }
 
+/** v2 wins when the same clue was approved in both files. */
+async function loadApprovals(): Promise<ApprovalRecord[]> {
+  const paths = [
+    path.join(pipelineRoot, "data/approvals.json"),
+    path.join(pipelineRoot, "data/approvals_v2.json"),
+  ];
+  const byClue = new Map<string, ApprovalRecord>();
+  for (const p of paths) {
+    try {
+      const records = await readJson<ApprovalRecord[]>(p);
+      for (const record of records) byClue.set(record.clueId, record);
+    } catch {
+      // optional file missing
+    }
+  }
+  return [...byClue.values()];
+}
+
 const groups = await loadCandidateGroups();
-const approvals = await readJson<ApprovalRecord[]>(
-  path.join(pipelineRoot, "data/approvals.json")
-);
+const approvals = await loadApprovals();
 
 const byClue = new Map(groups.map((g) => [g.clue.id, g]));
 console.log(`Loaded ${groups.length} candidate groups, ${approvals.length} approvals`);
@@ -127,22 +122,14 @@ for (const approval of queued) {
   try {
     await new Promise((resolve) => setTimeout(resolve, 400));
     const input = await fetchOriginal(candidate.originalUrl, config.userAgent);
-
-    // Uniform 800×800 clue asset; fill-stretch so the image covers the cell.
-    const output = await sharp(input, { limitInputPixels: false })
-      .rotate()
-      .resize(800, 800, {
-        fit: "fill",
-      })
-      .jpeg({ quality: 86, mozjpeg: true })
-      .toBuffer();
+    const cropped = await renderSquareJpeg(input);
 
     const key = `image-clues/${group.clue.type}/${group.clue.id}-${safeSlug(group.clue.subject)}.jpg`;
 
     await s3.send(new PutObjectCommand({
       Bucket: config.s3Bucket,
       Key: key,
-      Body: output,
+      Body: cropped.jpeg,
       ContentType: "image/jpeg",
       CacheControl: "public,max-age=31536000,immutable",
     }));
@@ -175,7 +162,7 @@ for (const approval of queued) {
     );
 
     uploaded += 1;
-    console.log(`✓ ${group.clue.answer_hebrew} -> ${imageUrl}`);
+    console.log(`✓ ${group.clue.answer_hebrew} -> ${imageUrl} (${cropped.mode})`);
   } catch (error) {
     failed += 1;
     const message = error instanceof Error ? error.message : String(error);

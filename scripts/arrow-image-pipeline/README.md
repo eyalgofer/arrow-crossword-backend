@@ -10,7 +10,7 @@ A human-in-the-loop image ingestion pipeline for the Arrow Hebrew crossword app.
 4. Applies a conservative license filter.
 5. Generates a local visual approval UI.
 6. Downloads only the candidates you approve.
-7. Resizes approved images to a consistent 800×800 JPEG asset.
+7. Crops approved images to a square 800×800 JPEG without stretching them. People photos keep the whole face inside the square.
 8. Uploads the result to S3.
 9. Upserts the clue + provenance/license metadata into MongoDB.
 
@@ -26,6 +26,8 @@ cp .env.example .env
 ```
 
 Edit `.env`. At minimum, put a real contact string in `USER_AGENT`.
+
+Run every command below from `scripts/arrow-image-pipeline`.
 
 ## 1. Validate the seed
 
@@ -51,6 +53,8 @@ You can test on a smaller dataset by making a temporary JSON containing only a f
 
 ## 3. Approve visually
 
+The review screen reads the v2 candidate file:
+
 ```bash
 npm run serve
 ```
@@ -61,13 +65,15 @@ Open:
 http://localhost:4177
 ```
 
+Each card is the square crop that will be uploaded, not the raw Commons thumbnail. An orange badge means no face was found. The first time you open the page, the YuNet face model downloads into `models/` if it is not already there.
+
 Click a green/reusable candidate to approve it. Approvals are stored in:
 
 ```text
-data/approvals.json
+data/approvals_v2.json
 ```
 
-Only one candidate per clue is stored.
+Only one candidate per clue is stored. The older batch remains in `data/approvals.json`.
 
 ## 4. Upload approved assets + write Mongo
 
@@ -77,11 +83,15 @@ Set the AWS and Mongo fields in `.env`, then:
 npm run process
 ```
 
+`npm run process` reads both `data/approvals.json` and `data/approvals_v2.json`. Clues that already have an S3 image are skipped. Do not pass `--force` for this batch; that flag replaces images already in Mongo.
+
 The processor:
 - downloads the original file,
 - auto-rotates it,
-- stretches it to exactly 800×800 (aspect ratio is not preserved),
-- outputs JPEG quality 86,
+- cuts a square that keeps the largest face fully inside, with hair and chin padding when the photo has room,
+- scales that square uniformly to 800×800 JPEG (quality 86),
+- if no face is found, uses a top-weighted square cover crop,
+- if the face is larger than the short side of the photo, letterboxes the whole photo on a flat background,
 - uploads it under `image-clues/<type>/...`,
 - writes the final S3 key and attribution/license metadata into Mongo.
 
