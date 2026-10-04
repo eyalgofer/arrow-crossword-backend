@@ -7,7 +7,8 @@ import { activeGames } from '../sockets/activeGames';
 import { GameState, Language, MatchCompletionReason, MatchMode, MatchStatus, OpponentKind } from '../types';
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
 import { createMatchTiming, serializeTimingFields } from '../utils/matchTiming';
-import { ghostOpponentObjectId, isGhostOpponentId, solverDisplayName } from '../utils/ghost';
+import { generateThemedNickname, ghostOpponentObjectId, isGhostOpponentId } from '../utils/ghost';
+import { isDisplayNameTaken } from '../utils/displayName';
 import { buildReplaySchedule, buildSolverSchedule, ReplaySource } from './ghostSchedule';
 import { completeMatch } from './matchCompletion';
 
@@ -57,11 +58,12 @@ export async function startGhostMatch(
   const settings = { mode: MatchMode.NORMAL, timed: true as const };
   const timing = createMatchTiming(settings);
   const ghostId = ghostOpponentObjectId();
+  const displayName = kind === 'replay' && replay?.displayName
+    ? replay.displayName
+    : await pickSolverNickname(language, user.displayName);
   const opponent = {
     userId: ghostId.toString(),
-    displayName: kind === 'replay' && replay
-      ? replay.displayName
-      : solverDisplayName(language),
+    displayName,
     photoURL: kind === 'replay' ? replay?.photoURL : undefined
   };
 
@@ -255,6 +257,23 @@ export function startGhostTicker(io: Server): NodeJS.Timeout {
   }, GHOST_TICK_MS);
 }
 
+async function pickSolverNickname(language: Language, avoid?: string): Promise<string> {
+  const blocked = avoid?.trim().toLocaleLowerCase();
+  let last = generateThemedNickname(language);
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const name = generateThemedNickname(language);
+    last = name;
+    if (blocked && name.toLocaleLowerCase() === blocked) {
+      continue;
+    }
+    if (await isDisplayNameTaken(name)) {
+      continue;
+    }
+    return name;
+  }
+  return last;
+}
+
 async function findReplay(
   puzzleId: mongoose.Types.ObjectId,
   excludeUserId: mongoose.Types.ObjectId
@@ -302,7 +321,7 @@ async function findReplay(
         }));
 
       candidates.push({
-        displayName: player.displayName || solverDisplayName('en'),
+        displayName: player.displayName || generateThemedNickname('en'),
         photoURL: player.photoURL || undefined,
         source: {
           startedAt,
