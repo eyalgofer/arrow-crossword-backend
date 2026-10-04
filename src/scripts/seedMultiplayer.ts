@@ -1,11 +1,11 @@
 /**
  * Generate multiplayer puzzles and wire them to MultiplayerPuzzle slots.
  *
- * Hebrew: 15×15 with 2 image clues (parallel workers).
+ * Hebrew: 14×14 daily profile with 2 image clues (parallel workers).
  * English: easy 8×8 text puzzles.
  *
  * Usage:
- *   npm run seed:multiplayer:he              # replace slots 0–19
+ *   npm run seed:multiplayer:he              # replace Hebrew slots with 30 boards
  *   npm run seed:multiplayer:he -- --add 20  # append 20 more Hebrew slots
  *   npm run seed:multiplayer
  */
@@ -13,11 +13,14 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+import mongoose from 'mongoose';
 import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { Puzzle } from '../models/Puzzle';
 import { MultiplayerPuzzle } from '../models/MultiplayerPuzzle';
+import { DailyPuzzle } from '../models/DailyPuzzle';
+import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { generatePuzzlesBatch } from './generators/puzzlesGenerator';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import { Difficulty, Language } from '../types';
@@ -35,16 +38,24 @@ import {
 import { Puzzle as GeneratedPuzzle } from './core/types';
 import { normalizeWord } from './generators/validation-utils';
 import { getUncoveredCells } from './generators/direction-utils';
+import { dailyTargetMisses, dailyTargetsFor, scorePuzzle } from './generators/puzzle-quality';
+import {
+  RecentDailyContent,
+  loadRecentDailyContent,
+  writeRecentDailyContent,
+} from './utils/recentDailyContent';
 
 const MULTIPLAYER_GRID_ROWS = 8;
 const MULTIPLAYER_GRID_COLS = 8;
-const DEFAULT_COUNT = 20;
+const HEBREW_COUNT = 30;
+const ENGLISH_COUNT = 20;
+const GRID_SIZE = 14;
 const IMAGE_COUNT = 2;
-const ATTEMPTS = 30;
-const PARALLEL = 6;
+const PARALLEL = 4;
 const ROOT = path.join(__dirname, '../..');
 const CATALOG_FILE = path.join(ROOT, 'tmp-multiplayer-catalog.json');
 const OUT_DIR = path.join(ROOT, 'tmp-multiplayer-puzzles');
+const RECENT_FILE = path.join(ROOT, 'tmp-multiplayer-recent.json');
 
 function argValue(name: string, fallback?: string): string | undefined {
   const idx = process.argv.indexOf(name);
@@ -55,7 +66,7 @@ function argValue(name: string, fallback?: string): string | undefined {
 const language: Language = argValue('--lang') === 'he' ? 'he' : 'en';
 const ADD_COUNT = argValue('--add') ? parseInt(argValue('--add')!, 10) : 0;
 const APPEND = ADD_COUNT > 0;
-const TARGET_COUNT = APPEND ? ADD_COUNT : DEFAULT_COUNT;
+const TARGET_COUNT = APPEND ? ADD_COUNT : language === 'he' ? HEBREW_COUNT : ENGLISH_COUNT;
 
 const MULTIPLAYER_CATEGORY = language === 'he' ? 'רב־משתתפים' : 'Multiplayer';
 const multiplayerTitle = (index: number) =>
@@ -73,14 +84,35 @@ function mergeCatalogs(
   return [...byAnswer.values()];
 }
 
+/** Prefer fillable image lengths (5–8); keep the rest only when the preferred slice is thin. */
+function rankCatalog(catalog: ImageClueCatalogEntry[]): ImageClueCatalogEntry[] {
+  const lengthOf = (entry: ImageClueCatalogEntry) => normalizeWord(entry.answer).length;
+  const preferred = catalog.filter((entry) => {
+    const n = lengthOf(entry);
+    return n >= 5 && n <= 8;
+  });
+  const rest = catalog.filter((entry) => {
+    const n = lengthOf(entry);
+    return n < 5 || n > 8;
+  });
+  return preferred.length >= 12 ? preferred : [...preferred, ...rest];
+}
+
+function meetsDailyTargets(puzzle: GeneratedPuzzle): boolean {
+  const images = puzzle.puzzleItems.filter((item) => item.clueType === 'image').length;
+  return dailyTargetMisses(scorePuzzle(puzzle), dailyTargetsFor(images, puzzle.grid)).length === 0;
+}
+
 function puzzleIsReady(puzzle: GeneratedPuzzle): boolean {
   const images = puzzle.puzzleItems.filter((item) => item.clueType === 'image');
   return (
-    puzzle.grid?.rows >= 15 &&
-    puzzle.grid?.cols >= 15 &&
-    images.length >= IMAGE_COUNT &&
+    meetsDailyTargets(puzzle) &&
+    images.length === IMAGE_COUNT &&
+    puzzle.grid?.rows === GRID_SIZE &&
+    puzzle.grid?.cols === GRID_SIZE &&
     getUncoveredCells(puzzle).length === 0 &&
-    validatePuzzleBoundaries(puzzle).length === 0
+    validatePuzzleBoundaries(puzzle).length === 0 &&
+    images.every((item) => item.imageUrl && item.answer && /[\u0590-\u05FF]/.test(item.answer))
   );
 }
 
@@ -93,17 +125,26 @@ function puzzleFingerprint(puzzle: GeneratedPuzzle): string {
   return `${puzzle.grid.rows}x${puzzle.grid.cols}:${answers}`;
 }
 
-function loadReadyFromDir(dir: string, pattern: RegExp): GeneratedPuzzle[] {
-  if (!fs.existsSync(dir)) return [];
+function rememberBoard(puzzle: GeneratedPuzzle, recent: RecentDailyContent): void {
+  for (const item of puzzle.puzzleItems) {
+    if (item.clueType === 'image') continue;
+    if (item.answer) recent.answers.push(item.answer);
+    if (item.clue) recent.clues.push(item.clue);
+  }
+  writeRecentDailyContent(RECENT_FILE, recent);
+}
+
+function loadExistingReady(): GeneratedPuzzle[] {
+  if (!fs.existsSync(OUT_DIR)) return [];
   const files = fs
-    .readdirSync(dir)
-    .filter((name) => pattern.test(name))
-    .sort();
+    .readdirSync(OUT_DIR)
+    .filter((name) => /^mp-\d+\.json$/.test(name))
+    .sort((a, b) => parseInt(a.replace(/\D/g, ''), 10) - parseInt(b.replace(/\D/g, ''), 10));
   const puzzles: GeneratedPuzzle[] = [];
   for (const file of files) {
     try {
       const puzzle = JSON.parse(
-        fs.readFileSync(path.join(dir, file), 'utf8')
+        fs.readFileSync(path.join(OUT_DIR, file), 'utf8')
       ) as GeneratedPuzzle;
       if (puzzleIsReady(puzzle)) puzzles.push(puzzle);
     } catch {
@@ -111,27 +152,6 @@ function loadReadyFromDir(dir: string, pattern: RegExp): GeneratedPuzzle[] {
     }
   }
   return puzzles;
-}
-
-function loadExistingReady(): GeneratedPuzzle[] {
-  return loadReadyFromDir(OUT_DIR, /^mp-\d+\.json$/);
-}
-
-/** Unique ready boards from daily/fav caches, excluding fingerprints already in `exclude`. */
-function loadBorrowableReady(exclude: Set<string>): GeneratedPuzzle[] {
-  const sources = [
-    ...loadReadyFromDir(path.join(ROOT, 'tmp-daily-puzzles'), /^daily-\d+\.json$/),
-    ...loadReadyFromDir(path.join(ROOT, 'tmp-fav-puzzles'), /^fav-\d+\.json$/),
-  ];
-  const out: GeneratedPuzzle[] = [];
-  const seen = new Set(exclude);
-  for (const puzzle of sources) {
-    const fp = puzzleFingerprint(puzzle);
-    if (seen.has(fp)) continue;
-    seen.add(fp);
-    out.push(puzzle);
-  }
-  return out;
 }
 
 function runWorker(index: number): Promise<GeneratedPuzzle | null> {
@@ -146,14 +166,18 @@ function runWorker(index: number): Promise<GeneratedPuzzle | null> {
         outPath,
         '--images',
         String(IMAGE_COUNT),
-        '--attempts',
-        String(ATTEMPTS),
         '--catalog',
         CATALOG_FILE,
         '--index',
         String(index),
         '--size',
-        '15',
+        String(GRID_SIZE),
+        '--profile',
+        'daily',
+        '--recent',
+        RECENT_FILE,
+        '--category',
+        MULTIPLAYER_CATEGORY,
       ],
       { cwd: ROOT, stdio: 'inherit' }
     );
@@ -175,52 +199,30 @@ function runWorker(index: number): Promise<GeneratedPuzzle | null> {
 
 async function generateHebrewBatch(
   count: number,
-  opts: {
-    reuseExisting: boolean;
-    borrowOtherCaches: boolean;
-    excludeFingerprints?: Set<string>;
-  } = {
-    reuseExisting: true,
-    borrowOtherCaches: false,
-  }
+  recent: RecentDailyContent,
+  excludeFingerprints: Set<string>
 ): Promise<GeneratedPuzzle[]> {
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const puzzles: GeneratedPuzzle[] = [];
-  const used = new Set<string>(opts.excludeFingerprints ?? []);
+  const used = new Set<string>(excludeFingerprints);
 
   const takeIfNew = (puzzle: GeneratedPuzzle): boolean => {
     const fp = puzzleFingerprint(puzzle);
     if (used.has(fp)) return false;
     used.add(fp);
     puzzles.push(puzzle);
+    rememberBoard(puzzle, recent);
     return true;
   };
 
-  // Always harvest unique ready boards already on disk (including partial --add runs).
   {
     const before = puzzles.length;
     for (const puzzle of loadExistingReady()) {
       if (puzzles.length >= count) break;
       takeIfNew(puzzle);
     }
-    if (!opts.reuseExisting) {
-      // When appending, only keep boards that were NOT in the exclude set originally.
-      // loadExistingReady may include old mp-1..20 which are in excludeFingerprints — takeIfNew skips those.
-    }
     if (puzzles.length > before) {
       console.log(`♻️  Using ${puzzles.length - before} unique ready board(s) from ${OUT_DIR}`);
-    }
-  }
-
-  if (opts.borrowOtherCaches && puzzles.length < count) {
-    const before = puzzles.length;
-    for (const puzzle of loadBorrowableReady(used)) {
-      if (puzzles.length >= count) break;
-      takeIfNew(puzzle);
-    }
-    const borrowed = puzzles.length - before;
-    if (borrowed > 0) {
-      console.log(`📦 Borrowed ${borrowed} unique board(s) from daily/fav caches`);
     }
   }
 
@@ -237,7 +239,7 @@ async function generateHebrewBatch(
   let nextIndex = 1 + (existingIds.length ? Math.max(...existingIds) : 0);
   let inFlight = 0;
   let launched = 0;
-  const maxLaunches = Math.max(80, count * 8);
+  const maxLaunches = Math.max(200, count * 16);
 
   console.log(
     `⚙️  Worker pool: up to ${PARALLEL} parallel, need ${count - puzzles.length} more (have ${puzzles.length}/${count})`
@@ -307,6 +309,54 @@ async function generateEnglishBatch(count: number): Promise<GeneratedPuzzle[]> {
   return filterValidPuzzles(batch, validatePuzzleBoundaries);
 }
 
+async function ensureMongoConnection(): Promise<void> {
+  try {
+    if (mongoose.connection.readyState === 1 && mongoose.connection.db) {
+      await mongoose.connection.db.admin().command({ ping: 1 });
+      return;
+    }
+  } catch {
+    // reconnect below
+  }
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.disconnect().catch(() => undefined);
+  }
+  await connectToDatabase();
+}
+
+/** Drop Hebrew slots past the new pool and delete puzzles no longer assigned. */
+async function retireReplacedHebrewPuzzles(
+  previousIds: mongoose.Types.ObjectId[],
+  keptIds: Set<string>,
+  poolSize: number
+): Promise<void> {
+  const extra = await MultiplayerPuzzle.deleteMany({
+    language: 'he',
+    index: { $gte: poolSize },
+  });
+  if (extra.deletedCount > 0) {
+    console.log(`   Removed ${extra.deletedCount} Hebrew slot(s) above index ${poolSize - 1}`);
+  }
+
+  const stale = previousIds.filter((id) => id && !keptIds.has(String(id)));
+  if (stale.length === 0) return;
+
+  const progress = await UserPuzzleProgress.deleteMany({ puzzleId: { $in: stale } });
+  const stillDaily = await DailyPuzzle.find({ puzzleId: { $in: stale } }).select('puzzleId').lean();
+  const dailyIds = new Set(stillDaily.map((row) => String(row.puzzleId)));
+  const docs = await Puzzle.find({ _id: { $in: stale } }).select('_id packageId');
+  const deletable = docs
+    .filter((doc) => !doc.packageId && !dailyIds.has(String(doc._id)))
+    .map((doc) => doc._id);
+  const removed = deletable.length
+    ? await Puzzle.deleteMany({ _id: { $in: deletable } })
+    : { deletedCount: 0 };
+  console.log(
+    `   Retired ${removed.deletedCount} previous Hebrew multiplayer puzzle(s) ` +
+      `(progress rows ${progress.deletedCount})`
+  );
+}
+
 const seedMultiplayer = async () => {
   try {
     await connectToDatabase();
@@ -325,20 +375,28 @@ const seedMultiplayer = async () => {
     if (language === 'he') {
       const mongoCatalog = await loadImageClueCatalogFromMongo();
       const localCatalog = loadGeneratedImageClueCatalog();
-      const catalog = mergeCatalogs(mongoCatalog, localCatalog);
+      const merged = mergeCatalogs(mongoCatalog, localCatalog);
+      const catalog = rankCatalog(merged);
       if (catalog.length < IMAGE_COUNT) {
         throw new Error(
           `Need image clues, found ${catalog.length}. Run scripts/arrow-image-pipeline \`npm run process\` first.`
         );
       }
       fs.writeFileSync(CATALOG_FILE, JSON.stringify(catalog));
+      const recent = await loadRecentDailyContent(14);
+      writeRecentDailyContent(RECENT_FILE, recent);
+      console.log(
+        `Catalog ${catalog.length} (mongo ${mongoCatalog.length} + local ${localCatalog.length}; ` +
+          `images already on dailies stay eligible)`
+      );
+      console.log(
+        `Avoiding ${recent.answers.length} answers / ${recent.clues.length} clues from recent dailies`
+      );
       console.log(
         APPEND
-          ? `🎮 Adding ${TARGET_COUNT} Hebrew multiplayer puzzles from index ${startIndex}: 15×15 with ${IMAGE_COUNT} images (catalog ${catalog.length})...\n`
-          : `🎮 Generating ${TARGET_COUNT} Hebrew multiplayer puzzles: 15×15 with ${IMAGE_COUNT} images (catalog ${catalog.length})...\n`
+          ? `🎮 Adding ${TARGET_COUNT} Hebrew multiplayer puzzles from index ${startIndex}: ${GRID_SIZE}×${GRID_SIZE} with ${IMAGE_COUNT} images...\n`
+          : `🎮 Generating ${TARGET_COUNT} Hebrew multiplayer puzzles: ${GRID_SIZE}×${GRID_SIZE} with ${IMAGE_COUNT} images...\n`
       );
-      // Exclude boards already assigned in DB (do not exclude fresh on-disk
-      // mp-*.json from a prior partial --add run — those should be reused).
       const excludeFingerprints = new Set<string>();
       if (APPEND && existing.length > 0) {
         const assigned = await Puzzle.find({
@@ -352,11 +410,7 @@ const seedMultiplayer = async () => {
         );
       }
 
-      validPuzzles = await generateHebrewBatch(TARGET_COUNT, {
-        reuseExisting: !APPEND,
-        borrowOtherCaches: APPEND,
-        excludeFingerprints,
-      });
+      validPuzzles = await generateHebrewBatch(TARGET_COUNT, recent, excludeFingerprints);
     } else {
       console.log(
         `🎮 Generating ${TARGET_COUNT} English multiplayer puzzles: easy ${MULTIPLAYER_GRID_ROWS}x${MULTIPLAYER_GRID_COLS}...\n`
@@ -365,17 +419,15 @@ const seedMultiplayer = async () => {
     }
 
     if (validPuzzles.length < TARGET_COUNT) {
-      console.warn(
-        `⚠️  Only generated ${validPuzzles.length}/${TARGET_COUNT} puzzles`
-      );
-    }
-    if (validPuzzles.length === 0) {
-      console.error('❌ No valid puzzles generated. Try running again.');
+      console.error(`❌ Only generated ${validPuzzles.length}/${TARGET_COUNT} puzzles`);
       await closeDatabaseAndExit(1);
     }
 
+    await ensureMongoConnection();
+
     console.log(`✅ Generated ${validPuzzles.length} valid puzzles\n`);
 
+    const previousIds = existing.map((row) => row.puzzleId);
     const savedPuzzles = await Puzzle.insertMany(
       validPuzzles.map((puzzle, offset) => ({
         ...puzzle,
@@ -427,6 +479,14 @@ const seedMultiplayer = async () => {
         return multiplayerPuzzle;
       })
     );
+
+    if (language === 'he' && !APPEND) {
+      await retireReplacedHebrewPuzzles(
+        previousIds,
+        new Set(savedPuzzles.map((puzzle) => String(puzzle._id))),
+        startIndex + assignments.length
+      );
+    }
 
     const totalHe = await MultiplayerPuzzle.countDocuments({ language: 'he' });
     console.log(
