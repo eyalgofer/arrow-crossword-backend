@@ -5,13 +5,23 @@ export function ghostOpponentObjectId(): mongoose.Types.ObjectId {
   return new mongoose.Types.ObjectId(GHOST_OPPONENT_ID);
 }
 
+function isObjectId(id: object): boolean {
+  return id instanceof mongoose.Types.ObjectId
+    || (id as { _bsontype?: string })._bsontype === 'ObjectId';
+}
+
 /** Id of a match player after populate. A missing ghost user keeps the reserved id. */
 export function resolvePlayerId(userId: unknown, opponentKind?: string | null): string {
   if (userId == null) {
     return isGhostKind(opponentKind) ? GHOST_OPPONENT_ID : '';
   }
-  if (typeof userId === 'object' && userId !== null && '_id' in userId && (userId as { _id?: unknown })._id != null) {
-    return String((userId as { _id: unknown })._id);
+  if (typeof userId === 'object') {
+    if (isObjectId(userId)) {
+      return String(userId);
+    }
+    if ('_id' in userId && (userId as { _id?: unknown })._id != null) {
+      return resolvePlayerId((userId as { _id: unknown })._id, opponentKind);
+    }
   }
   return String(userId);
 }
@@ -20,8 +30,17 @@ export function isGhostOpponentId(id: unknown): boolean {
   if (id == null) {
     return false;
   }
-  if (typeof id === 'object' && id !== null && '_id' in id) {
-    return isGhostOpponentId((id as { _id: unknown })._id);
+  if (typeof id === 'object') {
+    // ObjectId exposes `_id` as another ObjectId. Following that loops forever.
+    if (isObjectId(id)) {
+      return String(id) === GHOST_OPPONENT_ID;
+    }
+    if ('_id' in id) {
+      const inner = (id as { _id?: unknown })._id;
+      if (inner != null && inner !== id) {
+        return isGhostOpponentId(inner);
+      }
+    }
   }
   return String(id) === GHOST_OPPONENT_ID;
 }
