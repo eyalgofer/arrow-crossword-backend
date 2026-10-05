@@ -11,7 +11,7 @@ import { completeExpiredMatches, completeMatch, emitMatchPlayerLeft, ensureMatch
 import { serializeClaimedWords } from '../services/wordClaims';
 import { advanceGhostMatch, ensureSolverNickname } from '../services/ghostMatch';
 import { isGhostKind, resolvePlayerId } from '../utils/ghost';
-import { applyMatchReadFields } from '../services/matchView';
+import { applyMatchReadFieldsForClient } from '../services/matchView';
 import { groupLeaveEndsMatch } from '../services/placements';
 import { activeGames } from '../sockets/activeGames';
 
@@ -35,12 +35,12 @@ export const getMatchHistory = async (req: AuthRequest, res: Response) => {
     await Promise.all(matches.map((match) => ensureSolverNickname(match)));
 
     res.json({
-      matches: matches.map((match) =>
-        applyMatchReadFields(withMatchTiming({
+      matches: await Promise.all(matches.map((match) =>
+        applyMatchReadFieldsForClient(withMatchTiming({
           ...match.toObject(),
           mode: resolveMatchMode(match),
         }), match, user._id.toString())
-      ),
+      )),
     });
   } catch (error) {
     console.error('Get match history error:', error);
@@ -84,7 +84,7 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
     const activeMatches = matches.filter(match => !isMatchTimedOut(match));
 
     // Enhance matches with opponent info and time elapsed
-    const enhancedMatches = activeMatches.map(match => {
+    const enhancedMatches = await Promise.all(activeMatches.map(async match => {
       const matchObj = match.toObject();
       
       // Ensure players array includes photoURL (from populated userId or stored value)
@@ -121,7 +121,7 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
       const userProgress = currentUserPlayer?.progress || 0;
       const opponentProgress = opponent?.progress || 0;
 
-      return applyMatchReadFields(withMatchTiming({
+      return applyMatchReadFieldsForClient(withMatchTiming({
         ...matchObj,
         matchId: match._id.toString(),
         mode: resolveMatchMode(match),
@@ -141,7 +141,7 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
         currentUserPuzzleProgress: userProgress,
         timeElapsed
       }), match, user._id.toString());
-    });
+    }));
 
     res.json({ matches: enhancedMatches });
   } catch (error) {
@@ -225,7 +225,7 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
     const userProgress = currentUserPlayer?.progress || 0;
     const opponentProgress = opponent?.progress || 0;
 
-    const enhancedMatch = applyMatchReadFields(withMatchTiming({
+    const enhancedMatch = await applyMatchReadFieldsForClient(withMatchTiming({
       ...match.toObject(),
       matchId: match._id.toString(),
       mode: resolveMatchMode(match),
@@ -355,7 +355,7 @@ export const leaveMatch = async (req: AuthRequest, res: Response) => {
 
     res.json({
       match: updatedMatch
-        ? applyMatchReadFields(
+        ? await applyMatchReadFieldsForClient(
           withMatchTiming({
             ...updatedMatch.toObject(),
             mode: resolveMatchMode(updatedMatch)

@@ -10,6 +10,7 @@ import { isBoardFullyClaimed, serializeClaimedWords, winnerIdFromClaimedCount } 
 import { isQuickMatch } from '../utils/matchSettings';
 import { isGhostOpponentId } from '../utils/ghost';
 import { buildPlacements, Placement, placementsForMatch, winnerIdFromPlacements } from './placements';
+import { clientIdsForMatch, clientUserId } from './lobbyView';
 
 export interface MatchCompletedPlayer {
   userId: string;
@@ -68,14 +69,16 @@ export function winnerIdForMatch(match: IMatch): mongoose.Types.ObjectId | null 
 
 export function buildMatchCompletedPayload(
   match: IMatch,
-  reason: MatchCompletionReason
+  reason: MatchCompletionReason,
+  clientIds?: ReadonlyMap<string, string> | null
 ): MatchCompletedPayload {
-  const winnerId = toIdString(match.winnerId);
+  const idOf = (id: unknown) => clientIds ? clientUserId(id, clientIds) : (toIdString(id) ?? '');
+  const winnerId = clientIds ? (match.winnerId ? idOf(match.winnerId) : null) : toIdString(match.winnerId);
   const mode = isQuickMatch(match) ? MatchMode.QUICK : MatchMode.NORMAL;
 
   const players = match.players.map(player => {
     const row: MatchCompletedPlayer = {
-      userId: toIdString(player.userId) ?? '',
+      userId: idOf(player.userId),
       displayName: player.displayName,
       progress: player.progress ?? 0,
       claimedCount: player.claimedCount ?? 0
@@ -95,13 +98,19 @@ export function buildMatchCompletedPayload(
       winnerId,
       mode,
       players,
-      claimedWords: serializeClaimedWords(match.claimedWords)
+      claimedWords: serializeClaimedWords(match.claimedWords).map(word => ({
+        ...word,
+        userId: idOf(word.userId)
+      }))
     }
   };
 
   const placements = placementsForMatch(match.kind, match.players);
   if (placements) {
-    payload.placements = placements;
+    payload.placements = placements.map(placement => ({
+      ...placement,
+      userId: idOf(placement.userId)
+    }));
   }
 
   return payload;
@@ -139,7 +148,12 @@ export async function completeMatch(
 
   await awardMatchRewards(match, winnerId);
 
-  const payload = buildMatchCompletedPayload(match, options.reason);
+  const clientIds = await clientIdsForMatch(
+    match._id.toString(),
+    match.kind,
+    match.players.map(player => player.userId)
+  );
+  const payload = buildMatchCompletedPayload(match, options.reason, clientIds);
   await emitMatchCompleted(io, match, payload);
   removeActiveGame(match._id.toString());
 
@@ -319,10 +333,15 @@ async function emitMatchCompleted(
 
 export async function emitMatchPlayerLeft(io: Server, match: IMatch): Promise<void> {
   const matchId = match._id.toString();
+  const clientIds = await clientIdsForMatch(
+    match._id.toString(),
+    match.kind,
+    match.players.map(player => player.userId)
+  );
   const payload = {
     matchId,
     players: match.players.map(player => ({
-      userId: toIdString(player.userId) ?? '',
+      userId: clientIds ? clientUserId(player.userId, clientIds) : (toIdString(player.userId) ?? ''),
       displayName: player.displayName,
       photoURL: player.photoURL ?? null,
       progress: player.progress ?? 0,

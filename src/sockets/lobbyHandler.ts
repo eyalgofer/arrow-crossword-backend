@@ -2,7 +2,7 @@ import { Socket } from 'socket.io';
 import mongoose from 'mongoose';
 import { Lobby } from '../models/Lobby';
 import { User } from '../models/User';
-import { lobbyRoom, serializeLobby } from '../services/lobbyView';
+import { lobbyRoom, serializeLobbyForClient } from '../services/lobbyView';
 
 interface LobbySocket extends Socket {
   userId?: string;
@@ -36,7 +36,7 @@ export function registerLobbyHandlers(socket: LobbySocket): void {
       }
 
       socket.join(lobbyRoom(lobbyId));
-      socket.emit('lobby_updated', { lobby: serializeLobby(lobby) });
+      socket.emit('lobby_updated', { lobby: await serializeLobbyForClient(lobby) });
     } catch (error) {
       console.error('Join lobby error:', error);
       socket.emit('error', { message: 'Failed to join lobby' });

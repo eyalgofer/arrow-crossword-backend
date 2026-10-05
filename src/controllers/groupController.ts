@@ -7,6 +7,7 @@ import {
   defaultGroupName,
   memberKeyFor,
   parseOptionalGroupName,
+  resolveInviteeIds,
   validateMemberIds
 } from '../services/groupRoster';
 import { isMultiplayerPlayer } from '../services/guestAuth';
@@ -21,7 +22,10 @@ export const createGroup = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Sign in to play multiplayer' });
     }
 
-    const members = validateMemberIds(req.body?.memberIds, owner._id.toString());
+    const members = validateMemberIds(
+      await resolveInviteeIds(req.body?.memberIds, [owner._id.toString(), owner.firebaseUid]),
+      owner._id.toString()
+    );
     if (!members.ok) {
       return res.status(400).json({ error: members.error });
     }
@@ -117,7 +121,10 @@ export const updateGroup = async (req: AuthRequest, res: Response) => {
     }
 
     if (hasMembers) {
-      const members = validateMemberIds(req.body.memberIds, owner._id.toString());
+      const members = validateMemberIds(
+        await resolveInviteeIds(req.body.memberIds, [owner._id.toString(), owner.firebaseUid]),
+        owner._id.toString()
+      );
       if (!members.ok) {
         return res.status(400).json({ error: members.error });
       }
@@ -212,7 +219,9 @@ async function serializeGroup(group: IGroup) {
     _id: group._id.toString(),
     name: group.name,
     ownerId: group.ownerId.toString(),
-    members: group.memberIds.map(id => {
+    members: group.memberIds
+      .filter(id => id.toString() !== group.ownerId.toString())
+      .map(id => {
       const member = byId.get(id.toString());
       return {
         _id: id.toString(),

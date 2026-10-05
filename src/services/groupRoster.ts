@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { User } from '../models/User';
 
 const GROUP_NAME_MAX = 80;
 
@@ -60,6 +61,48 @@ export function validateMemberIds(
   }
 
   return { ok: true, memberIds: canonical };
+}
+
+/**
+ * Invite lists may contain a database id or the sign-in id.
+ * Both forms of the host are removed, and sign-in ids become database ids.
+ */
+export async function resolveInviteeIds(
+  memberIds: unknown,
+  hostIds: Array<string | null | undefined>
+): Promise<unknown> {
+  const filtered = memberIdsExceptHost(memberIds, hostIds);
+  if (!Array.isArray(filtered)) {
+    return filtered;
+  }
+
+  const resolved: string[] = [];
+  for (const memberId of filtered) {
+    const canonical = canonicalUserId(memberId);
+    if (canonical) {
+      resolved.push(canonical);
+      continue;
+    }
+    const user = await User.findOne({
+      firebaseUid: String(memberId),
+      isGuest: { $ne: true }
+    }).select('_id');
+    resolved.push(user ? user._id.toString() : String(memberId));
+  }
+  return resolved;
+}
+
+/** The host plays by starting the lobby. They are never one of the invitees. */
+export function memberIdsExceptHost(memberIds: unknown, hostIds: Array<string | null | undefined>): unknown {
+  if (!Array.isArray(memberIds)) {
+    return memberIds;
+  }
+  const blocked = new Set(hostIds.filter((id): id is string => !!id));
+  return memberIds.filter(memberId => {
+    const raw = String(memberId);
+    const canonical = canonicalUserId(memberId);
+    return !blocked.has(raw) && (canonical == null || !blocked.has(canonical));
+  });
 }
 
 export function parseOptionalGroupName(

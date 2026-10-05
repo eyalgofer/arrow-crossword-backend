@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import mongoose from 'mongoose';
 import {
   defaultGroupName,
+  memberIdsExceptHost,
   memberKeyFor,
   parseOptionalGroupName,
   validateMemberIds
@@ -40,6 +41,14 @@ describe('saved groups', () => {
     if (accepted.ok) {
       assert.deepEqual(accepted.memberIds, [noa, dana]);
     }
+  });
+
+  it('drops the host from an invite list and keeps the friends', () => {
+    const firebaseUid = 'firebase-host';
+    assert.deepEqual(
+      memberIdsExceptHost([ownerId, dana, firebaseUid], [ownerId, firebaseUid]),
+      [dana]
+    );
   });
 
   it('treats a blank name as omitted and keeps a provided name', () => {

@@ -10,7 +10,7 @@ import { resolveLanguage } from '../utils/language';
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
 import { createMatchTiming, serializeTimingFields } from '../utils/matchTiming';
 import { parseMatchSettings } from '../utils/matchSettings';
-import { canonicalUserId, validateMemberIds } from '../services/groupRoster';
+import { canonicalUserId, resolveInviteeIds, validateMemberIds } from '../services/groupRoster';
 import { isMultiplayerPlayer } from '../services/guestAuth';
 import {
   canStartLobby,
@@ -18,7 +18,7 @@ import {
   lobbyExpiresAt,
   seatStatusForAction
 } from '../services/lobbyRules';
-import { serializeLobby } from '../services/lobbyView';
+import { serializeLobbyForClient, clientUserId, loadClientUserIds } from '../services/lobbyView';
 import {
   cancelHostWaitingLobbies,
   cancelLobbyIfWaiting,
@@ -39,7 +39,10 @@ export const createLobby = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Sign in to play multiplayer' });
     }
 
-    const members = validateMemberIds(req.body?.memberIds, host._id.toString());
+    const members = validateMemberIds(
+      await resolveInviteeIds(req.body?.memberIds, [host._id.toString(), host.firebaseUid]),
+      host._id.toString()
+    );
     if (!members.ok) {
       return res.status(400).json({ error: members.error });
     }
@@ -105,7 +108,7 @@ export const createLobby = async (req: AuthRequest, res: Response) => {
     await emitLobbyUpdated(io, lobby);
     pushGroupInvites(lobby, rosterName(host));
 
-    return res.status(201).json({ lobby: serializeLobby(lobby) });
+    return res.status(201).json({ lobby: await serializeLobbyForClient(lobby) });
   } catch (error) {
     console.error('Create lobby error:', error);
     return res.status(500).json({ error: 'Failed to create lobby' });
@@ -124,7 +127,7 @@ export const getActiveLobby = async (req: AuthRequest, res: Response) => {
     const hosted = await Lobby.findOne({ hostId: user._id, status: 'waiting' })
       .sort({ createdAt: -1 });
     if (hosted) {
-      return res.json({ lobby: serializeLobby(hosted) });
+      return res.json({ lobby: await serializeLobbyForClient(hosted) });
     }
 
     const lobby = await Lobby.findOne({
@@ -132,7 +135,7 @@ export const getActiveLobby = async (req: AuthRequest, res: Response) => {
       seats: { $elemMatch: { userId: user._id, status: { $in: ['invited', 'joined'] } } }
     }).sort({ createdAt: -1 });
 
-    return res.json({ lobby: lobby ? serializeLobby(lobby) : null });
+    return res.json({ lobby: lobby ? await serializeLobbyForClient(lobby) : null });
   } catch (error) {
     console.error('Get active lobby error:', error);
     return res.status(500).json({ error: 'Failed to get lobby' });
@@ -176,7 +179,7 @@ export const respondToLobby = async (req: AuthRequest, res: Response) => {
       await emitLobbyUpdated(io, lobby);
     }
 
-    return res.json({ lobby: serializeLobby(lobby) });
+    return res.json({ lobby: await serializeLobbyForClient(lobby) });
   } catch (error) {
     console.error('Respond to lobby error:', error);
     return res.status(500).json({ error: 'Failed to respond to lobby' });
@@ -269,14 +272,16 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
       );
     }
 
+    const clientIds = await loadClientUserIds(joined.map(seat => seat.userId));
     const payload = {
       lobbyId: started._id.toString(),
+      groupId: started.groupId ? started.groupId.toString() : null,
       matchId: match._id.toString(),
       puzzleId: picked.puzzleId.toString(),
       mode: settings.mode,
       ...serializeTimingFields(timing),
       players: joined.map(seat => ({
-        userId: seat.userId.toString(),
+        userId: clientUserId(seat.userId, clientIds),
         displayName: seat.displayName,
         photoURL: seat.photoURL ?? null
       }))

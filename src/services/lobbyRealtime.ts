@@ -2,7 +2,7 @@ import { Server } from 'socket.io';
 import mongoose from 'mongoose';
 import { ILobby, ILobbySeat, Lobby } from '../models/Lobby';
 import { User } from '../models/User';
-import { lobbyRoom, serializeLobby } from './lobbyView';
+import { lobbyRoom, serializeLobbyForClient } from './lobbyView';
 import {
   sendGroupInvitePush,
   sendLobbyCancelledPush,
@@ -10,7 +10,7 @@ import {
 } from './onesignal';
 
 export async function emitLobbyUpdated(io: Server, lobby: ILobby): Promise<void> {
-  await emitToSeats(io, lobby.seats, 'lobby_updated', { lobby: serializeLobby(lobby) }, lobby._id.toString());
+  await emitToSeats(io, lobby.seats, 'lobby_updated', { lobby: await serializeLobbyForClient(lobby) }, lobby._id.toString());
 }
 
 export async function emitLobbyStarted(
@@ -75,7 +75,8 @@ export async function expireWaitingLobbies(io: Server, now: Date = new Date()): 
 }
 
 export function pushGroupInvites(lobby: ILobby, hostName: string): void {
-  const invitees = lobby.seats.filter(seat => !seat.isHost);
+  const hostId = lobby.hostId.toString();
+  const invitees = lobby.seats.filter(seat => !seat.isHost && seat.userId.toString() !== hostId);
   void deliver(invitees, (firebaseUid) => sendGroupInvitePush({
     toUserId: firebaseUid,
     fromDisplayName: hostName,

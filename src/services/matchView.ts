@@ -1,5 +1,6 @@
 import { MatchStatus } from '../types';
 import { resolvePlayerId } from '../utils/ghost';
+import { clientUserId, loadClientUserIds } from './lobbyView';
 import { Placement, PlacementPlayer, placementsForMatch } from './placements';
 
 export interface PublicMatchPlayer {
@@ -70,7 +71,8 @@ export function groupSessionFields(match: { kind?: string | null; groupId?: unkn
 export function applyMatchReadFields<T extends object>(
   payload: T,
   match: MatchReadSource,
-  viewerId: string
+  viewerId: string,
+  clientIds?: ReadonlyMap<string, string> | null
 ): T & GroupReadFields {
   const kind = resolveMatchKind(match);
   const next: T & GroupReadFields = { ...payload, kind };
@@ -78,12 +80,17 @@ export function applyMatchReadFields<T extends object>(
     return next;
   }
 
-  const players = serializeMatchPlayers(match);
+  const idOf = (id: unknown) => clientUserId(id, clientIds);
+  const players = serializeMatchPlayers(match).map(player => ({
+    ...player,
+    userId: idOf(player.userId)
+  }));
   next.groupId = match.groupId ? String(match.groupId) : null;
   next.players = players;
 
   if (match.players.length === 2) {
-    const other = players.find(player => player.userId !== viewerId);
+    const viewer = idOf(viewerId);
+    const other = players.find(player => player.userId !== viewer);
     if (other) {
       next.opponent = {
         userId: other.userId,
@@ -105,10 +112,35 @@ export function applyMatchReadFields<T extends object>(
     ? placementsForMatch('group', match.players)
     : undefined;
   if (placements) {
-    next.placements = placements;
+    next.placements = placements.map(placement => ({
+      ...placement,
+      userId: idOf(placement.userId)
+    }));
+  }
+
+  const withWinner = next as T & GroupReadFields & { winnerId?: unknown; claimedWords?: { userId?: unknown }[] };
+  if (withWinner.winnerId) {
+    withWinner.winnerId = idOf(withWinner.winnerId);
+  }
+  if (Array.isArray(withWinner.claimedWords)) {
+    withWinner.claimedWords = withWinner.claimedWords.map(word => ({
+      ...word,
+      userId: idOf(word.userId)
+    }));
   }
 
   return next;
+}
+
+export async function applyMatchReadFieldsForClient<T extends object>(
+  payload: T,
+  match: MatchReadSource,
+  viewerId: string
+): Promise<T & GroupReadFields> {
+  const clientIds = resolveMatchKind(match) === 'group'
+    ? await loadClientUserIds(match.players.map(player => player.userId))
+    : null;
+  return applyMatchReadFields(payload, match, viewerId, clientIds);
 }
 
 function populatedUser(userId: unknown): { displayName?: string; photoURL?: string } | null {

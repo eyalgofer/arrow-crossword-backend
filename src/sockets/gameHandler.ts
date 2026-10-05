@@ -15,6 +15,7 @@ import { cancelRandomSearch, handleFindMatch } from './randomQueue';
 import { activeGames } from './activeGames';
 import { registerLobbyHandlers } from './lobbyHandler';
 import { groupSessionFields } from '../services/matchView';
+import { clientIdsForMatch, clientUserId } from '../services/lobbyView';
 import { rosterState } from '../services/placements';
 import {
   buildMatchCompletedPayload,
@@ -212,11 +213,23 @@ export const setupSocketHandlers = (io: Server) => {
         const puzzleId = match.puzzleId.toString();
         const session = groupSessionFields(match);
         const groupMatch = session.kind === 'group';
+        const clientIds = await clientIdsForMatch(
+          matchId,
+          session.kind,
+          match.players.map(player => player.userId)
+        );
+        const idOf = (id: unknown) => clientIds ? clientUserId(id, clientIds) : String(id);
         const showOpponent = !groupMatch || match.players.length === 2;
+
+        const publicClaims = claimedWords.map(word => ({ ...word, userId: idOf(word.userId) }));
+        const publicOpponentMoves = opponentMoves.map(move => ({
+          ...move,
+          userId: idOf(move.userId)
+        }));
 
         // Notify room that player joined
         socket.to(matchId).emit('player_joined', {
-          userId: currentUserId,
+          userId: idOf(currentUserId),
           displayName: user.displayName
         });
 
@@ -227,7 +240,7 @@ export const setupSocketHandlers = (io: Server) => {
           puzzle,
           ...session,
           opponent: showOpponent && opponent ? {
-            userId: opponent.userId.toString(),
+            userId: idOf(opponent.userId),
             displayName: opponent.displayName,
             photoURL: opponent.photoURL,
             progress: opponentProgress,
@@ -235,22 +248,22 @@ export const setupSocketHandlers = (io: Server) => {
             ...(groupMatch ? { left: opponent.left === true } : {})
           } : null,
           players: (gameState?.players || match.players).map(p => ({
-            userId: p.userId.toString(),
+            userId: idOf(p.userId),
             displayName: p.displayName,
             photoURL: p.photoURL,
             progress: p.progress,
             claimedCount: p.claimedCount ?? 0,
             ...(groupMatch ? { left: p.left === true } : {})
           })),
-          claimedWords,
+          claimedWords: publicClaims,
           gameState: {
-            moves: opponentMoves,
+            moves: publicOpponentMoves,
             progress: opponentProgress,
             userMoves,
             userProgress,
-            claimedWords
+            claimedWords: publicClaims
           },
-          moves: opponentMoves,
+          moves: publicOpponentMoves,
           userMoves,
           mode,
           opponentKind: match.opponentKind ?? 'live',
@@ -262,7 +275,8 @@ export const setupSocketHandlers = (io: Server) => {
             'match_completed',
             buildMatchCompletedPayload(
               match,
-              match.completionReason ?? MatchCompletionReason.COMPLETED
+              match.completionReason ?? MatchCompletionReason.COMPLETED,
+              clientIds
             )
           );
         }
@@ -322,8 +336,17 @@ export const setupSocketHandlers = (io: Server) => {
         }
 
         // Broadcast to other players in the match
+        const progressIds = await clientIdsForMatch(
+          matchId,
+          match.kind,
+          match.players.map(player => player.userId)
+        );
+        const progressUserId = progressIds
+          ? clientUserId(user._id, progressIds)
+          : user._id.toString();
         socket.to(matchId).emit('opponent_progress', {
-          userId: user._id.toString(),
+          userId: progressUserId,
+          odlouserId: progressUserId,
           progress
         });
       } catch (error) {
@@ -389,8 +412,13 @@ export const setupSocketHandlers = (io: Server) => {
         );
 
         // Broadcast move to all players in the match
+        const moveIds = await clientIdsForMatch(
+          matchId,
+          match.kind,
+          match.players.map(player => player.userId)
+        );
         io.to(matchId).emit('opponent_move', {
-          userId: user._id.toString(),
+          userId: moveIds ? clientUserId(user._id, moveIds) : user._id.toString(),
           row,
           col,
           letter
@@ -466,15 +494,21 @@ export const setupSocketHandlers = (io: Server) => {
         const scores = playerClaimScores(result.match.players, puzzle.puzzleItems.length);
         const claimedWords = serializeClaimedWords(result.match.claimedWords);
 
+        const claimIds = await clientIdsForMatch(
+          matchId,
+          match.kind,
+          result.match.players.map(player => player.userId)
+        );
+        const claimId = (id: unknown) => claimIds ? clientUserId(id, claimIds) : String(id);
         const wordClaimedPayload = {
           matchId,
           clueId: result.claim.clueId,
           answer: result.claim.answer,
-          userId: result.claim.userId,
+          userId: claimId(result.claim.userId),
           displayName: result.claim.displayName,
           claimedAt: result.claim.claimedAt,
-          scores,
-          claimedWords
+          scores: scores.map(score => ({ ...score, userId: claimId(score.userId) })),
+          claimedWords: claimedWords.map(word => ({ ...word, userId: claimId(word.userId) }))
         };
         io.to(matchId).emit('word_claimed', wordClaimedPayload);
         if (!socket.rooms.has(matchId)) {
