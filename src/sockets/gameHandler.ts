@@ -13,6 +13,9 @@ import { isGhostKind } from '../utils/ghost';
 import { advanceGhostMatch, ensureSolverNickname } from '../services/ghostMatch';
 import { cancelRandomSearch, handleFindMatch } from './randomQueue';
 import { activeGames } from './activeGames';
+import { registerLobbyHandlers } from './lobbyHandler';
+import { groupSessionFields } from '../services/matchView';
+import { rosterState } from '../services/placements';
 import {
   buildMatchCompletedPayload,
   completeMatch,
@@ -90,6 +93,8 @@ export const setupSocketHandlers = (io: Server) => {
     } else {
       console.warn(`Socket ${socket.id} connected without userId!`);
     }
+
+    registerLobbyHandlers(socket);
 
     socket.on('find_match', () => {
       void handleFindMatch(io, socket);
@@ -205,6 +210,9 @@ export const setupSocketHandlers = (io: Server) => {
         const userProgress = currentUserPlayer?.progress ?? 0;
         const opponentProgress = opponent?.progress ?? 0;
         const puzzleId = match.puzzleId.toString();
+        const session = groupSessionFields(match);
+        const groupMatch = session.kind === 'group';
+        const showOpponent = !groupMatch || match.players.length === 2;
 
         // Notify room that player joined
         socket.to(matchId).emit('player_joined', {
@@ -217,19 +225,22 @@ export const setupSocketHandlers = (io: Server) => {
           matchId,
           puzzleId,
           puzzle,
-          opponent: opponent ? {
+          ...session,
+          opponent: showOpponent && opponent ? {
             userId: opponent.userId.toString(),
             displayName: opponent.displayName,
             photoURL: opponent.photoURL,
             progress: opponentProgress,
-            claimedCount: opponent.claimedCount ?? 0
+            claimedCount: opponent.claimedCount ?? 0,
+            ...(groupMatch ? { left: opponent.left === true } : {})
           } : null,
           players: (gameState?.players || match.players).map(p => ({
             userId: p.userId.toString(),
             displayName: p.displayName,
             photoURL: p.photoURL,
             progress: p.progress,
-            claimedCount: p.claimedCount ?? 0
+            claimedCount: p.claimedCount ?? 0,
+            ...(groupMatch ? { left: p.left === true } : {})
           })),
           claimedWords,
           gameState: {
@@ -291,6 +302,7 @@ export const setupSocketHandlers = (io: Server) => {
         
         const user = await User.findOne({ firebaseUid: socket.userId });
         if (!user) return;
+        if (!requirePlaying(socket, match, user._id.toString())) return;
 
         if (gameState) {
           const player = gameState.players.find(
@@ -345,6 +357,7 @@ export const setupSocketHandlers = (io: Server) => {
 
         const user = await User.findOne({ firebaseUid: socket.userId });
         if (!user) return;
+        if (!requirePlaying(socket, match, user._id.toString())) return;
 
         if (isQuickMatch(match)) {
           if (!gameState.lockedCells) {
@@ -419,12 +432,7 @@ export const setupSocketHandlers = (io: Server) => {
           socket.emit('error', { message: 'User not found' });
           return;
         }
-
-        const isPlayer = match.players.some(
-          p => p.userId.toString() === user._id.toString()
-        );
-        if (!isPlayer) {
-          socket.emit('error', { message: 'Not authorized for this match' });
+        if (!requirePlaying(socket, match, user._id.toString())) {
           return;
         }
 
@@ -514,14 +522,7 @@ export const setupSocketHandlers = (io: Server) => {
 
         const user = await User.findOne({ firebaseUid: socket.userId });
         if (!user) return;
-
-        const isPlayer = match.players.some(
-          p => p.userId.toString() === user._id.toString()
-        );
-        if (!isPlayer) {
-          socket.emit('error', { message: 'Not authorized for this match' });
-          return;
-        }
+        if (!requirePlaying(socket, match, user._id.toString())) return;
 
         await Match.updateOne(
           { _id: matchId, status: MatchStatus.IN_PROGRESS, 'players.userId': user._id },
@@ -580,12 +581,7 @@ async function handleBoardCompletedHint(
   if (!user) {
     return;
   }
-
-  const isPlayer = match.players.some(
-    p => p.userId.toString() === user._id.toString()
-  );
-  if (!isPlayer) {
-    socket.emit('error', { message: 'Not authorized for this match' });
+  if (!requirePlaying(socket, match, user._id.toString())) {
     return;
   }
 
@@ -622,6 +618,17 @@ function syncGameStateClaims(match: IMatch, puzzle: IPuzzle): void {
       progress: score?.progress ?? player.progress
     };
   });
+}
+
+function requirePlaying(socket: SocketWithAuth, match: IMatch, userId: string): boolean {
+  const state = rosterState(match.players, userId);
+  if (state === 'playing') {
+    return true;
+  }
+  socket.emit('error', {
+    message: state === 'left' ? 'You left this match' : 'Not authorized for this match'
+  });
+  return false;
 }
 
 function moveUserId(move: { userId?: { toString?: () => string } | string }): string {

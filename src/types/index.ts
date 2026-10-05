@@ -109,6 +109,7 @@ export interface GameState {
     photoURL?: string;
     progress: number;
     claimedCount: number;
+    left?: boolean;
   }[];
   puzzleId: string;
   moves: PlayerMove[];

@@ -240,6 +240,14 @@ export async function tryClaimWord(options: {
 > {
   const { match, puzzle, userId, displayName, clueId, answer } = options;
   const totalClues = puzzle.puzzleItems.length;
+  const claimer = match.players.find(player => toIdString(player.userId) === userId.toString());
+  if (!claimer) {
+    return { ok: false, error: 'Not in this match' };
+  }
+  if (claimer.left === true) {
+    return { ok: false, error: 'You left this match' };
+  }
+
   const item = findPuzzleItem(puzzle, clueId);
 
   if (!item) {

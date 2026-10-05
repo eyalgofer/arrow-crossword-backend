@@ -7,10 +7,13 @@ import { MatchCompletionReason, MatchStatus } from '../types';
 import { io } from '../server';
 import { withMatchTiming, isMatchTimedOut } from '../utils/matchTiming';
 import { resolveMatchMode } from '../utils/matchSettings';
-import { completeExpiredMatches, completeMatch, ensureMatchNotExpired } from '../services/matchCompletion';
+import { completeExpiredMatches, completeMatch, emitMatchPlayerLeft, ensureMatchNotExpired } from '../services/matchCompletion';
 import { serializeClaimedWords } from '../services/wordClaims';
 import { advanceGhostMatch, ensureSolverNickname } from '../services/ghostMatch';
 import { isGhostKind, resolvePlayerId } from '../utils/ghost';
+import { applyMatchReadFields } from '../services/matchView';
+import { groupLeaveEndsMatch } from '../services/placements';
+import { activeGames } from '../sockets/activeGames';
 
 export const getMatchHistory = async (req: AuthRequest, res: Response) => {
   try {
@@ -33,10 +36,10 @@ export const getMatchHistory = async (req: AuthRequest, res: Response) => {
 
     res.json({
       matches: matches.map((match) =>
-        withMatchTiming({
+        applyMatchReadFields(withMatchTiming({
           ...match.toObject(),
           mode: resolveMatchMode(match),
-        })
+        }), match, user._id.toString())
       ),
     });
   } catch (error) {
@@ -118,7 +121,7 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
       const userProgress = currentUserPlayer?.progress || 0;
       const opponentProgress = opponent?.progress || 0;
 
-      return withMatchTiming({
+      return applyMatchReadFields(withMatchTiming({
         ...matchObj,
         matchId: match._id.toString(),
         mode: resolveMatchMode(match),
@@ -137,7 +140,7 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
         opponentProgress,
         currentUserPuzzleProgress: userProgress,
         timeElapsed
-      });
+      }), match, user._id.toString());
     });
 
     res.json({ matches: enhancedMatches });
@@ -222,7 +225,7 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
     const userProgress = currentUserPlayer?.progress || 0;
     const opponentProgress = opponent?.progress || 0;
 
-    const enhancedMatch = withMatchTiming({
+    const enhancedMatch = applyMatchReadFields(withMatchTiming({
       ...match.toObject(),
       matchId: match._id.toString(),
       mode: resolveMatchMode(match),
@@ -240,7 +243,7 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
       opponentProgress,
       currentUserPuzzleProgress: userProgress,
       timeElapsed
-    });
+    }), match, user._id.toString());
 
     res.json({ match: enhancedMatch });
   } catch (error) {
@@ -289,20 +292,57 @@ export const leaveMatch = async (req: AuthRequest, res: Response) => {
 
     // Handle leaving based on match status
     if (current.status === MatchStatus.IN_PROGRESS) {
-      const opponent = current.players.find(
-        p => {
-          const playerUserId = (p.userId as any)?._id || p.userId;
-          return playerUserId.toString() !== user._id.toString();
-        }
-      );
-      const opponentId = opponent
-        ? ((opponent.userId as any)?._id || opponent.userId)
-        : null;
+      if (current.kind === 'group') {
+        const updated = await Match.findOneAndUpdate(
+          {
+            _id: matchId,
+            status: MatchStatus.IN_PROGRESS,
+            players: { $elemMatch: { userId: user._id, left: { $ne: true } } }
+          },
+          { $set: { 'players.$.left': true } },
+          { new: true }
+        );
 
-      await completeMatch(io, matchId, {
-        winnerId: opponentId,
-        reason: MatchCompletionReason.FORFEIT
-      });
+        if (!updated) {
+          const latest = await Match.findById(matchId);
+          if (!latest || latest.status !== MatchStatus.IN_PROGRESS) {
+            return res.status(400).json({ error: 'Match is already completed or cancelled' });
+          }
+          return res.status(400).json({ error: 'You already left this match' });
+        }
+
+        const game = activeGames.get(matchId);
+        const seat = game?.players.find(player => player.userId === user._id.toString());
+        if (seat) {
+          seat.left = true;
+        }
+
+        const stillPlaying = updated.players.filter(player => player.left !== true);
+        if (groupLeaveEndsMatch(stillPlaying.length)) {
+          const winner = stillPlaying[0];
+          await completeMatch(io, matchId, {
+            winnerId: winner ? String((winner.userId as { _id?: unknown })._id ?? winner.userId) : null,
+            reason: MatchCompletionReason.FORFEIT
+          });
+        } else {
+          await emitMatchPlayerLeft(io, updated);
+        }
+      } else {
+        const opponent = current.players.find(
+          p => {
+            const playerUserId = (p.userId as any)?._id || p.userId;
+            return playerUserId.toString() !== user._id.toString();
+          }
+        );
+        const opponentId = opponent
+          ? ((opponent.userId as any)?._id || opponent.userId)
+          : null;
+
+        await completeMatch(io, matchId, {
+          winnerId: opponentId,
+          reason: MatchCompletionReason.FORFEIT
+        });
+      }
     } else if (current.status === MatchStatus.WAITING) {
       current.status = MatchStatus.CANCELLED;
       await current.save();
@@ -313,7 +353,19 @@ export const leaveMatch = async (req: AuthRequest, res: Response) => {
       .populate('puzzleId', 'title difficulty')
       .populate('players.userId', 'displayName photoURL');
 
-    res.json({ match: updatedMatch, message: 'Successfully left match' });
+    res.json({
+      match: updatedMatch
+        ? applyMatchReadFields(
+          withMatchTiming({
+            ...updatedMatch.toObject(),
+            mode: resolveMatchMode(updatedMatch)
+          }),
+          updatedMatch,
+          user._id.toString()
+        )
+        : null,
+      message: 'Successfully left match'
+    });
   } catch (error) {
     console.error('Leave match error:', error);
     res.status(500).json({ error: 'Failed to leave match' });

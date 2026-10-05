@@ -9,18 +9,21 @@ import { removeActiveGame } from '../sockets/activeGames';
 import { isBoardFullyClaimed, serializeClaimedWords, winnerIdFromClaimedCount } from './wordClaims';
 import { isQuickMatch } from '../utils/matchSettings';
 import { isGhostOpponentId } from '../utils/ghost';
+import { buildPlacements, Placement, placementsForMatch, winnerIdFromPlacements } from './placements';
 
 export interface MatchCompletedPlayer {
   userId: string;
   displayName: string;
   progress: number;
   claimedCount: number;
+  left?: boolean;
 }
 
 export interface MatchCompletedPayload {
   winnerId: string | null;
   reason: MatchCompletionReason;
   mode: MatchMode;
+  placements?: Placement[];
   match: {
     _id: string;
     winnerId: string | null;
@@ -70,7 +73,20 @@ export function buildMatchCompletedPayload(
   const winnerId = toIdString(match.winnerId);
   const mode = isQuickMatch(match) ? MatchMode.QUICK : MatchMode.NORMAL;
 
-  return {
+  const players = match.players.map(player => {
+    const row: MatchCompletedPlayer = {
+      userId: toIdString(player.userId) ?? '',
+      displayName: player.displayName,
+      progress: player.progress ?? 0,
+      claimedCount: player.claimedCount ?? 0
+    };
+    if (match.kind === 'group') {
+      row.left = player.left === true;
+    }
+    return row;
+  });
+
+  const payload: MatchCompletedPayload = {
     winnerId,
     reason,
     mode,
@@ -78,15 +94,17 @@ export function buildMatchCompletedPayload(
       _id: match._id.toString(),
       winnerId,
       mode,
-      players: match.players.map(player => ({
-        userId: toIdString(player.userId) ?? '',
-        displayName: player.displayName,
-        progress: player.progress ?? 0,
-        claimedCount: player.claimedCount ?? 0
-      })),
+      players,
       claimedWords: serializeClaimedWords(match.claimedWords)
     }
   };
+
+  const placements = placementsForMatch(match.kind, match.players);
+  if (placements) {
+    payload.placements = placements;
+  }
+
+  return payload;
 }
 
 export async function completeMatch(
@@ -97,14 +115,11 @@ export async function completeMatch(
     reason: MatchCompletionReason;
   }
 ): Promise<IMatch | null> {
-  const winnerId = toObjectId(options.winnerId);
-
   const match = await Match.findOneAndUpdate(
     { _id: matchId, status: MatchStatus.IN_PROGRESS },
     {
       $set: {
         status: MatchStatus.COMPLETED,
-        winnerId,
         completedAt: new Date(),
         completionReason: options.reason
       }
@@ -115,6 +130,12 @@ export async function completeMatch(
   if (!match) {
     return null;
   }
+
+  const winnerId = match.kind === 'group'
+    ? toObjectId(winnerIdFromPlacements(match.players))
+    : toObjectId(options.winnerId);
+  match.winnerId = winnerId;
+  await match.save();
 
   await awardMatchRewards(match, winnerId);
 
@@ -210,6 +231,11 @@ async function awardMatchRewards(
   match: IMatch,
   winnerId: mongoose.Types.ObjectId | null
 ): Promise<void> {
+  if (match.kind === 'group') {
+    await awardGroupRewards(match);
+    return;
+  }
+
   const isTie = winnerId == null;
 
   await Promise.all(match.players.map(async (player) => {
@@ -242,6 +268,38 @@ async function awardMatchRewards(
   }));
 }
 
+async function awardGroupRewards(match: IMatch): Promise<void> {
+  const placements = buildPlacements(match.players);
+  const leaders = placements.filter(placement => placement.rank === 1);
+  const tied = leaders.length !== 1;
+
+  await Promise.all(match.players.map(async (player) => {
+    const playerId = toObjectId(player.userId);
+    if (!playerId || isGhostOpponentId(playerId)) {
+      return;
+    }
+
+    const rank = placements.find(placement => placement.userId === playerId.toString())?.rank;
+    const isLeader = rank === 1;
+    const coins = isLeader
+      ? (tied ? MATCH_REWARD_COINS.TIE : MATCH_REWARD_COINS.WIN)
+      : MATCH_REWARD_COINS.LOSS;
+
+    const inc: Record<string, number> = {
+      coins,
+      'stats.totalGames': 1
+    };
+
+    if (!isLeader) {
+      inc['stats.gamesLost'] = 1;
+    } else if (!tied) {
+      inc['stats.gamesWon'] = 1;
+    }
+
+    await User.updateOne({ _id: playerId }, { $inc: inc });
+  }));
+}
+
 async function emitMatchCompleted(
   io: Server,
   match: IMatch,
@@ -256,6 +314,31 @@ async function emitMatchCompleted(
 
   for (const user of users) {
     io.to(`user:${user.firebaseUid}`).emit('match_completed', payload);
+  }
+}
+
+export async function emitMatchPlayerLeft(io: Server, match: IMatch): Promise<void> {
+  const matchId = match._id.toString();
+  const payload = {
+    matchId,
+    players: match.players.map(player => ({
+      userId: toIdString(player.userId) ?? '',
+      displayName: player.displayName,
+      photoURL: player.photoURL ?? null,
+      progress: player.progress ?? 0,
+      claimedCount: player.claimedCount ?? 0,
+      left: player.left === true
+    }))
+  };
+
+  io.to(matchId).emit('player_left', payload);
+
+  const users = await User.find({
+    _id: { $in: match.players.map(player => toObjectId(player.userId)).filter((id): id is mongoose.Types.ObjectId => id != null) }
+  }).select('firebaseUid');
+
+  for (const user of users) {
+    io.to(`user:${user.firebaseUid}`).emit('player_left', payload);
   }
 }
 

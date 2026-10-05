@@ -11,6 +11,9 @@ const ONESIGNAL_API_URL = 'https://api.onesignal.com/notifications';
 export const GAME_INVITE_NOTIFICATION_TYPE = 'game_invite';
 export const INVITE_ACCEPTED_NOTIFICATION_TYPE = 'invite_accepted';
 export const INVITE_DECLINED_NOTIFICATION_TYPE = 'invite_declined';
+export const GROUP_INVITE_NOTIFICATION_TYPE = 'group_invite';
+export const LOBBY_STARTED_NOTIFICATION_TYPE = 'lobby_started';
+export const LOBBY_CANCELLED_NOTIFICATION_TYPE = 'lobby_cancelled';
 
 export type MatchKindLabel = 'quick' | 'normal' | 'unlimited time';
 
@@ -213,6 +216,107 @@ export async function sendInviteAcceptedPush(params: {
       inviteId: params.inviteId,
       matchId: params.matchId,
       puzzleId: params.puzzleId,
+      screen: 'multiplayer',
+    },
+  });
+}
+
+export function buildGroupInviteCopy(params: {
+  displayName: string;
+}): { headings: Record<string, string>; contents: Record<string, string> } {
+  const name = params.displayName.trim() || 'Someone';
+  return {
+    headings: {
+      en: 'הזמנה למשחק קבוצתי',
+      he: 'הזמנה למשחק קבוצתי',
+    },
+    contents: {
+      en: `${name} מזמין אותך למשחק קבוצתי! לחצ/י להצטרפות.`,
+      he: `${name} מזמין אותך למשחק קבוצתי! לחצ/י להצטרפות.`,
+    },
+  };
+}
+
+export function buildLobbyStartedCopy(): { headings: Record<string, string>; contents: Record<string, string> } {
+  return {
+    headings: {
+      en: 'המשחק התחיל',
+      he: 'המשחק התחיל',
+    },
+    contents: {
+      en: 'המשחק הקבוצתי התחיל! לחצ/י כדי לשחק.',
+      he: 'המשחק הקבוצתי התחיל! לחצ/י כדי לשחק.',
+    },
+  };
+}
+
+export function buildLobbyCancelledCopy(): { headings: Record<string, string>; contents: Record<string, string> } {
+  return {
+    headings: {
+      en: 'המשחק בוטל',
+      he: 'המשחק בוטל',
+    },
+    contents: {
+      en: 'ההזמנה למשחק הקבוצתי בוטלה.',
+      he: 'ההזמנה למשחק הקבוצתי בוטלה.',
+    },
+  };
+}
+
+export async function sendGroupInvitePush(params: {
+  toUserId: string;
+  fromDisplayName: string;
+  lobbyId: string;
+}): Promise<boolean> {
+  const { headings, contents } = buildGroupInviteCopy({
+    displayName: params.fromDisplayName,
+  });
+
+  return sendPushToExternalUser({
+    externalUserId: params.toUserId,
+    headings,
+    contents,
+    data: {
+      type: GROUP_INVITE_NOTIFICATION_TYPE,
+      lobbyId: params.lobbyId,
+      screen: 'multiplayer',
+    },
+  });
+}
+
+export async function sendLobbyStartedPush(params: {
+  toUserId: string;
+  lobbyId: string;
+  matchId: string;
+}): Promise<boolean> {
+  const { headings, contents } = buildLobbyStartedCopy();
+
+  return sendPushToExternalUser({
+    externalUserId: params.toUserId,
+    headings,
+    contents,
+    data: {
+      type: LOBBY_STARTED_NOTIFICATION_TYPE,
+      lobbyId: params.lobbyId,
+      matchId: params.matchId,
+      screen: 'multiplayer',
+    },
+  });
+}
+
+export async function sendLobbyCancelledPush(params: {
+  toUserId: string;
+  lobbyId: string;
+}): Promise<boolean> {
+  const { headings, contents } = buildLobbyCancelledCopy();
+
+  return sendPushToExternalUser({
+    externalUserId: params.toUserId,
+    headings,
+    contents,
+    data: {
+      type: LOBBY_CANCELLED_NOTIFICATION_TYPE,
+      lobbyId: params.lobbyId,
       screen: 'multiplayer',
     },
   });

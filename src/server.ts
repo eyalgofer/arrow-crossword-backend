@@ -12,8 +12,11 @@ import puzzleRoutes from './routes/puzzles';
 import packageRoutes from './routes/packages';
 import matchRoutes from './routes/matches';
 import inviteRoutes from './routes/invites';
+import groupRoutes from './routes/groups';
+import lobbyRoutes from './routes/lobbies';
 import { setupSocketHandlers } from './sockets/gameHandler';
 import { startMatchTimeoutJob } from './jobs/matchTimeoutJob';
+import { startLobbyExpiryJob } from './jobs/lobbyExpiryJob';
 import { startGhostTicker } from './services/ghostMatch';
 import './models/MatchWordClaim';
 
@@ -58,7 +61,7 @@ const corsOptions = {
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-App-Language', 'X-App-Country', 'X-App-Region'],
   exposedHeaders: ['Authorization'],
   maxAge: 86400 // 24 hours
@@ -149,6 +152,8 @@ app.use('/api/puzzles', puzzleRoutes);
 app.use('/api/packages', packageRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/invites', inviteRoutes);
+app.use('/api/groups', groupRoutes);
+app.use('/api/lobbies', lobbyRoutes);
 
 // 404 handler for API routes - must be before errorHandler
 app.use('/api/*', (req, res) => {
@@ -167,6 +172,9 @@ const startServer = async () => {
 
     startMatchTimeoutJob(io);
     console.log('✅ Match timeout job started');
+
+    startLobbyExpiryJob(io);
+    console.log('✅ Lobby expiry job started');
 
     startGhostTicker(io);
     console.log('✅ Ghost opponent ticker started');

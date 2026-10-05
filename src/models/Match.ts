@@ -8,9 +8,12 @@ export interface IMatchPlayer {
   progress: number;
   claimedCount: number;
   completedAt?: Date;
+  left?: boolean;
 }
 
 export interface IMatch extends Document {
+  kind?: 'duel' | 'group';
+  groupId?: mongoose.Types.ObjectId | null;
   players: IMatchPlayer[];
   puzzleId: mongoose.Types.ObjectId;
   status: MatchStatus;
@@ -53,8 +56,18 @@ const matchSchema = new Schema<IMatch>({
     photoURL: { type: String },
     progress: { type: Number, default: 0 },
     claimedCount: { type: Number, default: 0 },
-    completedAt: { type: Date }
+    completedAt: { type: Date },
+    left: { type: Boolean }
   }],
+  kind: {
+    type: String,
+    enum: ['duel', 'group'],
+    default: 'duel'
+  },
+  groupId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Group'
+  },
   puzzleId: {
     type: Schema.Types.ObjectId,
     ref: 'Puzzle',
