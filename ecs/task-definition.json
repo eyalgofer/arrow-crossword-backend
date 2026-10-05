@@ -61,6 +61,10 @@
         {
           "name": "SLACK_WEBHOOK_URL",
           "valueFrom": "arn:aws:secretsmanager:eu-north-1:211888002768:secret:arrow-crossword/slack-webhook-url-0tpwZG"
+        },
+        {
+          "name": "SLACK_RANDOM_PLAY_WEBHOOK_URL",
+          "valueFrom": "arn:aws:secretsmanager:eu-north-1:211888002768:secret:arrow-crossword/slack-random-play-webhook-url-99XiOJ"
         }
       ],
       "logConfiguration": {

@@ -8,6 +8,7 @@ import { GameState, Language, DEFAULT_LANGUAGE, MatchMode, MatchStatus } from '.
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
 import { createMatchTiming, serializeTimingFields } from '../utils/matchTiming';
 import { startGhostMatch } from '../services/ghostMatch';
+import { notifyRandomPlaySearch } from '../services/slack';
 
 interface SearchSocket extends Socket {
   userId?: string;
@@ -72,6 +73,11 @@ export async function handleFindMatch(io: Server, socket: SearchSocket): Promise
       language: socket.language ?? DEFAULT_LANGUAGE
     };
     waitingPlayers.set(firebaseUid, entry);
+    void notifyRandomPlaySearch({
+      displayName: user.displayName,
+      language: entry.language,
+      device: user.device,
+    });
 
     const opponent = findOpponent(entry);
     if (opponent) {
