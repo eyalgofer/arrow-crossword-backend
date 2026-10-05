@@ -11,6 +11,7 @@ import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
 import { createMatchTiming, serializeTimingFields } from '../utils/matchTiming';
 import { parseMatchSettings } from '../utils/matchSettings';
 import { canonicalUserId, validateMemberIds } from '../services/groupRoster';
+import { isMultiplayerPlayer } from '../services/guestAuth';
 import {
   canStartLobby,
   isLobbyExpired,
@@ -33,6 +34,9 @@ export const createLobby = async (req: AuthRequest, res: Response) => {
     const host = await User.findOne({ firebaseUid: req.user!.uid });
     if (!host) {
       return res.status(404).json({ error: 'User not found' });
+    }
+    if (!isMultiplayerPlayer(host)) {
+      return res.status(403).json({ error: 'Sign in to play multiplayer' });
     }
 
     const members = validateMemberIds(req.body?.memberIds, host._id.toString());
@@ -146,6 +150,9 @@ export const respondToLobby = async (req: AuthRequest, res: Response) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
+    if (status === 'joined' && !isMultiplayerPlayer(user)) {
+      return res.status(403).json({ error: 'Sign in to play multiplayer' });
+    }
 
     const lobby = await loadWaitingLobby(req.params.id);
     if (lobby === 'missing') {
@@ -184,6 +191,9 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
     const host = await User.findOne({ firebaseUid: req.user!.uid });
     if (!host) {
       return res.status(404).json({ error: 'User not found' });
+    }
+    if (!isMultiplayerPlayer(host)) {
+      return res.status(403).json({ error: 'Sign in to play multiplayer' });
     }
 
     const loaded = await loadWaitingLobby(req.params.id);
@@ -331,7 +341,7 @@ function parseLobbySettings(body: { mode?: unknown; timed?: unknown } | null):
 }
 
 async function loadUsers(memberIds: string[]): Promise<IUser[] | null> {
-  const users = await User.find({ _id: { $in: memberIds } });
+  const users = await User.find({ _id: { $in: memberIds }, isGuest: { $ne: true } });
   if (users.length !== memberIds.length) {
     return null;
   }

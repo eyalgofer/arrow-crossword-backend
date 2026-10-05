@@ -9,12 +9,16 @@ import {
   parseOptionalGroupName,
   validateMemberIds
 } from '../services/groupRoster';
+import { isMultiplayerPlayer } from '../services/guestAuth';
 
 export const createGroup = async (req: AuthRequest, res: Response) => {
   try {
     const owner = await User.findOne({ firebaseUid: req.user!.uid });
     if (!owner) {
       return res.status(404).json({ error: 'User not found' });
+    }
+    if (!isMultiplayerPlayer(owner)) {
+      return res.status(403).json({ error: 'Sign in to play multiplayer' });
     }
 
     const members = validateMemberIds(req.body?.memberIds, owner._id.toString());
@@ -184,7 +188,7 @@ async function findOwnedGroup(
 }
 
 async function loadMembers(memberIds: string[]) {
-  const users = await User.find({ _id: { $in: memberIds } }).select('displayName email photoURL');
+  const users = await User.find({ _id: { $in: memberIds }, isGuest: { $ne: true } }).select('displayName email photoURL');
   if (users.length !== memberIds.length) {
     return null;
   }

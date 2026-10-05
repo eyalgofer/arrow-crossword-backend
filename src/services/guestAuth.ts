@@ -33,6 +33,13 @@ export function isGuestEmail(email: string | null | undefined): boolean {
   return typeof email === 'string' && email.toLowerCase().endsWith(`@${GUEST_EMAIL_DOMAIN}`);
 }
 
+/** Signed-in accounts can be found and invited. Guests stay out of multiplayer until they sign in. */
+export function isMultiplayerPlayer<T extends { isGuest?: boolean | null }>(
+  user: T | null | undefined
+): user is T {
+  return user != null && user.isGuest !== true;
+}
+
 export async function findGuestFromRequest(req: Request): Promise<InstanceType<typeof User> | null> {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return null;

@@ -15,6 +15,7 @@ import {
   sendInviteAcceptedPush,
   sendInviteDeclinedPush,
 } from '../services/onesignal';
+import { isMultiplayerPlayer } from '../services/guestAuth';
 
 /** Name shown in push copy: chosen nickname, else email local-part, else a generic fallback. */
 function pushDisplayName(user: { displayName?: string | null; email?: string | null }): string {
@@ -35,10 +36,13 @@ export const createInvite = async (req: AuthRequest, res: Response) => {
     if (!fromUser) {
       return res.status(404).json({ error: 'User not found' });
     }
+    if (!isMultiplayerPlayer(fromUser)) {
+      return res.status(403).json({ error: 'Sign in to play multiplayer' });
+    }
 
-    // Get the friend user
+    // Get the friend user. Guests are not invitable until they sign in.
     const toUser = await User.findById(friendId);
-    if (!toUser) {
+    if (!isMultiplayerPlayer(toUser)) {
       return res.status(404).json({ error: 'Friend not found' });
     }
 
@@ -172,6 +176,9 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
     const currentUser = await User.findOne({ firebaseUid: req.user!.uid });
     if (!currentUser) {
       return res.status(404).json({ error: 'User not found' });
+    }
+    if (!isMultiplayerPlayer(currentUser)) {
+      return res.status(403).json({ error: 'Sign in to play multiplayer' });
     }
 
     // Find the invite and verify ownership

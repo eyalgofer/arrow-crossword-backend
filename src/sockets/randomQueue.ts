@@ -50,6 +50,10 @@ export async function handleFindMatch(io: Server, socket: SearchSocket): Promise
       socket.emit('error', { message: 'User not found' });
       return;
     }
+    if (user.isGuest) {
+      socket.emit('error', { message: 'Sign in to play multiplayer' });
+      return;
+    }
     if (!user.displayName) {
       socket.emit('error', { message: 'Display name required' });
       return;

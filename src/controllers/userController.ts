@@ -172,8 +172,9 @@ export const searchByNameOrEmail = async (req: AuthRequest, res: Response) => {
 
     const escaped = email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    // Match email or displayName (case-insensitive partial)
+    // Match email or displayName (case-insensitive partial). Guests are not searchable.
     const users = await User.find({
+      isGuest: { $ne: true },
       $or: [
         { email: { $regex: escaped, $options: 'i' } },
         { displayName: { $regex: escaped, $options: 'i' } },
