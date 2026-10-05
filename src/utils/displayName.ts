@@ -32,6 +32,17 @@ export function validateDisplayName(raw: unknown): { ok: true; value: string } |
   return { ok: true, value };
 }
 
+/** Whole nickname only. A prefix must not return other people. */
+export function exactNicknameFilter(raw: string): { $or: Array<Record<string, unknown>> } {
+  const value = normalizeDisplayName(raw);
+  return {
+    $or: [
+      { displayNameKey: displayNameKey(value) },
+      { displayName: new RegExp(`^${escapeRegex(value)}$`, 'i') },
+    ],
+  };
+}
+
 export async function isDisplayNameTaken(name: string, excludeUserId?: unknown): Promise<boolean> {
   const value = normalizeDisplayName(name);
   if (!value) return false;

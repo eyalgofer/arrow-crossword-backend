@@ -82,12 +82,12 @@ function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-/** Signup-style nickname: prefix plus an underscore and 3–4 digits. */
+/** Signup-style nickname: prefix plus 3–4 digits. */
 export function generateThemedNickname(language: 'en' | 'he'): string {
   const prefixes = language === 'he' ? HEBREW_NICK_PREFIXES : ENGLISH_NICK_PREFIXES;
   const prefix = prefixes[randomInt(0, prefixes.length - 1)];
   const digits = randomInt(3, 4);
   const min = 10 ** (digits - 1);
   const max = 10 ** digits - 1;
-  return `${prefix}_${randomInt(min, max)}`;
+  return `${prefix}${randomInt(min, max)}`;
 }

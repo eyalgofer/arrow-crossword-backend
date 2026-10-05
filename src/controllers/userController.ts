@@ -5,7 +5,9 @@ import { Invite, InviteStatus } from '../models/Invite';
 import { AuthRequest } from '../types';
 import {
   displayNameKey,
+  exactNicknameFilter,
   isDisplayNameTaken,
+  normalizeDisplayName,
   validateDisplayName,
 } from '../utils/displayName';
 
@@ -161,28 +163,27 @@ export const spendCoins = async (req: AuthRequest, res: Response) => {
 
 export const searchByNameOrEmail = async (req: AuthRequest, res: Response) => {
   try {
-    const { email } = req.query;
+    const rawQuery = typeof req.query.displayName === 'string'
+      ? req.query.displayName
+      : typeof req.query.email === 'string'
+        ? req.query.email
+        : '';
+    const nickname = normalizeDisplayName(rawQuery);
 
-    if (!email || typeof email !== 'string') {
+    if (!nickname) {
       return res.status(400).json({ error: 'Email query parameter is required' });
     }
 
-    // Get the current user to exclude from search results
-    const currentUser = await User.findOne({ firebaseUid: req.user!.uid });
+    const currentUser = await User.findOne({ firebaseUid: req.user!.uid }).select('_id');
 
-    const escaped = email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-    // Match email or displayName (case-insensitive partial). Guests are not searchable.
+    // Exact nickname only. A partial name or email must not list other people.
     const users = await User.find({
       isGuest: { $ne: true },
-      $or: [
-        { email: { $regex: escaped, $options: 'i' } },
-        { displayName: { $regex: escaped, $options: 'i' } },
-      ],
-      ...(currentUser && { _id: { $ne: currentUser._id } }) // Exclude current user
+      ...exactNicknameFilter(nickname),
+      ...(currentUser && { _id: { $ne: currentUser._id } }),
     })
       .select('_id displayName email photoURL')
-      .limit(10);
+      .limit(1);
 
     res.json({ users });
   } catch (error) {
