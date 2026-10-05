@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import mongoose from 'mongoose';
 import {
   buildPlacements,
   groupLeaveEndsMatch,
@@ -68,6 +69,13 @@ describe('group placements', () => {
     assert.equal(placementsForMatch('duel', players), undefined);
     assert.equal(placementsForMatch(undefined, players), undefined);
     assert.deepEqual(placementsForMatch('group', players)?.map(row => row.rank), [1, 2, 3]);
+  });
+
+  it('reads a Mongoose ObjectId without looping on its _id', () => {
+    const id = new mongoose.Types.ObjectId();
+    assert.deepEqual(buildPlacements([{ userId: id, claimedCount: 1 }]), [
+      { userId: id.toString(), rank: 1, claimedCount: 1 }
+    ]);
   });
 
   it('treats a leaver as no longer playing', () => {

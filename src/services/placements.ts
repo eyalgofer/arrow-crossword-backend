@@ -90,7 +90,10 @@ function idString(id: unknown): string {
     return '';
   }
   if (typeof id === 'object' && id !== null && '_id' in id) {
-    return idString((id as { _id: unknown })._id);
+    const inner = (id as { _id: unknown })._id;
+    if (inner != null && inner !== id) {
+      return idString(inner);
+    }
   }
   return String(id);
 }

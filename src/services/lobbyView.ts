@@ -27,8 +27,12 @@ export function mongoKey(id: unknown): string {
   if (id == null) {
     return '';
   }
+  // A Mongoose ObjectId's `_id` is itself. Following it loops until the stack overflows.
   if (typeof id === 'object' && '_id' in id) {
-    return mongoKey((id as { _id: unknown })._id);
+    const inner = (id as { _id: unknown })._id;
+    if (inner != null && inner !== id) {
+      return mongoKey(inner);
+    }
   }
   return String(id);
 }
