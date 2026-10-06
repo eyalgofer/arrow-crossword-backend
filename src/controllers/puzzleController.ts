@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import mongoose from 'mongoose';
 import { Puzzle } from '../models/Puzzle';
 import { PuzzlePackage } from '../models/PuzzlePackage';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
@@ -9,15 +10,17 @@ import { User } from '../models/User';
 import { AuthRequest, ProgressSummary } from '../types';
 import { resolveLanguage, languageFilter } from '../utils/language';
 import { withoutSingleWordEnumeration } from '../utils/enumeration';
-import { getDayOfYear } from '../utils/dailyPuzzleUtils';
+import { getDayOfYear, isTodaysDailyPuzzle } from '../utils/dailyPuzzleUtils';
 import {
   applyDailyStreak,
   deriveDailyPuzzleStatsFromProgress,
   effectiveCurrentStreak,
   emptyDailyPuzzleStats,
 } from '../utils/dailyPuzzleStats';
+import { countsTowardFastestTime } from '../utils/dailyHints';
 import { buildPuzzlePreview, FAV_PICK_ACCENTS, toCardDifficulty } from '../utils/puzzlePreview';
-import { FIRST_DAILY_SOLVER_BONUS } from '../constants/daily';
+import { DAILY_HINT_LIMIT, FIRST_DAILY_SOLVER_BONUS, dailyHintCost } from '../constants/daily';
+import { purchasePuzzleHint } from '../services/dailyHints';
 
 export const getPuzzles = async (req: AuthRequest, res: Response) => {
   try {
@@ -176,7 +179,16 @@ export const getDailyPuzzleSolvedCount = async (req: AuthRequest, res: Response)
           solvedCount: { $sum: 1 },
           fastestSeconds: {
             $min: {
-              $cond: [{ $gt: ['$bestTime', 0] }, '$bestTime', null],
+              $cond: [
+                {
+                  $and: [
+                    { $gt: ['$bestTime', 0] },
+                    { $eq: [{ $ifNull: ['$hintsUsed', 0] }, 0] },
+                  ],
+                },
+                '$bestTime',
+                null,
+              ],
             },
           },
         },
@@ -227,7 +239,7 @@ export const getDailyPuzzleStats = async (req: AuthRequest, res: Response) => {
           puzzleId: { $in: dailyPuzzleIds },
           isCompleted: true,
         })
-          .select('bestTime lastPlayedAt')
+          .select('bestTime lastPlayedAt hintsUsed')
           .lean();
 
         const derived = deriveDailyPuzzleStatsFromProgress(completes);
@@ -438,12 +450,15 @@ export const saveProgress = async (req: AuthRequest, res: Response) => {
         progress.elapsedTime = elapsedTime;
       }
       progress.lastPlayedAt = now;
-      
-      // Only update bestTime if provided and better than existing
-      if (bestTime !== undefined && bestTime !== null) {
-        if (progress.bestTime === null || bestTime < progress.bestTime) {
-          progress.bestTime = bestTime;
-        }
+
+      // Fastest time follows the stored hint counter, never a client-sent hintsUsed.
+      if (
+        countsTowardFastestTime(progress.hintsUsed) &&
+        bestTime !== undefined &&
+        bestTime !== null &&
+        (progress.bestTime === null || bestTime < progress.bestTime)
+      ) {
+        progress.bestTime = bestTime;
       }
 
       await progress.save();
@@ -463,6 +478,9 @@ export const saveProgress = async (req: AuthRequest, res: Response) => {
       await progress.save();
     }
 
+    const hintLimit = (await isTodaysDailyPuzzle(puzzleId)) ? DAILY_HINT_LIMIT : null;
+    const hintsUsed = progress.hintsUsed ?? 0;
+
     res.json({
       success: true,
       progress: {
@@ -473,8 +491,12 @@ export const saveProgress = async (req: AuthRequest, res: Response) => {
         isCompleted: progress.isCompleted,
         lastPlayedAt: progress.lastPlayedAt,
         elapsedTime: progress.elapsedTime,
-        bestTime: progress.bestTime
-      }
+        bestTime: progress.bestTime,
+        hintsUsed,
+        hintLimit
+      },
+      hintsUsed,
+      hintLimit
     });
   } catch (error) {
     console.error('Save progress error:', error);
@@ -506,8 +528,11 @@ export const getProgress = async (req: AuthRequest, res: Response) => {
       puzzleId
     });
 
+    const hintLimit = (await isTodaysDailyPuzzle(puzzleId)) ? DAILY_HINT_LIMIT : null;
+    const hintsUsed = progress?.hintsUsed ?? 0;
+
     if (!progress) {
-      return res.json({ progress: null });
+      return res.json({ progress: null, hintsUsed, hintLimit });
     }
 
     res.json({
@@ -519,8 +544,12 @@ export const getProgress = async (req: AuthRequest, res: Response) => {
         isCompleted: progress.isCompleted,
         lastPlayedAt: progress.lastPlayedAt,
         elapsedTime: progress.elapsedTime,
-        bestTime: progress.bestTime
-      }
+        bestTime: progress.bestTime,
+        hintsUsed,
+        hintLimit
+      },
+      hintsUsed,
+      hintLimit
     });
   } catch (error) {
     console.error('Get progress error:', error);
@@ -592,6 +621,7 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
     });
 
     const wasAlreadyCompleted = progress?.isCompleted ?? false;
+    const recordFastest = countsTowardFastestTime(progress?.hintsUsed);
     let coinsAwarded = 0;
     let isFirstSolver = false;
     let userNeedsSave = false;
@@ -602,14 +632,19 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
     );
 
     if (progress) {
-      // Update existing progress
-      const shouldUpdateBestTime = progress.bestTime === null || completionTime < progress.bestTime;
-      
+      // Update existing progress. A hinted daily does not improve fastest time.
+      const shouldUpdateBestTime =
+        recordFastest &&
+        (progress.bestTime === null || completionTime < progress.bestTime);
+
       if (shouldUpdateBestTime) {
         progress.bestTime = completionTime;
       }
 
       if (!progress.isCompleted) {
+        if (!recordFastest) {
+          progress.bestTime = null;
+        }
         progress.isCompleted = true;
         progress.completedCluesCount = progress.totalClues;
         progress.completedClueIds = allCompletedClueIds;
@@ -621,7 +656,10 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
         user.stats.totalTime += completionTime;
         user.stats.averageTime = user.stats.totalTime / user.stats.totalGames;
         
-        if (user.stats.fastestTime === 0 || completionTime < user.stats.fastestTime) {
+        if (
+          recordFastest &&
+          (user.stats.fastestTime === 0 || completionTime < user.stats.fastestTime)
+        ) {
           user.stats.fastestTime = completionTime;
         }
 
@@ -684,14 +722,16 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
         }
       }
 
-      const completionSeconds = Math.floor(completionTime);
-      const fastest = user.dailyPuzzleStats.fastestSeconds;
-      if (
-        completionSeconds > 0 &&
-        (fastest === null || fastest === undefined || completionSeconds < fastest)
-      ) {
-        user.dailyPuzzleStats.fastestSeconds = completionSeconds;
-        userNeedsSave = true;
+      if (recordFastest) {
+        const completionSeconds = Math.floor(completionTime);
+        const fastest = user.dailyPuzzleStats.fastestSeconds;
+        if (
+          completionSeconds > 0 &&
+          (fastest === null || fastest === undefined || completionSeconds < fastest)
+        ) {
+          user.dailyPuzzleStats.fastestSeconds = completionSeconds;
+          userNeedsSave = true;
+        }
       }
 
       if (userNeedsSave) {
@@ -739,14 +779,57 @@ export const deleteProgress = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Puzzle not found' });
     }
 
-    await UserPuzzleProgress.deleteOne({
+    const progress = await UserPuzzleProgress.findOne({
       userId: user._id,
       puzzleId
     });
+
+    if (progress && (progress.hintsUsed ?? 0) > 0) {
+      progress.completedClueIds = [];
+      progress.completedCluesCount = 0;
+      progress.isCompleted = false;
+      progress.elapsedTime = 0;
+      progress.bestTime = null;
+      progress.lastPlayedAt = new Date();
+      await progress.save();
+    } else if (progress) {
+      await progress.deleteOne();
+    }
 
     res.json({ success: true });
   } catch (error) {
     console.error('Delete progress error:', error);
     res.status(500).json({ error: 'Failed to delete progress' });
+  }
+};
+
+/**
+ * POST /api/puzzles/:puzzleId/hints
+ * Buy one letter (5) or word (15) hint.
+ * Today's daily allows 3 successful purchases; coins and hintsUsed commit together.
+ */
+export const purchaseHint = async (req: AuthRequest, res: Response) => {
+  try {
+    const { puzzleId } = req.params;
+    const cost = dailyHintCost(req.body?.type);
+
+    if (cost == null) {
+      return res.status(400).json({ error: 'Invalid hint type' });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(puzzleId)) {
+      return res.status(404).json({ error: 'Puzzle not found' });
+    }
+
+    const outcome = await purchasePuzzleHint({
+      firebaseUid: req.user!.uid,
+      puzzleId,
+      cost
+    });
+
+    return res.status(outcome.status).json(outcome.body);
+  } catch (error) {
+    console.error('Purchase hint error:', error);
+    return res.status(500).json({ error: 'Failed to purchase hint' });
   }
 };

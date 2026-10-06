@@ -135,6 +135,8 @@ export const addCoins = async (req: AuthRequest, res: Response) => {
 
 export const spendCoins = async (req: AuthRequest, res: Response) => {
   try {
+    // Daily hints go through POST /api/puzzles/:puzzleId/hints, which also
+    // increments the stored hint counter. This generic spend does not.
     const { amount } = req.body;
 
     if (typeof amount !== 'number' || amount <= 0) {

@@ -1,3 +1,5 @@
+import { countsTowardFastestTime } from './dailyHints';
+
 export interface DailyPuzzleStatsFields {
   solvedCount: number;
   fastestSeconds: number | null;
@@ -97,6 +99,7 @@ export function streakFromSolveDates(
 export type DailySolveRecord = {
   bestTime: number | null;
   lastPlayedAt: Date | null;
+  hintsUsed?: number | null;
 };
 
 /** Build lifetime stats from completed daily-puzzle progress rows. */
@@ -107,7 +110,11 @@ export function deriveDailyPuzzleStatsFromProgress(
   const solvedCount = completes.length;
   let fastestSeconds: number | null = null;
   for (const row of completes) {
-    if (typeof row.bestTime === 'number' && row.bestTime >= 0) {
+    if (
+      countsTowardFastestTime(row.hintsUsed) &&
+      typeof row.bestTime === 'number' &&
+      row.bestTime >= 0
+    ) {
       fastestSeconds =
         fastestSeconds == null ? row.bestTime : Math.min(fastestSeconds, row.bestTime);
     }

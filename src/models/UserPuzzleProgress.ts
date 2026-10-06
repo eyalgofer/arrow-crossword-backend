@@ -9,6 +9,8 @@ export interface IUserPuzzleProgress extends Document {
   isCompleted: boolean;
   elapsedTime: number;
   bestTime: number | null;
+  /** Hint purchases on this puzzle. Not cleared when progress is reset. */
+  hintsUsed: number;
   lastPlayedAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -48,6 +50,11 @@ const userPuzzleProgressSchema = new Schema<IUserPuzzleProgress>({
   bestTime: {
     type: Number,
     default: null
+  },
+  hintsUsed: {
+    type: Number,
+    default: 0,
+    min: 0
   },
   lastPlayedAt: {
     type: Date,

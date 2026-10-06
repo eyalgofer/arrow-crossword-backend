@@ -125,6 +125,7 @@ async function migratePuzzleProgress(
         guestRow.lastPlayedAt > existing.lastPlayedAt ? guestRow.lastPlayedAt : existing.lastPlayedAt;
     }
     existing.bestTime = betterBestTime(existing.bestTime, guestRow.bestTime);
+    existing.hintsUsed = Math.max(existing.hintsUsed ?? 0, guestRow.hintsUsed ?? 0);
     await existing.save();
     await guestRow.deleteOne();
   }

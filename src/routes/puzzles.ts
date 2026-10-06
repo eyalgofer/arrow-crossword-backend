@@ -12,7 +12,8 @@ import {
   getProgress,
   getAllProgress,
   completePuzzle,
-  deleteProgress
+  deleteProgress,
+  purchaseHint
 } from '../controllers/puzzleController';
 import { authenticateToken } from '../middleware/auth';
 
@@ -32,6 +33,7 @@ router.get('/:id', authenticateToken, getPuzzle);
 router.post('/:puzzleId/progress', authenticateToken, saveProgress);
 router.get('/:puzzleId/progress', authenticateToken, getProgress);
 router.delete('/:puzzleId/progress', authenticateToken, deleteProgress);
+router.post('/:puzzleId/hints', authenticateToken, purchaseHint);
 
 router.post('/:puzzleId/complete', authenticateToken, completePuzzle);
 

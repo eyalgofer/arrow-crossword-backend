@@ -111,3 +111,23 @@ export async function getPuzzleForDate(date: Date, language: Language = 'en') {
 
   return dailyPuzzle;
 }
+
+/**
+ * True when this puzzle is the daily assigned for the current local calendar day.
+ * Yesterday's assignment is a different puzzle and does not share today's hint quota.
+ */
+export async function isTodaysDailyPuzzle(
+  puzzleId: mongoose.Types.ObjectId | string,
+  session?: mongoose.ClientSession
+): Promise<boolean> {
+  const now = new Date();
+  const query = DailyPuzzle.exists({
+    puzzleId,
+    dayOfYear: getDayOfYear(now),
+    year: now.getFullYear(),
+  });
+  if (session) {
+    query.session(session);
+  }
+  return (await query) != null;
+}
