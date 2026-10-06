@@ -58,6 +58,12 @@ const iconNames = [
   'flask', 'sportscourt', 'music.note', 'clock', 'film'
 ];
 
+const HEBREW_PUZZLE_MIX: Array<{ difficulty: Difficulty; count: number }> = [
+  { difficulty: Difficulty.EASY, count: 5 },
+  { difficulty: Difficulty.MEDIUM, count: 3 },
+  { difficulty: Difficulty.HARD, count: 2 },
+];
+
 // Package definitions per language. Hebrew users see Hebrew package
 // names, descriptions, and themes.
 const packageDefinitionsByLanguage: Record<Language, Array<{
@@ -87,65 +93,70 @@ const packageDefinitionsByLanguage: Record<Language, Array<{
       description: 'בואו נתחיל!',
       theme: 'מעורב',
       puzzleCount: 10,
-      puzzleMix: [
-        { difficulty: Difficulty.EASY, count: 6 },
-        { difficulty: Difficulty.MEDIUM, count: 3 },
-        { difficulty: Difficulty.HARD, count: 1 },
-      ],
+      puzzleMix: HEBREW_PUZZLE_MIX,
     },
     {
       name: 'אוסף תשחצים 2',
       description: '10 תשחצים לפתרון',
       theme: 'מעורב',
       puzzleCount: 10,
+      puzzleMix: HEBREW_PUZZLE_MIX,
     },
     {
       name: 'אוסף תשחצים 3',
       description: '10 תשחצים לפתרון',
       theme: 'מעורב',
       puzzleCount: 10,
+      puzzleMix: HEBREW_PUZZLE_MIX,
     },
     {
       name: 'אוסף תשחצים 4',
       description: '10 תשחצים לפתרון',
       theme: 'מעורב',
       puzzleCount: 10,
+      puzzleMix: HEBREW_PUZZLE_MIX,
     },
     {
       name: 'אוסף תשחצים 5',
       description: '10 תשחצים לפתרון',
       theme: 'מעורב',
       puzzleCount: 10,
+      puzzleMix: HEBREW_PUZZLE_MIX,
     },
     {
       name: 'אוסף תשחצים 6',
       description: '10 תשחצים לפתרון',
       theme: 'מעורב',
       puzzleCount: 10,
+      puzzleMix: HEBREW_PUZZLE_MIX,
     },
     {
       name: 'אוסף תשחצים 7',
       description: '10 תשחצים לפתרון',
       theme: 'מעורב',
       puzzleCount: 10,
+      puzzleMix: HEBREW_PUZZLE_MIX,
     },
     {
       name: 'אוסף תשחצים 8',
       description: '10 תשחצים לפתרון',
       theme: 'מעורב',
       puzzleCount: 10,
+      puzzleMix: HEBREW_PUZZLE_MIX,
     },
     {
       name: 'אוסף תשחצים 9',
       description: '10 תשחצים לפתרון',
       theme: 'מעורב',
       puzzleCount: 10,
+      puzzleMix: HEBREW_PUZZLE_MIX,
     },
     {
       name: 'אוסף תשחצים 10',
       description: '10 תשחצים לפתרון',
       theme: 'מעורב',
       puzzleCount: 10,
+      puzzleMix: HEBREW_PUZZLE_MIX,
     },
   ],
 };

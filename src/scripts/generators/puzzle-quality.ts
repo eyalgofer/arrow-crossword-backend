@@ -340,8 +340,9 @@ export const DAILY_IMAGE_TARGETS: DailyTargets = {
 };
 
 /**
- * Boards up to 10×10: the frame's single-clue border letters are a bigger share of the grid,
- * capping framed layouts near 0.85 crossing and ~0.6 dual — words must still all interlock.
+ * Boards whose shorter side is 10 or less: the frame's single-clue border letters are a
+ * bigger share of the grid, capping framed layouts near 0.85 crossing and ~0.6 dual —
+ * words must still all interlock. A 10×12 board uses this band; 11×11 and up do not.
  */
 export const DAILY_SMALL_TARGETS: DailyTargets = {
   ...DAILY_TARGETS,
@@ -354,7 +355,7 @@ export function dailyTargetsFor(
   imageCount: number,
   grid?: { rows: number; cols: number }
 ): DailyTargets {
-  if (grid && Math.max(grid.rows, grid.cols) <= SMALL_BOARD_MAX_SIDE) return DAILY_SMALL_TARGETS;
+  if (grid && Math.min(grid.rows, grid.cols) <= SMALL_BOARD_MAX_SIDE) return DAILY_SMALL_TARGETS;
   return imageCount > 0 ? DAILY_IMAGE_TARGETS : DAILY_TARGETS;
 }
 

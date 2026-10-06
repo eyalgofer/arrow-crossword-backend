@@ -4,7 +4,13 @@ import { getClueProvider, ClueProvider } from '../core/clueProvider';
 import { generateTemplate, repairTemplateAroundSlot } from './template-generator';
 import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
-import { generatePuzzleFromGrid } from './puzzle-assembler';
+import {
+  clueDifficultyMeanOk,
+  ClueDifficultyWeights,
+  dominantClueDifficulty,
+  generatePuzzleFromGrid,
+  meanChosenClueDifficulty,
+} from './puzzle-assembler';
 import { getSlotCells, getUncoveredCells } from './direction-utils';
 import { normalizeWord } from './validation-utils';
 import { createEmptyGridState, canPlaceWord, placeWord } from './grid-state';
@@ -41,6 +47,8 @@ export interface DailyGenerationOptions {
   imageClueCount?: number;
   /** 1 easy … 3 hard — clue difficulty the board aims for. */
   targetDifficulty?: number;
+  /** Per-clue mix. When set, this replaces the single targetDifficulty pull. */
+  difficultyWeights?: ClueDifficultyWeights;
   /** When set, the fill also leans toward words whose easiest clue sits near targetDifficulty. */
   wordDifficultyWeight?: number;
   /** Stored on the puzzle; defaults to the generator's usual label. */
@@ -458,24 +466,45 @@ export class PuzzleGenerator {
       : this.clueProvider
           .getWordPool()
           .filter((word) => !this.clueProvider.getWordMeta?.(word)?.excludeFromDaily);
+    const weights = options.difficultyWeights;
+    const dominant = weights ? dominantClueDifficulty(weights) : undefined;
     // Recent answers stay available (hard exclusion starves the fill) but lose to fresh ones.
     const wordScore = (word: string) => {
       const normalized = normalizeWord(word);
       const recentPenalty = normalized.length >= 4 && avoid.has(normalized) ? 5 : 0;
       const fillerPenalty = filler.has(normalized) ? 20 : 0;
       const tier = this.clueProvider.getWordMeta?.(word)?.tier;
+      // A weighted clue mix picks difficulty per clue. A single-target fill penalty
+      // would drop the easy-clue words that mix still needs, so it stays off then.
       const difficultyMiss =
-        options.wordDifficultyWeight && tier != null
+        !weights && options.wordDifficultyWeight && tier != null
           ? Math.abs(tier - (options.targetDifficulty ?? 1.5)) * options.wordDifficultyWeight
           : 0;
-      return dailyWordScore(this.clueProvider, word) - recentPenalty - difficultyMiss - fillerPenalty;
+      const hasDominant =
+        dominant != null &&
+        (this.clueProvider.getScoredClues?.(word) ?? []).some(
+          (clue) => clue.difficulty === dominant && clue.text.length <= 28
+        );
+      const dominantBonus = hasDominant ? 2 : 0;
+      return (
+        dailyWordScore(this.clueProvider, word) -
+        recentPenalty -
+        difficultyMiss -
+        fillerPenalty +
+        dominantBonus
+      );
     };
     const tagCaps = options.tagCaps ?? DEFAULT_DAILY_TAG_CAPS;
     const targets = dailyTargetsFor(wantImages, { rows, cols });
     const clueSelection = {
-      targetDifficulty: options.targetDifficulty ?? 1.5,
+      targetDifficulty: options.targetDifficulty ?? dominant ?? 1.5,
+      difficultyWeights: weights,
       avoidClues: new Set(options.avoidClues ?? []),
     };
+    const difficultyLabel =
+      options.difficulty === 'easy' || options.difficulty === 'medium' || options.difficulty === 'hard'
+        ? options.difficulty
+        : undefined;
 
     const deadline = Date.now() + (options.timeBudgetMs ?? 240000);
     let attempt = 0;
@@ -536,10 +565,23 @@ export class PuzzleGenerator {
         console.log(`   … daily attempt ${attempt}: filled but ${misses.join('; ')}`);
         continue;
       }
+      let clueMean: number | null = null;
+      if (weights && difficultyLabel) {
+        clueMean = meanChosenClueDifficulty(puzzle.puzzleItems, (answer) =>
+          this.clueProvider.getScoredClues?.(answer) ?? []
+        );
+        if (clueMean == null || !clueDifficultyMeanOk(difficultyLabel, clueMean)) {
+          console.log(
+            `   … daily attempt ${attempt}: clue mean ${clueMean == null ? 'n/a' : clueMean.toFixed(2)} off for ${difficultyLabel}`
+          );
+          continue;
+        }
+      }
       puzzle.metadata = { ...(puzzle.metadata ?? {}), generationMethod: 'daily-framed' };
       if (options.difficulty) puzzle.difficulty = options.difficulty;
       console.log(
-        `   ✅ daily ${rows}x${cols} after ${attempt} layouts (${filled} filled): ${formatQuality(stats)}`
+        `   ✅ daily ${rows}x${cols} after ${attempt} layouts (${filled} filled): ${formatQuality(stats)}` +
+          (clueMean == null ? '' : ` clue-mean ${clueMean.toFixed(2)}`)
       );
       return puzzle;
     }

@@ -13,6 +13,10 @@ export interface IPuzzle extends Document {
   coinReward: number;
   isActive: boolean;
   packageId?: mongoose.Types.ObjectId;
+  metadata?: {
+    templateId?: string;
+    generationMethod?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -94,6 +98,10 @@ const puzzleSchema = new Schema<IPuzzle>({
     type: Schema.Types.ObjectId,
     ref: 'PuzzlePackage',
     required: false
+  },
+  metadata: {
+    templateId: { type: String, required: false },
+    generationMethod: { type: String, required: false },
   }
 }, {
   timestamps: true,

@@ -24,6 +24,22 @@ export const HEBREW_GRID_SIZE_MIX: GridSize[] = [
   { rows: 13, cols: 13 },
 ];
 
+/**
+ * Hebrew package boards. Mixed 10–12, including rectangles.
+ * Not clamped to MIN_GRID_SIZE — that floor is for the older dense generator.
+ */
+export const PACKAGE_GRID_SIZE_MIX: GridSize[] = [
+  { rows: 10, cols: 10 },
+  { rows: 10, cols: 11 },
+  { rows: 10, cols: 12 },
+  { rows: 11, cols: 10 },
+  { rows: 11, cols: 11 },
+  { rows: 11, cols: 12 },
+  { rows: 12, cols: 10 },
+  { rows: 12, cols: 11 },
+  { rows: 12, cols: 12 },
+];
+
 /** Prefer 15×15 first (target layout), then fall back. */
 export const IMAGE_CLUE_SIZE_LADDER: GridSize[] = [
   { rows: 15, cols: 15 },

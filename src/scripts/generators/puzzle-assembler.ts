@@ -19,11 +19,81 @@ const MAX_CLUE_LENGTH_BY_LANG: Record<string, number> = {
  * English clues are already sorted best-first in the CSV database.
  * Hebrew תשחץ cells only fit a short definition, so we keep that pool tight.
  */
+export type ClueDifficulty = 1 | 2 | 3;
+
+export interface ClueDifficultyWeights {
+  1: number;
+  2: number;
+  3: number;
+}
+
+/** Share of clue difficulties 1 / 2 / 3. Every board still includes easy clues. */
+export const PACKAGE_CLUE_WEIGHTS: Record<'easy' | 'medium' | 'hard', ClueDifficultyWeights> = {
+  easy: { 1: 70, 2: 25, 3: 5 },
+  medium: { 1: 30, 2: 50, 3: 20 },
+  hard: { 1: 20, 2: 35, 3: 45 },
+};
+
 export interface ClueSelection {
-  /** 1 easy … 3 hard; clues closer to it win. */
+  /** 1 easy … 3 hard; clues closer to it win when difficultyWeights is unset. */
   targetDifficulty: number;
+  /** When set, each clue samples a bucket, then takes the best clue in that bucket. */
+  difficultyWeights?: ClueDifficultyWeights;
   /** Clue texts shown recently (e.g. last weeks' dailies) — used only as a last resort. */
   avoidClues?: Set<string>;
+}
+
+export function sampleClueDifficulty(
+  weights: ClueDifficultyWeights,
+  random: () => number = Math.random
+): ClueDifficulty {
+  const total = weights[1] + weights[2] + weights[3];
+  if (total <= 0) return 1;
+  let roll = random() * total;
+  if (roll < weights[1]) return 1;
+  roll -= weights[1];
+  if (roll < weights[2]) return 2;
+  return 3;
+}
+
+export function dominantClueDifficulty(weights: ClueDifficultyWeights): ClueDifficulty {
+  const buckets: ClueDifficulty[] = [1, 2, 3];
+  return buckets.reduce((best, bucket) => (weights[bucket] > weights[best] ? bucket : best));
+}
+
+/**
+ * Realized mean clue difficulty must match the package label.
+ * Easy stays at or under 1.6, medium sits in 1.55–2.25, hard stays at or above 2.15.
+ */
+export function clueDifficultyMeanOk(label: 'easy' | 'medium' | 'hard', mean: number): boolean {
+  if (label === 'easy') return mean <= 1.6;
+  if (label === 'medium') return mean >= 1.55 && mean <= 2.25;
+  return mean >= 2.15;
+}
+
+export function meanChosenClueDifficulty(
+  items: Array<{ clue: string; answer: string; clueType?: string }>,
+  scoredCluesFor: (answer: string) => Array<{ text: string; difficulty: number }>
+): number | null {
+  const difficulties: number[] = [];
+  for (const item of items) {
+    if (item.clueType === 'image') continue;
+    const match = scoredCluesFor(item.answer)?.find((clue) => clue.text === item.clue);
+    if (match) difficulties.push(match.difficulty);
+  }
+  if (difficulties.length === 0) return null;
+  return difficulties.reduce((sum, difficulty) => sum + difficulty, 0) / difficulties.length;
+}
+
+function nearestDifficultyBucket<T extends { difficulty: ClueDifficulty }>(
+  clues: T[],
+  target: ClueDifficulty
+): T[] {
+  for (const distance of [0, 1, 2]) {
+    const bucket = clues.filter((clue) => Math.abs(clue.difficulty - target) === distance);
+    if (bucket.length > 0) return bucket;
+  }
+  return clues;
 }
 
 /** Scored pick: best quality near the target difficulty, a little noise so repeats vary. */
@@ -36,12 +106,15 @@ function pickScoredClue(
 ): string | null {
   const clues = (provider.getScoredClues?.(word) ?? []).filter((c) => c.text.length <= maxLen);
   if (clues.length === 0) return null;
-  const ranked = clues
+  const pool = selection.difficultyWeights
+    ? nearestDifficultyBucket(clues, sampleClueDifficulty(selection.difficultyWeights))
+    : clues;
+  const ranked = pool
     .map((c) => ({
       text: c.text,
       value:
         c.quality * 2 -
-        Math.abs(c.difficulty - selection.targetDifficulty) * 1.5 -
+        (selection.difficultyWeights ? 0 : Math.abs(c.difficulty - selection.targetDifficulty) * 1.5) -
         (usedClues.has(c.text) ? 100 : 0) -
         (selection.avoidClues?.has(c.text) ? 6 : 0) +
         Math.random() * 1.2,
