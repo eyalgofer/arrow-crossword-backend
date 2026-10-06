@@ -340,22 +340,22 @@ export const DAILY_IMAGE_TARGETS: DailyTargets = {
 };
 
 /**
- * Boards whose shorter side is 10 or less: the frame's single-clue border letters are a
- * bigger share of the grid, capping framed layouts near 0.85 crossing and ~0.6 dual —
- * words must still all interlock. A 10×12 board uses this band; 11×11 and up do not.
+ * Boards up to 12×12: the frame's single-clue border letters are a bigger share of the grid,
+ * capping framed layouts near 0.89 crossing and ~0.7 dual — words must still all interlock.
+ * A 10×12 board and an 11×11 board both use this band. Dailies are 14–15 and do not.
  */
 export const DAILY_SMALL_TARGETS: DailyTargets = {
   ...DAILY_TARGETS,
   minDualRatio: 0.6,
   minCrossing: 0.84,
 };
-export const SMALL_BOARD_MAX_SIDE = 10;
+export const SMALL_BOARD_MAX_SIDE = 12;
 
 export function dailyTargetsFor(
   imageCount: number,
   grid?: { rows: number; cols: number }
 ): DailyTargets {
-  if (grid && Math.min(grid.rows, grid.cols) <= SMALL_BOARD_MAX_SIDE) return DAILY_SMALL_TARGETS;
+  if (grid && Math.max(grid.rows, grid.cols) <= SMALL_BOARD_MAX_SIDE) return DAILY_SMALL_TARGETS;
   return imageCount > 0 ? DAILY_IMAGE_TARGETS : DAILY_TARGETS;
 }
 

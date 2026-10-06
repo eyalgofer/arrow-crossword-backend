@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   clueDifficultyMeanOk,
+  clueMixOk,
   meanChosenClueDifficulty,
   PACKAGE_CLUE_WEIGHTS,
   sampleClueDifficulty,
@@ -31,6 +32,9 @@ describe('package clue difficulty mix', () => {
     assert.equal(clueDifficultyMeanOk('medium', 2.26), false);
     assert.equal(clueDifficultyMeanOk('hard', 2.15), true);
     assert.equal(clueDifficultyMeanOk('hard', 2.14), false);
+    assert.equal(clueMixOk('hard', 2.4, 0.1), true);
+    assert.equal(clueMixOk('hard', 3, 0), false);
+    assert.equal(clueMixOk('easy', 1.2, 0), true);
   });
 
   it('averages matched text clues and skips image clues', () => {

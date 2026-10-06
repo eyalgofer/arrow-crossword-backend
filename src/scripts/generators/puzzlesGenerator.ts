@@ -5,11 +5,12 @@ import { generateTemplate, repairTemplateAroundSlot } from './template-generator
 import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
 import {
-  clueDifficultyMeanOk,
+  clueMixOk,
+  ClueDifficulty,
   ClueDifficultyWeights,
   dominantClueDifficulty,
   generatePuzzleFromGrid,
-  meanChosenClueDifficulty,
+  chosenClueDifficultyStats,
 } from './puzzle-assembler';
 import { getSlotCells, getUncoveredCells } from './direction-utils';
 import { normalizeWord } from './validation-utils';
@@ -485,13 +486,19 @@ export class PuzzleGenerator {
         (this.clueProvider.getScoredClues?.(word) ?? []).some(
           (clue) => clue.difficulty === dominant && clue.text.length <= 28
         );
-      const dominantBonus = hasDominant ? 2 : 0;
+      // Hard clues live on low-fill words, so a small bonus never reaches the solver
+      // shortlist. The jitter keeps high-fill easy words in the mix.
+      const dominantBonus: Record<ClueDifficulty, number> = { 1: 2, 2: 4, 3: 8 };
+      const dominantJitter: Record<ClueDifficulty, number> = { 1: 1.2, 2: 4, 3: 3 };
+      const bonus = dominant != null && hasDominant ? dominantBonus[dominant] : 0;
+      const jitter = dominant != null ? Math.random() * dominantJitter[dominant] : 0;
       return (
         dailyWordScore(this.clueProvider, word) -
         recentPenalty -
         difficultyMiss -
         fillerPenalty +
-        dominantBonus
+        bonus +
+        jitter
       );
     };
     const tagCaps = options.tagCaps ?? DEFAULT_DAILY_TAG_CAPS;
@@ -567,13 +574,20 @@ export class PuzzleGenerator {
       }
       let clueMean: number | null = null;
       if (weights && difficultyLabel) {
-        clueMean = meanChosenClueDifficulty(puzzle.puzzleItems, (answer) =>
+        const clueStats = chosenClueDifficultyStats(puzzle.puzzleItems, (answer) =>
           this.clueProvider.getScoredClues?.(answer) ?? []
         );
-        if (clueMean == null || !clueDifficultyMeanOk(difficultyLabel, clueMean)) {
-          console.log(
-            `   … daily attempt ${attempt}: clue mean ${clueMean == null ? 'n/a' : clueMean.toFixed(2)} off for ${difficultyLabel}`
-          );
+        clueMean = clueStats?.mean ?? null;
+        if (
+          clueStats == null ||
+          !clueMixOk(difficultyLabel, clueStats.mean, clueStats.easyShare)
+        ) {
+          if (attempt === 1 || attempt % 50 === 0) {
+            console.log(
+              `   … daily attempt ${attempt}: clue mean ${clueMean == null ? 'n/a' : clueMean.toFixed(2)} ` +
+                `easy ${(clueStats?.easyShare ?? 0).toFixed(2)} off for ${difficultyLabel}`
+            );
+          }
           continue;
         }
       }

@@ -335,10 +335,17 @@ async function buildSlots(): Promise<PackageSlot[]> {
 async function main(): Promise<void> {
   await connectToDatabase();
   const slots = await buildSlots();
+  const ids = slots.map((slot) => slot.puzzleId);
+  const existing = await Puzzle.countDocuments({
+    _id: { $in: ids },
+    packageId: { $exists: true, $ne: null },
+  });
+  if (existing !== ids.length) {
+    throw new Error(`Expected ${ids.length} package puzzles to overwrite, found ${existing}`);
+  }
   console.log(`📦 ${slots.length} Hebrew package slots, ids kept in place`);
   const generated = await generateAll(slots);
 
-  const ids = slots.map((slot) => slot.puzzleId);
   const before = await completedCountByPuzzle(ids);
   const beforeTotal = [...before.values()].reduce((sum, n) => sum + n, 0);
   console.log(`\n💾 Writing ${generated.length} puzzles. Completed rows before write: ${beforeTotal}`);

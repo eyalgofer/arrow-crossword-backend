@@ -75,6 +75,13 @@ export function meanChosenClueDifficulty(
   items: Array<{ clue: string; answer: string; clueType?: string }>,
   scoredCluesFor: (answer: string) => Array<{ text: string; difficulty: number }>
 ): number | null {
+  return chosenClueDifficultyStats(items, scoredCluesFor)?.mean ?? null;
+}
+
+export function chosenClueDifficultyStats(
+  items: Array<{ clue: string; answer: string; clueType?: string }>,
+  scoredCluesFor: (answer: string) => Array<{ text: string; difficulty: number }>
+): { mean: number; easyShare: number } | null {
   const difficulties: number[] = [];
   for (const item of items) {
     if (item.clueType === 'image') continue;
@@ -82,16 +89,34 @@ export function meanChosenClueDifficulty(
     if (match) difficulties.push(match.difficulty);
   }
   if (difficulties.length === 0) return null;
-  return difficulties.reduce((sum, difficulty) => sum + difficulty, 0) / difficulties.length;
+  const mean = difficulties.reduce((sum, difficulty) => sum + difficulty, 0) / difficulties.length;
+  const easyShare = difficulties.filter((difficulty) => difficulty === 1).length / difficulties.length;
+  return { mean, easyShare };
+}
+
+/** Mean must match the label, and medium/hard boards must still include easy clues. */
+export function clueMixOk(
+  label: 'easy' | 'medium' | 'hard',
+  mean: number,
+  easyShare: number
+): boolean {
+  if (!clueDifficultyMeanOk(label, mean)) return false;
+  if (label === 'easy') return true;
+  return easyShare >= 0.1;
 }
 
 function nearestDifficultyBucket<T extends { difficulty: ClueDifficulty }>(
   clues: T[],
-  target: ClueDifficulty
+  target: ClueDifficulty,
+  prefer?: ClueDifficulty
 ): T[] {
   for (const distance of [0, 1, 2]) {
-    const bucket = clues.filter((clue) => Math.abs(clue.difficulty - target) === distance);
-    if (bucket.length > 0) return bucket;
+    let bucket = clues.filter((clue) => Math.abs(clue.difficulty - target) === distance);
+    if (bucket.length === 0) continue;
+    if (prefer != null && bucket.some((clue) => clue.difficulty === prefer)) {
+      bucket = bucket.filter((clue) => clue.difficulty === prefer);
+    }
+    return bucket;
   }
   return clues;
 }
@@ -107,7 +132,11 @@ function pickScoredClue(
   const clues = (provider.getScoredClues?.(word) ?? []).filter((c) => c.text.length <= maxLen);
   if (clues.length === 0) return null;
   const pool = selection.difficultyWeights
-    ? nearestDifficultyBucket(clues, sampleClueDifficulty(selection.difficultyWeights))
+    ? nearestDifficultyBucket(
+        clues,
+        sampleClueDifficulty(selection.difficultyWeights),
+        dominantClueDifficulty(selection.difficultyWeights)
+      )
     : clues;
   const ranked = pool
     .map((c) => ({

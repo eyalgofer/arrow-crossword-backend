@@ -18,6 +18,7 @@ src/scripts/core/.clueCache.json
 tmp-image-clue-puzzle.json
 tmp-*-catalog.json
 tmp-*-puzzles/
+tmp-replace-packages/
 tmp-*-recent.json
 tmp/
 scripts/arrow-image-pipeline/models/
