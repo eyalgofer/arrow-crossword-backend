@@ -10,7 +10,8 @@ import { User } from '../models/User';
 import { AuthRequest, ProgressSummary } from '../types';
 import { resolveLanguage, languageFilter } from '../utils/language';
 import { withoutSingleWordEnumeration } from '../utils/enumeration';
-import { getDayOfYear, isTodaysDailyPuzzle } from '../utils/dailyPuzzleUtils';
+import { liveDailyKey } from '../utils/dailyClock';
+import { isTodaysDailyPuzzle } from '../utils/dailyPuzzleUtils';
 import {
   applyDailyStreak,
   deriveDailyPuzzleStatsFromProgress,
@@ -92,10 +93,7 @@ export const getPuzzles = async (req: AuthRequest, res: Response) => {
 
 export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
   try {
-    const now = new Date();
-    const year = now.getFullYear();
-    const startOfYear = new Date(year, 0, 1);
-    const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const { year, dayOfYear } = liveDailyKey();
 
     const language = resolveLanguage(req);
 
@@ -155,12 +153,12 @@ export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
  */
 export const getDailyPuzzleSolvedCount = async (req: AuthRequest, res: Response) => {
   try {
-    const now = new Date();
+    const { year, dayOfYear } = liveDailyKey();
     const language = resolveLanguage(req);
 
     const dailyPuzzle = await DailyPuzzle.findOne({
-      dayOfYear: getDayOfYear(now),
-      year: now.getFullYear(),
+      dayOfYear,
+      year,
       language: languageFilter(language),
     }).select('puzzleId').lean();
 

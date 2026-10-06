@@ -17,7 +17,8 @@ import { DailyPuzzle } from '../models/DailyPuzzle';
 import { FavPuzzle } from '../models/FavPuzzle';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
-import { assignPuzzleToDate, getDayOfYear } from '../utils/dailyPuzzleUtils';
+import { calendarDailyKey } from '../utils/dailyClock';
+import { assignPuzzleToDate } from '../utils/dailyPuzzleUtils';
 import { connectToDatabase, closeDatabaseAndExit, handleScriptError } from './utils/scriptUtils';
 import {
   ImageClueCatalogEntry,
@@ -175,8 +176,7 @@ async function replaceDailyAssignment(
   date: Date
 ): Promise<void> {
   const normalized = addDays(date, 0);
-  const year = normalized.getFullYear();
-  const dayOfYear = getDayOfYear(normalized);
+  const { year, dayOfYear } = calendarDailyKey(normalized);
   const existing = await DailyPuzzle.findOne({ dayOfYear, year, language: LANGUAGE });
   const oldId = existing?.puzzleId;
 

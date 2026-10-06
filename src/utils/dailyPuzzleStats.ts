@@ -1,3 +1,4 @@
+import { dailyGameDateString } from './dailyClock';
 import { countsTowardFastestTime } from './dailyHints';
 
 export interface DailyPuzzleStatsFields {
@@ -7,12 +8,9 @@ export interface DailyPuzzleStatsFields {
   lastSolvedDate: string | null;
 }
 
-/** YYYY-MM-DD in the server's local timezone (same convention as daily assignments). */
+/** YYYY-MM-DD of the daily that is live at `date` (12:00 Asia/Jerusalem). */
 export function toLocalDateString(date: Date = new Date()): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
+  return dailyGameDateString(date);
 }
 
 function parseLocalDate(dateStr: string): Date {

@@ -2,13 +2,15 @@ import { DailyPuzzle, IDailyPuzzle } from '../models/DailyPuzzle';
 import { Puzzle } from '../models/Puzzle';
 import mongoose from 'mongoose';
 import { Language } from '../types';
+import { calendarDailyKey, liveDailyKey } from './dailyClock';
 
 /**
- * Get day of year (1-365/366) from a date
+ * Day of year (1–366) for the Israel calendar date of `date`.
+ * Used when assigning a puzzle to a specific date. The live puzzle uses
+ * `liveDailyKey`, which does not roll until 12:00 Israel time.
  */
 export function getDayOfYear(date: Date): number {
-  const startOfYear = new Date(date.getFullYear(), 0, 1);
-  return Math.floor((date.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  return calendarDailyKey(date).dayOfYear;
 }
 
 /**
@@ -29,8 +31,7 @@ export async function assignPuzzleToDate(
 ): Promise<IDailyPuzzle> {
   // Normalize date to start of day
   const normalizedDate = normalizeDate(date);
-  const year = normalizedDate.getFullYear();
-  const dayOfYear = getDayOfYear(normalizedDate);
+  const { year, dayOfYear } = calendarDailyKey(normalizedDate);
 
   // Check if puzzle exists
   const puzzle = await Puzzle.findById(puzzleId);
@@ -102,8 +103,7 @@ export async function assignPuzzlesToDateRange(
  * Documents created before localization have no `language` field and are English.
  */
 export async function getPuzzleForDate(date: Date, language: Language = 'en') {
-  const year = date.getFullYear();
-  const dayOfYear = getDayOfYear(date);
+  const { year, dayOfYear } = calendarDailyKey(date);
   const langFilter = language === 'en' ? { $in: ['en', null] } : language;
 
   const dailyPuzzle = await DailyPuzzle.findOne({ dayOfYear, year, language: langFilter })
@@ -113,18 +113,18 @@ export async function getPuzzleForDate(date: Date, language: Language = 'en') {
 }
 
 /**
- * True when this puzzle is the daily assigned for the current local calendar day.
+ * True when this puzzle is the daily that is live now (rolls at 12:00 Israel time).
  * Yesterday's assignment is a different puzzle and does not share today's hint quota.
  */
 export async function isTodaysDailyPuzzle(
   puzzleId: mongoose.Types.ObjectId | string,
   session?: mongoose.ClientSession
 ): Promise<boolean> {
-  const now = new Date();
+  const { year, dayOfYear } = liveDailyKey();
   const query = DailyPuzzle.exists({
     puzzleId,
-    dayOfYear: getDayOfYear(now),
-    year: now.getFullYear(),
+    dayOfYear,
+    year,
   });
   if (session) {
     query.session(session);

@@ -7,7 +7,7 @@
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "node --require ts-node/register --test src/utils/ghost.test.ts src/services/ghostSchedule.test.ts src/services/placements.test.ts src/services/groupRoster.test.ts src/services/lobbyRules.test.ts src/services/matchView.test.ts src/services/guestAuth.test.ts src/services/lobbyView.test.ts src/utils/displayName.test.ts src/utils/dailyHints.test.ts",
+    "test": "node --require ts-node/register --test src/utils/ghost.test.ts src/services/ghostSchedule.test.ts src/services/placements.test.ts src/services/groupRoster.test.ts src/services/lobbyRules.test.ts src/services/matchView.test.ts src/services/guestAuth.test.ts src/services/lobbyView.test.ts src/utils/displayName.test.ts src/utils/dailyHints.test.ts src/utils/dailyClock.test.ts",
     "seed:packages": "ts-node src/scripts/seedPackages.ts",
     "seed:packages:he": "ts-node src/scripts/seedPackages.ts --lang he",
     "seed:multiplayer": "ts-node src/scripts/seedMultiplayer.ts",
