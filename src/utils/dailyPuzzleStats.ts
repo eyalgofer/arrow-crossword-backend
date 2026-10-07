@@ -8,7 +8,7 @@ export interface DailyPuzzleStatsFields {
   lastSolvedDate: string | null;
 }
 
-/** YYYY-MM-DD of the daily that is live at `date` (12:00 Asia/Jerusalem). */
+/** YYYY-MM-DD of the daily that is live at `date` (midnight Asia/Jerusalem). */
 export function toLocalDateString(date: Date = new Date()): string {
   return dailyGameDateString(date);
 }

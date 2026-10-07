@@ -7,7 +7,7 @@ import { calendarDailyKey, liveDailyKey } from './dailyClock';
 /**
  * Day of year (1–366) for the Israel calendar date of `date`.
  * Used when assigning a puzzle to a specific date. The live puzzle uses
- * `liveDailyKey`, which does not roll until 12:00 Israel time.
+ * `liveDailyKey`, which rolls at midnight Israel time.
  */
 export function getDayOfYear(date: Date): number {
   return calendarDailyKey(date).dayOfYear;
@@ -113,7 +113,7 @@ export async function getPuzzleForDate(date: Date, language: Language = 'en') {
 }
 
 /**
- * True when this puzzle is the daily that is live now (rolls at 12:00 Israel time).
+ * True when this puzzle is the daily that is live now (rolls at midnight Israel time).
  * Yesterday's assignment is a different puzzle and does not share today's hint quota.
  */
 export async function isTodaysDailyPuzzle(
