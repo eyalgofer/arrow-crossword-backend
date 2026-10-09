@@ -10320,7 +10320,7 @@
   {"answer":"גורקי פארק","fillScore":2,"category":"culture","clues":[{"text":"מסרטי מייקל אפטד","difficulty":2,"quality":4},{"text":"סרט של מייקל אפטד","difficulty":2,"quality":4}]},
   {"answer":"גורר","fillScore":4,"category":"general","clues":[{"text":"רכב גרר","difficulty":1,"quality":5}]},
   {"answer":"גוררת","fillScore":4,"category":"general","clues":[{"text":"ספינת גרר","difficulty":1,"quality":5},{"text":"סוחבת, מושכת","difficulty":1,"quality":5},{"text":"סוחבת מושכת","difficulty":1,"quality":4}]},
-  {"answer":"גורש","fillScore":5,"category":"general","clues":[{"text":"סולק, פוטר","difficulty":1,"quality":5},{"text":"פוטר, סולק","difficulty":1,"quality":4},{"text":"סולק","difficulty":1,"quality":4}]},
+  {"answer":"גורש","fillScore":5,"category":"general","clues":[{"text":"סולק","difficulty":1,"quality":4}]},
   {"answer":"גורשו","fillScore":4,"category":"general","clues":[{"text":"הוצאו ממקום מסוים, סולקו","difficulty":1,"quality":5},{"text":"הוצאו ממקום מסוים סולקו","difficulty":1,"quality":4},{"text":"הוצאו ממקום מסוים","difficulty":1,"quality":4}]},
   {"answer":"גוש אבן גדול","fillScore":2,"category":"general","clues":[{"text":"בולדר","difficulty":1,"quality":5}]},
   {"answer":"גוש דן","fillScore":4,"category":"geography","clues":[{"text":"אזור במרכז הארץ","difficulty":1,"quality":5}]},
