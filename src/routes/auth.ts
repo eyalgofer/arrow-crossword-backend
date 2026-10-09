@@ -235,7 +235,7 @@ router.post('/demo', async (req: Request, res: Response) => {
         email: DEMO_EMAIL,
         displayName: 'Demo User',
         device,
-        coins: 1000,
+        coins: 1000
       });
       await user.save();
       console.log('Created demo user:', user.email);
@@ -243,9 +243,8 @@ router.post('/demo', async (req: Request, res: Response) => {
       user.device = device;
       await user.save();
     }
-
     console.log('Demo user signed in:', user.email);
-    res.json(await authPayload(user, false));
+    res.json(await authPayload(user, true));
   } catch (error: any) {
     console.error('❌ Demo auth error:', error?.message || error);
     res.status(500).json({
