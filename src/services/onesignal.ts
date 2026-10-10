@@ -323,28 +323,6 @@ export async function sendLobbyCancelledPush(params: {
   });
 }
 
-/** Sent to the inviter when the invitee declines. */
-export async function sendInviteDeclinedPush(params: {
-  toUserId: string;
-  fromDisplayName: string;
-  inviteId: string;
-}): Promise<boolean> {
-  const { headings, contents } = buildInviteDeclinedCopy({
-    displayName: params.fromDisplayName,
-  });
-
-  return sendPushToExternalUser({
-    externalUserId: params.toUserId,
-    headings,
-    contents,
-    data: {
-      type: INVITE_DECLINED_NOTIFICATION_TYPE,
-      inviteId: params.inviteId,
-      screen: 'multiplayer',
-    },
-  });
-}
-
 export function buildDailyOvernightPrizeCopy(params: {
   prizeCoins: number;
 }): { headings: Record<string, string>; contents: Record<string, string> } {
@@ -352,11 +330,11 @@ export function buildDailyOvernightPrizeCopy(params: {
   return {
     headings: {
       en: 'Daily prize!',
-      he: 'פרס יומי!',
+      he: 'סיימת את התשחץ היומי מהר מכולם!',
     },
     contents: {
       en: `You had the fastest daily solve yesterday. ${coins} coins are waiting for you!`,
-      he: `השלמת את החידה היומית הכי מהר אתמול. ${coins} מטבעות מחכים לך!`,
+      he: `השלמת את התשחץ היומי הכי מהר אתמול. ${coins} מטבעות מחכים לך!`,
     },
   };
 }

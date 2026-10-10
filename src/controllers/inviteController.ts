@@ -13,7 +13,6 @@ import { durationSecondsForSettings, parseMatchSettings } from '../utils/matchSe
 import {
   sendGameInvitePush,
   sendInviteAcceptedPush,
-  sendInviteDeclinedPush,
 } from '../services/onesignal';
 import { isMultiplayerPlayer } from '../services/guestAuth';
 
@@ -336,18 +335,6 @@ export const declineInvite = async (req: AuthRequest, res: Response) => {
     invite.status = InviteStatus.DECLINED;
     invite.respondedAt = new Date();
     await invite.save();
-
-    // Fire-and-forget push to the inviter. Missing inviter is not an error here.
-    const inviter = await User.findById(invite.from);
-    if (inviter) {
-      void sendInviteDeclinedPush({
-        toUserId: inviter.firebaseUid,
-        fromDisplayName: pushDisplayName(currentUser),
-        inviteId: invite._id.toString(),
-      }).catch((err) => {
-        console.error('[OneSignal] Invite declined push failed', err);
-      });
-    }
 
     // Return updated invite
     const populatedInvite = await Invite.findById(invite._id)
