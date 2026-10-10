@@ -17,6 +17,7 @@ import lobbyRoutes from './routes/lobbies';
 import { setupSocketHandlers } from './sockets/gameHandler';
 import { startMatchTimeoutJob } from './jobs/matchTimeoutJob';
 import { startLobbyExpiryJob } from './jobs/lobbyExpiryJob';
+import { startOvernightDailyPrizeJob } from './jobs/overnightDailyPrizeJob';
 import { startGhostTicker } from './services/ghostMatch';
 import './models/MatchWordClaim';
 
@@ -175,6 +176,9 @@ const startServer = async () => {
 
     startLobbyExpiryJob(io);
     console.log('✅ Lobby expiry job started');
+
+    startOvernightDailyPrizeJob();
+    console.log('✅ Overnight daily prize job started');
 
     startGhostTicker(io);
     console.log('✅ Ghost opponent ticker started');

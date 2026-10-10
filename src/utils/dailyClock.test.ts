@@ -3,6 +3,8 @@ import { describe, it } from 'node:test';
 import {
   calendarDayOfYear,
   dailyGameDateString,
+  isAtOrAfterJerusalemHour,
+  isBeforeLiveDailyKey,
   jerusalemCalendarDate,
   liveDailyKey,
 } from './dailyClock';
@@ -57,5 +59,24 @@ describe('daily clock', () => {
       calendarDayOfYear(jerusalemCalendarDate(israelMidnight)),
       279
     );
+  });
+
+  it('gates the morning push at 09:00 Israel time', () => {
+    // 08:59 IDT (UTC+3)
+    const beforeNine = new Date('2026-10-06T05:59:00.000Z');
+    // 09:00 IDT
+    const atNine = new Date('2026-10-06T06:00:00.000Z');
+
+    assert.equal(isAtOrAfterJerusalemHour(9, beforeNine), false);
+    assert.equal(isAtOrAfterJerusalemHour(9, atNine), true);
+  });
+
+  it('marks prior calendar days as before the live daily key', () => {
+    const afterMidnight = new Date('2026-10-05T21:00:00.000Z'); // 00:00 IDT Oct 6
+    const live = liveDailyKey(afterMidnight);
+
+    assert.equal(isBeforeLiveDailyKey(live.year, live.dayOfYear, afterMidnight), false);
+    assert.equal(isBeforeLiveDailyKey(live.year, live.dayOfYear - 1, afterMidnight), true);
+    assert.equal(isBeforeLiveDailyKey(2025, 365, afterMidnight), true);
   });
 });

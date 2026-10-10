@@ -14,6 +14,7 @@ export const INVITE_DECLINED_NOTIFICATION_TYPE = 'invite_declined';
 export const GROUP_INVITE_NOTIFICATION_TYPE = 'group_invite';
 export const LOBBY_STARTED_NOTIFICATION_TYPE = 'lobby_started';
 export const LOBBY_CANCELLED_NOTIFICATION_TYPE = 'lobby_cancelled';
+export const DAILY_OVERNIGHT_PRIZE_NOTIFICATION_TYPE = 'daily_overnight_prize';
 
 export type MatchKindLabel = 'quick' | 'normal' | 'unlimited time';
 
@@ -340,6 +341,45 @@ export async function sendInviteDeclinedPush(params: {
       type: INVITE_DECLINED_NOTIFICATION_TYPE,
       inviteId: params.inviteId,
       screen: 'multiplayer',
+    },
+  });
+}
+
+export function buildDailyOvernightPrizeCopy(params: {
+  prizeCoins: number;
+}): { headings: Record<string, string>; contents: Record<string, string> } {
+  const coins = params.prizeCoins;
+  return {
+    headings: {
+      en: 'Daily prize!',
+      he: 'פרס יומי!',
+    },
+    contents: {
+      en: `You had the fastest daily solve yesterday. ${coins} coins are waiting for you!`,
+      he: `השלמת את החידה היומית הכי מהר אתמול. ${coins} מטבעות מחכים לך!`,
+    },
+  };
+}
+
+/** Morning push for yesterday's overnight #1 (coins already credited at midnight). */
+export async function sendDailyOvernightPrizePush(params: {
+  toUserId: string;
+  prizeCoins: number;
+  puzzleId: string;
+}): Promise<boolean> {
+  const { headings, contents } = buildDailyOvernightPrizeCopy({
+    prizeCoins: params.prizeCoins,
+  });
+
+  return sendPushToExternalUser({
+    externalUserId: params.toUserId,
+    headings,
+    contents,
+    data: {
+      type: DAILY_OVERNIGHT_PRIZE_NOTIFICATION_TYPE,
+      puzzleId: params.puzzleId,
+      prizeCoins: String(params.prizeCoins),
+      screen: 'daily',
     },
   });
 }

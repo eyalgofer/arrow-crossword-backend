@@ -9,6 +9,14 @@ export interface IDailyPuzzle extends Document {
   language: Language; // Each language gets its own daily puzzle
   firstSolverId?: mongoose.Types.ObjectId | null;
   firstSolvedAt?: Date | null;
+  /** Current overnight #1 prize claim holder (fastest time; hints allowed). */
+  fastestSolverId?: mongoose.Types.ObjectId | null;
+  fastestTimeSec?: number | null;
+  fastestClaimedAt?: Date | null;
+  /** When the 500 overnight coins were credited (after midnight rollover). */
+  overnightPrizeAwardedAt?: Date | null;
+  /** When the morning winner push was sent (at/after 09:00 Israel). */
+  overnightPrizeNotifiedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,6 +52,27 @@ const dailyPuzzleSchema = new Schema<IDailyPuzzle>({
     default: null
   },
   firstSolvedAt: {
+    type: Date,
+    default: null
+  },
+  fastestSolverId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  fastestTimeSec: {
+    type: Number,
+    default: null
+  },
+  fastestClaimedAt: {
+    type: Date,
+    default: null
+  },
+  overnightPrizeAwardedAt: {
+    type: Date,
+    default: null
+  },
+  overnightPrizeNotifiedAt: {
     type: Date,
     default: null
   }

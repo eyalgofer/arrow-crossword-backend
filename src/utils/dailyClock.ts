@@ -75,3 +75,44 @@ export function dailyGameDateString(date: Date = new Date()): string {
   const d = String(day).padStart(2, '0');
   return `${year}-${m}-${d}`;
 }
+
+/** Hour (0–23) and minute on the Israel wall clock for an instant. */
+export function jerusalemWallTime(date: Date = new Date()): { hour: number; minute: number } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: DAILY_TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+
+  const read = (type: Intl.DateTimeFormatPartTypes): number => {
+    const value = parts.find((part) => part.type === type)?.value;
+    if (value == null) {
+      throw new Error(`Missing ${type} for ${DAILY_TIME_ZONE}`);
+    }
+    return Number(value);
+  };
+
+  return { hour: read('hour'), minute: read('minute') };
+}
+
+/** True when Israel local time is at or after `hour` (0–23) on the same calendar day. */
+export function isAtOrAfterJerusalemHour(hour: number, date: Date = new Date()): boolean {
+  const { hour: localHour } = jerusalemWallTime(date);
+  return localHour >= hour;
+}
+
+/**
+ * True when `(year, dayOfYear)` is strictly before the live daily key at `date`.
+ * Used to find dailies whose overnight prize claim has frozen.
+ */
+export function isBeforeLiveDailyKey(
+  year: number,
+  dayOfYear: number,
+  date: Date = new Date()
+): boolean {
+  const live = liveDailyKey(date);
+  if (year < live.year) return true;
+  if (year > live.year) return false;
+  return dayOfYear < live.dayOfYear;
+}

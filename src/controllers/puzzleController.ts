@@ -22,6 +22,7 @@ import { countsTowardFastestTime } from '../utils/dailyHints';
 import { buildPuzzlePreview, FAV_PICK_ACCENTS, toCardDifficulty } from '../utils/puzzlePreview';
 import { DAILY_HINT_LIMIT, FIRST_DAILY_SOLVER_BONUS, dailyHintCost } from '../constants/daily';
 import { purchasePuzzleHint } from '../services/dailyHints';
+import { buildDailyResult, maybeClaimOvernightFastest } from '../services/dailyResult';
 
 export const getPuzzles = async (req: AuthRequest, res: Response) => {
   try {
@@ -177,16 +178,7 @@ export const getDailyPuzzleSolvedCount = async (req: AuthRequest, res: Response)
           solvedCount: { $sum: 1 },
           fastestSeconds: {
             $min: {
-              $cond: [
-                {
-                  $and: [
-                    { $gt: ['$bestTime', 0] },
-                    { $eq: [{ $ifNull: ['$hintsUsed', 0] }, 0] },
-                  ],
-                },
-                '$bestTime',
-                null,
-              ],
+              $cond: [{ $gt: ['$bestTime', 0] }, '$bestTime', null],
             },
           },
         },
@@ -620,6 +612,9 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
 
     const wasAlreadyCompleted = progress?.isCompleted ?? false;
     const recordFastest = countsTowardFastestTime(progress?.hintsUsed);
+    const isTodaysDaily = await isTodaysDailyPuzzle(puzzleId);
+    // Today's daily ranks/prizes include hinted runs; other puzzles keep the old rule.
+    const recordBestTime = recordFastest || isTodaysDaily;
     let coinsAwarded = 0;
     let isFirstSolver = false;
     let userNeedsSave = false;
@@ -630,9 +625,8 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
     );
 
     if (progress) {
-      // Update existing progress. A hinted daily does not improve fastest time.
       const shouldUpdateBestTime =
-        recordFastest &&
+        recordBestTime &&
         (progress.bestTime === null || completionTime < progress.bestTime);
 
       if (shouldUpdateBestTime) {
@@ -640,8 +634,10 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
       }
 
       if (!progress.isCompleted) {
-        if (!recordFastest) {
+        if (!recordBestTime) {
           progress.bestTime = null;
+        } else if (progress.bestTime === null) {
+          progress.bestTime = completionTime;
         }
         progress.isCompleted = true;
         progress.completedCluesCount = progress.totalClues;
@@ -688,7 +684,7 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
       user.stats.totalTime += completionTime;
       user.stats.averageTime = user.stats.totalTime / user.stats.totalGames;
       
-      if (user.stats.fastestTime === 0 || completionTime < user.stats.fastestTime) {
+      if (recordFastest && (user.stats.fastestTime === 0 || completionTime < user.stats.fastestTime)) {
         user.stats.fastestTime = completionTime;
       }
 
@@ -741,6 +737,25 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
       await user.save();
     }
 
+    let dailyResult = undefined;
+    if (isTodaysDaily) {
+      const bestForRank =
+        typeof progress.bestTime === 'number' && progress.bestTime > 0
+          ? progress.bestTime
+          : Math.floor(completionTime);
+      if (bestForRank > 0) {
+        // Replays that improve time can still steal #1; dailyResult is first-complete only.
+        await maybeClaimOvernightFastest({
+          puzzleId,
+          userId: user._id,
+          completionSeconds: bestForRank,
+        });
+        if (!wasAlreadyCompleted) {
+          dailyResult = await buildDailyResult(puzzleId, bestForRank) ?? undefined;
+        }
+      }
+    }
+
     res.json({
       success: true,
       progress: {
@@ -750,7 +765,8 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
         completionTime
       },
       coinsAwarded,
-      isFirstSolver
+      isFirstSolver,
+      ...(dailyResult ? { dailyResult } : {}),
     });
   } catch (error) {
     console.error('Complete puzzle error:', error);
