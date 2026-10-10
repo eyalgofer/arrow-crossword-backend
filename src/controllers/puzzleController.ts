@@ -419,53 +419,54 @@ export const saveProgress = async (req: AuthRequest, res: Response) => {
 
     const now = new Date();
 
-    let progress = await UserPuzzleProgress.findOne({
+    // Atomic upsert avoids VersionError when the client autosaves progress
+    // concurrently with complete / another progress write.
+    const existing = await UserPuzzleProgress.findOne({
       userId: user._id,
-      puzzleId
-    });
+      puzzleId,
+    })
+      .select('hintsUsed bestTime')
+      .lean();
 
-    if (progress) {
-      // Update existing progress
-      progress.completedClueIds = completedClueIds;
-      if (completedCluesCount !== undefined) {
-        progress.completedCluesCount = completedCluesCount;
-      }
-      if (totalClues !== undefined) {
-        progress.totalClues = totalClues;
-      }
-      if (isCompleted !== undefined) {
-        progress.isCompleted = isCompleted;
-      }
-      if (elapsedTime !== undefined) {
-        progress.elapsedTime = elapsedTime;
-      }
-      progress.lastPlayedAt = now;
+    const $set: Record<string, unknown> = {
+      completedClueIds,
+      lastPlayedAt: now,
+    };
+    if (completedCluesCount !== undefined) $set.completedCluesCount = completedCluesCount;
+    if (totalClues !== undefined) $set.totalClues = totalClues;
+    if (isCompleted !== undefined) $set.isCompleted = isCompleted;
+    if (elapsedTime !== undefined) $set.elapsedTime = elapsedTime;
 
-      // Fastest time follows the stored hint counter, never a client-sent hintsUsed.
-      if (
-        countsTowardFastestTime(progress.hintsUsed) &&
-        bestTime !== undefined &&
-        bestTime !== null &&
-        (progress.bestTime === null || bestTime < progress.bestTime)
-      ) {
-        progress.bestTime = bestTime;
-      }
+    // Fastest time follows the stored hint counter, never a client-sent hintsUsed.
+    const shouldSetBestTime =
+      countsTowardFastestTime(existing?.hintsUsed) &&
+      bestTime !== undefined &&
+      bestTime !== null &&
+      (existing?.bestTime == null || bestTime < existing.bestTime);
+    if (shouldSetBestTime) {
+      $set.bestTime = bestTime;
+    }
 
-      await progress.save();
-    } else {
-      // Create new progress
-      progress = new UserPuzzleProgress({
-        userId: user._id,
-        puzzleId,
-        completedClueIds: completedClueIds,
-        completedCluesCount: completedCluesCount ?? 0,
-        totalClues: totalClues ?? puzzle.puzzleItems.length,
-        isCompleted: isCompleted ?? false,
-        elapsedTime: elapsedTime ?? 0,
-        bestTime: bestTime ?? null,
-        lastPlayedAt: now
-      });
-      await progress.save();
+    const $setOnInsert: Record<string, unknown> = {
+      userId: user._id,
+      puzzleId,
+      hintsUsed: 0,
+    };
+    // Only set defaults on insert when not already provided in $set (Mongo forbids overlap).
+    if (completedCluesCount === undefined) $setOnInsert.completedCluesCount = 0;
+    if (totalClues === undefined) $setOnInsert.totalClues = puzzle.puzzleItems.length;
+    if (isCompleted === undefined) $setOnInsert.isCompleted = false;
+    if (elapsedTime === undefined) $setOnInsert.elapsedTime = 0;
+    if (!shouldSetBestTime) $setOnInsert.bestTime = bestTime ?? null;
+
+    const progress = await UserPuzzleProgress.findOneAndUpdate(
+      { userId: user._id, puzzleId },
+      { $set, $setOnInsert },
+      { upsert: true, new: true }
+    );
+
+    if (!progress) {
+      return res.status(500).json({ error: 'Failed to save progress' });
     }
 
     const hintLimit = (await isTodaysDailyPuzzle(puzzleId)) ? DAILY_HINT_LIMIT : null;
@@ -605,12 +606,14 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Puzzle not found' });
     }
 
-    let progress = await UserPuzzleProgress.findOne({
+    const existingProgress = await UserPuzzleProgress.findOne({
       userId: user._id,
-      puzzleId
-    });
+      puzzleId,
+    })
+      .select('hintsUsed bestTime')
+      .lean();
 
-    const recordFastest = countsTowardFastestTime(progress?.hintsUsed);
+    const recordFastest = countsTowardFastestTime(existingProgress?.hintsUsed);
     const isTodaysDaily = await isTodaysDailyPuzzle(puzzleId);
     // Today's daily ranks/prizes include hinted runs; other puzzles keep the old rule.
     const recordBestTime = recordFastest || isTodaysDaily;
@@ -625,66 +628,58 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
 
     // Temporary: do not gate on progress.isCompleted. Clients often mark completed via
     // POST /progress before /complete, which previously skipped coins and dailyResult.
-    if (progress) {
-      const shouldUpdateBestTime =
-        recordBestTime &&
-        (progress.bestTime === null || completionTime < progress.bestTime);
-
-      if (shouldUpdateBestTime) {
-        progress.bestTime = completionTime;
-      }
-
-      if (!recordBestTime) {
-        progress.bestTime = null;
-      } else if (progress.bestTime === null) {
-        progress.bestTime = completionTime;
-      }
-      progress.isCompleted = true;
-      progress.completedCluesCount = progress.totalClues;
-      progress.completedClueIds = allCompletedClueIds;
-      progress.lastPlayedAt = new Date();
-      await progress.save();
-
-      coinsAwarded = puzzle.coinReward;
-      user.coins += coinsAwarded;
-      user.stats.totalGames += 1;
-      user.stats.totalTime += completionTime;
-      user.stats.averageTime = user.stats.totalTime / user.stats.totalGames;
-
-      if (
-        recordFastest &&
-        (user.stats.fastestTime === 0 || completionTime < user.stats.fastestTime)
-      ) {
-        user.stats.fastestTime = completionTime;
-      }
-
-      userNeedsSave = true;
+    // Atomic update avoids VersionError when autosave races with /complete.
+    let nextBestTime: number | null;
+    if (!recordBestTime) {
+      nextBestTime = null;
+    } else if (
+      existingProgress?.bestTime == null ||
+      completionTime < existingProgress.bestTime
+    ) {
+      nextBestTime = completionTime;
     } else {
-      progress = new UserPuzzleProgress({
-        userId: user._id,
-        puzzleId,
-        completedClueIds: allCompletedClueIds,
-        completedCluesCount: puzzle.puzzleItems.length,
-        totalClues: puzzle.puzzleItems.length,
-        isCompleted: true,
-        elapsedTime: completionTime,
-        bestTime: completionTime,
-        lastPlayedAt: new Date()
-      });
-      await progress.save();
-
-      coinsAwarded = puzzle.coinReward;
-      user.coins += coinsAwarded;
-      user.stats.totalGames += 1;
-      user.stats.totalTime += completionTime;
-      user.stats.averageTime = user.stats.totalTime / user.stats.totalGames;
-
-      if (recordFastest && (user.stats.fastestTime === 0 || completionTime < user.stats.fastestTime)) {
-        user.stats.fastestTime = completionTime;
-      }
-
-      userNeedsSave = true;
+      nextBestTime = existingProgress.bestTime;
     }
+
+    const progress = await UserPuzzleProgress.findOneAndUpdate(
+      { userId: user._id, puzzleId },
+      {
+        $set: {
+          isCompleted: true,
+          completedCluesCount: puzzle.puzzleItems.length,
+          totalClues: puzzle.puzzleItems.length,
+          completedClueIds: allCompletedClueIds,
+          bestTime: nextBestTime,
+          elapsedTime: completionTime,
+          lastPlayedAt: new Date(),
+        },
+        $setOnInsert: {
+          userId: user._id,
+          puzzleId,
+          hintsUsed: 0,
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    if (!progress) {
+      return res.status(500).json({ error: 'Failed to complete puzzle' });
+    }
+
+    coinsAwarded = puzzle.coinReward;
+    user.coins += coinsAwarded;
+    user.stats.totalGames += 1;
+    user.stats.totalTime += completionTime;
+    user.stats.averageTime = user.stats.totalTime / user.stats.totalGames;
+
+    if (
+      recordFastest &&
+      (user.stats.fastestTime === 0 || completionTime < user.stats.fastestTime)
+    ) {
+      user.stats.fastestTime = completionTime;
+    }
+
+    userNeedsSave = true;
 
     // Lifetime daily-puzzle stats (profile card) + first-solver bonus
     const isDailyPuzzle = await DailyPuzzle.exists({ puzzleId });
