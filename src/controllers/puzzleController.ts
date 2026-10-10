@@ -610,7 +610,6 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
       puzzleId
     });
 
-    const wasAlreadyCompleted = progress?.isCompleted ?? false;
     const recordFastest = countsTowardFastestTime(progress?.hintsUsed);
     const isTodaysDaily = await isTodaysDailyPuzzle(puzzleId);
     // Today's daily ranks/prizes include hinted runs; other puzzles keep the old rule.
@@ -624,6 +623,8 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
       item => `${item.number}|${item.direction}`
     );
 
+    // Temporary: do not gate on progress.isCompleted. Clients often mark completed via
+    // POST /progress before /complete, which previously skipped coins and dailyResult.
     if (progress) {
       const shouldUpdateBestTime =
         recordBestTime &&
@@ -633,37 +634,32 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
         progress.bestTime = completionTime;
       }
 
-      if (!progress.isCompleted) {
-        if (!recordBestTime) {
-          progress.bestTime = null;
-        } else if (progress.bestTime === null) {
-          progress.bestTime = completionTime;
-        }
-        progress.isCompleted = true;
-        progress.completedCluesCount = progress.totalClues;
-        progress.completedClueIds = allCompletedClueIds;
-        
-        // Award coins only on first completion
-        coinsAwarded = puzzle.coinReward;
-        user.coins += coinsAwarded;
-        user.stats.totalGames += 1;
-        user.stats.totalTime += completionTime;
-        user.stats.averageTime = user.stats.totalTime / user.stats.totalGames;
-        
-        if (
-          recordFastest &&
-          (user.stats.fastestTime === 0 || completionTime < user.stats.fastestTime)
-        ) {
-          user.stats.fastestTime = completionTime;
-        }
-
-        userNeedsSave = true;
+      if (!recordBestTime) {
+        progress.bestTime = null;
+      } else if (progress.bestTime === null) {
+        progress.bestTime = completionTime;
       }
-
+      progress.isCompleted = true;
+      progress.completedCluesCount = progress.totalClues;
+      progress.completedClueIds = allCompletedClueIds;
       progress.lastPlayedAt = new Date();
       await progress.save();
+
+      coinsAwarded = puzzle.coinReward;
+      user.coins += coinsAwarded;
+      user.stats.totalGames += 1;
+      user.stats.totalTime += completionTime;
+      user.stats.averageTime = user.stats.totalTime / user.stats.totalGames;
+
+      if (
+        recordFastest &&
+        (user.stats.fastestTime === 0 || completionTime < user.stats.fastestTime)
+      ) {
+        user.stats.fastestTime = completionTime;
+      }
+
+      userNeedsSave = true;
     } else {
-      // Create new progress as completed
       progress = new UserPuzzleProgress({
         userId: user._id,
         puzzleId,
@@ -677,13 +673,12 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
       });
       await progress.save();
 
-      // Award coins for first completion
       coinsAwarded = puzzle.coinReward;
       user.coins += coinsAwarded;
       user.stats.totalGames += 1;
       user.stats.totalTime += completionTime;
       user.stats.averageTime = user.stats.totalTime / user.stats.totalGames;
-      
+
       if (recordFastest && (user.stats.fastestTime === 0 || completionTime < user.stats.fastestTime)) {
         user.stats.fastestTime = completionTime;
       }
@@ -698,22 +693,20 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
         user.dailyPuzzleStats = emptyDailyPuzzleStats();
       }
 
-      if (!wasAlreadyCompleted) {
-        user.dailyPuzzleStats.solvedCount += 1;
-        applyDailyStreak(user.dailyPuzzleStats);
-        userNeedsSave = true;
+      user.dailyPuzzleStats.solvedCount += 1;
+      applyDailyStreak(user.dailyPuzzleStats);
+      userNeedsSave = true;
 
-        // Atomically claim first solver for this daily (per language assignment)
-        const claimedFirst = await DailyPuzzle.findOneAndUpdate(
-          { puzzleId, firstSolverId: null },
-          { $set: { firstSolverId: user._id, firstSolvedAt: new Date() } },
-          { new: true }
-        );
-        if (claimedFirst) {
-          isFirstSolver = true;
-          coinsAwarded += FIRST_DAILY_SOLVER_BONUS;
-          user.coins += FIRST_DAILY_SOLVER_BONUS;
-        }
+      // Atomically claim first solver for this daily (per language assignment)
+      const claimedFirst = await DailyPuzzle.findOneAndUpdate(
+        { puzzleId, firstSolverId: null },
+        { $set: { firstSolverId: user._id, firstSolvedAt: new Date() } },
+        { new: true }
+      );
+      if (claimedFirst) {
+        isFirstSolver = true;
+        coinsAwarded += FIRST_DAILY_SOLVER_BONUS;
+        user.coins += FIRST_DAILY_SOLVER_BONUS;
       }
 
       if (recordFastest) {
@@ -744,15 +737,12 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
           ? progress.bestTime
           : Math.floor(completionTime);
       if (bestForRank > 0) {
-        // Replays that improve time can still steal #1; dailyResult is first-complete only.
         await maybeClaimOvernightFastest({
           puzzleId,
           userId: user._id,
           completionSeconds: bestForRank,
         });
-        if (!wasAlreadyCompleted) {
-          dailyResult = await buildDailyResult(puzzleId, bestForRank) ?? undefined;
-        }
+        dailyResult = await buildDailyResult(puzzleId, bestForRank) ?? undefined;
       }
     }
 
