@@ -7,10 +7,17 @@ export interface AuthRequest extends Request {
   };
 }
 
-/** Content languages served by the API. Israeli users receive 'he'. */
-export type Language = 'en' | 'he';
+/**
+ * Content languages served by the API.
+ * - en: English clues + English answers
+ * - he: Hebrew clues + Hebrew answers
+ * - he-en: English clues + Hebrew answers (מאנגלית לעברית packs)
+ */
+export type Language = 'en' | 'he' | 'he-en';
 
 export const DEFAULT_LANGUAGE: Language = 'en';
+
+export const CONTENT_LANGUAGES: readonly Language[] = ['en', 'he', 'he-en'];
 
 export interface UserStats {
   totalGames: number;

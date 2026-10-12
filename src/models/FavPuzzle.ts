@@ -24,7 +24,7 @@ const favPuzzleSchema = new Schema<IFavPuzzle>({
   },
   language: {
     type: String,
-    enum: ['en', 'he'],
+    enum: ['en', 'he', 'he-en'],
     default: 'he',
   },
   accent: {

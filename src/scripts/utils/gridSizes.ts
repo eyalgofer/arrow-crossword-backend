@@ -40,6 +40,9 @@ export const PACKAGE_GRID_SIZE_MIX: GridSize[] = [
   { rows: 12, cols: 12 },
 ];
 
+/** Bilingual (he-en) packs — fixed 12×12 boards. */
+export const HE_EN_GRID_SIZE_MIX: GridSize[] = [{ rows: 12, cols: 12 }];
+
 /** Prefer 15×15 first (target layout), then fall back. */
 export const IMAGE_CLUE_SIZE_LADDER: GridSize[] = [
   { rows: 15, cols: 15 },

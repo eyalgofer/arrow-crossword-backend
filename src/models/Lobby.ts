@@ -67,7 +67,7 @@ const lobbySchema = new Schema<ILobby>({
   },
   language: {
     type: String,
-    enum: ['en', 'he'],
+    enum: ['en', 'he', 'he-en'],
     default: 'en'
   },
   seats: {

@@ -6,7 +6,8 @@
  *   fillScore         — 1..5, how pleasant the word is to find in the grid
  *   category          — one of HEBREW_CATEGORIES, used for per-puzzle caps
  *   excludeFromDaily  — never place this answer in a daily
- *   clues             — plain strings (legacy, unscored) or scored objects
+ *   clues             — plain strings (legacy, unscored) or scored objects (Hebrew)
+ *   englishClues      — optional English glosses of the answer (vocab-learning packs)
  */
 
 import fs from 'fs';
@@ -34,6 +35,16 @@ export const HEBREW_CATEGORIES = [
 
 export type HebrewCategory = (typeof HEBREW_CATEGORIES)[number];
 
+/** Categories preferred for English-clue / Hebrew-answer packs. */
+export const BILINGUAL_PREFERRED_CATEGORIES: ReadonlySet<HebrewCategory> = new Set([
+  'general',
+  'science',
+  'food',
+  'culture',
+  'sport',
+  'language',
+]);
+
 export interface HebrewClue {
   text: string;
   difficulty?: Difficulty;
@@ -44,6 +55,8 @@ export interface HebrewClue {
 export interface RawHebrewEntry {
   answer: string;
   clues: Array<string | HebrewClue>;
+  /** English glosses of the answer for he-en packs (optional). */
+  englishClues?: Array<string | HebrewClue>;
   /** Legacy answer-level difficulty; applies to clues without their own. */
   difficulty?: Difficulty;
   fillScore?: number;
@@ -64,6 +77,7 @@ const KEY_ORDER: Array<keyof RawHebrewEntry> = [
   'excludeFromDaily',
   'difficulty',
   'clues',
+  'englishClues',
 ];
 
 function orderedEntry(entry: RawHebrewEntry): Record<string, unknown> {

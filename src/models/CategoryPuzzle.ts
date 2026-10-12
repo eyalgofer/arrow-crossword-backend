@@ -37,7 +37,7 @@ const categoryPuzzleSchema = new Schema<ICategoryPuzzle>({
   },
   language: {
     type: String,
-    enum: ['en', 'he'],
+    enum: ['en', 'he', 'he-en'],
     default: 'he',
   },
   category: {

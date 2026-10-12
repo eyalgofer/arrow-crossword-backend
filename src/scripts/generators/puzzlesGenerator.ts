@@ -1,6 +1,6 @@
 import { Difficulty, Language } from '../../types';
 import { Puzzle, GridTemplate, ClueSlot } from '../core/types';
-import { getClueProvider, ClueProvider } from '../core/clueProvider';
+import { getClueProvider, ClueProvider, isHebrewGridLanguage } from '../core/clueProvider';
 import { generateTemplate, repairTemplateAroundSlot } from './template-generator';
 import { solveGrid } from './grid-solver';
 import { buildCrossingIndex, CrossingIndex } from './word-index';
@@ -164,7 +164,7 @@ export class PuzzleGenerator {
     this.useNewspaper = config.newspaper === true;
     this.slotMin = config.minSlotLength;
     this.slotMax = config.maxSlotLength;
-    const floor = this.language === 'he' ? (config.minGridSize ?? MIN_GRID_SIZE) : 8;
+    const floor = isHebrewGridLanguage(this.language) ? (config.minGridSize ?? MIN_GRID_SIZE) : 8;
     const defaultRows = Math.min(Math.max(config.rows ?? floor, floor), MAX_GRID_SIZE);
     const defaultCols = Math.min(Math.max(config.cols ?? floor, floor), MAX_GRID_SIZE);
     const puzzles: Puzzle[] = [];
@@ -175,7 +175,7 @@ export class PuzzleGenerator {
         cols: defaultCols,
       };
       const requested =
-        this.language === 'he'
+        isHebrewGridLanguage(this.language)
           ? {
               rows: Math.max(floor, Math.min(raw.rows, MAX_GRID_SIZE)),
               cols: Math.max(floor, Math.min(raw.cols, MAX_GRID_SIZE)),
@@ -185,7 +185,7 @@ export class PuzzleGenerator {
               cols: Math.min(raw.cols, MAX_GRID_SIZE),
             };
       const chain =
-        this.language === 'he' && !config.strictSize
+        isHebrewGridLanguage(this.language) && !config.strictSize
           ? sizeFallbackChain(requested.rows, requested.cols)
           : [requested];
 
@@ -251,7 +251,7 @@ export class PuzzleGenerator {
     const cells = rows * cols;
     const attempts =
       attemptOverride ??
-      (this.language === 'he'
+      (isHebrewGridLanguage(this.language)
         ? cells >= 196
           ? 24
           : cells >= 169
@@ -263,7 +263,7 @@ export class PuzzleGenerator {
 
     // Image clues: Hebrew only, and only when explicitly requested.
     const wantImages =
-      this.language === 'he' ? (meta.imageClueCount ?? 0) : 0;
+      isHebrewGridLanguage(this.language) ? (meta.imageClueCount ?? 0) : 0;
     if (wantImages > 0 && this.imageClueCatalog.length < wantImages) {
       console.error(
         `Image-clue catalog has ${this.imageClueCatalog.length} entries, need ${wantImages}. ` +
@@ -298,7 +298,7 @@ export class PuzzleGenerator {
       const protectedCells = imageLocks.length ? imageLocks : undefined;
 
       const t0 = Date.now();
-      const dense = this.language === 'he' && wantImages === 0;
+      const dense = isHebrewGridLanguage(this.language) && wantImages === 0;
       const template = this.buildTemplate(
         rows,
         cols,
@@ -348,7 +348,7 @@ export class PuzzleGenerator {
           }
         }
 
-        const maxLen = this.slotMax ?? (this.language === 'he' || wantImages > 0 ? 8 : 11);
+        const maxLen = this.slotMax ?? (isHebrewGridLanguage(this.language) || wantImages > 0 ? 8 : 11);
         const minLen = this.slotMin ?? (dense ? 2 : 3);
         if (template.slots.some((slot) => slot.length > maxLen || slot.length < minLen)) {
           if (wantImages > 0 && attempt < 8 && bindTry === 0) {
@@ -367,7 +367,7 @@ export class PuzzleGenerator {
         }
 
         const templateStats = scoreTemplate(template);
-        if (this.language === 'he' && !templateQualityOk(templateStats, wantImages, dense)) {
+        if (isHebrewGridLanguage(this.language) && !templateQualityOk(templateStats, wantImages, dense)) {
           if (attempt < 8 && bindTry === 0) {
             console.log(
               `   … attempt ${attempt + 1}: template quality ${formatQuality(templateStats)}`
@@ -417,7 +417,7 @@ export class PuzzleGenerator {
       if (!puzzle) {
         if (wantImages > 0) {
           console.log(`   … image attempt ${attempt + 1}: solve/validate failed`);
-        } else if (this.language === 'he' && (attempt < 8 || (attempt + 1) % 8 === 0)) {
+        } else if (isHebrewGridLanguage(this.language) && (attempt < 8 || (attempt + 1) % 8 === 0)) {
           console.log(`   … attempt ${attempt + 1}: solve failed`);
         }
         continue;
@@ -432,7 +432,7 @@ export class PuzzleGenerator {
         continue;
       }
       const stats = scorePuzzle(puzzle);
-      if (this.language === 'he' && !puzzleQualityOk(stats, wantImages, dense)) {
+      if (isHebrewGridLanguage(this.language) && !puzzleQualityOk(stats, wantImages, dense)) {
         if (attempt < 8) {
           console.log(
             `   … attempt ${attempt + 1}: filled but quality ${formatQuality(stats)}`
@@ -440,7 +440,7 @@ export class PuzzleGenerator {
         }
         continue;
       }
-      if (this.language === 'he') {
+      if (isHebrewGridLanguage(this.language)) {
         console.log(`   quality ${formatQuality(stats)}`);
       }
       return puzzle;
@@ -481,10 +481,11 @@ export class PuzzleGenerator {
         !weights && options.wordDifficultyWeight && tier != null
           ? Math.abs(tier - (options.targetDifficulty ?? 1.5)) * options.wordDifficultyWeight
           : 0;
+      const maxClueLen = this.language === 'he' ? 28 : 50;
       const hasDominant =
         dominant != null &&
         (this.clueProvider.getScoredClues?.(word) ?? []).some(
-          (clue) => clue.difficulty === dominant && clue.text.length <= 28
+          (clue) => clue.difficulty === dominant && clue.text.length <= maxClueLen
         );
       // Hard clues live on low-fill words, so a small bonus never reaches the solver
       // shortlist. The jitter keeps high-fill easy words in the mix.
@@ -800,17 +801,17 @@ export class PuzzleGenerator {
         name: `${rows}x${cols} arrow crossword`,
         quiet: true,
         // Same GA budget for text + image Hebrew — text used to burn minutes per layout.
-        maxIterations: this.language === 'he'
+        maxIterations: isHebrewGridLanguage(this.language)
           ? (xl ? 14 : large ? 12 : 12)
           : 8,
         minPopulation: 4,
-        populationSize: this.language === 'he' ? 8 : 5,
-        weakBreakCondition: this.language === 'he' ? 180 : 80,
-        strongBreakCondition: this.language === 'he' ? 420 : 250,
+        populationSize: isHebrewGridLanguage(this.language) ? 8 : 5,
+        weakBreakCondition: isHebrewGridLanguage(this.language) ? 180 : 80,
+        strongBreakCondition: isHebrewGridLanguage(this.language) ? 420 : 250,
         maxBoundaryRetries: withImages ? 2 : dense ? 4 : 3,
         crossoverSamples: withImages ? 12 : undefined,
         // Cap slot length like image/daily boards — len 9–11 rarely fill in Hebrew.
-        maxSlotLength: this.slotMax ?? (this.language === 'he' ? 8 : undefined),
+        maxSlotLength: this.slotMax ?? (isHebrewGridLanguage(this.language) ? 8 : undefined),
         minSlotLength: this.slotMin ?? (dense ? 2 : 3),
         densePacking: dense,
         maxTwoLetterShare: dense ? DENSE_MAX_TWO_LETTER_SHARE : undefined,
@@ -859,7 +860,7 @@ export class PuzzleGenerator {
             ? 45000
             : 35000
       : // Dense text needs more fill time; otherwise fail faster so more templates get tried.
-        (this.language === 'he' ? (dense ? 22 : 14) : 12) * 1000 +
+        (isHebrewGridLanguage(this.language) ? (dense ? 22 : 14) : 12) * 1000 +
         cells * (cells >= 256 ? 40 : 25);
     const jitter = new Map<string, number>();
     const fillerWords = this.fillerWords;
@@ -967,9 +968,15 @@ export function generatePuzzlesBatch(config: {
 }
 
 export function generateDailyPuzzle(
-  options: DailyGenerationOptions & { imageClueCatalog?: ImageClueCatalogEntry[] }
+  options: DailyGenerationOptions & {
+    imageClueCatalog?: ImageClueCatalogEntry[];
+    /** Default 'he'. Use 'he-en' for English clues + Hebrew answers. */
+    language?: Language;
+  }
 ): Puzzle | null {
-  return new PuzzleGenerator('he', options.imageClueCatalog).generateDaily(options);
+  return new PuzzleGenerator(options.language ?? 'he', options.imageClueCatalog).generateDaily(
+    options
+  );
 }
 
 /** Prefer 15×15; fall back to smaller only if 15 cannot fill. */

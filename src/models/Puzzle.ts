@@ -71,7 +71,7 @@ const puzzleSchema = new Schema<IPuzzle>({
   },
   language: {
     type: String,
-    enum: ['en', 'he'],
+    enum: ['en', 'he', 'he-en'],
     default: 'en'
   },
   grid: {

@@ -16,27 +16,37 @@ import {
   filterValidPuzzles,
   clearPackagesForLanguage,
 } from './utils/scriptUtils';
-import { GridSize, mixSizes } from './utils/gridSizes';
+import { GridSize, mixSizes, HE_EN_GRID_SIZE_MIX } from './utils/gridSizes';
 
 dotenv.config();
 
-// Usage: ts-node src/scripts/seedPackages.ts [--lang he] [--package 1] [--force] [--parallel 10]
-const langArgIndex = process.argv.indexOf('--lang');
-const language: Language = langArgIndex !== -1 && process.argv[langArgIndex + 1] === 'he' ? 'he' : 'en';
+// Usage: ts-node src/scripts/seedPackages.ts [--lang he|he-en|en] [--package 1] [--force] [--parallel 10]
+function parseSeedLanguage(): Language {
+  const idx = process.argv.indexOf('--lang');
+  const raw = idx !== -1 ? process.argv[idx + 1] : 'en';
+  if (raw === 'he' || raw === 'he-en' || raw === 'en') return raw;
+  return 'en';
+}
+const language: Language = parseSeedLanguage();
 const packageArgIndex = process.argv.indexOf('--package');
 const packageNumber = packageArgIndex !== -1 ? parseInt(process.argv[packageArgIndex + 1], 10) : null;
 const forceReplace = process.argv.includes('--force');
 const parallelArgIndex = process.argv.indexOf('--parallel');
 const parallelArg =
   parallelArgIndex !== -1 ? parseInt(process.argv[parallelArgIndex + 1], 10) : NaN;
+/** Hebrew-grid languages use dense layouts + parallel workers. */
+const usesHebrewGrid = language === 'he' || language === 'he-en';
 
 const ROOT = process.cwd();
-const PACKAGE_OUT_DIR = path.join(ROOT, 'tmp-package-puzzles');
+const PACKAGE_OUT_DIR = path.join(
+  ROOT,
+  language === 'he-en' ? 'tmp-package-he-en-puzzles' : 'tmp-package-puzzles'
+);
 /** Default: use most cores (10 on this Mac). Override with --parallel N. */
 const PACKAGE_PARALLEL =
   Number.isInteger(parallelArg) && parallelArg > 0 ? parallelArg : 10;
 const PACKAGE_WORKER_ATTEMPTS = 48;
-const PACKAGE_MAX_LAUNCHES_PER_SLOT = 12;
+const PACKAGE_MAX_LAUNCHES_PER_SLOT = language === 'he-en' ? 20 : 12;
 
 // Gradient colors for packages
 const gradientPalette = [
@@ -62,6 +72,11 @@ const HEBREW_PUZZLE_MIX: Array<{ difficulty: Difficulty; count: number }> = [
   { difficulty: Difficulty.EASY, count: 5 },
   { difficulty: Difficulty.MEDIUM, count: 3 },
   { difficulty: Difficulty.HARD, count: 2 },
+];
+
+/** he-en packs: all easy — English clues are for vocab learning, not hardness. */
+const HE_EN_PUZZLE_MIX: Array<{ difficulty: Difficulty; count: number }> = [
+  { difficulty: Difficulty.EASY, count: 10 },
 ];
 
 // Package definitions per language. Hebrew users see Hebrew package
@@ -159,10 +174,26 @@ const packageDefinitionsByLanguage: Record<Language, Array<{
       puzzleMix: HEBREW_PUZZLE_MIX,
     },
   ],
+  'he-en': [
+    {
+      name: 'מאנגלית לעברית 1',
+      description: 'רמזים באנגלית, תשובות בעברית',
+      theme: 'מעורב',
+      puzzleCount: 10,
+      puzzleMix: HE_EN_PUZZLE_MIX,
+    },
+    {
+      name: 'מאנגלית לעברית 2',
+      description: '10 תשחצים ללימוד אנגלית',
+      theme: 'מעורב',
+      puzzleCount: 10,
+      puzzleMix: HE_EN_PUZZLE_MIX,
+    },
+  ],
 };
 
-const MISC_CATEGORY = language === 'he' ? 'כללי' : 'Misc';
-const puzzleTitle = (index: number) => language === 'he' ? `#${index}` : `Puzzle #${index}`;
+const MISC_CATEGORY = usesHebrewGrid ? 'כללי' : 'Misc';
+const puzzleTitle = (index: number) => (usesHebrewGrid ? `#${index}` : `Puzzle #${index}`);
 
 const packageDefinitions = packageDefinitionsByLanguage[language].map((def, index) => ({
   ...def,
@@ -214,7 +245,7 @@ function generatePackagePuzzles(
 ): { puzzles: any[]; nextIndex: number; difficultyDistribution: Array<{ difficulty: Difficulty; count: number }> } {
   const difficultyDistribution = getDifficultyDistribution(def);
   const generatedPuzzles: any[] = [];
-  const packageSizes = language === 'he' ? mixSizes(def.puzzleCount) : undefined;
+  const packageSizes = usesHebrewGrid ? mixSizes(def.puzzleCount) : undefined;
   let sizeOffset = 0;
   let globalPuzzleIndex = startIndex;
 
@@ -228,12 +259,12 @@ function generatePackagePuzzles(
       count,
       category: MISC_CATEGORY,
       startIndex: globalPuzzleIndex,
-      rows: language === 'he' ? 14 : 8,
-      cols: language === 'he' ? 14 : 8,
+      rows: usesHebrewGrid ? 14 : 8,
+      cols: usesHebrewGrid ? 14 : 8,
       sizes,
       language,
       // Match daily worker budget so text packages fill reliably.
-      attempts: language === 'he' ? 64 : undefined,
+      attempts: usesHebrewGrid ? 64 : undefined,
     });
     const validPuzzles = filterValidPuzzles(batch, validatePuzzleBoundaries);
     generatedPuzzles.push(...validPuzzles);
@@ -267,10 +298,12 @@ type PackageSlot = {
 
 function buildHebrewPackageSlots(): PackageSlot[] {
   const slots: PackageSlot[] = [];
+  /** he-en uses 8–10 boards — bilingual pool is smaller than full Hebrew. */
+  const sizeMix = language === 'he-en' ? HE_EN_GRID_SIZE_MIX : undefined;
   for (let i = 0; i < packageDefinitions.length; i++) {
     const def = packageDefinitions[i];
     const difficultyDistribution = getDifficultyDistribution(def);
-    const sizes = mixSizes(def.puzzleCount);
+    const sizes = mixSizes(def.puzzleCount, sizeMix);
     let sizeOffset = 0;
     let slotInPackage = 0;
     for (const { difficulty, count } of difficultyDistribution) {
@@ -279,7 +312,7 @@ function buildHebrewPackageSlots(): PackageSlot[] {
           packageOrder: i,
           slotInPackage,
           difficulty,
-          size: sizes[sizeOffset] ?? { rows: 14, cols: 14 },
+          size: sizes[sizeOffset] ?? (language === 'he-en' ? { rows: 12, cols: 12 } : { rows: 14, cols: 14 }),
         });
         sizeOffset += 1;
         slotInPackage += 1;
@@ -295,26 +328,29 @@ function runPackageWorker(
   outPath: string
 ): Promise<any | null> {
   return new Promise((resolve) => {
-    const child = spawn(
-      'npx',
-      [
-        'ts-node',
-        'src/scripts/generateOnePackagePuzzle.ts',
-        '--out',
-        outPath,
-        '--difficulty',
-        slot.difficulty,
-        '--rows',
-        String(slot.size.rows),
-        '--cols',
-        String(slot.size.cols),
-        '--attempts',
-        String(PACKAGE_WORKER_ATTEMPTS),
-        '--index',
-        String(launchIndex),
-      ],
-      { cwd: ROOT, stdio: 'inherit' }
-    );
+    const args = [
+      'ts-node',
+      'src/scripts/generateOnePackagePuzzle.ts',
+      '--lang',
+      language,
+      '--out',
+      outPath,
+      '--difficulty',
+      slot.difficulty,
+      '--rows',
+      String(slot.size.rows),
+      '--cols',
+      String(slot.size.cols),
+      '--attempts',
+      String(PACKAGE_WORKER_ATTEMPTS),
+      '--index',
+      String(launchIndex),
+    ];
+    // he-en: daily profile on 12×12; longer budget for the smaller bilingual pool.
+    if (language === 'he-en') {
+      args.push('--profile', 'daily', '--budget', '240000');
+    }
+    const child = spawn('npx', args, { cwd: ROOT, stdio: 'inherit' });
     child.on('exit', (code) => {
       if (code !== 0 || !fs.existsSync(outPath)) {
         resolve(null);
@@ -332,6 +368,7 @@ function runPackageWorker(
 
 function loadExistingSlotPuzzle(packageOrder: number, slotInPackage: number): any | null {
   if (!fs.existsSync(PACKAGE_OUT_DIR)) return null;
+  const minSize = language === 'he-en' ? 12 : 13;
   const prefix = `pkg-${packageOrder + 1}-${slotInPackage + 1}-try`;
   const files = fs
     .readdirSync(PACKAGE_OUT_DIR)
@@ -345,8 +382,8 @@ function loadExistingSlotPuzzle(packageOrder: number, slotInPackage: number): an
     try {
       const puzzle = JSON.parse(fs.readFileSync(path.join(PACKAGE_OUT_DIR, file), 'utf8'));
       if (
-        puzzle?.grid?.rows >= 13 &&
-        puzzle?.grid?.cols >= 13 &&
+        puzzle?.grid?.rows >= minSize &&
+        puzzle?.grid?.cols >= minSize &&
         (puzzle.puzzleItems?.length ?? 0) > 0
       ) {
         return puzzle;
@@ -564,7 +601,7 @@ async function printSummary(): Promise<void> {
       .join(', ');
 
     console.log(`   ${pkg.order}. ${pkg.name.padEnd(20)} | ${String(pkg.puzzleCount).padStart(2)} puzzles | ${difficultyStr}`);
-    if (language === 'he') {
+    if (usesHebrewGrid) {
       const ordered = [...puzzles].sort((a, b) => String(a.title).localeCompare(String(b.title), 'he', { numeric: true }));
       for (const p of ordered) {
         const items = p.puzzleItems || [];
@@ -608,8 +645,8 @@ const seedPackages = async () => {
     }
 
     if (forceReplace) {
-      if (language !== 'he') {
-        throw new Error('--force is only supported for --lang he');
+      if (!usesHebrewGrid) {
+        throw new Error('--force is only supported for --lang he or --lang he-en');
       }
       console.log(`📦 Force regenerating all ${packageDefinitions.length} packages (${language})`);
       console.log('   Parallel generate first; wipe packages/progress only after all puzzles are ready.\n');

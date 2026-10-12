@@ -2,10 +2,13 @@
  * Resolves which content language a request should be served.
  *
  * Israeli users get Hebrew content. Resolution order:
- *  1. Explicit override:   ?lang=he  or  X-App-Language: he
+ *  1. Explicit override:   ?lang=he|he-en|en  or  X-App-Language
  *  2. Israeli country:     X-App-Country / X-App-Region / CDN geo header is IL
  *  3. Device language:     Accept-Language contains Hebrew ('he', or legacy 'iw')
  *  4. Default: English
+ *
+ * Note: `he-en` (English clues / Hebrew answers) is never inferred from country
+ * or Accept-Language — only from an explicit override (Hebrew app secondary packs).
  */
 
 import { Request } from 'express';
@@ -26,6 +29,7 @@ const COUNTRY_HEADERS = [
 function normalizeCode(value: string | undefined): Language | null {
   if (!value) return null;
   const code = value.trim().toLowerCase();
+  if (code === 'he-en') return 'he-en';
   if (HEBREW_CODES.has(code)) return 'he';
   if (code === 'en' || code.startsWith('en-')) return 'en';
   return null;

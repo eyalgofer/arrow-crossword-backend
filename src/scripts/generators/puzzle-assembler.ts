@@ -12,6 +12,7 @@ import { getClueProvider, ClueProvider } from '../core/clueProvider';
 const MAX_CLUE_LENGTH_BY_LANG: Record<string, number> = {
   he: 28,
   en: 50,
+  'he-en': 50,
 };
 
 /**
@@ -169,7 +170,7 @@ function pickClue(
     throw new Error(`No clue available for word "${word}" - word pool and clue database are out of sync`);
   }
   const unused = clues.filter(c => !usedClues.has(c));
-  const take = language === 'he' ? 2 : 3;
+  const take = language === 'he' || language === 'he-en' ? 2 : 3;
   const pool = (unused.length > 0 ? unused : clues).slice(0, take);
   return pool[Math.floor(Math.random() * pool.length)];
 }
