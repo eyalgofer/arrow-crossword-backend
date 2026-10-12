@@ -18,6 +18,11 @@ interface ReplayCandidate {
   source: ReplaySource;
 }
 
+/** Nicknames are UI-locale only; he-en packs use Hebrew names. */
+function nicknameLanguage(language: Language): 'en' | 'he' {
+  return language === 'he' || language === 'he-en' ? 'he' : 'en';
+}
+
 export async function startGhostMatch(
   io: Server,
   socketId: string,
@@ -60,7 +65,7 @@ export async function startGhostMatch(
   const ghostId = ghostOpponentObjectId();
   const displayName = kind === 'replay' && replay?.displayName
     ? replay.displayName
-    : await pickSolverNickname(language, user.displayName);
+    : await pickSolverNickname(nicknameLanguage(language), user.displayName);
   const opponent = {
     userId: ghostId.toString(),
     displayName,
@@ -286,7 +291,9 @@ export async function ensureSolverNickname(match: IMatch): Promise<void> {
   }
 
   const puzzle = await Puzzle.findById(match.puzzleId).select('language').lean();
-  const language: Language = puzzle?.language === 'he' ? 'he' : 'en';
+  const language = nicknameLanguage(
+    puzzle?.language === 'he' || puzzle?.language === 'he-en' ? 'he' : 'en'
+  );
   const other = match.players.find((_, playerIndex) => playerIndex !== index);
   const name = await pickSolverNickname(language, other?.displayName);
   match.players[index].displayName = name;
@@ -296,7 +303,7 @@ export async function ensureSolverNickname(match: IMatch): Promise<void> {
   );
 }
 
-async function pickSolverNickname(language: Language, avoid?: string): Promise<string> {
+async function pickSolverNickname(language: 'en' | 'he', avoid?: string): Promise<string> {
   const blocked = avoid?.trim().toLocaleLowerCase();
   let last = generateThemedNickname(language);
   for (let attempt = 0; attempt < 6; attempt++) {
