@@ -8346,7 +8346,7 @@
   {"answer":"אלמנה חיה","fillScore":2,"category":"general","clues":[{"text":"עגונה","difficulty":2,"quality":5}],"englishClues":[{"text":"Living widow","difficulty":3,"quality":4},{"text":"A woman whose husband disappeared","difficulty":3,"quality":3}]},
   {"answer":"אלן דגנרס","fillScore":2,"category":"people","clues":[{"text":"קומיקאית ומנחה אמריקאית","difficulty":2,"quality":5}]},
   {"answer":"אלן וורן","fillScore":1,"category":"people","clues":[{"text":"צלם בריטי","difficulty":3,"quality":3}]},
-  {"answer":"אלן פטון","fillScore":1,"category":"people","clues":[{"text":"סופר דרום אפריקאי","difficulty":2,"quality":4},{"text":"היה סופר דרום אפריקאי","difficulty":2,"quality":4}]},
+  {"answer":"אלן פטון","fillScore":1,"cßategory":"people","clues":[{"text":"סופר דרום אפריקאי","difficulty":2,"quality":4},{"text":"היה סופר דרום אפריקאי","difficulty":2,"quality":4}]},
   {"answer":"אלן שפרד","fillScore":2,"category":"people","clues":[{"text":"האמריקאי הראשון בחלל","difficulty":2,"quality":5}]},
   {"answer":"אלניה","fillScore":1,"category":"geography","clues":[{"text":"עיר נמל בטורקיה","difficulty":2,"quality":4},{"text":"עיר קיט בטורקיה","difficulty":2,"quality":4}]},
   {"answer":"אלעיזריה","fillScore":1,"category":"geography","clues":[{"text":"יישוב ערבי במחוז ירושלים","difficulty":2,"quality":4}]},
