@@ -3,7 +3,7 @@
  * Slice order is clockwise from 12 o'clock; equal slice odds match the face weights.
  */
 export const REWARD_SPIN_WHEEL_FACE = [
-  50, 100, 200, 50, 300, 100, 500, 50, 200, 100, 1000, 300,
+  100, 200, 300, 100, 500, 200, 300, 100, 500, 200, 1000, 300,
 ] as const;
 
 export type RewardSpinAmount = (typeof REWARD_SPIN_WHEEL_FACE)[number];

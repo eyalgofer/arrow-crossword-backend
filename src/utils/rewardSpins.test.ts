@@ -16,7 +16,7 @@ import {
 describe('reward spin wheel', () => {
   it('matches the 12-slice face order from 12 o\'clock', () => {
     assert.deepEqual([...REWARD_SPIN_WHEEL_FACE], [
-      50, 100, 200, 50, 300, 100, 500, 50, 200, 100, 1000, 300,
+      100, 200, 300, 100, 500, 200, 300, 100, 500, 200, 1000, 300,
     ]);
   });
 
@@ -26,11 +26,10 @@ describe('reward spin wheel', () => {
       counts.set(amount, (counts.get(amount) ?? 0) + 1);
     }
     assert.deepEqual(Object.fromEntries(counts), {
-      50: 3,
       100: 3,
-      200: 2,
-      300: 2,
-      500: 1,
+      200: 3,
+      300: 3,
+      500: 2,
       1000: 1,
     });
   });
