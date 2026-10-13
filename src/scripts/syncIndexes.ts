@@ -24,6 +24,7 @@ import { RefreshToken } from '../models/RefreshToken';
 import { Match } from '../models/Match';
 import { MatchWordClaim } from '../models/MatchWordClaim';
 import { Invite } from '../models/Invite';
+import { RewardSpin } from '../models/RewardSpin';
 import { connectToDatabase, closeDatabaseAndExit, handleScriptError } from './utils/scriptUtils';
 
 dotenv.config();
@@ -32,7 +33,7 @@ const syncIndexes = async () => {
   try {
     await connectToDatabase();
 
-    for (const model of [Puzzle, PuzzlePackage, DailyPuzzle, FavPuzzle, CategoryPuzzle, MultiplayerPuzzle, User, RefreshToken, Match, MatchWordClaim, Invite]) {
+    for (const model of [Puzzle, PuzzlePackage, DailyPuzzle, FavPuzzle, CategoryPuzzle, MultiplayerPuzzle, User, RefreshToken, Match, MatchWordClaim, Invite, RewardSpin]) {
       const dropped = await model.syncIndexes();
       console.log(`✅ ${model.modelName}: indexes synced${dropped.length > 0 ? ` (dropped: ${dropped.join(', ')})` : ''}`);
     }

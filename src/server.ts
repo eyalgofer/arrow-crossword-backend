@@ -14,6 +14,7 @@ import matchRoutes from './routes/matches';
 import inviteRoutes from './routes/invites';
 import groupRoutes from './routes/groups';
 import lobbyRoutes from './routes/lobbies';
+import rewardSpinRoutes from './routes/rewardSpins';
 import { setupSocketHandlers } from './sockets/gameHandler';
 import { startMatchTimeoutJob } from './jobs/matchTimeoutJob';
 import { startLobbyExpiryJob } from './jobs/lobbyExpiryJob';
@@ -155,6 +156,7 @@ app.use('/api/matches', matchRoutes);
 app.use('/api/invites', inviteRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/lobbies', lobbyRoutes);
+app.use('/api/reward-spins', rewardSpinRoutes);
 
 // 404 handler for API routes - must be before errorHandler
 app.use('/api/*', (req, res) => {
