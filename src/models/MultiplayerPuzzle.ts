@@ -19,7 +19,7 @@ const multiplayerPuzzleSchema = new Schema<IMultiplayerPuzzle>({
     type: Number,
     required: true,
     min: 0,
-    max: 99
+    max: 999
   },
   language: {
     type: String,

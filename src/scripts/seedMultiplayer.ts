@@ -366,8 +366,8 @@ const seedMultiplayer = async () => {
       ? (existing.reduce((max, row) => Math.max(max, row.index), -1) + 1)
       : 0;
 
-    if (APPEND && startIndex + TARGET_COUNT - 1 > 99) {
-      throw new Error(`Cannot add ${TARGET_COUNT} slots starting at ${startIndex} (max index 99)`);
+    if (APPEND && startIndex + TARGET_COUNT - 1 > 999) {
+      throw new Error(`Cannot add ${TARGET_COUNT} slots starting at ${startIndex} (max index 999)`);
     }
 
     let validPuzzles: GeneratedPuzzle[] = [];
