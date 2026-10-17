@@ -68,11 +68,16 @@ function main() {
   }
 
   const profile = arg('--profile', 'legacy');
+  const rowsFlag = arg('--rows');
+  const colsFlag = arg('--cols');
+  const rows = parseInt(rowsFlag ?? String(sizeArg), 10);
+  const cols = parseInt(colsFlag ?? String(sizeArg), 10);
+  const exactSize = profile === 'daily' || rowsFlag != null || colsFlag != null;
   const sizes: GridSize[] =
     sizeArg >= 13 || profile === 'daily'
-      ? [{ rows: sizeArg, cols: sizeArg }]
+      ? [{ rows, cols }]
       : IMAGE_CLUE_SIZE_LADDER;
-  const minSize = profile === 'daily' ? sizeArg : Math.max(13, sizeArg);
+  const minSize = profile === 'daily' ? Math.min(rows, cols) : Math.max(13, sizeArg);
   const catalog = loadCatalog(catalogPath);
   console.log(
     `[fav ${index}] ${profile} profile, catalog ${catalog.length}, ${images} image(s), ` +
@@ -109,8 +114,15 @@ function main() {
     });
   }
 
-  if (!puzzle || !puzzleIsReady(puzzle, images, minSize)) {
-    console.error(`[fav ${index}] FAILED`);
+  if (
+    !puzzle ||
+    !puzzleIsReady(puzzle, images, minSize) ||
+    (exactSize && (puzzle.grid.rows !== rows || puzzle.grid.cols !== cols))
+  ) {
+    console.error(
+      `[fav ${index}] FAILED` +
+        (puzzle ? ` got ${puzzle.grid.rows}x${puzzle.grid.cols}, want ${rows}x${cols}` : '')
+    );
     process.exit(1);
   }
 

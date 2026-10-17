@@ -6,6 +6,7 @@
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 14 --start 2026-09-16
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 7 --from-tomorrow
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 7 --from-tomorrow --size 14 --images 2 --fresh
+ *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 2 --start 2026-10-19 --rows 14 --cols 13 --images 2 --fresh
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 7 --from-tomorrow --legacy   # old generator
  *
  * Default is the daily profile: framed two-clue layout, scored fill, answers/clues from the
@@ -20,6 +21,7 @@ import path from 'path';
 import { Puzzle } from '../models/Puzzle';
 import { DailyPuzzle } from '../models/DailyPuzzle';
 import { FavPuzzle } from '../models/FavPuzzle';
+import { MultiplayerPuzzle } from '../models/MultiplayerPuzzle';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { validatePuzzleBoundaries } from './validatePuzzleBoundaries';
 import { calendarDailyKey } from '../utils/dailyClock';
@@ -75,13 +77,14 @@ function argValue(name: string, fallback?: string): string | undefined {
 }
 
 const FORCE_SIZE = argValue('--size') ? Number(argValue('--size')) : undefined;
+const FORCE_ROWS = argValue('--rows') ? Number(argValue('--rows')) : FORCE_SIZE;
+const FORCE_COLS = argValue('--cols') ? Number(argValue('--cols')) : FORCE_SIZE;
 const FORCE_IMAGES = argValue('--images') ? Number(argValue('--images')) : undefined;
 const FALLBACK_PRESETS: Array<{ size: 14 | 15; images: number }> =
-  FORCE_SIZE && FORCE_IMAGES
-    ? [{ size: FORCE_SIZE as 14 | 15, images: FORCE_IMAGES }]
+  FORCE_IMAGES
+    ? [{ size: (FORCE_SIZE ?? 14) as 14 | 15, images: FORCE_IMAGES }]
     : DEFAULT_PRESETS;
-/** When --size/--images set, accept only exact matches; otherwise allow mixed presets. */
-const STRICT_SIZE = FORCE_SIZE;
+/** When --images is set, accept only that image count; otherwise allow mixed presets. */
 const STRICT_IMAGES = FORCE_IMAGES;
 const TARGET_SIZE = FORCE_SIZE ?? 14;
 const TARGET_IMAGES = FORCE_IMAGES ?? 2;
@@ -166,16 +169,18 @@ function puzzleIsReady(puzzle: GeneratedPuzzle, minImages: number, minSize: numb
   );
 }
 
-/** Exclude image answers already shown in any Hebrew daily or favorite. */
+/** Exclude image answers already shown on a Hebrew daily, favorite, or multiplayer board. */
 async function loadUsedImageAnswers(): Promise<Set<string>> {
-  const [dailies, favs] = await Promise.all([
+  const [dailies, favs, multiplayer] = await Promise.all([
     DailyPuzzle.find({ language: LANGUAGE }).lean(),
     FavPuzzle.find({ language: LANGUAGE }).lean(),
+    MultiplayerPuzzle.find({ language: LANGUAGE }).lean(),
   ]);
 
   const ids = [
     ...dailies.map((row) => row.puzzleId),
     ...favs.map((row) => row.puzzleId),
+    ...multiplayer.map((row) => row.puzzleId),
   ].filter(Boolean);
 
   const linked = ids.length ? await Puzzle.find({ _id: { $in: ids } }).lean() : [];
@@ -230,7 +235,8 @@ function runWorker(
   index: number,
   catalogPath: string,
   outPath: string,
-  size: number,
+  rows: number,
+  cols: number,
   images: number
 ): Promise<GeneratedPuzzle | null> {
   return new Promise((resolve) => {
@@ -250,7 +256,11 @@ function runWorker(
         '--index',
         String(index),
         '--size',
-        String(size),
+        String(Math.min(rows, cols)),
+        '--rows',
+        String(rows),
+        '--cols',
+        String(cols),
         ...(LEGACY ? [] : ['--profile', 'daily', '--recent', RECENT_FILE]),
       ],
       { cwd: ROOT, stdio: 'inherit' }
@@ -262,7 +272,11 @@ function runWorker(
       }
       try {
         const puzzle = JSON.parse(fs.readFileSync(outPath, 'utf8')) as GeneratedPuzzle;
-        resolve(puzzleIsReady(puzzle, images, size) ? puzzle : null);
+        const ready =
+          puzzleIsReady(puzzle, images, Math.min(rows, cols)) &&
+          puzzle.grid?.rows === rows &&
+          puzzle.grid?.cols === cols;
+        resolve(ready ? puzzle : null);
       } catch {
         resolve(null);
       }
@@ -285,13 +299,16 @@ async function generateDailies(
   const accept = (puzzle: GeneratedPuzzle, label: string): boolean => {
     const answers = imageAnswers(puzzle);
     const minImages = STRICT_IMAGES ?? 2;
-    if (answers.length < minImages) return false;
+    if (STRICT_IMAGES != null ? answers.length !== STRICT_IMAGES : answers.length < minImages) {
+      return false;
+    }
     if (
-      STRICT_SIZE != null &&
-      (puzzle.grid?.rows !== STRICT_SIZE || puzzle.grid?.cols !== STRICT_SIZE)
+      FORCE_ROWS != null &&
+      FORCE_COLS != null &&
+      (puzzle.grid?.rows !== FORCE_ROWS || puzzle.grid?.cols !== FORCE_COLS)
     ) {
       console.log(
-        `♻️  Skipping ${label}: want ${STRICT_SIZE}x${STRICT_SIZE}, got ${puzzle.grid?.rows}x${puzzle.grid?.cols}`
+        `♻️  Skipping ${label}: want ${FORCE_ROWS}x${FORCE_COLS}, got ${puzzle.grid?.rows}x${puzzle.grid?.cols}`
       );
       return false;
     }
@@ -331,8 +348,12 @@ async function generateDailies(
           fs.readFileSync(path.join(OUT_DIR, file), 'utf8')
         ) as GeneratedPuzzle;
         const minImgs = STRICT_IMAGES ?? 2;
-        const minSize = STRICT_SIZE ?? 14;
-        if (puzzleIsReady(puzzle, minImgs, minSize)) {
+        const minSize = Math.min(FORCE_ROWS ?? 14, FORCE_COLS ?? 14);
+        const sizeOk =
+          FORCE_ROWS == null ||
+          FORCE_COLS == null ||
+          (puzzle.grid?.rows === FORCE_ROWS && puzzle.grid?.cols === FORCE_COLS);
+        if (sizeOk && puzzleIsReady(puzzle, minImgs, minSize)) {
           accept(puzzle, file);
         }
       } catch {
@@ -376,14 +397,16 @@ async function generateDailies(
       while (collected.length < target && inFlight < PARALLEL && launched < MAX_LAUNCHES) {
         const index = nextIndex++;
         const preset = FALLBACK_PRESETS[launched % FALLBACK_PRESETS.length];
+        const rows = FORCE_ROWS ?? preset.size;
+        const cols = FORCE_COLS ?? preset.size;
         launched += 1;
         inFlight += 1;
         const outPath = path.join(OUT_DIR, `daily-${index}.json`);
         console.log(
-          `—— Launch daily-${index}: ${preset.size}×${preset.size}, ${preset.images} image(s) ` +
+          `—— Launch daily-${index}: ${rows}×${cols}, ${preset.images} image(s) ` +
             `(in-flight ${inFlight}, have ${collected.length}/${target}) ——`
         );
-        runWorker(index, catalogPath, outPath, preset.size, preset.images)
+        runWorker(index, catalogPath, outPath, rows, cols, preset.images)
           .then((puzzle) => {
             inFlight -= 1;
             if (puzzle) accept(puzzle, `daily-${index}`);
@@ -465,7 +488,7 @@ const main = async () => {
         `(excluded ${usedImages.size} previously shown; mongo ${mongoCatalog.length} + local ${localCatalog.length})`
     );
     console.log(
-      `📅 Generating ${COUNT} Hebrew dailies: ${TARGET_SIZE}×${TARGET_SIZE}, ${TARGET_IMAGES} image(s), ` +
+      `📅 Generating ${COUNT} Hebrew dailies: ${FORCE_ROWS ?? TARGET_SIZE}×${FORCE_COLS ?? TARGET_SIZE}, ${TARGET_IMAGES} image(s), ` +
         `${startDay.toLocaleDateString()} → ${lastDay.toLocaleDateString()}\n`
     );
 
