@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { Server, Socket } from 'socket.io';
 import { RANDOM_MATCH_SEARCH_MS } from '../constants/match';
+import { RANDOM_QUEUE_STAKE } from '../constants/stakes';
 import { User } from '../models/User';
 import { Match } from '../models/Match';
 import { activeGames } from './activeGames';
@@ -9,6 +10,17 @@ import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
 import { createMatchTiming, serializeTimingFields } from '../utils/matchTiming';
 import { startGhostMatch } from '../services/ghostMatch';
 import { notifyRandomPlaySearch } from '../services/slack';
+import { InsufficientCoinsError, insufficientCoinsBody } from '../services/prizeEscrow';
+import { headlinePot } from '../services/prizeSettlement';
+import {
+  claimSearchHolds,
+  claimedBoostsFromHolds,
+  openSearchHold,
+  refundSearchHold,
+  refundSearchHoldByFirebase,
+  releaseMatchedHolds
+} from '../services/matchmakingHold';
+import { parseRandomStake } from '../utils/stakes';
 
 interface SearchSocket extends Socket {
   userId?: string;
@@ -22,6 +34,7 @@ interface WaitingPlayer {
   displayName: string;
   photoURL?: string;
   language: Language;
+  coins: number;
 }
 
 const waitingPlayers = new Map<string, WaitingPlayer>();
@@ -33,13 +46,24 @@ const searchTokens = new Map<string, object>();
  * enough people are searching at once; a pair always starts a normal timed match.
  * If nobody else arrives, the search falls back to a replay or a paced solver.
  */
-export async function handleFindMatch(io: Server, socket: SearchSocket): Promise<void> {
+export async function handleFindMatch(
+  io: Server,
+  socket: SearchSocket,
+  payload?: { stake?: unknown }
+): Promise<void> {
   const firebaseUid = socket.userId;
   if (!firebaseUid) {
     socket.emit('error', { message: 'User not found' });
     return;
   }
 
+  const stake = parseRandomStake(payload?.stake);
+  if (!stake.ok) {
+    socket.emit('error', { message: stake.error });
+    return;
+  }
+
+  let queued = false;
   try {
     if (waitingPlayers.has(firebaseUid)) {
       socket.emit('error', { message: 'Already in matchmaking queue' });
@@ -64,13 +88,21 @@ export async function handleFindMatch(io: Server, socket: SearchSocket): Promise
       return;
     }
 
+    const held = await openSearchHold({
+      userId: user._id.toString(),
+      firebaseUid,
+      stake: stake.stake
+    });
+    queued = true;
+
     const entry: WaitingPlayer = {
       firebaseUid,
       userId: user._id.toString(),
       socketId: socket.id,
       displayName: user.displayName,
       photoURL: user.photoURL,
-      language: socket.language ?? DEFAULT_LANGUAGE
+      language: socket.language ?? DEFAULT_LANGUAGE,
+      coins: held.coins
     };
     waitingPlayers.set(firebaseUid, entry);
     void notifyRandomPlaySearch({
@@ -90,22 +122,34 @@ export async function handleFindMatch(io: Server, socket: SearchSocket): Promise
     armSearchTimer(io, entry);
     socket.emit('searching', {
       message: 'Searching for opponent...',
-      searchMs: RANDOM_MATCH_SEARCH_MS
+      searchMs: RANDOM_MATCH_SEARCH_MS,
+      coins: held.coins
     });
   } catch (error) {
     console.error('Find match error:', error);
-    if (firebaseUid) {
+    if (firebaseUid && queued) {
       leaveQueue(firebaseUid);
+      await refundSearchHoldByFirebase(firebaseUid);
+    }
+    if (error instanceof InsufficientCoinsError) {
+      socket.emit('error', insufficientCoinsBody(error));
+      return;
     }
     socket.emit('error', { message: 'Failed to find match' });
   }
 }
 
-export function cancelRandomSearch(firebaseUid?: string): void {
+export async function releaseRandomSearch(firebaseUid?: string): Promise<number | null> {
   if (!firebaseUid) {
-    return;
+    return null;
   }
   leaveQueue(firebaseUid);
+  return refundSearchHoldByFirebase(firebaseUid);
+}
+
+/** @deprecated Use releaseRandomSearch so a queue escrow is refunded. */
+export function cancelRandomSearch(firebaseUid?: string): void {
+  void releaseRandomSearch(firebaseUid);
 }
 
 function findOpponent(entry: WaitingPlayer): WaitingPlayer | undefined {
@@ -159,11 +203,15 @@ async function fallbackToGhost(io: Server, entry: WaitingPlayer, token: object):
 
   const stillSearching = () => searchTokens.get(entry.firebaseUid) === token;
   try {
+    const refunded = await refundSearchHold(current.userId);
+    if (!stillSearching()) {
+      return;
+    }
     await startGhostMatch(io, current.socketId, {
       _id: new mongoose.Types.ObjectId(current.userId),
       displayName: current.displayName,
       photoURL: current.photoURL
-    }, current.language, stillSearching);
+    }, current.language, stillSearching, refunded ?? undefined);
   } catch (error) {
     console.error('Ghost match error:', error);
     if (stillSearching()) {
@@ -181,9 +229,27 @@ async function startLiveMatch(io: Server, a: WaitingPlayer, b: WaitingPlayer): P
     io.sockets.sockets.get(player.socketId)?.emit('error', { message });
   };
 
+  let holds;
+  try {
+    holds = await claimSearchHolds([a.userId, b.userId]);
+  } catch (error) {
+    console.error('Live match error:', error);
+    notify(a, 'Failed to find match');
+    notify(b, 'Failed to find match');
+    return;
+  }
+  if (!holds) {
+    notify(a, 'Failed to find match');
+    notify(b, 'Failed to find match');
+    return;
+  }
+
+  const coinsByUser = new Map(holds.map(hold => [hold.userId.toString(), hold.coins]));
+  let matchId: string | null = null;
   try {
     const picked = await pickMultiplayerPuzzle(a.language);
     if (!picked) {
+      await releaseMatchedHolds(holds);
       notify(a, 'No multiplayer puzzles configured');
       notify(b, 'No multiplayer puzzles configured');
       return;
@@ -192,6 +258,8 @@ async function startLiveMatch(io: Server, a: WaitingPlayer, b: WaitingPlayer): P
     const settings = { mode: MatchMode.NORMAL, timed: true as const };
     const timing = createMatchTiming(settings);
     const players = [a, b];
+    const boosts = claimedBoostsFromHolds(holds);
+    const boostTotal = boosts.reduce((sum, boost) => sum + boost.amount, 0);
     const match = new Match({
       players: players.map(player => ({
         userId: player.userId,
@@ -208,12 +276,16 @@ async function startLiveMatch(io: Server, a: WaitingPlayer, b: WaitingPlayer): P
       durationSeconds: timing.durationSeconds,
       endsAt: timing.endsAt,
       status: MatchStatus.IN_PROGRESS,
-      opponentKind: 'live'
+      opponentKind: 'live',
+      stake: RANDOM_QUEUE_STAKE,
+      pot: headlinePot(RANDOM_QUEUE_STAKE, boostTotal),
+      boosts
     });
     await match.save();
+    matchId = match._id.toString();
 
     const gameState: GameState = {
-      matchId: match._id.toString(),
+      matchId,
       players: players.map(player => ({
         userId: player.userId,
         displayName: player.displayName,
@@ -228,7 +300,7 @@ async function startLiveMatch(io: Server, a: WaitingPlayer, b: WaitingPlayer): P
       mode: settings.mode,
       ...timing
     };
-    activeGames.set(match._id.toString(), gameState);
+    activeGames.set(matchId, gameState);
 
     for (const player of players) {
       const playerSocket = io.sockets.sockets.get(player.socketId);
@@ -236,7 +308,7 @@ async function startLiveMatch(io: Server, a: WaitingPlayer, b: WaitingPlayer): P
         continue;
       }
       const opponent = players.find(other => other.userId !== player.userId);
-      playerSocket.join(match._id.toString());
+      playerSocket.join(matchId);
       playerSocket.emit('match_found', {
         matchId: match._id,
         puzzle: picked.puzzle,
@@ -247,11 +319,17 @@ async function startLiveMatch(io: Server, a: WaitingPlayer, b: WaitingPlayer): P
         } : null,
         opponentKind: 'live',
         mode: settings.mode,
+        stake: RANDOM_QUEUE_STAKE,
+        coins: coinsByUser.get(player.userId),
         ...serializeTimingFields(timing)
       });
     }
   } catch (error) {
     console.error('Live match error:', error);
+    if (matchId) {
+      await Match.deleteOne({ _id: matchId }).catch(() => undefined);
+    }
+    await releaseMatchedHolds(holds);
     notify(a, 'Failed to find match');
     notify(b, 'Failed to find match');
   }

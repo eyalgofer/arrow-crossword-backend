@@ -32,7 +32,8 @@ export async function startGhostMatch(
     photoURL?: string;
   },
   language: Language,
-  stillSearching: () => boolean = () => true
+  stillSearching: () => boolean = () => true,
+  coins?: number
 ): Promise<void> {
   const socket = io.sockets.sockets.get(socketId);
   const fail = (message: string) => {
@@ -98,6 +99,9 @@ export async function startGhostMatch(
     endsAt: timing.endsAt,
     status: MatchStatus.IN_PROGRESS,
     opponentKind: kind,
+    stake: 0,
+    pot: 0,
+    boosts: [],
     ghostEvents: schedule,
     ghostApplied: 0
   });
@@ -118,6 +122,9 @@ export async function startGhostMatch(
     opponent,
     opponentKind: kind,
     mode: settings.mode,
+    stake: 0,
+    pot: 0,
+    ...(coins == null ? {} : { coins }),
     ...serializeTimingFields(timing)
   });
 

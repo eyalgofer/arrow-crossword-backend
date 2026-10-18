@@ -12,14 +12,25 @@ export interface ILobbySeat {
   isHost: boolean;
 }
 
+export type BoostStatus = 'pending' | 'claimed';
+
+export interface ILobbyBoost {
+  _id?: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
+  amount: number;
+  status: BoostStatus;
+}
+
 export interface ILobby extends Document {
   hostId: mongoose.Types.ObjectId;
   groupId?: mongoose.Types.ObjectId | null;
   status: LobbyStatus;
   mode: MatchMode;
   timed: boolean;
+  stake: number;
   language: Language;
   seats: ILobbySeat[];
+  boosts: ILobbyBoost[];
   matchId?: mongoose.Types.ObjectId | null;
   expiresAt: Date;
   createdAt: Date;
@@ -37,6 +48,16 @@ const seatSchema = new Schema<ILobbySeat>({
   },
   isHost: { type: Boolean, required: true }
 }, { _id: false });
+
+const boostSchema = new Schema<ILobbyBoost>({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  amount: { type: Number, required: true },
+  status: {
+    type: String,
+    enum: ['pending', 'claimed'],
+    required: true
+  }
+});
 
 const lobbySchema = new Schema<ILobby>({
   hostId: {
@@ -65,6 +86,10 @@ const lobbySchema = new Schema<ILobby>({
     type: Boolean,
     required: true
   },
+  stake: {
+    type: Number,
+    default: 0
+  },
   language: {
     type: String,
     enum: ['en', 'he', 'he-en'],
@@ -73,6 +98,10 @@ const lobbySchema = new Schema<ILobby>({
   seats: {
     type: [seatSchema],
     required: true
+  },
+  boosts: {
+    type: [boostSchema],
+    default: []
   },
   matchId: {
     type: Schema.Types.ObjectId,

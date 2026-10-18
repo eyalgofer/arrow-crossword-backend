@@ -14,12 +14,14 @@ import matchRoutes from './routes/matches';
 import inviteRoutes from './routes/invites';
 import groupRoutes from './routes/groups';
 import lobbyRoutes from './routes/lobbies';
+import matchmakingRoutes from './routes/matchmaking';
 import rewardSpinRoutes from './routes/rewardSpins';
 import { setupSocketHandlers } from './sockets/gameHandler';
 import { startMatchTimeoutJob } from './jobs/matchTimeoutJob';
 import { startLobbyExpiryJob } from './jobs/lobbyExpiryJob';
 import { startOvernightDailyPrizeJob } from './jobs/overnightDailyPrizeJob';
 import { startGhostTicker } from './services/ghostMatch';
+import { refundAllSearchingHolds } from './services/matchmakingHold';
 import './models/MatchWordClaim';
 
 dotenv.config();
@@ -156,6 +158,7 @@ app.use('/api/matches', matchRoutes);
 app.use('/api/invites', inviteRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/lobbies', lobbyRoutes);
+app.use('/api/matchmaking', matchmakingRoutes);
 app.use('/api/reward-spins', rewardSpinRoutes);
 
 // 404 handler for API routes - must be before errorHandler
@@ -169,6 +172,9 @@ const startServer = async () => {
   try {
     await connectDatabase();
     console.log('✅ MongoDB connected');
+
+    await refundAllSearchingHolds();
+    console.log('✅ Leftover matchmaking holds refunded');
 
     setupSocketHandlers(io);
     console.log('✅ Socket.io configured');

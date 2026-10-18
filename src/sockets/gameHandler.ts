@@ -11,7 +11,7 @@ import { getMatchTimingFields, serializeTimingFields } from '../utils/matchTimin
 import { isQuickMatch } from '../utils/matchSettings';
 import { isGhostKind } from '../utils/ghost';
 import { advanceGhostMatch, ensureSolverNickname } from '../services/ghostMatch';
-import { cancelRandomSearch, handleFindMatch } from './randomQueue';
+import { releaseRandomSearch, handleFindMatch } from './randomQueue';
 import { activeGames } from './activeGames';
 import { registerLobbyHandlers } from './lobbyHandler';
 import { groupSessionFields } from '../services/matchView';
@@ -97,13 +97,14 @@ export const setupSocketHandlers = (io: Server) => {
 
     registerLobbyHandlers(socket);
 
-    socket.on('find_match', () => {
-      void handleFindMatch(io, socket);
+    socket.on('find_match', (payload?: { stake?: unknown }) => {
+      void handleFindMatch(io, socket, payload);
     });
 
     socket.on('cancel_matchmaking', () => {
-      cancelRandomSearch(socket.userId);
-      socket.emit('matchmaking_cancelled');
+      void releaseRandomSearch(socket.userId).then(coins => {
+        socket.emit('matchmaking_cancelled', coins == null ? {} : { coins });
+      });
     });
 
     // Join a match room (for friend invites)
@@ -580,7 +581,7 @@ export const setupSocketHandlers = (io: Server) => {
     // Disconnect
     socket.on('disconnect', () => {
       console.log(`User disconnected: ${socket.userId} (socket: ${socket.id})`);
-      cancelRandomSearch(socket.userId);
+      void releaseRandomSearch(socket.userId);
       
       // Remove socket from tracking
       if (socket.userId && userSockets.has(socket.userId)) {

@@ -11,6 +11,17 @@ export interface IMatchPlayer {
   left?: boolean;
 }
 
+export interface IMatchBoost {
+  userId: mongoose.Types.ObjectId;
+  amount: number;
+}
+
+export interface IMatchSettlement {
+  userId: mongoose.Types.ObjectId;
+  coinsDelta: number;
+  coins: number;
+}
+
 export interface IMatch extends Document {
   kind?: 'duel' | 'group';
   groupId?: mongoose.Types.ObjectId | null;
@@ -21,6 +32,11 @@ export interface IMatch extends Document {
   claimedWords: ClaimedWord[];
   mode: MatchMode;
   timed: boolean;
+  stake: number;
+  pot: number;
+  boosts: IMatchBoost[];
+  settlement: IMatchSettlement[];
+  prizeSettled: boolean;
   winnerId?: mongoose.Types.ObjectId | null;
   startedAt?: Date;
   durationSeconds?: number | null;
@@ -91,6 +107,33 @@ const matchSchema = new Schema<IMatch>({
   timed: {
     type: Boolean,
     default: true
+  },
+  stake: {
+    type: Number,
+    default: 0
+  },
+  pot: {
+    type: Number,
+    default: 0
+  },
+  boosts: {
+    type: [{
+      userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+      amount: { type: Number, required: true }
+    }],
+    default: []
+  },
+  settlement: {
+    type: [{
+      userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+      coinsDelta: { type: Number, required: true },
+      coins: { type: Number, required: true }
+    }],
+    default: []
+  },
+  prizeSettled: {
+    type: Boolean,
+    default: false
   },
   winnerId: {
     type: Schema.Types.ObjectId,

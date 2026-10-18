@@ -16,10 +16,20 @@ export async function emitLobbyUpdated(io: Server, lobby: ILobby): Promise<void>
 export async function emitLobbyStarted(
   io: Server,
   lobby: ILobby,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  coinsByUserId: Record<string, number>
 ): Promise<void> {
   const joined = lobby.seats.filter(seat => seat.status === 'joined');
-  await emitToUserRooms(io, joined, 'lobby_started', payload);
+  const users = await User.find({
+    _id: { $in: joined.map(seat => seat.userId) }
+  }).select('firebaseUid');
+
+  for (const user of users) {
+    io.to(`user:${user.firebaseUid}`).emit('lobby_started', {
+      ...payload,
+      coins: coinsByUserId[user._id.toString()]
+    });
+  }
 }
 
 export async function emitLobbyCancelled(io: Server, lobby: ILobby): Promise<void> {

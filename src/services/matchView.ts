@@ -75,7 +75,8 @@ export function applyMatchReadFields<T extends object>(
   clientIds?: ReadonlyMap<string, string> | null
 ): T & GroupReadFields {
   const kind = resolveMatchKind(match);
-  const next: T & GroupReadFields = { ...payload, kind };
+  const priced = withPublicPrize(payload, clientIds);
+  const next: T & GroupReadFields = { ...priced, kind };
   if (kind !== 'group') {
     return next;
   }
@@ -141,6 +142,38 @@ export async function applyMatchReadFieldsForClient<T extends object>(
     ? await loadClientUserIds(match.players.map(player => player.userId))
     : null;
   return applyMatchReadFields(payload, match, viewerId, clientIds);
+}
+
+function withPublicPrize<T extends object>(
+  payload: T,
+  clientIds?: ReadonlyMap<string, string> | null
+): T {
+  const source = payload as T & {
+    stake?: number;
+    pot?: number;
+    prizeSettled?: boolean;
+    settlement?: Array<{ userId: unknown; coinsDelta: number; coins: number }>;
+  };
+  const idOf = (id: unknown) => clientIds ? clientUserId(id, clientIds) : String(id ?? '');
+  const next = {
+    ...source,
+    stake: source.stake ?? 0,
+    pot: source.pot ?? 0
+  } as T & {
+    prizeSettled?: boolean;
+    settlement?: Array<{ userId: string; coinsDelta: number; coins: number }>;
+  };
+  delete next.prizeSettled;
+  if (source.prizeSettled && Array.isArray(source.settlement)) {
+    next.settlement = source.settlement.map(row => ({
+      userId: idOf(row.userId),
+      coinsDelta: row.coinsDelta,
+      coins: row.coins
+    }));
+  } else {
+    delete next.settlement;
+  }
+  return next as T;
 }
 
 function populatedUser(userId: unknown): { displayName?: string; photoURL?: string } | null {

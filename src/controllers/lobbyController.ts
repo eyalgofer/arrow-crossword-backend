@@ -10,6 +10,10 @@ import { resolveLanguage } from '../utils/language';
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
 import { createMatchTiming, serializeTimingFields } from '../utils/matchTiming';
 import { parseMatchSettings } from '../utils/matchSettings';
+import { parseMatchStake } from '../utils/stakes';
+import { POT_BOOST_AMOUNT } from '../constants/stakes';
+import { escrowPlayers, InsufficientCoinsError, insufficientCoinsBody, refundUsers } from '../services/prizeEscrow';
+import { headlinePot } from '../services/prizeSettlement';
 import { canonicalUserId, resolveInviteeIds, validateMemberIds } from '../services/groupRoster';
 import { isMultiplayerPlayer } from '../services/guestAuth';
 import {
@@ -52,6 +56,11 @@ export const createLobby = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: settings.error });
     }
 
+    const stake = parseMatchStake(req.body?.stake);
+    if (!stake.ok) {
+      return res.status(400).json({ error: stake.error });
+    }
+
     let groupId: mongoose.Types.ObjectId | null = null;
     if (req.body?.groupId) {
       const canonicalGroupId = canonicalUserId(req.body.groupId);
@@ -85,6 +94,7 @@ export const createLobby = async (req: AuthRequest, res: Response) => {
       status: 'waiting',
       mode: settings.settings.mode,
       timed: settings.settings.timed,
+      stake: stake.stake,
       language: resolveLanguage(req),
       expiresAt: lobbyExpiresAt(),
       seats: [
@@ -189,6 +199,8 @@ export const respondToLobby = async (req: AuthRequest, res: Response) => {
 export const startLobby = async (req: AuthRequest, res: Response) => {
   let matchId: string | null = null;
   let published = false;
+  let refundIds: string[] = [];
+  let refundStake = 0;
 
   try {
     const host = await User.findOne({ firebaseUid: req.user!.uid });
@@ -230,6 +242,26 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
     const settings = parseMatchSettings({ mode: loaded.mode, timed: loaded.timed });
     const timing = createMatchTiming(settings);
     const joined = loaded.seats.filter(seat => seat.status === 'joined');
+    const stake = loaded.stake ?? 0;
+    const claimedBoosts = (loaded.boosts ?? []).filter(boost => boost.status === 'claimed');
+    const boostTotal = claimedBoosts.reduce((sum, boost) => sum + boost.amount, 0);
+    refundIds = joined.map(seat => seat.userId.toString());
+    refundStake = stake;
+
+    let balances: Record<string, number>;
+    try {
+      balances = await escrowPlayers(
+        refundIds.map(userId => ({ userId, stake })),
+        host._id.toString()
+      );
+    } catch (error) {
+      refundIds = [];
+      if (error instanceof InsufficientCoinsError) {
+        return res.status(402).json(insufficientCoinsBody(error));
+      }
+      throw error;
+    }
+
     const match = await Match.create({
       kind: 'group',
       groupId: loaded.groupId ?? undefined,
@@ -249,7 +281,13 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
       durationSeconds: timing.durationSeconds,
       endsAt: timing.endsAt,
       status: MatchStatus.IN_PROGRESS,
-      opponentKind: 'live'
+      opponentKind: 'live',
+      stake,
+      pot: headlinePot(stake, boostTotal),
+      boosts: claimedBoosts.map(boost => ({
+        userId: boost.userId,
+        amount: boost.amount
+      }))
     });
     matchId = match._id.toString();
 
@@ -261,9 +299,12 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
     if (!started) {
       await Match.deleteOne({ _id: match._id });
       matchId = null;
+      await refundUsers(refundIds, refundStake);
+      refundIds = [];
       return res.status(409).json({ error: 'Lobby already started or cancelled' });
     }
     published = true;
+    refundIds = [];
 
     if (started.groupId) {
       await Group.updateOne(
@@ -279,6 +320,7 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
       matchId: match._id.toString(),
       puzzleId: picked.puzzleId.toString(),
       mode: settings.mode,
+      stake,
       ...serializeTimingFields(timing),
       players: joined.map(seat => ({
         userId: clientUserId(seat.userId, clientIds),
@@ -287,14 +329,20 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
       }))
     };
 
-    await emitLobbyStarted(io, started, payload);
+    await emitLobbyStarted(io, started, payload, balances);
     await emitLobbyUpdated(io, started);
     pushLobbyStarted(started, match._id.toString());
 
-    return res.json(payload);
+    return res.json({
+      ...payload,
+      coins: balances[host._id.toString()]
+    });
   } catch (error) {
     if (matchId && !published) {
       await Match.deleteOne({ _id: matchId }).catch(() => undefined);
+    }
+    if (!published && refundStake > 0) {
+      await refundUsers(refundIds, refundStake);
     }
     console.error('Start lobby error:', error);
     return res.status(500).json({ error: 'Failed to start lobby' });
@@ -332,6 +380,88 @@ export const cancelLobby = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Cancel lobby error:', error);
     return res.status(500).json({ error: 'Failed to cancel lobby' });
+  }
+};
+
+export const createLobbyBoost = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = await User.findOne({ firebaseUid: req.user!.uid });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const loaded = await loadWaitingLobby(req.params.id);
+    if (loaded === 'missing') {
+      return res.status(404).json({ error: 'Lobby not found' });
+    }
+    if (loaded === 'closed') {
+      return res.status(400).json({ error: 'Lobby is not waiting' });
+    }
+    if (loaded === 'expired') {
+      return res.status(400).json({ error: 'Lobby expired' });
+    }
+
+    const seat = loaded.seats.find(candidate => candidate.userId.toString() === user._id.toString());
+    if (!seat || seat.status === 'declined' || seat.status === 'left') {
+      return res.status(403).json({ error: 'Only lobby players can sweeten the pot' });
+    }
+
+    const existing = (loaded.boosts ?? []).find(boost => boost.userId.toString() === user._id.toString());
+    if (existing?._id) {
+      return res.json({ boostId: existing._id.toString(), amount: existing.amount });
+    }
+
+    const boostId = new mongoose.Types.ObjectId();
+    loaded.boosts = loaded.boosts ?? [];
+    loaded.boosts.push({
+      _id: boostId,
+      userId: user._id,
+      amount: POT_BOOST_AMOUNT,
+      status: 'pending'
+    });
+    await loaded.save();
+    await emitLobbyUpdated(io, loaded);
+
+    return res.json({ boostId: boostId.toString(), amount: POT_BOOST_AMOUNT });
+  } catch (error) {
+    console.error('Create lobby boost error:', error);
+    return res.status(500).json({ error: 'Failed to create boost' });
+  }
+};
+
+export const claimLobbyBoost = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = await User.findOne({ firebaseUid: req.user!.uid });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const loaded = await loadWaitingLobby(req.params.id);
+    if (loaded === 'missing') {
+      return res.status(404).json({ error: 'Lobby not found' });
+    }
+    if (loaded === 'closed') {
+      return res.status(400).json({ error: 'Lobby is not waiting' });
+    }
+    if (loaded === 'expired') {
+      return res.status(400).json({ error: 'Lobby expired' });
+    }
+
+    const boost = (loaded.boosts ?? []).find(candidate => candidate._id?.toString() === req.params.boostId);
+    if (!boost || boost.userId.toString() !== user._id.toString()) {
+      return res.status(404).json({ error: 'Boost not found' });
+    }
+
+    if (boost.status !== 'claimed') {
+      boost.status = 'claimed';
+      await loaded.save();
+      await emitLobbyUpdated(io, loaded);
+    }
+
+    return res.json({ lobby: await serializeLobbyForClient(loaded) });
+  } catch (error) {
+    console.error('Claim lobby boost error:', error);
+    return res.status(500).json({ error: 'Failed to claim boost' });
   }
 };
 

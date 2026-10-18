@@ -17,6 +17,7 @@ export interface IInvite extends Document {
   mode: MatchMode;
   timed: boolean;
   durationSeconds?: number | null;
+  stake: number;
   createdAt: Date;
   updatedAt: Date;
   respondedAt?: Date;
@@ -58,6 +59,10 @@ const inviteSchema = new Schema<IInvite>({
   durationSeconds: {
     type: Number,
     default: null
+  },
+  stake: {
+    type: Number,
+    default: 0
   },
   respondedAt: {
     type: Date

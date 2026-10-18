@@ -1,9 +1,8 @@
 import { Server } from 'socket.io';
 import mongoose from 'mongoose';
-import { Match, IMatch } from '../models/Match';
+import { Match, IMatch, IMatchSettlement } from '../models/Match';
 import { User } from '../models/User';
 import { MatchCompletionReason, MatchMode, MatchStatus } from '../types';
-import { MATCH_REWARD_COINS } from '../constants/match';
 import { isMatchTimedOut } from '../utils/matchTiming';
 import { removeActiveGame } from '../sockets/activeGames';
 import { isBoardFullyClaimed, serializeClaimedWords, winnerIdFromClaimedCount } from './wordClaims';
@@ -11,6 +10,7 @@ import { isQuickMatch } from '../utils/matchSettings';
 import { isGhostOpponentId } from '../utils/ghost';
 import { buildPlacements, Placement, placementsForMatch, winnerIdFromPlacements } from './placements';
 import { clientIdsForMatch, clientUserId } from './lobbyView';
+import { settlePrize } from './prizeSettlement';
 
 export interface MatchCompletedPlayer {
   userId: string;
@@ -20,15 +20,27 @@ export interface MatchCompletedPlayer {
   left?: boolean;
 }
 
+export interface PublicSettlement {
+  userId: string;
+  coinsDelta: number;
+  coins: number;
+}
+
 export interface MatchCompletedPayload {
   winnerId: string | null;
   reason: MatchCompletionReason;
   mode: MatchMode;
+  stake: number;
+  pot: number;
+  settlement: PublicSettlement[];
   placements?: Placement[];
   match: {
     _id: string;
     winnerId: string | null;
     mode: MatchMode;
+    stake: number;
+    pot: number;
+    settlement: PublicSettlement[];
     players: MatchCompletedPlayer[];
     claimedWords: ReturnType<typeof serializeClaimedWords>;
   };
@@ -89,14 +101,21 @@ export function buildMatchCompletedPayload(
     return row;
   });
 
+  const settlement = publicSettlement(match, idOf);
   const payload: MatchCompletedPayload = {
     winnerId,
     reason,
     mode,
+    stake: match.stake ?? 0,
+    pot: match.pot ?? 0,
+    settlement,
     match: {
       _id: match._id.toString(),
       winnerId,
       mode,
+      stake: match.stake ?? 0,
+      pot: match.pot ?? 0,
+      settlement,
       players,
       claimedWords: serializeClaimedWords(match.claimedWords).map(word => ({
         ...word,
@@ -146,7 +165,7 @@ export async function completeMatch(
   match.winnerId = winnerId;
   await match.save();
 
-  await awardMatchRewards(match, winnerId);
+  await applyPrizeSettlement(match);
 
   const clientIds = await clientIdsForMatch(
     match._id.toString(),
@@ -241,76 +260,114 @@ export async function completeExpiredMatches(io: Server): Promise<string[]> {
   return completedIds;
 }
 
-async function awardMatchRewards(
-  match: IMatch,
-  winnerId: mongoose.Types.ObjectId | null
-): Promise<void> {
-  if (match.kind === 'group') {
-    await awardGroupRewards(match);
+async function applyPrizeSettlement(match: IMatch): Promise<void> {
+  if (match.prizeSettled) {
     return;
   }
 
-  const isTie = winnerId == null;
+  const placements = buildPlacements(match.players);
+  const players = match.players
+    .filter(player => !isGhostOpponentId(player.userId))
+    .map(player => {
+      const userId = toIdString(player.userId) ?? '';
+      const boost = (match.boosts ?? []).find(row => row.userId.toString() === userId);
+      return {
+        userId,
+        rank: placements.find(placement => placement.userId === userId)?.rank ?? 0,
+        left: player.left === true,
+        boost: boost?.amount ?? 0
+      };
+    });
 
-  await Promise.all(match.players.map(async (player) => {
-    const playerId = toObjectId(player.userId);
-    if (!playerId || isGhostOpponentId(playerId)) {
-      return;
-    }
+  const result = settlePrize({
+    kind: match.kind === 'group' ? 'group' : 'duel',
+    stake: match.stake ?? 0,
+    opponentKind: match.opponentKind,
+    reason: match.completionReason ?? MatchCompletionReason.COMPLETED,
+    winnerId: toIdString(match.winnerId),
+    players
+  });
 
-    const isWinner = !isTie && playerId.toString() === winnerId.toString();
-    const coins = isTie
-      ? MATCH_REWARD_COINS.TIE
-      : isWinner
-        ? MATCH_REWARD_COINS.WIN
-        : MATCH_REWARD_COINS.LOSS;
-
-    const inc: Record<string, number> = {
-      coins,
-      'stats.totalGames': 1
-    };
-
-    if (!isTie) {
-      if (isWinner) {
-        inc['stats.gamesWon'] = 1;
-      } else {
-        inc['stats.gamesLost'] = 1;
+  const session = await mongoose.startSession();
+  try {
+    const credited = await session.withTransaction(async () => {
+      const locked = await Match.findOneAndUpdate(
+        { _id: match._id, prizeSettled: { $ne: true } },
+        { $set: { prizeSettled: true, stake: result.stake, pot: result.pot } },
+        { new: true, session }
+      );
+      if (!locked) {
+        const existing = await Match.findById(match._id).session(session).select('settlement');
+        return (existing?.settlement ?? []) as IMatchSettlement[];
       }
-    }
 
-    await User.updateOne({ _id: playerId }, { $inc: inc });
-  }));
+      const lines: IMatchSettlement[] = [];
+      for (const line of result.settlement) {
+        const playerId = toObjectId(line.userId);
+        if (!playerId || isGhostOpponentId(playerId)) {
+          continue;
+        }
+
+        const updated = await User.findByIdAndUpdate(
+          playerId,
+          { $inc: { coins: line.coinsDelta, ...statIncrements(match, playerId.toString()) } },
+          { new: true, session }
+        ).select('coins');
+
+        lines.push({
+          userId: playerId,
+          coinsDelta: line.coinsDelta,
+          coins: updated?.coins ?? 0
+        });
+      }
+
+      await Match.updateOne(
+        { _id: match._id },
+        { $set: { settlement: lines } },
+        { session }
+      );
+      return lines;
+    });
+
+    match.stake = result.stake;
+    match.pot = result.pot;
+    match.prizeSettled = true;
+    match.settlement = credited;
+  } finally {
+    await session.endSession();
+  }
 }
 
-async function awardGroupRewards(match: IMatch): Promise<void> {
-  const placements = buildPlacements(match.players);
-  const leaders = placements.filter(placement => placement.rank === 1);
-  const tied = leaders.length !== 1;
+function statIncrements(match: IMatch, playerId: string): Record<string, number> {
+  const inc: Record<string, number> = { 'stats.totalGames': 1 };
 
-  await Promise.all(match.players.map(async (player) => {
-    const playerId = toObjectId(player.userId);
-    if (!playerId || isGhostOpponentId(playerId)) {
-      return;
-    }
-
-    const rank = placements.find(placement => placement.userId === playerId.toString())?.rank;
-    const isLeader = rank === 1;
-    const coins = isLeader
-      ? (tied ? MATCH_REWARD_COINS.TIE : MATCH_REWARD_COINS.WIN)
-      : MATCH_REWARD_COINS.LOSS;
-
-    const inc: Record<string, number> = {
-      coins,
-      'stats.totalGames': 1
-    };
-
-    if (!isLeader) {
+  if (match.kind === 'group') {
+    const placements = buildPlacements(match.players);
+    const tied = placements.filter(placement => placement.rank === 1).length !== 1;
+    const rank = placements.find(placement => placement.userId === playerId)?.rank;
+    if (rank !== 1) {
       inc['stats.gamesLost'] = 1;
     } else if (!tied) {
       inc['stats.gamesWon'] = 1;
     }
+    return inc;
+  }
 
-    await User.updateOne({ _id: playerId }, { $inc: inc });
+  const winnerId = toIdString(match.winnerId);
+  if (winnerId) {
+    inc[winnerId === playerId ? 'stats.gamesWon' : 'stats.gamesLost'] = 1;
+  }
+  return inc;
+}
+
+function publicSettlement(
+  match: IMatch,
+  idOf: (id: unknown) => string
+): PublicSettlement[] {
+  return (match.settlement ?? []).map(row => ({
+    userId: idOf(row.userId),
+    coinsDelta: row.coinsDelta,
+    coins: row.coins
   }));
 }
 

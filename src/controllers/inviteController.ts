@@ -10,6 +10,9 @@ import { resolveLanguage } from '../utils/language';
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
 import { createMatchTiming, serializeTimingFields } from '../utils/matchTiming';
 import { durationSecondsForSettings, parseMatchSettings } from '../utils/matchSettings';
+import { parseMatchStake } from '../utils/stakes';
+import { escrowPlayers, InsufficientCoinsError, insufficientCoinsBody, refundUsers } from '../services/prizeEscrow';
+import { headlinePot } from '../services/prizeSettlement';
 import {
   sendGameInvitePush,
   sendInviteAcceptedPush,
@@ -25,6 +28,10 @@ export const createInvite = async (req: AuthRequest, res: Response) => {
   try {
     const { friendId } = req.body;
     const settings = parseMatchSettings(req.body);
+    const stake = parseMatchStake(req.body?.stake);
+    if (!stake.ok) {
+      return res.status(400).json({ error: stake.error });
+    }
 
     if (!friendId) {
       return res.status(400).json({ error: 'friendId is required' });
@@ -65,7 +72,8 @@ export const createInvite = async (req: AuthRequest, res: Response) => {
       language,
       mode: settings.mode,
       timed: settings.timed,
-      durationSeconds: durationSecondsForSettings(settings)
+      durationSeconds: durationSecondsForSettings(settings),
+      stake: stake.stake
     };
 
     // An accepted/declined invite used to block rematches because of a unique
@@ -212,6 +220,21 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
       timed: invite.timed
     });
     const timing = createMatchTiming(settings);
+    const stake = invite.stake ?? 0;
+    const playerIds = [fromUser._id.toString(), currentUser._id.toString()];
+    let balances: Record<string, number>;
+    try {
+      balances = await escrowPlayers(
+        playerIds.map(userId => ({ userId, stake })),
+        currentUser._id.toString()
+      );
+    } catch (error) {
+      if (error instanceof InsufficientCoinsError) {
+        return res.status(402).json(insufficientCoinsBody(error));
+      }
+      throw error;
+    }
+
     if (typeof invite.durationSeconds === 'number' && invite.durationSeconds > 0) {
       timing.durationSeconds = invite.durationSeconds;
       timing.timed = true;
@@ -245,15 +268,29 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
       startedAt: timing.startedAt,
       durationSeconds: timing.durationSeconds,
       endsAt: timing.endsAt,
-      status: MatchStatus.IN_PROGRESS
+      status: MatchStatus.IN_PROGRESS,
+      stake,
+      pot: headlinePot(stake, 0),
+      boosts: [],
+      opponentKind: 'live'
     });
 
-    await match.save();
+    try {
+      await match.save();
+    } catch (error) {
+      await refundUsers(playerIds, stake);
+      throw error;
+    }
 
-    // Update invite status
-    invite.status = InviteStatus.ACCEPTED;
-    invite.respondedAt = new Date();
-    await invite.save();
+    const accepted = await Invite.findOneAndUpdate(
+      { _id: invite._id, status: InviteStatus.PENDING },
+      { $set: { status: InviteStatus.ACCEPTED, respondedAt: new Date() } }
+    );
+    if (!accepted) {
+      await Match.deleteOne({ _id: match._id });
+      await refundUsers(playerIds, stake);
+      return res.status(404).json({ error: 'Invite not found or already processed' });
+    }
 
     // Notify User A (the inviter) via socket that their invite was accepted
     const userRoom = `user:${fromUser.firebaseUid}`;
@@ -266,6 +303,8 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
         photoURL: currentUser.photoURL
       },
       mode: settings.mode,
+      stake,
+      coins: balances[fromUser._id.toString()],
       ...serializeTimingFields(timing)
     };
     
@@ -302,6 +341,8 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
       matchId: match._id.toString(),
       puzzleId: randomPuzzleId.toString(),
       mode: settings.mode,
+      stake,
+      coins: balances[currentUser._id.toString()],
       ...serializeTimingFields(timing)
     });
   } catch (error) {

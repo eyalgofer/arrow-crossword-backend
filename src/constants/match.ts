@@ -27,9 +27,3 @@ export const GHOST_TICK_MS = 1_000;
  * Not a user account, so match rewards never land on a real person.
  */
 export const GHOST_OPPONENT_ID = '0000000000000000000000aa';
-
-export const MATCH_REWARD_COINS = {
-  WIN: 50,
-  LOSS: 25,
-  TIE: 25
-} as const;

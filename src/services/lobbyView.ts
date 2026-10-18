@@ -9,6 +9,11 @@ export interface LobbySeatView {
   isHost: boolean;
 }
 
+export interface LobbyBoostView {
+  userId: string;
+  amount: number;
+}
+
 export interface LobbyView {
   _id: string;
   hostId: string;
@@ -16,6 +21,8 @@ export interface LobbyView {
   status: string;
   mode: string;
   timed: boolean;
+  stake: number;
+  boosts: LobbyBoostView[];
   seats: LobbySeatView[];
 }
 
@@ -58,6 +65,13 @@ export function serializeLobby(
     status: lobby.status,
     mode: lobby.mode,
     timed: lobby.timed,
+    stake: lobby.stake ?? 0,
+    boosts: (lobby.boosts ?? [])
+      .filter(boost => boost.status === 'claimed')
+      .map(boost => ({
+        userId: idOf(boost.userId),
+        amount: boost.amount
+      })),
     seats: lobby.seats.map(seat => ({
       userId: idOf(seat.userId),
       displayName: seat.displayName,
