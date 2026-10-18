@@ -34,6 +34,8 @@ export interface IMatch extends Document {
   timed: boolean;
   stake: number;
   pot: number;
+  /** True when a requested prize stake was dropped because someone did not opt in. */
+  stakeDowngraded?: boolean;
   boosts: IMatchBoost[];
   settlement: IMatchSettlement[];
   prizeSettled: boolean;
@@ -115,6 +117,9 @@ const matchSchema = new Schema<IMatch>({
   pot: {
     type: Number,
     default: 0
+  },
+  stakeDowngraded: {
+    type: Boolean
   },
   boosts: {
     type: [{

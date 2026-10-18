@@ -18,6 +18,8 @@ export interface IInvite extends Document {
   timed: boolean;
   durationSeconds?: number | null;
   stake: number;
+  /** Set when the create request arrived. Unset on invites stored before opt-in. */
+  supportsStakes?: boolean;
   createdAt: Date;
   updatedAt: Date;
   respondedAt?: Date;
@@ -63,6 +65,9 @@ const inviteSchema = new Schema<IInvite>({
   stake: {
     type: Number,
     default: 0
+  },
+  supportsStakes: {
+    type: Boolean
   },
   respondedAt: {
     type: Date

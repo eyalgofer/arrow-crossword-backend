@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { settlePrize } from './prizeSettlement';
-import { parseMatchStake, parseRandomStake } from '../utils/stakes';
+import { decidePrizePlay, parseMatchStake, parseRandomStake } from '../utils/stakes';
 
 const duel = [
   { userId: 'user_a', rank: 1 },
@@ -24,12 +24,35 @@ describe('match stakes', () => {
     assert.equal(parseMatchStake(75).ok, false);
   });
 
-  it('allows only stake 100 on the random queue', () => {
+  it('lets an old random search omit stake and still requires 100 when stake is sent', () => {
+    assert.deepEqual(parseRandomStake(undefined), { ok: true, stake: 0 });
     assert.deepEqual(parseRandomStake(100), { ok: true, stake: 100 });
-    assert.equal(parseRandomStake(undefined).ok, false);
     assert.equal(parseRandomStake(0).ok, false);
     assert.equal(parseRandomStake(250).ok, false);
     assert.equal(parseRandomStake('100').ok, false);
+  });
+
+  it('escrows only when every player opted into a positive stake', () => {
+    assert.deepEqual(decidePrizePlay({ stake: 100, optedIn: [true, true] }), {
+      stake: 100,
+      escrow: true
+    });
+  });
+
+  it('downgrades a prize stake when anyone did not opt in', () => {
+    assert.deepEqual(decidePrizePlay({ stake: 100, optedIn: [true, false] }), {
+      stake: 0,
+      escrow: false,
+      stakeDowngraded: true
+    });
+  });
+
+  it('keeps an opted-in stake of 0 friendly, with no downgrade flag', () => {
+    assert.deepEqual(decidePrizePlay({ stake: 0, optedIn: [true, true] }), {
+      stake: 0,
+      escrow: false
+    });
+    assert.equal('stakeDowngraded' in decidePrizePlay({ stake: 0, optedIn: [false, false] }), false);
   });
 });
 

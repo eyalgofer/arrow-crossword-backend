@@ -60,10 +60,49 @@ describe('match read payload', () => {
 
     assert.equal('opponent' in payload, false);
     assert.equal('opponentProgress' in payload, false);
+    assert.equal('stake' in payload, false);
+    assert.equal('pot' in payload, false);
     assert.deepEqual(payload.placements, [
       { userId: 'user_b', rank: 1, claimedCount: 8 },
       { userId: 'user_a', rank: 1, claimedCount: 8 },
       { userId: 'user_c', rank: 3, claimedCount: 2 }
     ]);
+  });
+
+  it('puts the first-place pot on a prize match', () => {
+    const payload = applyMatchReadFields({
+      opponentProgress: 30,
+      stake: 100,
+      pot: 0,
+      boosts: [{ amount: 100 }]
+    }, {
+      kind: 'duel',
+      status: 'in_progress',
+      players: [
+        { userId: 'user_a', displayName: 'Eyal', claimedCount: 1 },
+        { userId: 'user_b', displayName: 'Dana', claimedCount: 2 }
+      ]
+    }, viewerId);
+
+    assert.equal(payload.stake, 100);
+    assert.equal(payload.pot, 300);
+  });
+
+  it('omits stake and pot on a friendly match', () => {
+    const payload = applyMatchReadFields({
+      opponentProgress: 30,
+      stake: 0,
+      pot: 0
+    }, {
+      kind: 'duel',
+      status: 'in_progress',
+      players: [
+        { userId: 'user_a', displayName: 'Eyal', claimedCount: 1 },
+        { userId: 'user_b', displayName: 'Dana', claimedCount: 2 }
+      ]
+    }, viewerId);
+
+    assert.equal('stake' in payload, false);
+    assert.equal('pot' in payload, false);
   });
 });

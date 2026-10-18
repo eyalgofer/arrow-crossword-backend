@@ -10,9 +10,9 @@ import { resolveLanguage } from '../utils/language';
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
 import { createMatchTiming, serializeTimingFields } from '../utils/matchTiming';
 import { parseMatchSettings } from '../utils/matchSettings';
-import { parseMatchStake } from '../utils/stakes';
+import { parseMatchStake, decidePrizePlay, optedIntoStakes } from '../utils/stakes';
 import { POT_BOOST_AMOUNT } from '../constants/stakes';
-import { escrowPlayers, InsufficientCoinsError, insufficientCoinsBody, refundUsers } from '../services/prizeEscrow';
+import { creditUser, escrowPlayers, InsufficientCoinsError, insufficientCoinsBody, refundUsers } from '../services/prizeEscrow';
 import { headlinePot } from '../services/prizeSettlement';
 import { canonicalUserId, resolveInviteeIds, validateMemberIds } from '../services/groupRoster';
 import { isMultiplayerPlayer } from '../services/guestAuth';
@@ -88,6 +88,7 @@ export const createLobby = async (req: AuthRequest, res: Response) => {
 
     await cancelHostWaitingLobbies(io, host._id);
 
+    const hostOptedIn = optedIntoStakes(req.body?.supportsStakes);
     const lobby = await Lobby.create({
       hostId: host._id,
       groupId,
@@ -95,6 +96,7 @@ export const createLobby = async (req: AuthRequest, res: Response) => {
       mode: settings.settings.mode,
       timed: settings.settings.timed,
       stake: stake.stake,
+      supportsStakes: hostOptedIn,
       language: resolveLanguage(req),
       expiresAt: lobbyExpiresAt(),
       seats: [
@@ -103,7 +105,8 @@ export const createLobby = async (req: AuthRequest, res: Response) => {
           displayName: rosterName(host),
           photoURL: host.photoURL || null,
           status: 'joined',
-          isHost: true
+          isHost: true,
+          supportsStakes: hostOptedIn
         },
         ...invitees.map(invitee => ({
           userId: invitee._id,
@@ -183,7 +186,10 @@ export const respondToLobby = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Only invited players can respond' });
     }
 
-    if (seat.status !== status) {
+    if (status === 'joined') {
+      seat.supportsStakes = optedIntoStakes(req.body?.supportsStakes);
+    }
+    if (seat.status !== status || status === 'joined') {
       seat.status = status;
       await lobby.save();
       await emitLobbyUpdated(io, lobby);
@@ -241,17 +247,29 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
 
     const settings = parseMatchSettings({ mode: loaded.mode, timed: loaded.timed });
     const timing = createMatchTiming(settings);
+    const hostOptedIn = optedIntoStakes(req.body?.supportsStakes);
+    const hostSeat = loaded.seats.find(seat => seat.isHost);
+    if (hostSeat) {
+      hostSeat.supportsStakes = hostOptedIn;
+    }
+    loaded.supportsStakes = hostOptedIn;
     const joined = loaded.seats.filter(seat => seat.status === 'joined');
-    const stake = loaded.stake ?? 0;
-    const claimedBoosts = (loaded.boosts ?? []).filter(boost => boost.status === 'claimed');
+    const play = decidePrizePlay({
+      stake: loaded.stake ?? 0,
+      optedIn: joined.map(seat => seat.supportsStakes === true)
+    });
+    const claimedBoosts = play.escrow
+      ? (loaded.boosts ?? []).filter(boost => boost.status === 'claimed')
+      : [];
     const boostTotal = claimedBoosts.reduce((sum, boost) => sum + boost.amount, 0);
+    const charge = play.escrow ? play.stake : 0;
     refundIds = joined.map(seat => seat.userId.toString());
-    refundStake = stake;
+    refundStake = charge;
 
     let balances: Record<string, number>;
     try {
       balances = await escrowPlayers(
-        refundIds.map(userId => ({ userId, stake })),
+        refundIds.map(userId => ({ userId, stake: charge })),
         host._id.toString()
       );
     } catch (error) {
@@ -282,8 +300,9 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
       endsAt: timing.endsAt,
       status: MatchStatus.IN_PROGRESS,
       opponentKind: 'live',
-      stake,
-      pot: headlinePot(stake, boostTotal),
+      stake: play.stake,
+      pot: headlinePot(play.stake, boostTotal),
+      ...(play.stakeDowngraded ? { stakeDowngraded: true } : {}),
       boosts: claimedBoosts.map(boost => ({
         userId: boost.userId,
         amount: boost.amount
@@ -291,9 +310,18 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
     });
     matchId = match._id.toString();
 
+    const lobbyUpdate: Record<string, unknown> = {
+      status: 'started',
+      matchId: match._id,
+      supportsStakes: hostOptedIn,
+      seats: loaded.seats
+    };
+    if (play.stakeDowngraded) {
+      lobbyUpdate.boosts = [];
+    }
     const started = await Lobby.findOneAndUpdate(
       { _id: loaded._id, status: 'waiting' },
-      { $set: { status: 'started', matchId: match._id } },
+      { $set: lobbyUpdate },
       { new: true }
     );
     if (!started) {
@@ -305,6 +333,13 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
     }
     published = true;
     refundIds = [];
+
+    if (play.stakeDowngraded) {
+      const refunds = (loaded.boosts ?? []).filter(boost => boost.status === 'claimed');
+      for (const boost of refunds) {
+        balances[boost.userId.toString()] = await creditUser(boost.userId.toString(), boost.amount);
+      }
+    }
 
     if (started.groupId) {
       await Group.updateOne(
@@ -320,7 +355,8 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
       matchId: match._id.toString(),
       puzzleId: picked.puzzleId.toString(),
       mode: settings.mode,
-      stake,
+      stake: play.stake,
+      ...(play.stakeDowngraded ? { stakeDowngraded: true } : {}),
       ...serializeTimingFields(timing),
       players: joined.map(seat => ({
         userId: clientUserId(seat.userId, clientIds),

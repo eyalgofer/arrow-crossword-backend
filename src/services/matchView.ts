@@ -2,6 +2,7 @@ import { MatchStatus } from '../types';
 import { resolvePlayerId } from '../utils/ghost';
 import { clientUserId, loadClientUserIds } from './lobbyView';
 import { Placement, PlacementPlayer, placementsForMatch } from './placements';
+import { headlinePot } from './prizeSettlement';
 
 export interface PublicMatchPlayer {
   userId: string;
@@ -151,18 +152,26 @@ function withPublicPrize<T extends object>(
   const source = payload as T & {
     stake?: number;
     pot?: number;
+    boosts?: Array<{ amount?: number }>;
     prizeSettled?: boolean;
     settlement?: Array<{ userId: unknown; coinsDelta: number; coins: number }>;
   };
   const idOf = (id: unknown) => clientIds ? clientUserId(id, clientIds) : String(id ?? '');
-  const next = {
-    ...source,
-    stake: source.stake ?? 0,
-    pot: source.pot ?? 0
-  } as T & {
+  const next = { ...source } as T & {
+    stake?: number;
+    pot?: number;
     prizeSettled?: boolean;
     settlement?: Array<{ userId: string; coinsDelta: number; coins: number }>;
   };
+  const stake = source.stake ?? 0;
+  if (stake > 0) {
+    const boostTotal = (source.boosts ?? []).reduce((sum, boost) => sum + (boost.amount ?? 0), 0);
+    next.stake = stake;
+    next.pot = headlinePot(stake, boostTotal);
+  } else {
+    delete next.stake;
+    delete next.pot;
+  }
   delete next.prizeSettled;
   if (source.prizeSettled && Array.isArray(source.settlement)) {
     next.settlement = source.settlement.map(row => ({
@@ -172,6 +181,9 @@ function withPublicPrize<T extends object>(
     }));
   } else {
     delete next.settlement;
+  }
+  if ((next as { stakeDowngraded?: boolean }).stakeDowngraded !== true) {
+    delete (next as { stakeDowngraded?: boolean }).stakeDowngraded;
   }
   return next as T;
 }

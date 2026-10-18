@@ -10,6 +10,8 @@ export interface ILobbySeat {
   photoURL?: string | null;
   status: SeatStatus;
   isHost: boolean;
+  /** Set when this seat's player opts in or declines to. Omitted until they accept. */
+  supportsStakes?: boolean;
 }
 
 export type BoostStatus = 'pending' | 'claimed';
@@ -28,6 +30,8 @@ export interface ILobby extends Document {
   mode: MatchMode;
   timed: boolean;
   stake: number;
+  /** Host opt-in. Unset when this lobby was stored before opt-in existed. */
+  supportsStakes?: boolean;
   language: Language;
   seats: ILobbySeat[];
   boosts: ILobbyBoost[];
@@ -46,7 +50,8 @@ const seatSchema = new Schema<ILobbySeat>({
     enum: ['joined', 'invited', 'declined', 'left'],
     required: true
   },
-  isHost: { type: Boolean, required: true }
+  isHost: { type: Boolean, required: true },
+  supportsStakes: { type: Boolean }
 }, { _id: false });
 
 const boostSchema = new Schema<ILobbyBoost>({
@@ -89,6 +94,9 @@ const lobbySchema = new Schema<ILobby>({
   stake: {
     type: Number,
     default: 0
+  },
+  supportsStakes: {
+    type: Boolean
   },
   language: {
     type: String,

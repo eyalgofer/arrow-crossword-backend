@@ -7,6 +7,7 @@ export interface LobbySeatView {
   photoURL: string | null;
   status: string;
   isHost: boolean;
+  supportsStakes?: boolean;
 }
 
 export interface LobbyBoostView {
@@ -22,6 +23,7 @@ export interface LobbyView {
   mode: string;
   timed: boolean;
   stake: number;
+  supportsStakes?: boolean;
   boosts: LobbyBoostView[];
   seats: LobbySeatView[];
 }
@@ -66,6 +68,7 @@ export function serializeLobby(
     mode: lobby.mode,
     timed: lobby.timed,
     stake: lobby.stake ?? 0,
+    ...echoSupportsStakes(lobby.supportsStakes),
     boosts: (lobby.boosts ?? [])
       .filter(boost => boost.status === 'claimed')
       .map(boost => ({
@@ -77,9 +80,14 @@ export function serializeLobby(
       displayName: seat.displayName,
       photoURL: seat.photoURL ?? null,
       status: seat.status,
-      isHost: seat.isHost === true
+      isHost: seat.isHost === true,
+      ...echoSupportsStakes(seat.supportsStakes)
     }))
   };
+}
+
+function echoSupportsStakes(value: boolean | undefined): { supportsStakes?: boolean } {
+  return typeof value === 'boolean' ? { supportsStakes: value } : {};
 }
 
 const clientIdCache = new Map<string, Map<string, string>>();

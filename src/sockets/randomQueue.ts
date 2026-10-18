@@ -20,7 +20,7 @@ import {
   refundSearchHoldByFirebase,
   releaseMatchedHolds
 } from '../services/matchmakingHold';
-import { parseRandomStake } from '../utils/stakes';
+import { optedIntoStakes, parseRandomStake } from '../utils/stakes';
 
 interface SearchSocket extends Socket {
   userId?: string;
@@ -35,6 +35,9 @@ interface WaitingPlayer {
   photoURL?: string;
   language: Language;
   coins: number;
+  stake: number;
+  supportsStakes: boolean;
+  escrowed: boolean;
 }
 
 const waitingPlayers = new Map<string, WaitingPlayer>();
@@ -49,7 +52,7 @@ const searchTokens = new Map<string, object>();
 export async function handleFindMatch(
   io: Server,
   socket: SearchSocket,
-  payload?: { stake?: unknown }
+  payload?: { stake?: unknown; supportsStakes?: unknown }
 ): Promise<void> {
   const firebaseUid = socket.userId;
   if (!firebaseUid) {
@@ -63,7 +66,9 @@ export async function handleFindMatch(
     return;
   }
 
+  const supportsStakes = optedIntoStakes(payload?.supportsStakes);
   let queued = false;
+  let escrowed = false;
   try {
     if (waitingPlayers.has(firebaseUid)) {
       socket.emit('error', { message: 'Already in matchmaking queue' });
@@ -88,11 +93,16 @@ export async function handleFindMatch(
       return;
     }
 
-    const held = await openSearchHold({
-      userId: user._id.toString(),
-      firebaseUid,
-      stake: stake.stake
-    });
+    let coins = user.coins ?? 0;
+    if (supportsStakes && stake.stake === RANDOM_QUEUE_STAKE) {
+      const held = await openSearchHold({
+        userId: user._id.toString(),
+        firebaseUid,
+        stake: stake.stake
+      });
+      escrowed = true;
+      coins = held.coins;
+    }
     queued = true;
 
     const entry: WaitingPlayer = {
@@ -102,7 +112,10 @@ export async function handleFindMatch(
       displayName: user.displayName,
       photoURL: user.photoURL,
       language: socket.language ?? DEFAULT_LANGUAGE,
-      coins: held.coins
+      coins,
+      stake: stake.stake,
+      supportsStakes,
+      escrowed
     };
     waitingPlayers.set(firebaseUid, entry);
     void notifyRandomPlaySearch({
@@ -115,7 +128,7 @@ export async function handleFindMatch(
     if (opponent) {
       leaveQueue(firebaseUid);
       leaveQueue(opponent.firebaseUid);
-      await startLiveMatch(io, entry, opponent);
+      await pairPlayers(io, entry, opponent);
       return;
     }
 
@@ -123,13 +136,15 @@ export async function handleFindMatch(
     socket.emit('searching', {
       message: 'Searching for opponent...',
       searchMs: RANDOM_MATCH_SEARCH_MS,
-      coins: held.coins
+      coins
     });
   } catch (error) {
     console.error('Find match error:', error);
     if (firebaseUid && queued) {
       leaveQueue(firebaseUid);
-      await refundSearchHoldByFirebase(firebaseUid);
+      if (escrowed) {
+        await refundSearchHoldByFirebase(firebaseUid);
+      }
     }
     if (error instanceof InsufficientCoinsError) {
       socket.emit('error', insufficientCoinsBody(error));
@@ -224,32 +239,77 @@ async function fallbackToGhost(io: Server, entry: WaitingPlayer, token: object):
   }
 }
 
-async function startLiveMatch(io: Server, a: WaitingPlayer, b: WaitingPlayer): Promise<void> {
+interface FreePair {
+  coinsByUser: Map<string, number>;
+  stakeDowngraded?: true;
+}
+
+function bothPaying(a: WaitingPlayer, b: WaitingPlayer): boolean {
+  return a.escrowed && b.escrowed
+    && a.supportsStakes && b.supportsStakes
+    && a.stake === RANDOM_QUEUE_STAKE
+    && b.stake === RANDOM_QUEUE_STAKE;
+}
+
+async function pairPlayers(io: Server, a: WaitingPlayer, b: WaitingPlayer): Promise<void> {
+  if (bothPaying(a, b)) {
+    await startLiveMatch(io, a, b);
+    return;
+  }
+
+  const coinsByUser = new Map<string, number>();
+  for (const player of [a, b]) {
+    if (player.escrowed) {
+      const refunded = await refundSearchHold(player.userId);
+      coinsByUser.set(player.userId, refunded ?? player.coins);
+    } else {
+      const user = await User.findById(player.userId).select('coins');
+      coinsByUser.set(player.userId, user?.coins ?? player.coins);
+    }
+  }
+  const free: FreePair = { coinsByUser };
+  if (a.stake > 0 || b.stake > 0) {
+    free.stakeDowngraded = true;
+  }
+  await startLiveMatch(io, a, b, free);
+}
+
+async function startLiveMatch(
+  io: Server,
+  a: WaitingPlayer,
+  b: WaitingPlayer,
+  free?: FreePair
+): Promise<void> {
   const notify = (player: WaitingPlayer, message: string) => {
     io.sockets.sockets.get(player.socketId)?.emit('error', { message });
   };
 
-  let holds;
-  try {
-    holds = await claimSearchHolds([a.userId, b.userId]);
-  } catch (error) {
-    console.error('Live match error:', error);
-    notify(a, 'Failed to find match');
-    notify(b, 'Failed to find match');
-    return;
-  }
-  if (!holds) {
-    notify(a, 'Failed to find match');
-    notify(b, 'Failed to find match');
-    return;
+  let holds: Awaited<ReturnType<typeof claimSearchHolds>> = null;
+  if (!free) {
+    try {
+      holds = await claimSearchHolds([a.userId, b.userId]);
+    } catch (error) {
+      console.error('Live match error:', error);
+      notify(a, 'Failed to find match');
+      notify(b, 'Failed to find match');
+      return;
+    }
+    if (!holds) {
+      notify(a, 'Failed to find match');
+      notify(b, 'Failed to find match');
+      return;
+    }
   }
 
-  const coinsByUser = new Map(holds.map(hold => [hold.userId.toString(), hold.coins]));
+  const coinsByUser = free?.coinsByUser ?? new Map(holds!.map(hold => [hold.userId.toString(), hold.coins]));
+  const stake = free ? 0 : RANDOM_QUEUE_STAKE;
   let matchId: string | null = null;
   try {
     const picked = await pickMultiplayerPuzzle(a.language);
     if (!picked) {
-      await releaseMatchedHolds(holds);
+      if (holds) {
+        await releaseMatchedHolds(holds);
+      }
       notify(a, 'No multiplayer puzzles configured');
       notify(b, 'No multiplayer puzzles configured');
       return;
@@ -258,7 +318,7 @@ async function startLiveMatch(io: Server, a: WaitingPlayer, b: WaitingPlayer): P
     const settings = { mode: MatchMode.NORMAL, timed: true as const };
     const timing = createMatchTiming(settings);
     const players = [a, b];
-    const boosts = claimedBoostsFromHolds(holds);
+    const boosts = holds ? claimedBoostsFromHolds(holds) : [];
     const boostTotal = boosts.reduce((sum, boost) => sum + boost.amount, 0);
     const match = new Match({
       players: players.map(player => ({
@@ -277,8 +337,9 @@ async function startLiveMatch(io: Server, a: WaitingPlayer, b: WaitingPlayer): P
       endsAt: timing.endsAt,
       status: MatchStatus.IN_PROGRESS,
       opponentKind: 'live',
-      stake: RANDOM_QUEUE_STAKE,
-      pot: headlinePot(RANDOM_QUEUE_STAKE, boostTotal),
+      stake,
+      pot: headlinePot(stake, boostTotal),
+      ...(free?.stakeDowngraded ? { stakeDowngraded: true } : {}),
       boosts
     });
     await match.save();
@@ -319,7 +380,8 @@ async function startLiveMatch(io: Server, a: WaitingPlayer, b: WaitingPlayer): P
         } : null,
         opponentKind: 'live',
         mode: settings.mode,
-        stake: RANDOM_QUEUE_STAKE,
+        stake,
+        ...(free?.stakeDowngraded ? { stakeDowngraded: true } : {}),
         coins: coinsByUser.get(player.userId),
         ...serializeTimingFields(timing)
       });
@@ -329,7 +391,9 @@ async function startLiveMatch(io: Server, a: WaitingPlayer, b: WaitingPlayer): P
     if (matchId) {
       await Match.deleteOne({ _id: matchId }).catch(() => undefined);
     }
-    await releaseMatchedHolds(holds);
+    if (holds) {
+      await releaseMatchedHolds(holds);
+    }
     notify(a, 'Failed to find match');
     notify(b, 'Failed to find match');
   }

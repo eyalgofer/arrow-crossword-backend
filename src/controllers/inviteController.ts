@@ -10,7 +10,7 @@ import { resolveLanguage } from '../utils/language';
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
 import { createMatchTiming, serializeTimingFields } from '../utils/matchTiming';
 import { durationSecondsForSettings, parseMatchSettings } from '../utils/matchSettings';
-import { parseMatchStake } from '../utils/stakes';
+import { parseMatchStake, decidePrizePlay, optedIntoStakes } from '../utils/stakes';
 import { escrowPlayers, InsufficientCoinsError, insufficientCoinsBody, refundUsers } from '../services/prizeEscrow';
 import { headlinePot } from '../services/prizeSettlement';
 import {
@@ -73,7 +73,8 @@ export const createInvite = async (req: AuthRequest, res: Response) => {
       mode: settings.mode,
       timed: settings.timed,
       durationSeconds: durationSecondsForSettings(settings),
-      stake: stake.stake
+      stake: stake.stake,
+      supportsStakes: optedIntoStakes(req.body?.supportsStakes)
     };
 
     // An accepted/declined invite used to block rematches because of a unique
@@ -220,12 +221,19 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
       timed: invite.timed
     });
     const timing = createMatchTiming(settings);
-    const stake = invite.stake ?? 0;
+    const requestedStake = invite.stake ?? 0;
+    const play = decidePrizePlay({
+      stake: requestedStake,
+      optedIn: [
+        invite.supportsStakes === true,
+        optedIntoStakes(req.body?.supportsStakes)
+      ]
+    });
     const playerIds = [fromUser._id.toString(), currentUser._id.toString()];
     let balances: Record<string, number>;
     try {
       balances = await escrowPlayers(
-        playerIds.map(userId => ({ userId, stake })),
+        playerIds.map(userId => ({ userId, stake: play.escrow ? play.stake : 0 })),
         currentUser._id.toString()
       );
     } catch (error) {
@@ -269,8 +277,9 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
       durationSeconds: timing.durationSeconds,
       endsAt: timing.endsAt,
       status: MatchStatus.IN_PROGRESS,
-      stake,
-      pot: headlinePot(stake, 0),
+      stake: play.stake,
+      pot: headlinePot(play.stake, 0),
+      ...(play.stakeDowngraded ? { stakeDowngraded: true } : {}),
       boosts: [],
       opponentKind: 'live'
     });
@@ -278,7 +287,7 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
     try {
       await match.save();
     } catch (error) {
-      await refundUsers(playerIds, stake);
+      await refundUsers(playerIds, play.escrow ? play.stake : 0);
       throw error;
     }
 
@@ -288,7 +297,7 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
     );
     if (!accepted) {
       await Match.deleteOne({ _id: match._id });
-      await refundUsers(playerIds, stake);
+      await refundUsers(playerIds, play.escrow ? play.stake : 0);
       return res.status(404).json({ error: 'Invite not found or already processed' });
     }
 
@@ -303,7 +312,8 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
         photoURL: currentUser.photoURL
       },
       mode: settings.mode,
-      stake,
+      stake: play.stake,
+      ...(play.stakeDowngraded ? { stakeDowngraded: true } : {}),
       coins: balances[fromUser._id.toString()],
       ...serializeTimingFields(timing)
     };
@@ -341,7 +351,8 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
       matchId: match._id.toString(),
       puzzleId: randomPuzzleId.toString(),
       mode: settings.mode,
-      stake,
+      stake: play.stake,
+      ...(play.stakeDowngraded ? { stakeDowngraded: true } : {}),
       coins: balances[currentUser._id.toString()],
       ...serializeTimingFields(timing)
     });
