@@ -144,13 +144,23 @@ export async function completeMatch(
     reason: MatchCompletionReason;
   }
 ): Promise<IMatch | null> {
+  const current = await Match.findOne({ _id: matchId, status: MatchStatus.IN_PROGRESS });
+  if (!current) {
+    return null;
+  }
+
+  const winnerId = current.kind === 'group'
+    ? toObjectId(winnerIdFromPlacements(current.players, placementMode(current.mode)))
+    : toObjectId(options.winnerId);
+
   const match = await Match.findOneAndUpdate(
     { _id: matchId, status: MatchStatus.IN_PROGRESS },
     {
       $set: {
         status: MatchStatus.COMPLETED,
         completedAt: new Date(),
-        completionReason: options.reason
+        completionReason: options.reason,
+        winnerId
       }
     },
     { new: true }
@@ -159,12 +169,6 @@ export async function completeMatch(
   if (!match) {
     return null;
   }
-
-  const winnerId = match.kind === 'group'
-    ? toObjectId(winnerIdFromPlacements(match.players, placementMode(match.mode)))
-    : toObjectId(options.winnerId);
-  match.winnerId = winnerId;
-  await match.save();
 
   await applyPrizeSettlement(match);
 
