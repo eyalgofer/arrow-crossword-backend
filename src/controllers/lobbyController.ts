@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import mongoose from 'mongoose';
 import { Group } from '../models/Group';
-import { Lobby } from '../models/Lobby';
+import { ILobby, Lobby } from '../models/Lobby';
 import { Match } from '../models/Match';
 import { User, IUser } from '../models/User';
 import { AuthRequest, Language, MatchStatus } from '../types';
@@ -14,6 +14,7 @@ import { parseMatchStake, decidePrizePlay, optedIntoStakes } from '../utils/stak
 import { POT_BOOST_AMOUNT } from '../constants/stakes';
 import { creditUser, escrowPlayers, InsufficientCoinsError, insufficientCoinsBody, refundUsers } from '../services/prizeEscrow';
 import { headlinePot } from '../services/prizeSettlement';
+import { firstActiveHold, LOBBY_HOLD_MS, seatHoldActive } from '../services/lobbyHold';
 import { canonicalUserId, resolveInviteeIds, validateMemberIds } from '../services/groupRoster';
 import { isMultiplayerPlayer } from '../services/guestAuth';
 import {
@@ -217,7 +218,7 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ error: 'Sign in to play multiplayer' });
     }
 
-    const loaded = await loadWaitingLobby(req.params.id);
+    let loaded = await loadWaitingLobby(req.params.id);
     if (loaded === 'missing') {
       return res.status(404).json({ error: 'Lobby not found' });
     }
@@ -245,21 +246,36 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const settings = parseMatchSettings({ mode: loaded.mode, timed: loaded.timed });
-    const timing = createMatchTiming(settings);
+    const held = await waitForLobbyHolds(loaded._id.toString());
+    if (!held.lobby) {
+      return res.status(409).json({ error: 'Lobby already started or cancelled' });
+    }
+    if (held.holding) {
+      return res.status(409).json({
+        code: 'player_holding',
+        userId: held.holding.userId
+      });
+    }
+    const lobby = held.lobby;
+    const stillReady = canStartLobby(lobby);
+    if (!stillReady.ok) {
+      return res.status(400).json({ error: stillReady.error });
+    }
+
+    const settings = parseMatchSettings({ mode: lobby.mode, timed: lobby.timed });
     const hostOptedIn = optedIntoStakes(req.body?.supportsStakes);
-    const hostSeat = loaded.seats.find(seat => seat.isHost);
+    const hostSeat = lobby.seats.find(seat => seat.isHost);
     if (hostSeat) {
       hostSeat.supportsStakes = hostOptedIn;
     }
-    loaded.supportsStakes = hostOptedIn;
-    const joined = loaded.seats.filter(seat => seat.status === 'joined');
+    lobby.supportsStakes = hostOptedIn;
+    const joined = lobby.seats.filter(seat => seat.status === 'joined');
     const play = decidePrizePlay({
-      stake: loaded.stake ?? 0,
+      stake: lobby.stake ?? 0,
       optedIn: joined.map(seat => seat.supportsStakes === true)
     });
     const claimedBoosts = play.escrow
-      ? (loaded.boosts ?? []).filter(boost => boost.status === 'claimed')
+      ? (lobby.boosts ?? []).filter(boost => boost.status === 'claimed')
       : [];
     const boostTotal = claimedBoosts.reduce((sum, boost) => sum + boost.amount, 0);
     const charge = play.escrow ? play.stake : 0;
@@ -280,9 +296,10 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
       throw error;
     }
 
+    const timing = createMatchTiming(settings);
     const match = await Match.create({
       kind: 'group',
-      groupId: loaded.groupId ?? undefined,
+      groupId: lobby.groupId ?? undefined,
       players: joined.map(seat => ({
         userId: seat.userId,
         displayName: seat.displayName,
@@ -314,13 +331,13 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
       status: 'started',
       matchId: match._id,
       supportsStakes: hostOptedIn,
-      seats: loaded.seats
+      seats: lobby.seats
     };
     if (play.stakeDowngraded) {
       lobbyUpdate.boosts = [];
     }
     const started = await Lobby.findOneAndUpdate(
-      { _id: loaded._id, status: 'waiting' },
+      { _id: lobby._id, status: 'waiting' },
       { $set: lobbyUpdate },
       { new: true }
     );
@@ -335,7 +352,7 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
     refundIds = [];
 
     if (play.stakeDowngraded) {
-      const refunds = (loaded.boosts ?? []).filter(boost => boost.status === 'claimed');
+      const refunds = (lobby.boosts ?? []).filter(boost => boost.status === 'claimed');
       for (const boost of refunds) {
         balances[boost.userId.toString()] = await creditUser(boost.userId.toString(), boost.amount);
       }
@@ -356,6 +373,7 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
       puzzleId: picked.puzzleId.toString(),
       mode: settings.mode,
       stake: play.stake,
+      ...(play.stake > 0 ? { pot: headlinePot(play.stake, boostTotal) } : {}),
       ...(play.stakeDowngraded ? { stakeDowngraded: true } : {}),
       ...serializeTimingFields(timing),
       players: joined.map(seat => ({
@@ -509,6 +527,43 @@ function parseLobbySettings(body: { mode?: unknown; timed?: unknown } | null):
     return { ok: false, error: 'mode must be quick or normal' };
   }
   return { ok: true, settings: parseMatchSettings(body) };
+}
+
+async function waitForLobbyHolds(lobbyId: string): Promise<{
+  lobby: ILobby | null;
+  holding?: { userId: string };
+}> {
+  const deadline = Date.now() + LOBBY_HOLD_MS;
+  for (;;) {
+    const lobby = await Lobby.findById(lobbyId);
+    if (!lobby || lobby.status !== 'waiting') {
+      return { lobby: null };
+    }
+    const now = Date.now();
+    let cleared = false;
+    for (const seat of lobby.seats) {
+      if (seat.holdStartedAt && !seatHoldActive(seat, now)) {
+        seat.holdStartedAt = null;
+        cleared = true;
+      }
+    }
+    if (cleared) {
+      lobby.markModified('seats');
+      await lobby.save();
+    }
+    const blocking = firstActiveHold(lobby.seats, now);
+    if (!blocking) {
+      return { lobby };
+    }
+    if (Date.now() >= deadline) {
+      const clientIds = await loadClientUserIds([blocking.userId]);
+      return {
+        lobby,
+        holding: { userId: clientUserId(blocking.userId, clientIds) }
+      };
+    }
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
 }
 
 async function loadUsers(memberIds: string[]): Promise<IUser[] | null> {

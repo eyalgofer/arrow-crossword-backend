@@ -42,4 +42,38 @@ export function registerLobbyHandlers(socket: LobbySocket): void {
       socket.emit('error', { message: 'Failed to join lobby' });
     }
   });
+
+  socket.on('lobby_hold', async (data?: { lobbyId?: string; holding?: unknown }) => {
+    try {
+      const lobbyId = data?.lobbyId;
+      if (!lobbyId || !mongoose.Types.ObjectId.isValid(lobbyId) || typeof data?.holding !== 'boolean') {
+        socket.emit('error', { message: 'Invalid lobby hold' });
+        return;
+      }
+
+      const user = await User.findOne({ firebaseUid: socket.userId });
+      if (!user) {
+        socket.emit('error', { message: 'User not found' });
+        return;
+      }
+
+      const lobby = await Lobby.findById(lobbyId);
+      if (!lobby || lobby.status !== 'waiting') {
+        return;
+      }
+
+      const seat = lobby.seats.find(candidate => candidate.userId.toString() === user._id.toString());
+      if (!seat) {
+        socket.emit('error', { message: 'Not part of this lobby' });
+        return;
+      }
+
+      seat.holdStartedAt = data.holding ? new Date() : null;
+      lobby.markModified('seats');
+      await lobby.save();
+    } catch (error) {
+      console.error('Lobby hold error:', error);
+      socket.emit('error', { message: 'Failed to update lobby hold' });
+    }
+  });
 }

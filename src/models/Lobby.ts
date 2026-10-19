@@ -12,6 +12,8 @@ export interface ILobbySeat {
   isHost: boolean;
   /** Set when this seat's player opts in or declines to. Omitted until they accept. */
   supportsStakes?: boolean;
+  /** When this joined seat opened a boost ad. Absent once the ad closes. */
+  holdStartedAt?: Date | null;
 }
 
 export type BoostStatus = 'pending' | 'claimed';
@@ -51,7 +53,8 @@ const seatSchema = new Schema<ILobbySeat>({
     required: true
   },
   isHost: { type: Boolean, required: true },
-  supportsStakes: { type: Boolean }
+  supportsStakes: { type: Boolean },
+  holdStartedAt: { type: Date }
 }, { _id: false });
 
 const boostSchema = new Schema<ILobbyBoost>({

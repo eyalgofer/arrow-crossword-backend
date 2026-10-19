@@ -7,7 +7,7 @@ import { Match } from '../models/Match';
 import { activeGames } from './activeGames';
 import { GameState, Language, DEFAULT_LANGUAGE, MatchMode, MatchStatus } from '../types';
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
-import { createMatchTiming, serializeTimingFields } from '../utils/matchTiming';
+import { durationSecondsForSettings } from '../utils/matchSettings';
 import { startGhostMatch } from '../services/ghostMatch';
 import { notifyRandomPlaySearch } from '../services/slack';
 import { InsufficientCoinsError, insufficientCoinsBody } from '../services/prizeEscrow';
@@ -38,6 +38,8 @@ interface WaitingPlayer {
   stake: number;
   supportsStakes: boolean;
   escrowed: boolean;
+  /** Inside a boost ad. Still escrowed, but not paired and not sent to a ghost. */
+  paused: boolean;
 }
 
 const waitingPlayers = new Map<string, WaitingPlayer>();
@@ -115,7 +117,8 @@ export async function handleFindMatch(
       coins,
       stake: stake.stake,
       supportsStakes,
-      escrowed
+      escrowed,
+      paused: false
     };
     waitingPlayers.set(firebaseUid, entry);
     void notifyRandomPlaySearch({
@@ -168,21 +171,61 @@ export function cancelRandomSearch(firebaseUid?: string): void {
 }
 
 function findOpponent(entry: WaitingPlayer): WaitingPlayer | undefined {
+  if (entry.paused) {
+    return undefined;
+  }
   for (const [uid, waiting] of waitingPlayers) {
-    if (uid !== entry.firebaseUid && waiting.language === entry.language) {
+    if (uid !== entry.firebaseUid && !waiting.paused && waiting.language === entry.language) {
       return waiting;
     }
   }
   return undefined;
 }
 
-function leaveQueue(firebaseUid: string): void {
+/** Stay escrowed and in the queue, but do not pair or start a ghost while the ad is open. */
+export function pauseRandomSearch(firebaseUid?: string): void {
+  if (!firebaseUid) {
+    return;
+  }
+  const entry = waitingPlayers.get(firebaseUid);
+  if (!entry) {
+    return;
+  }
+  entry.paused = true;
+  disarmSearchTimer(firebaseUid);
+}
+
+/** Eligible to pair again as soon as the ad closes. */
+export async function resumeRandomSearch(io: Server, firebaseUid?: string): Promise<void> {
+  if (!firebaseUid) {
+    return;
+  }
+  const entry = waitingPlayers.get(firebaseUid);
+  if (!entry) {
+    return;
+  }
+  entry.paused = false;
+  const opponent = findOpponent(entry);
+  if (opponent) {
+    leaveQueue(firebaseUid);
+    leaveQueue(opponent.firebaseUid);
+    await pairPlayers(io, entry, opponent);
+    return;
+  }
+  armSearchTimer(io, entry);
+}
+
+function disarmSearchTimer(firebaseUid: string): void {
   const timer = searchTimers.get(firebaseUid);
   if (timer) {
     clearTimeout(timer);
     searchTimers.delete(firebaseUid);
   }
   searchTokens.delete(firebaseUid);
+}
+
+function leaveQueue(firebaseUid: string): void {
+  disarmSearchTimer(firebaseUid);
   waitingPlayers.delete(firebaseUid);
 }
 
@@ -201,7 +244,7 @@ function armSearchTimer(io: Server, entry: WaitingPlayer): void {
 }
 
 async function fallbackToGhost(io: Server, entry: WaitingPlayer, token: object): Promise<void> {
-  if (searchTokens.get(entry.firebaseUid) !== token) {
+  if (entry.paused || searchTokens.get(entry.firebaseUid) !== token) {
     return;
   }
   const current = waitingPlayers.get(entry.firebaseUid);
@@ -316,7 +359,7 @@ async function startLiveMatch(
     }
 
     const settings = { mode: MatchMode.NORMAL, timed: true as const };
-    const timing = createMatchTiming(settings);
+    const durationSeconds = durationSecondsForSettings(settings);
     const players = [a, b];
     const boosts = holds ? claimedBoostsFromHolds(holds) : [];
     const boostTotal = boosts.reduce((sum, boost) => sum + boost.amount, 0);
@@ -331,10 +374,8 @@ async function startLiveMatch(
       puzzleId: picked.puzzle._id,
       claimedWords: [],
       mode: settings.mode,
-      timed: timing.timed,
-      startedAt: timing.startedAt,
-      durationSeconds: timing.durationSeconds,
-      endsAt: timing.endsAt,
+      timed: durationSeconds != null,
+      durationSeconds,
       status: MatchStatus.IN_PROGRESS,
       opponentKind: 'live',
       stake,
@@ -359,7 +400,8 @@ async function startLiveMatch(
       claimedWords: [],
       lockedCells: new Set<string>(),
       mode: settings.mode,
-      ...timing
+      timed: durationSeconds != null,
+      durationSeconds
     };
     activeGames.set(matchId, gameState);
 
@@ -381,9 +423,11 @@ async function startLiveMatch(
         opponentKind: 'live',
         mode: settings.mode,
         stake,
+        ...(stake > 0 ? { pot: headlinePot(stake, boostTotal) } : {}),
         ...(free?.stakeDowngraded ? { stakeDowngraded: true } : {}),
         coins: coinsByUser.get(player.userId),
-        ...serializeTimingFields(timing)
+        timed: durationSeconds != null,
+        durationSeconds
       });
     }
   } catch (error) {

@@ -92,6 +92,10 @@ export function isMatchTimedOut(
   match: Parameters<typeof getMatchTimingFields>[0],
   now: Date = new Date()
 ): boolean {
+  // No startedAt means the board has not been entered yet. createdAt must not run the clock.
+  if (!toDate(match.startedAt)) {
+    return false;
+  }
   const { endsAt, timed } = getMatchTimingFields(match);
   if (!timed || !endsAt) {
     return false;
@@ -99,10 +103,19 @@ export function isMatchTimedOut(
   return endsAt.getTime() <= now.getTime();
 }
 
-export function withMatchTiming<T extends object>(match: T): T & MatchTiming {
+export function withMatchTiming<T extends object>(match: T): T & Partial<MatchTiming> {
+  const source = match as Parameters<typeof getMatchTimingFields>[0];
+  if (!toDate(source.startedAt)) {
+    return {
+      ...match,
+      timed: isTimedMatch(source),
+      durationSeconds: source.durationSeconds ?? null,
+      endsAt: null
+    };
+  }
   return {
     ...match,
-    ...getMatchTimingFields(match as Parameters<typeof getMatchTimingFields>[0])
+    ...getMatchTimingFields(source)
   };
 }
 

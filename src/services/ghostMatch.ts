@@ -123,7 +123,6 @@ export async function startGhostMatch(
     opponentKind: kind,
     mode: settings.mode,
     stake: 0,
-    pot: 0,
     ...(coins == null ? {} : { coins }),
     ...serializeTimingFields(timing)
   });

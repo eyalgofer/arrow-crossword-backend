@@ -7,13 +7,14 @@ import { Puzzle, IPuzzle } from '../models/Puzzle';
 import { MatchStatus, GameState, Language, MatchCompletionReason, MatchMode } from '../types';
 import { IMatch } from '../models/Match';
 import { resolveLanguageFromValues } from '../utils/language';
-import { getMatchTimingFields, serializeTimingFields } from '../utils/matchTiming';
+import { serializeTimingFields } from '../utils/matchTiming';
 import { isQuickMatch } from '../utils/matchSettings';
 import { isGhostKind } from '../utils/ghost';
 import { advanceGhostMatch, ensureSolverNickname } from '../services/ghostMatch';
-import { releaseRandomSearch, handleFindMatch } from './randomQueue';
+import { releaseRandomSearch, handleFindMatch, pauseRandomSearch, resumeRandomSearch } from './randomQueue';
 import { activeGames } from './activeGames';
 import { registerLobbyHandlers } from './lobbyHandler';
+import { noteLivePlayerJoined } from '../services/matchClock';
 import { groupSessionFields } from '../services/matchView';
 import { clientIdsForMatch, clientUserId } from '../services/lobbyView';
 import { rosterState } from '../services/placements';
@@ -107,6 +108,14 @@ export const setupSocketHandlers = (io: Server) => {
       });
     });
 
+    socket.on('pause_matchmaking', () => {
+      pauseRandomSearch(socket.userId);
+    });
+
+    socket.on('resume_matchmaking', () => {
+      void resumeRandomSearch(io, socket.userId);
+    });
+
     // Join a match room (for friend invites)
     socket.on('join_match', async ({ matchId }) => {
       try {
@@ -150,7 +159,23 @@ export const setupSocketHandlers = (io: Server) => {
         socket.join(matchId);
         socket.matchId = matchId;
 
-        const timing = getMatchTimingFields(match);
+        const clock = await noteLivePlayerJoined(match, user._id.toString());
+        const timing = clock.timing ?? {
+          timed: match.timed !== false,
+          durationSeconds: match.durationSeconds ?? null,
+          startedAt: undefined,
+          endsAt: null
+        };
+        if (clock.startedNow && clock.timing) {
+          const state = activeGames.get(matchId);
+          if (state) {
+            state.startedAt = clock.timing.startedAt;
+            state.endsAt = clock.timing.endsAt;
+            state.durationSeconds = clock.timing.durationSeconds;
+            state.timed = clock.timing.timed;
+          }
+          io.to(matchId).emit('match_clock', serializeTimingFields(clock.timing));
+        }
         const mode = isQuickMatch(match) ? MatchMode.QUICK : MatchMode.NORMAL;
 
         // Get the puzzle for the match
@@ -268,7 +293,13 @@ export const setupSocketHandlers = (io: Server) => {
           userMoves,
           mode,
           opponentKind: match.opponentKind ?? 'live',
-          ...serializeTimingFields(timing)
+          ...(clock.timing
+            ? serializeTimingFields(clock.timing)
+            : {
+              timed: timing.timed,
+              durationSeconds: timing.durationSeconds,
+              endsAt: null
+            })
         });
 
         if (match.status !== MatchStatus.IN_PROGRESS) {
