@@ -8,7 +8,7 @@ import { removeActiveGame } from '../sockets/activeGames';
 import { isBoardFullyClaimed, serializeClaimedWords, winnerIdFromClaimedCount } from './wordClaims';
 import { isQuickMatch } from '../utils/matchSettings';
 import { isGhostOpponentId } from '../utils/ghost';
-import { buildPlacements, Placement, placementsForMatch, winnerIdFromPlacements } from './placements';
+import { buildPlacements, Placement, placementMode, placementsForMatch, winnerIdFromPlacements } from './placements';
 import { clientIdsForMatch, clientUserId } from './lobbyView';
 import { settlePrize } from './prizeSettlement';
 import { toIdString, toObjectId } from '../utils/objectId';
@@ -125,7 +125,7 @@ export function buildMatchCompletedPayload(
     }
   };
 
-  const placements = placementsForMatch(match.kind, match.players);
+  const placements = placementsForMatch(match.kind, match.players, placementMode(match.mode));
   if (placements) {
     payload.placements = placements.map(placement => ({
       ...placement,
@@ -161,7 +161,7 @@ export async function completeMatch(
   }
 
   const winnerId = match.kind === 'group'
-    ? toObjectId(winnerIdFromPlacements(match.players))
+    ? toObjectId(winnerIdFromPlacements(match.players, placementMode(match.mode)))
     : toObjectId(options.winnerId);
   match.winnerId = winnerId;
   await match.save();
@@ -266,7 +266,7 @@ async function applyPrizeSettlement(match: IMatch): Promise<void> {
     return;
   }
 
-  const placements = buildPlacements(match.players);
+  const placements = buildPlacements(match.players, placementMode(match.mode));
   const players = match.players
     .filter(player => !isGhostOpponentId(player.userId))
     .map(player => {
@@ -343,7 +343,7 @@ function statIncrements(match: IMatch, playerId: string): Record<string, number>
   const inc: Record<string, number> = { 'stats.totalGames': 1 };
 
   if (match.kind === 'group') {
-    const placements = buildPlacements(match.players);
+    const placements = buildPlacements(match.players, placementMode(match.mode));
     const tied = placements.filter(placement => placement.rank === 1).length !== 1;
     const rank = placements.find(placement => placement.userId === playerId)?.rank;
     if (rank !== 1) {

@@ -1,7 +1,7 @@
 import { MatchStatus } from '../types';
 import { resolvePlayerId } from '../utils/ghost';
 import { clientUserId, loadClientUserIds } from './lobbyView';
-import { Placement, PlacementPlayer, placementsForMatch } from './placements';
+import { Placement, PlacementPlayer, placementMode, placementsForMatch } from './placements';
 import { headlinePot } from './prizeSettlement';
 
 export interface PublicMatchPlayer {
@@ -24,6 +24,7 @@ export interface MatchReadSource {
   kind?: string | null;
   groupId?: unknown;
   status?: string;
+  mode?: string | null;
   opponentKind?: string | null;
   players: MatchReadPlayer[];
 }
@@ -111,7 +112,7 @@ export function applyMatchReadFields<T extends object>(
   }
 
   const placements = match.status === MatchStatus.COMPLETED
-    ? placementsForMatch('group', match.players)
+    ? placementsForMatch('group', match.players, placementMode(match.mode))
     : undefined;
   if (placements) {
     next.placements = placements.map(placement => ({

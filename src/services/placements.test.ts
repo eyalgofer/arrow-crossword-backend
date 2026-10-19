@@ -78,6 +78,37 @@ describe('group placements', () => {
     ]);
   });
 
+  it('ranks a normal game by progress and keeps a sole leader', () => {
+    const filled = [
+      { userId: 'user_b', claimedCount: 0, progress: 40 },
+      { userId: 'user_a', claimedCount: 0, progress: 80 },
+      { userId: 'user_c', claimedCount: 0, progress: 10 }
+    ];
+    assert.deepEqual(buildPlacements(filled, 'normal'), [
+      { userId: 'user_a', rank: 1, claimedCount: 0 },
+      { userId: 'user_b', rank: 2, claimedCount: 0 },
+      { userId: 'user_c', rank: 3, claimedCount: 0 }
+    ]);
+    assert.equal(winnerIdFromPlacements(filled, 'normal'), 'user_a');
+  });
+
+  it('keeps ranking a normal game by progress when a claim count is also present', () => {
+    const filled = [
+      { userId: 'user_b', claimedCount: 9, progress: 20 },
+      { userId: 'user_a', claimedCount: 1, progress: 70 }
+    ];
+    assert.equal(winnerIdFromPlacements(filled, 'normal'), 'user_a');
+  });
+
+  it('falls back to progress when a quick game has no claims', () => {
+    const filled = [
+      { userId: 'user_b', claimedCount: 0, progress: 25 },
+      { userId: 'user_a', claimedCount: 0, progress: 60 }
+    ];
+    assert.equal(winnerIdFromPlacements(filled, 'quick'), 'user_a');
+    assert.equal(buildPlacements(filled, 'quick')[0].userId, 'user_a');
+  });
+
   it('treats a leaver as no longer playing', () => {
     const roster = [
       { userId: { toString: () => 'user_a' }, left: false },

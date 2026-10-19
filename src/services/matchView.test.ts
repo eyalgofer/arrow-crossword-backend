@@ -51,6 +51,7 @@ describe('match read payload', () => {
     }, {
       kind: 'group',
       status: 'completed',
+      mode: 'quick',
       players: [
         { userId: 'user_b', displayName: 'Dana', claimedCount: 8 },
         { userId: 'user_a', displayName: 'Eyal', claimedCount: 8 },
@@ -66,6 +67,25 @@ describe('match read payload', () => {
       { userId: 'user_b', rank: 1, claimedCount: 8 },
       { userId: 'user_a', rank: 1, claimedCount: 8 },
       { userId: 'user_c', rank: 3, claimedCount: 2 }
+    ]);
+  });
+
+  it('ranks a finished normal group by board progress when nobody claimed a word', () => {
+    const payload = applyMatchReadFields({}, {
+      kind: 'group',
+      status: 'completed',
+      mode: 'normal',
+      players: [
+        { userId: 'user_b', displayName: 'Dana', claimedCount: 0, progress: 40 },
+        { userId: 'user_a', displayName: 'Eyal', claimedCount: 0, progress: 80 },
+        { userId: 'user_c', displayName: 'Noa', claimedCount: 0, progress: 10 }
+      ]
+    }, viewerId);
+
+    assert.deepEqual(payload.placements, [
+      { userId: 'user_a', rank: 1, claimedCount: 0 },
+      { userId: 'user_b', rank: 2, claimedCount: 0 },
+      { userId: 'user_c', rank: 3, claimedCount: 0 }
     ]);
   });
 
