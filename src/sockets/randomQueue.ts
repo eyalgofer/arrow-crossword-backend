@@ -348,7 +348,7 @@ async function startLiveMatch(
   const stake = free ? 0 : RANDOM_QUEUE_STAKE;
   let matchId: string | null = null;
   try {
-    const picked = await pickMultiplayerPuzzle(a.language);
+    const picked = await pickMultiplayerPuzzle(a.language, [a.userId, b.userId]);
     if (!picked) {
       if (holds) {
         await releaseMatchedHolds(holds);

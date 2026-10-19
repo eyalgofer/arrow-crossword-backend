@@ -208,7 +208,10 @@ export const acceptInvite = async (req: AuthRequest, res: Response) => {
 
     // Get active multiplayer puzzles in the user's language and pick one
     // Use the inviter's language so the creator gets the puzzle they expect
-    const picked = await pickMultiplayerPuzzle(invite.language ?? resolveLanguage(req));
+    const picked = await pickMultiplayerPuzzle(
+      invite.language ?? resolveLanguage(req),
+      [fromUser._id, currentUser._id]
+    );
     if (!picked) {
       return res.status(503).json({
         error: 'No multiplayer puzzles configured',

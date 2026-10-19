@@ -11,6 +11,7 @@ import { isGhostOpponentId } from '../utils/ghost';
 import { buildPlacements, Placement, placementsForMatch, winnerIdFromPlacements } from './placements';
 import { clientIdsForMatch, clientUserId } from './lobbyView';
 import { settlePrize } from './prizeSettlement';
+import { toIdString, toObjectId } from '../utils/objectId';
 
 export interface MatchCompletedPlayer {
   userId: string;
@@ -418,23 +419,3 @@ export async function emitMatchPlayerLeft(io: Server, match: IMatch): Promise<vo
   }
 }
 
-function toObjectId(id: unknown): mongoose.Types.ObjectId | null {
-  if (id == null) {
-    return null;
-  }
-  if (id instanceof mongoose.Types.ObjectId) {
-    return id;
-  }
-  if (typeof id === 'object' && id !== null && '_id' in id) {
-    return toObjectId((id as { _id: unknown })._id);
-  }
-  if (mongoose.Types.ObjectId.isValid(String(id))) {
-    return new mongoose.Types.ObjectId(String(id));
-  }
-  return null;
-}
-
-function toIdString(id: unknown): string | null {
-  const objectId = toObjectId(id);
-  return objectId ? objectId.toString() : null;
-}

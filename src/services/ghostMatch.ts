@@ -40,7 +40,7 @@ export async function startGhostMatch(
     socket?.emit('error', { message });
   };
 
-  const picked = await pickMultiplayerPuzzle(language);
+  const picked = await pickMultiplayerPuzzle(language, [user._id]);
   if (!stillSearching()) {
     return;
   }

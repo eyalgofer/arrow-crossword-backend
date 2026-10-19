@@ -5,6 +5,7 @@ import { MatchWordClaim } from '../models/MatchWordClaim';
 import { IPuzzle } from '../models/Puzzle';
 import { ClaimedWord, MatchStatus, PuzzleItem } from '../types';
 import { answersMatch } from '../utils/answer';
+import { toIdString, toObjectId } from '../utils/objectId';
 
 export interface SerializedClaimedWord {
   clueId: string;
@@ -160,13 +161,14 @@ export function serializeClaimedWord(word: ClaimedWord): SerializedClaimedWord {
   const claimedAt = word.claimedAt instanceof Date
     ? word.claimedAt
     : new Date(word.claimedAt);
+  const iso = Number.isNaN(claimedAt.getTime()) ? new Date().toISOString() : claimedAt.toISOString();
 
   return {
     clueId: word.clueId,
     answer: word.answer,
     userId: toIdString(word.userId) ?? '',
     displayName: word.displayName,
-    claimedAt: claimedAt.toISOString()
+    claimedAt: iso
   };
 }
 
@@ -250,7 +252,7 @@ export async function tryClaimWord(options: {
 
   const item = findPuzzleItem(puzzle, clueId);
 
-  if (!item) {
+  if (!item || typeof item.answer !== 'string' || item.answer.trim().length === 0) {
     return { ok: false, error: 'Invalid clue' };
   }
 
@@ -261,6 +263,8 @@ export async function tryClaimWord(options: {
   const claimedAt = new Date();
   const officialAnswer = item.answer;
   const officialClueId = clueIdForItem(item);
+  const claimerId = userId.toString();
+  const nextCount = (claimer.claimedCount ?? 0) + 1;
 
   try {
     await MatchWordClaim.create({
@@ -286,33 +290,37 @@ export async function tryClaimWord(options: {
     claimedAt
   };
 
-  const updated = await Match.findOneAndUpdate(
-    {
-      _id: match._id,
-      status: MatchStatus.IN_PROGRESS,
-      'claimedWords.clueId': { $ne: officialClueId }
-    },
-    {
-      $push: { claimedWords: claimDoc },
-      $inc: { 'players.$[player].claimedCount': 1 }
-    },
-    {
-      arrayFilters: [{ 'player.userId': userId }],
-      new: true
-    }
-  );
+  let updated: IMatch | null;
+  try {
+    updated = await Match.findOneAndUpdate(
+      {
+        _id: match._id,
+        status: MatchStatus.IN_PROGRESS,
+        'claimedWords.clueId': { $ne: officialClueId }
+      },
+      {
+        $push: { claimedWords: claimDoc },
+        $inc: { 'players.$[player].claimedCount': 1 },
+        $set: { 'players.$[player].progress': claimProgress(nextCount, totalClues) }
+      },
+      {
+        // A string casts cleanly. An ObjectId is an object whose `_id` is itself.
+        arrayFilters: [{ 'player.userId': claimerId }],
+        new: true
+      }
+    );
+  } catch (error) {
+    await MatchWordClaim.deleteOne({ matchId: match._id, clueId: officialClueId });
+    throw error;
+  }
 
   if (!updated) {
+    await MatchWordClaim.deleteOne({ matchId: match._id, clueId: officialClueId });
     const latest = await Match.findById(match._id);
     if (!latest || latest.status !== MatchStatus.IN_PROGRESS) {
       return { ok: false, error: 'Match is over' };
     }
     return { ok: false, error: 'Word already claimed' };
-  }
-
-  applyClaimScores(updated, totalClues);
-  if (updated.isModified()) {
-    await updated.save();
   }
 
   return {
@@ -324,25 +332,4 @@ export async function tryClaimWord(options: {
 
 function isDuplicateKeyError(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && (error as { code: number }).code === 11000;
-}
-
-function toObjectId(id: unknown): mongoose.Types.ObjectId | null {
-  if (id == null) {
-    return null;
-  }
-  if (id instanceof mongoose.Types.ObjectId) {
-    return id;
-  }
-  if (typeof id === 'object' && id !== null && '_id' in id) {
-    return toObjectId((id as { _id: unknown })._id);
-  }
-  if (mongoose.Types.ObjectId.isValid(String(id))) {
-    return new mongoose.Types.ObjectId(String(id));
-  }
-  return null;
-}
-
-function toIdString(id: unknown): string | null {
-  const objectId = toObjectId(id);
-  return objectId ? objectId.toString() : null;
 }

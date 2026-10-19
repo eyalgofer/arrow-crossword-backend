@@ -463,47 +463,51 @@ export const setupSocketHandlers = (io: Server) => {
 
     // Shared-board word claim. First correct write wins; last clue ends the match.
     socket.on('claim_word', async (data) => {
+      const clueId = typeof data?.clueId === 'string' ? data.clueId : undefined;
+      const fail = (message: string) => {
+        socket.emit('error', clueId ? { message, clueId } : { message });
+      };
       try {
-        const { matchId, clueId, answer } = data ?? {};
+        const { matchId, answer } = data ?? {};
 
         if (!matchId || matchId === 'undefined' || !mongoose.Types.ObjectId.isValid(matchId)) {
-          socket.emit('error', { message: 'Invalid match ID' });
+          fail('Invalid match ID');
           return;
         }
 
-        if (typeof clueId !== 'string' || !clueId.includes('|')) {
-          socket.emit('error', { message: 'Invalid clue' });
+        if (!clueId || !clueId.includes('|')) {
+          fail('Invalid clue');
           return;
         }
 
         if (typeof answer !== 'string' || answer.trim().length === 0) {
-          socket.emit('error', { message: 'Answer is required' });
+          fail('Answer is required');
           return;
         }
 
         const { match, error } = await getPlayableMatch(io, matchId);
         if (!match) {
-          socket.emit('error', { message: error || 'Match is over' });
+          fail(error || 'Match is over');
           return;
         }
 
         const user = await User.findOne({ firebaseUid: socket.userId });
         if (!user) {
-          socket.emit('error', { message: 'User not found' });
+          fail('User not found');
           return;
         }
-        if (!requirePlaying(socket, match, user._id.toString())) {
+        if (!requirePlaying(socket, match, user._id.toString(), clueId)) {
           return;
         }
 
         if (!isQuickMatch(match)) {
-          socket.emit('error', { message: 'Word claims are only used in quick games' });
+          fail('Word claims are only used in quick games');
           return;
         }
 
         const puzzle = await Puzzle.findById(match.puzzleId);
         if (!puzzle) {
-          socket.emit('error', { message: 'Puzzle not found' });
+          fail('Puzzle not found');
           return;
         }
 
@@ -517,7 +521,7 @@ export const setupSocketHandlers = (io: Server) => {
         });
 
         if (!result.ok) {
-          socket.emit('error', { message: result.error });
+          fail(result.error);
           return;
         }
 
@@ -550,7 +554,7 @@ export const setupSocketHandlers = (io: Server) => {
         await completeMatchIfBoardClaimed(io, result.match, puzzle.puzzleItems.length);
       } catch (error) {
         console.error('Claim word error:', error);
-        socket.emit('error', { message: 'Failed to claim word' });
+        fail('Failed to claim word');
       }
     });
 
@@ -686,13 +690,19 @@ function syncGameStateClaims(match: IMatch, puzzle: IPuzzle): void {
   });
 }
 
-function requirePlaying(socket: SocketWithAuth, match: IMatch, userId: string): boolean {
+function requirePlaying(
+  socket: SocketWithAuth,
+  match: IMatch,
+  userId: string,
+  clueId?: string
+): boolean {
   const state = rosterState(match.players, userId);
   if (state === 'playing') {
     return true;
   }
   socket.emit('error', {
-    message: state === 'left' ? 'You left this match' : 'Not authorized for this match'
+    message: state === 'left' ? 'You left this match' : 'Not authorized for this match',
+    ...(clueId ? { clueId } : {})
   });
   return false;
 }

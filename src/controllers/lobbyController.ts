@@ -238,7 +238,10 @@ export const startLobby = async (req: AuthRequest, res: Response) => {
     }
 
     const language = (loaded.language ?? resolveLanguage(req)) as Language;
-    const picked = await pickMultiplayerPuzzle(language);
+    const picked = await pickMultiplayerPuzzle(
+      language,
+      loaded.seats.map(seat => seat.userId)
+    );
     if (!picked) {
       return res.status(503).json({
         error: 'No multiplayer puzzles configured',
