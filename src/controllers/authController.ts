@@ -22,7 +22,7 @@ export const register = async (req: AuthRequest, res: Response) => {
       firebaseUid,
       email,
       photoURL,
-      coins: 120
+      coins: 500
     });
 
     await user.save();
