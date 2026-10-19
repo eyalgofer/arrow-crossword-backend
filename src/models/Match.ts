@@ -9,6 +9,8 @@ export interface IMatchPlayer {
   claimedCount: number;
   completedAt?: Date;
   left?: boolean;
+  /** This seat is a past player's claims, not someone in the match. */
+  replay?: boolean;
 }
 
 export interface IMatchBoost {
@@ -75,7 +77,8 @@ const matchSchema = new Schema<IMatch>({
     progress: { type: Number, default: 0 },
     claimedCount: { type: Number, default: 0 },
     completedAt: { type: Date },
-    left: { type: Boolean }
+    left: { type: Boolean },
+    replay: { type: Boolean }
   }],
   kind: {
     type: String,
@@ -171,11 +174,13 @@ const matchSchema = new Schema<IMatch>({
   ghostEvents: {
     type: [{
       atMs: { type: Number, required: true },
-      type: { type: String, enum: ['move', 'progress', 'finish'], required: true },
+      type: { type: String, enum: ['move', 'progress', 'finish', 'claim'], required: true },
       progress: { type: Number },
       row: { type: Number },
       col: { type: Number },
-      letter: { type: String }
+      letter: { type: String },
+      clueId: { type: String },
+      answer: { type: String }
     }],
     default: undefined,
     select: false

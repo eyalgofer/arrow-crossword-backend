@@ -145,3 +145,95 @@ export function buildSolverSchedule(matchDurationMs: number, seed: number): Ghos
   events.sort((a, b) => a.atMs - b.atMs || typeRank(a.type) - typeRank(b.type));
   return events;
 }
+
+export interface ReplayClaimSource {
+  startedAt: Date;
+  claims: Array<{ clueId: string; answer: string; claimedAt: Date }>;
+}
+
+/**
+ * Play back one player's word-completion times on the shared board.
+ * Claims outside this match's window are dropped. A clue is scheduled once.
+ */
+export function buildReplayClaimSchedule(
+  source: ReplayClaimSource,
+  matchDurationMs: number
+): GhostEvent[] {
+  const origin = source.startedAt.getTime();
+  const seen = new Set<string>();
+  const events: GhostEvent[] = [];
+  const ordered = [...source.claims].sort(
+    (a, b) => a.claimedAt.getTime() - b.claimedAt.getTime()
+  );
+
+  for (const claim of ordered) {
+    if (!claim.clueId || !claim.answer) {
+      continue;
+    }
+    const atMs = claim.claimedAt.getTime() - origin;
+    if (atMs < 0 || atMs > matchDurationMs || seen.has(claim.clueId)) {
+      continue;
+    }
+    seen.add(claim.clueId);
+    events.push({
+      atMs,
+      type: 'claim',
+      clueId: claim.clueId,
+      answer: claim.answer
+    });
+  }
+
+  return events;
+}
+
+/**
+ * The paced solver's progress clock, turned into word claims.
+ * A step that reaches N% of the board claims that share of the clues.
+ */
+export function buildSolverClaimSchedule(
+  matchDurationMs: number,
+  seed: number,
+  clues: Array<{ clueId: string; answer: string }>
+): GhostEvent[] {
+  const playable = clues.filter(clue => clue.clueId && clue.answer);
+  if (playable.length === 0) {
+    return [];
+  }
+
+  const ordered = seededOrder(playable, seed);
+  const pace = buildSolverSchedule(matchDurationMs, seed);
+  const events: GhostEvent[] = [];
+  let claimed = 0;
+
+  for (const mark of pace) {
+    if (mark.type !== 'progress' && mark.type !== 'finish') {
+      continue;
+    }
+    const target = mark.type === 'finish' || (mark.progress ?? 0) >= 100
+      ? ordered.length
+      : Math.min(ordered.length, Math.round(((mark.progress ?? 0) / 100) * ordered.length));
+    while (claimed < target) {
+      const clue = ordered[claimed];
+      events.push({
+        atMs: mark.atMs,
+        type: 'claim',
+        clueId: clue.clueId,
+        answer: clue.answer
+      });
+      claimed += 1;
+    }
+  }
+
+  return events;
+}
+
+function seededOrder<T>(items: readonly T[], seed: number): T[] {
+  const ordered = [...items];
+  for (let index = ordered.length - 1; index > 0; index -= 1) {
+    const swapIndex = mix(seed + index + 1) % (index + 1);
+    const current = ordered[index];
+    ordered[index] = ordered[swapIndex];
+    ordered[swapIndex] = current;
+  }
+  return ordered;
+}

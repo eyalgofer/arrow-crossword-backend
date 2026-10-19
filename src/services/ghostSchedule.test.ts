@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { buildReplaySchedule, buildSolverSchedule, solverPaceFromSeed } from './ghostSchedule';
+import {
+  buildReplayClaimSchedule,
+  buildReplaySchedule,
+  buildSolverClaimSchedule,
+  buildSolverSchedule,
+  solverPaceFromSeed
+} from './ghostSchedule';
 
 const MINUTE = 60_000;
 const MATCH_MS = 10 * MINUTE;
@@ -87,6 +93,59 @@ describe('buildSolverSchedule', () => {
     const slowProgress = slow.filter(event => event.type === 'progress').map(event => event.progress ?? 0);
     assert.ok(Math.max(...slowProgress) < 100);
     assert.ok(Math.max(...slowProgress) > 0);
+  });
+});
+
+describe('buildReplayClaimSchedule', () => {
+  it('plays word-completion times and drops claims outside the window', () => {
+    const started = new Date('2026-01-01T00:00:00.000Z');
+    const events = buildReplayClaimSchedule({
+      startedAt: started,
+      claims: [
+        { clueId: '2|down', answer: 'BETA', claimedAt: new Date(started.getTime() + 90_000) },
+        { clueId: '1|across', answer: 'ALPHA', claimedAt: new Date(started.getTime() + 20_000) },
+        { clueId: '1|across', answer: 'ALPHA', claimedAt: new Date(started.getTime() + 30_000) },
+        { clueId: '3|across', answer: 'LATE', claimedAt: new Date(started.getTime() + 6 * MINUTE) },
+        { clueId: '4|down', answer: 'EARLY', claimedAt: new Date(started.getTime() - 1_000) }
+      ]
+    }, 5 * MINUTE);
+
+    assert.deepEqual(events.map(event => ({
+      atMs: event.atMs,
+      type: event.type,
+      clueId: event.clueId,
+      answer: event.answer
+    })), [
+      { atMs: 20_000, type: 'claim', clueId: '1|across', answer: 'ALPHA' },
+      { atMs: 90_000, type: 'claim', clueId: '2|down', answer: 'BETA' }
+    ]);
+  });
+});
+
+describe('buildSolverClaimSchedule', () => {
+  const clues = Array.from({ length: 200 }, (_, index) => ({
+    clueId: `${index + 1}|across`,
+    answer: `W${index}`
+  }));
+
+  it('is deterministic and only emits claims', () => {
+    const first = buildSolverClaimSchedule(5 * MINUTE, 7, clues);
+    assert.deepEqual(first, buildSolverClaimSchedule(5 * MINUTE, 7, clues));
+    assert.ok(first.length > 0);
+    assert.ok(first.every(event => event.type === 'claim' && event.clueId && event.answer));
+    assert.ok(first.every(event => event.atMs >= 0 && event.atMs <= 5 * MINUTE));
+  });
+
+  it('claims every clue when the pace finishes, and fewer when it does not', () => {
+    const finishingSeed = findSeed(pace => pace <= 1);
+    const slowSeed = findSeed(pace => pace > 1);
+    const fast = buildSolverClaimSchedule(5 * MINUTE, finishingSeed, clues);
+    const slow = buildSolverClaimSchedule(5 * MINUTE, slowSeed, clues);
+
+    assert.equal(fast.length, clues.length);
+    assert.ok(slow.length > 0);
+    assert.ok(slow.length < clues.length);
+    assert.equal(new Set(fast.map(event => event.clueId)).size, clues.length);
   });
 });
 

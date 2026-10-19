@@ -9,7 +9,7 @@ import { IMatch } from '../models/Match';
 import { resolveLanguageFromValues } from '../utils/language';
 import { serializeTimingFields } from '../utils/matchTiming';
 import { isQuickMatch } from '../utils/matchSettings';
-import { isGhostKind } from '../utils/ghost';
+import { isGhostKind, isReplaySeat } from '../utils/ghost';
 import { advanceGhostMatch, ensureSolverNickname } from '../services/ghostMatch';
 import { releaseRandomSearch, handleFindMatch, pauseRandomSearch, resumeRandomSearch } from './randomQueue';
 import { activeGames } from './activeGames';
@@ -98,7 +98,7 @@ export const setupSocketHandlers = (io: Server) => {
 
     registerLobbyHandlers(socket);
 
-    socket.on('find_match', (payload?: { stake?: unknown }) => {
+    socket.on('find_match', (payload?: { stake?: unknown; supportsStakes?: unknown; mode?: unknown }) => {
       void handleFindMatch(io, socket, payload);
     });
 
@@ -147,7 +147,7 @@ export const setupSocketHandlers = (io: Server) => {
 
         // Verify user is part of this match
         const isPlayer = match.players.some(
-          p => p.userId.toString() === user._id.toString()
+          p => !isReplaySeat(p) && p.userId.toString() === user._id.toString()
         );
 
         if (!isPlayer) {
@@ -696,6 +696,14 @@ function requirePlaying(
   userId: string,
   clueId?: string
 ): boolean {
+  const seat = match.players.find(player => player.userId.toString() === userId);
+  if (isReplaySeat(seat)) {
+    socket.emit('error', {
+      message: 'Not authorized for this match',
+      ...(clueId ? { clueId } : {})
+    });
+    return false;
+  }
   const state = rosterState(match.players, userId);
   if (state === 'playing') {
     return true;

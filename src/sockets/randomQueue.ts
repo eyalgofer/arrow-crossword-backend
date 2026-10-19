@@ -47,14 +47,14 @@ const searchTimers = new Map<string, NodeJS.Timeout>();
 const searchTokens = new Map<string, object>();
 
 /**
- * Random search is one queue per language. Mode and skill are not split until
- * enough people are searching at once; a pair always starts a normal timed match.
+ * One queue per language. `mode` on this event is ignored: a client that omits
+ * it, or sends any other mode, still pairs here. The match is always quick.
  * If nobody else arrives, the search falls back to a replay or a paced solver.
  */
 export async function handleFindMatch(
   io: Server,
   socket: SearchSocket,
-  payload?: { stake?: unknown; supportsStakes?: unknown }
+  payload?: { stake?: unknown; supportsStakes?: unknown; mode?: unknown }
 ): Promise<void> {
   const firebaseUid = socket.userId;
   if (!firebaseUid) {
@@ -358,7 +358,7 @@ async function startLiveMatch(
       return;
     }
 
-    const settings = { mode: MatchMode.NORMAL, timed: true as const };
+    const settings = { mode: MatchMode.QUICK, timed: true as const };
     const durationSeconds = durationSecondsForSettings(settings);
     const players = [a, b];
     const boosts = holds ? claimedBoostsFromHolds(holds) : [];
@@ -426,8 +426,9 @@ async function startLiveMatch(
         ...(stake > 0 ? { pot: headlinePot(stake, boostTotal) } : {}),
         ...(free?.stakeDowngraded ? { stakeDowngraded: true } : {}),
         coins: coinsByUser.get(player.userId),
-        timed: durationSeconds != null,
-        durationSeconds
+        timed: true,
+        durationSeconds,
+        endsAt: null
       });
     }
   } catch (error) {

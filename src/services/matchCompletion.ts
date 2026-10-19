@@ -7,7 +7,7 @@ import { isMatchTimedOut } from '../utils/matchTiming';
 import { removeActiveGame } from '../sockets/activeGames';
 import { isBoardFullyClaimed, serializeClaimedWords, winnerIdFromClaimedCount } from './wordClaims';
 import { isQuickMatch } from '../utils/matchSettings';
-import { isGhostOpponentId } from '../utils/ghost';
+import { isGhostOpponentId, isReplaySeat } from '../utils/ghost';
 import { buildPlacements, Placement, placementMode, placementsForMatch, winnerIdFromPlacements } from './placements';
 import { clientIdsForMatch, clientUserId } from './lobbyView';
 import { settlePrize } from './prizeSettlement';
@@ -272,7 +272,7 @@ async function applyPrizeSettlement(match: IMatch): Promise<void> {
 
   const placements = buildPlacements(match.players, placementMode(match.mode));
   const players = match.players
-    .filter(player => !isGhostOpponentId(player.userId))
+    .filter(player => !isReplaySeat(player) && !isGhostOpponentId(player.userId))
     .map(player => {
       const userId = toIdString(player.userId) ?? '';
       const boost = (match.boosts ?? []).find(row => row.userId.toString() === userId);
@@ -385,7 +385,7 @@ async function emitMatchCompleted(
   io.to(matchId).emit('match_completed', payload);
 
   const users = await User.find({
-    _id: { $in: match.players.map(player => toObjectId(player.userId)).filter((id): id is mongoose.Types.ObjectId => id != null) }
+    _id: { $in: participantIds(match) }
   }).select('firebaseUid');
 
   for (const user of users) {
@@ -415,11 +415,18 @@ export async function emitMatchPlayerLeft(io: Server, match: IMatch): Promise<vo
   io.to(matchId).emit('player_left', payload);
 
   const users = await User.find({
-    _id: { $in: match.players.map(player => toObjectId(player.userId)).filter((id): id is mongoose.Types.ObjectId => id != null) }
+    _id: { $in: participantIds(match) }
   }).select('firebaseUid');
 
   for (const user of users) {
     io.to(`user:${user.firebaseUid}`).emit('player_left', payload);
   }
+}
+
+function participantIds(match: IMatch): mongoose.Types.ObjectId[] {
+  return match.players
+    .filter(player => !isReplaySeat(player))
+    .map(player => toObjectId(player.userId))
+    .filter((id): id is mongoose.Types.ObjectId => id != null && !isGhostOpponentId(id));
 }
 

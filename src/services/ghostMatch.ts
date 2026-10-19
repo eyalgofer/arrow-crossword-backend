@@ -1,21 +1,32 @@
 import { Server } from 'socket.io';
 import mongoose from 'mongoose';
-import { GHOST_TICK_MS, MATCH_NORMAL_DURATION_SECONDS } from '../constants/match';
+import { GHOST_TICK_MS, MATCH_QUICK_DURATION_SECONDS } from '../constants/match';
 import { Match, IMatch } from '../models/Match';
 import { Puzzle, IPuzzle } from '../models/Puzzle';
 import { activeGames } from '../sockets/activeGames';
 import { GameState, Language, MatchCompletionReason, MatchMode, MatchStatus, OpponentKind } from '../types';
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
+import { toObjectId } from '../utils/objectId';
 import { createMatchTiming, serializeTimingFields } from '../utils/matchTiming';
-import { generateThemedNickname, ghostOpponentObjectId, isGhostOpponentId } from '../utils/ghost';
+import { isQuickMatch } from '../utils/matchSettings';
+import { generateThemedNickname, ghostOpponentObjectId, isGhostOpponentId, isReplaySeat } from '../utils/ghost';
 import { isDisplayNameTaken } from '../utils/displayName';
-import { buildReplaySchedule, buildSolverSchedule, ReplaySource } from './ghostSchedule';
-import { completeMatch } from './matchCompletion';
+import { buildReplayClaimSchedule, buildSolverClaimSchedule, ReplayClaimSource } from './ghostSchedule';
+import { completeMatch, completeMatchIfBoardClaimed } from './matchCompletion';
+import {
+  clueIdForItem,
+  lockedCellsFromClaims,
+  playerClaimScores,
+  SerializedClaimedWord,
+  serializeClaimedWords,
+  tryClaimWord
+} from './wordClaims';
 
 interface ReplayCandidate {
+  userId: mongoose.Types.ObjectId;
   displayName: string;
   photoURL?: string;
-  source: ReplaySource;
+  source: ReplayClaimSource;
 }
 
 /** Nicknames are UI-locale only; he-en packs use Hebrew names. */
@@ -50,25 +61,31 @@ export async function startGhostMatch(
   }
 
   const replay = await findReplay(picked.puzzleId, user._id);
-  const durationMs = MATCH_NORMAL_DURATION_SECONDS * 1000;
-  const opponentKind: OpponentKind = replay ? 'replay' : 'solver';
-  const events = replay
-    ? buildReplaySchedule(replay.source, durationMs)
-    : buildSolverSchedule(durationMs, Date.now() ^ user._id.getTimestamp().getTime());
-  const schedule = events.length > 0 ? events : buildSolverSchedule(durationMs, Date.now());
-  const kind: OpponentKind = replay && events.length > 0 ? opponentKind : 'solver';
+  const settings = { mode: MatchMode.QUICK, timed: true as const };
+  const timing = createMatchTiming(settings);
+  const durationMs = (timing.durationSeconds ?? MATCH_QUICK_DURATION_SECONDS) * 1000;
+  const claimEvents = replay ? buildReplayClaimSchedule(replay.source, durationMs) : [];
+  const clues = picked.puzzle.puzzleItems
+    .filter(item => typeof item.answer === 'string' && item.answer.trim().length > 0)
+    .map(item => ({ clueId: clueIdForItem(item), answer: item.answer }));
+  const solverEvents = buildSolverClaimSchedule(
+    durationMs,
+    Date.now() ^ user._id.getTimestamp().getTime(),
+    clues
+  );
+  const schedule = claimEvents.length > 0 ? claimEvents : solverEvents;
+  const kind: OpponentKind = claimEvents.length > 0 ? 'replay' : 'solver';
   if (!stillSearching()) {
     return;
   }
 
-  const settings = { mode: MatchMode.NORMAL, timed: true as const };
-  const timing = createMatchTiming(settings);
   const ghostId = ghostOpponentObjectId();
+  const seatId = kind === 'replay' && replay ? replay.userId : ghostId;
   const displayName = kind === 'replay' && replay?.displayName
     ? replay.displayName
     : await pickSolverNickname(nicknameLanguage(language), user.displayName);
   const opponent = {
-    userId: ghostId.toString(),
+    userId: seatId.toString(),
     displayName,
     photoURL: kind === 'replay' ? replay?.photoURL : undefined
   };
@@ -83,11 +100,12 @@ export async function startGhostMatch(
         claimedCount: 0
       },
       {
-        userId: ghostId,
+        userId: seatId,
         displayName: opponent.displayName,
         photoURL: opponent.photoURL,
         progress: 0,
-        claimedCount: 0
+        claimedCount: 0,
+        ...(kind === 'replay' ? { replay: true } : {})
       }
     ],
     puzzleId: picked.puzzleId,
@@ -146,6 +164,11 @@ export async function advanceGhostMatch(
   }).select('+ghostEvents +ghostApplied');
 
   if (!match) {
+    return;
+  }
+
+  if (isQuickMatch(match)) {
+    await advanceQuickGhost(io, match, options);
     return;
   }
 
@@ -229,6 +252,74 @@ export async function advanceGhostMatch(
       winnerId: ghostId,
       reason: MatchCompletionReason.COMPLETED
     });
+  }
+}
+
+/** Quick ghosts claim words. Progress and cell moves do not lock cells or score. */
+async function advanceQuickGhost(
+  io: Server,
+  match: IMatch,
+  options?: { emit?: boolean }
+): Promise<void> {
+  const events = match.ghostEvents ?? [];
+  const cursor = match.ghostApplied ?? 0;
+  if (cursor >= events.length) {
+    return;
+  }
+
+  const startedAt = match.startedAt?.getTime() ?? Date.now();
+  const elapsed = Date.now() - startedAt;
+  let next = cursor;
+  while (next < events.length && events[next].atMs <= elapsed) {
+    next += 1;
+  }
+  if (next === cursor) {
+    return;
+  }
+
+  const due = events
+    .slice(cursor, next)
+    .filter(event => event.type === 'claim' && event.clueId && event.answer);
+  const seat = ghostSeat(match);
+  const puzzle = due.length > 0 && seat ? await Puzzle.findById(match.puzzleId) : null;
+  if (due.length > 0 && seat && !puzzle) {
+    return;
+  }
+
+  let latest = match;
+  let claimed = false;
+  if (seat && puzzle) {
+    for (const event of due) {
+      const result = await tryClaimWord({
+        match: latest,
+        puzzle,
+        userId: seat.userId,
+        displayName: seat.displayName,
+        clueId: event.clueId as string,
+        answer: event.answer as string
+      });
+      if (!result.ok) {
+        if (result.error === 'Match is over') {
+          break;
+        }
+        continue;
+      }
+      latest = result.match;
+      claimed = true;
+      syncClaimedGame(latest, puzzle);
+      if (options?.emit !== false) {
+        emitWordClaimed(io, latest, puzzle, result.claim);
+      }
+    }
+  }
+
+  await Match.updateOne(
+    { _id: match._id, ghostApplied: cursor },
+    { $set: { ghostApplied: next } }
+  );
+
+  if (claimed && puzzle) {
+    await completeMatchIfBoardClaimed(io, latest, puzzle.puzzleItems.length);
   }
 }
 
@@ -332,11 +423,13 @@ async function findReplay(
 ): Promise<ReplayCandidate | null> {
   const matches = await Match.find({
     puzzleId,
-    status: MatchStatus.COMPLETED
+    status: MatchStatus.COMPLETED,
+    mode: MatchMode.QUICK,
+    'claimedWords.0': { $exists: true }
   })
     .sort({ completedAt: -1 })
     .limit(40)
-    .select('players moves startedAt completedAt durationSeconds endsAt')
+    .select('players claimedWords startedAt')
     .lean();
 
   const candidates: ReplayCandidate[] = [];
@@ -345,43 +438,36 @@ async function findReplay(
       continue;
     }
     const startedAt = new Date(match.startedAt);
-    const endedAt = new Date(
-      match.completedAt
-        ?? match.endsAt
-        ?? startedAt.getTime() + (match.durationSeconds ?? MATCH_NORMAL_DURATION_SECONDS) * 1000
-    );
 
     for (const player of match.players ?? []) {
-      if (isGhostOpponentId(player.userId)) {
+      if (isReplaySeat(player) || isGhostOpponentId(player.userId)) {
         continue;
       }
       if (String(player.userId) === excludeUserId.toString()) {
         continue;
       }
-      const progress = player.progress ?? 0;
-      if (progress <= 0 && !player.completedAt) {
+
+      const claims = (match.claimedWords ?? [])
+        .filter(word => String(word.userId) === String(player.userId))
+        .filter(word => word.clueId && word.answer)
+        .map(word => ({
+          clueId: word.clueId,
+          answer: word.answer,
+          claimedAt: new Date(word.claimedAt)
+        }));
+      if (claims.length === 0) {
         continue;
       }
 
-      const moves = (match.moves ?? [])
-        .filter(move => String(move.userId) === String(player.userId))
-        .map(move => ({
-          row: move.row,
-          col: move.col,
-          letter: move.letter,
-          timestamp: new Date(move.timestamp)
-        }));
-
+      const userId = toObjectId(player.userId);
+      if (!userId) {
+        continue;
+      }
       candidates.push({
+        userId,
         displayName: player.displayName || generateThemedNickname('en'),
         photoURL: player.photoURL || undefined,
-        source: {
-          startedAt,
-          endedAt,
-          playerCompletedAt: player.completedAt ? new Date(player.completedAt) : null,
-          finalProgress: player.completedAt ? 100 : progress,
-          moves
-        }
+        source: { startedAt, claims }
       });
     }
   }
@@ -390,6 +476,49 @@ async function findReplay(
     return null;
   }
   return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function ghostSeat(match: IMatch): IMatch['players'][number] | undefined {
+  return match.players.find(player => isReplaySeat(player))
+    ?? match.players.find(player => isGhostOpponentId(player.userId));
+}
+
+function emitWordClaimed(
+  io: Server,
+  match: IMatch,
+  puzzle: IPuzzle,
+  claim: SerializedClaimedWord
+): void {
+  const scores = playerClaimScores(match.players, puzzle.puzzleItems.length);
+  io.to(match._id.toString()).emit('word_claimed', {
+    matchId: match._id.toString(),
+    clueId: claim.clueId,
+    answer: claim.answer,
+    userId: claim.userId,
+    displayName: claim.displayName,
+    claimedAt: claim.claimedAt,
+    scores,
+    claimedWords: serializeClaimedWords(match.claimedWords)
+  });
+}
+
+function syncClaimedGame(match: IMatch, puzzle: IPuzzle): void {
+  const gameState = activeGames.get(match._id.toString());
+  if (!gameState) {
+    return;
+  }
+
+  const scores = playerClaimScores(match.players, puzzle.puzzleItems.length);
+  gameState.claimedWords = match.claimedWords || [];
+  gameState.lockedCells = lockedCellsFromClaims(puzzle, match.claimedWords);
+  gameState.players = gameState.players.map(player => {
+    const score = scores.find(entry => entry.userId === player.userId);
+    return {
+      ...player,
+      claimedCount: score?.claimedCount ?? player.claimedCount ?? 0,
+      progress: score?.progress ?? player.progress
+    };
+  });
 }
 
 function rememberGame(
@@ -410,7 +539,7 @@ function rememberGame(
     moves: [],
     claimedWords: [],
     lockedCells: new Set<string>(),
-    mode: MatchMode.NORMAL,
+    mode: match.mode === MatchMode.QUICK ? MatchMode.QUICK : MatchMode.NORMAL,
     ...timing
   };
   activeGames.set(match._id.toString(), gameState);

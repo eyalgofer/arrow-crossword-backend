@@ -10,7 +10,7 @@ import { resolveMatchMode } from '../utils/matchSettings';
 import { completeExpiredMatches, completeMatch, emitMatchPlayerLeft, ensureMatchNotExpired } from '../services/matchCompletion';
 import { serializeClaimedWords } from '../services/wordClaims';
 import { advanceGhostMatch, ensureSolverNickname } from '../services/ghostMatch';
-import { isGhostKind, resolvePlayerId } from '../utils/ghost';
+import { isGhostKind, isReplaySeat, resolvePlayerId } from '../utils/ghost';
 import { applyMatchReadFieldsForClient } from '../services/matchView';
 import { groupLeaveEndsMatch } from '../services/placements';
 import { activeGames } from '../sockets/activeGames';
@@ -25,7 +25,7 @@ export const getMatchHistory = async (req: AuthRequest, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 20;
 
     const matches = await Match.find({
-      'players.userId': user._id,
+      players: { $elemMatch: { userId: user._id, replay: { $ne: true } } },
       status: MatchStatus.COMPLETED
     })
       .populate('puzzleId', 'title difficulty')
@@ -58,7 +58,7 @@ export const getActiveMatches = async (req: AuthRequest, res: Response) => {
     await completeExpiredMatches(io);
 
     let matches = await Match.find({
-      'players.userId': user._id,
+      players: { $elemMatch: { userId: user._id, replay: { $ne: true } } },
       status: MatchStatus.IN_PROGRESS
     })
       .populate('puzzleId', 'title difficulty')
@@ -197,7 +197,7 @@ export const getMatch = async (req: AuthRequest, res: Response) => {
     console.log('match players', match.players);
     // Verify user is part of this match
     const isPlayer = match.players.some(
-      p => resolvePlayerId(p.userId, match.opponentKind) === user._id.toString()
+      p => !isReplaySeat(p) && resolvePlayerId(p.userId, match.opponentKind) === user._id.toString()
     );
 
     if (!isPlayer) {
@@ -275,7 +275,7 @@ export const leaveMatch = async (req: AuthRequest, res: Response) => {
     const isPlayer = match.players.some(
       p => {
         const playerUserId = (p.userId as any)?._id || p.userId;
-        return playerUserId.toString() === user._id.toString();
+        return !isReplaySeat(p) && playerUserId.toString() === user._id.toString();
       }
     );
 

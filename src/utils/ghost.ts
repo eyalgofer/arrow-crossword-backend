@@ -49,6 +49,11 @@ export function isGhostKind(kind?: string | null): kind is 'replay' | 'solver' {
   return kind === 'replay' || kind === 'solver';
 }
 
+/** A past player whose claims are played back. Not a person in this match. */
+export function isReplaySeat(player: { replay?: boolean } | null | undefined): boolean {
+  return player?.replay === true;
+}
+
 /** Same themed prefixes the signup screen uses when it suggests a nickname. */
 const HEBREW_NICK_PREFIXES = [
   'תשחצן',

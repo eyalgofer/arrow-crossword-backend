@@ -318,10 +318,7 @@ router.delete('/delete-account', authenticateToken, async (req: AuthRequest, res
     await Promise.all([
       UserPuzzleProgress.deleteMany({ userId: userObjectId }),
       Match.deleteMany({
-        $or: [
-          { 'players.userId': userObjectId },
-          { winnerId: userObjectId }
-        ]
+        players: { $elemMatch: { userId: userObjectId, replay: { $ne: true } } }
       }),
       Invite.deleteMany({
         $or: [

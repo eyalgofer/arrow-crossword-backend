@@ -78,11 +78,13 @@ export type OpponentKind = 'live' | 'replay' | 'solver';
 
 export interface GhostEvent {
   atMs: number;
-  type: 'move' | 'progress' | 'finish';
+  type: 'move' | 'progress' | 'finish' | 'claim';
   progress?: number;
   row?: number;
   col?: number;
   letter?: string;
+  clueId?: string;
+  answer?: string;
 }
 
 export enum MatchCompletionReason {

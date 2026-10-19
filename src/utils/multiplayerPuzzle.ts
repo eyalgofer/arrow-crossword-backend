@@ -132,7 +132,7 @@ async function recentPuzzleIds(userIds: readonly unknown[]): Promise<Set<string>
     return new Set();
   }
   const matches = await Match.find({
-    'players.userId': { $in: ids },
+    players: { $elemMatch: { userId: { $in: ids }, replay: { $ne: true } } },
     status: { $in: [MatchStatus.IN_PROGRESS, MatchStatus.COMPLETED] }
   })
     .sort({ createdAt: -1 })
