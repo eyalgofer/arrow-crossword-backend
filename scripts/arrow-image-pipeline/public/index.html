@@ -69,14 +69,30 @@
     return (group.candidates || []).some((candidate) => candidate.allowed);
   }
 
+  function letterLength(answer) {
+    return Array.from(String(answer || "").replace(/\s+/g, "")).length;
+  }
+
+  /** 5–8 letter answers fill 14×14 image blocks; keep those ahead of longer names. */
+  function shortFirst(list) {
+    const short = [];
+    const rest = [];
+    for (const group of list) {
+      const n = letterLength(group.clue?.answer_hebrew);
+      if (n >= 5 && n <= 8) short.push(group);
+      else rest.push(group);
+    }
+    return short.concat(rest);
+  }
+
   function buildQueue(groups) {
     const pending = groups.filter((group) =>
       group.clue?.type === "person" &&
       !approvals.has(group.clue.id) &&
       hasPhoto(group)
     );
-    const israeli = pending.filter((group) => isIsraeli(group.clue));
-    const other = pending.filter((group) => !isIsraeli(group.clue));
+    const israeli = shortFirst(pending.filter((group) => isIsraeli(group.clue)));
+    const other = shortFirst(pending.filter((group) => !isIsraeli(group.clue)));
     israeliCount = israeli.length;
     otherCount = other.length;
     if (!israeli.length || !other.length) return israeli.concat(other);

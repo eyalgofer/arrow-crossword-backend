@@ -47,10 +47,18 @@ export async function assignPuzzleToDate(
   // (using dayOfYear and year for reliable lookup)
   const existing = await DailyPuzzle.findOne({ dayOfYear, year, language: langFilter });
   if (existing) {
-    // Update existing assignment
+    // Update existing assignment. Some older rows store the Israel date under the
+    // previous UTC day number, so another row may already own this midnight.
     existing.puzzleId = puzzle._id;
-    existing.date = normalizedDate;
     existing.language = language;
+    const dateOwner = await DailyPuzzle.findOne({
+      date: normalizedDate,
+      language: langFilter,
+      _id: { $ne: existing._id },
+    });
+    if (!dateOwner) {
+      existing.date = normalizedDate;
+    }
     await existing.save();
     return existing;
   }
