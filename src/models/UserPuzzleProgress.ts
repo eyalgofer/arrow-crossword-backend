@@ -11,6 +11,8 @@ export interface IUserPuzzleProgress extends Document {
   bestTime: number | null;
   /** Hint purchases on this puzzle. Not cleared when progress is reset. */
   hintsUsed: number;
+  /** Set once this daily has been counted toward solvedCount and the streak. */
+  dailyStatsCounted?: boolean;
   lastPlayedAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -55,6 +57,10 @@ const userPuzzleProgressSchema = new Schema<IUserPuzzleProgress>({
     type: Number,
     default: 0,
     min: 0
+  },
+  dailyStatsCounted: {
+    type: Boolean,
+    default: false
   },
   lastPlayedAt: {
     type: Date,

@@ -28,7 +28,7 @@ export interface UserStats {
   fastestTime: number;
 }
 
-/** Lifetime daily-puzzle stats for the profile screen. */
+/** Lifetime daily-puzzle stats stored on the user (streak and fastest time). */
 export interface DailyPuzzleStats {
   solvedCount: number;
   fastestSeconds: number | null;

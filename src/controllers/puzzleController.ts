@@ -17,12 +17,14 @@ import {
   deriveDailyPuzzleStatsFromProgress,
   effectiveCurrentStreak,
   emptyDailyPuzzleStats,
+  toLocalDateString,
 } from '../utils/dailyPuzzleStats';
 import { countsTowardFastestTime } from '../utils/dailyHints';
 import { buildPuzzlePreview, FAV_PICK_ACCENTS, toCardDifficulty } from '../utils/puzzlePreview';
 import { DAILY_HINT_LIMIT, FIRST_DAILY_SOLVER_BONUS, dailyHintCost } from '../constants/daily';
 import { purchasePuzzleHint } from '../services/dailyHints';
 import { buildDailyResult, maybeClaimOvernightFastest } from '../services/dailyResult';
+import { loadDailyProfilePlacements } from '../services/dailyProfileStats';
 
 export const getPuzzles = async (req: AuthRequest, res: Response) => {
   try {
@@ -242,10 +244,22 @@ export const getDailyPuzzleStats = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    const placement = await loadDailyProfilePlacements(user._id);
+    if ((stats.solvedCount ?? 0) !== placement.solvedCount) {
+      stats.solvedCount = placement.solvedCount;
+      user.dailyPuzzleStats = stats;
+      user.markModified('dailyPuzzleStats');
+      await user.save();
+    }
+
     res.json({
-      solvedCount: stats.solvedCount ?? 0,
+      solvedCount: placement.solvedCount,
       fastestSeconds: stats.fastestSeconds ?? null,
       currentStreak: effectiveCurrentStreak(stats),
+      wins: placement.wins,
+      coinsWon: placement.coinsWon,
+      bestPlacement: placement.bestPlacement,
+      last7: placement.last7,
     });
   } catch (error) {
     console.error('Get daily puzzle stats error:', error);
@@ -610,11 +624,20 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
       userId: user._id,
       puzzleId,
     })
-      .select('hintsUsed bestTime')
+      .select('hintsUsed bestTime dailyStatsCounted isCompleted createdAt')
       .lean();
 
     const recordFastest = countsTowardFastestTime(existingProgress?.hintsUsed);
     const isTodaysDaily = await isTodaysDailyPuzzle(puzzleId);
+    const isDailyPuzzle = isTodaysDaily || (await DailyPuzzle.exists({ puzzleId })) != null;
+    // Progress is often marked complete before /complete, so isCompleted alone cannot
+    // tell a first solve from a replay. A row created on an earlier day was already solved.
+    const createdBeforeToday =
+      existingProgress?.createdAt != null &&
+      toLocalDateString(new Date(existingProgress.createdAt)) < toLocalDateString();
+    const alreadyCounted =
+      existingProgress?.dailyStatsCounted === true ||
+      (existingProgress?.isCompleted === true && createdBeforeToday);
     // Today's daily ranks/prizes include hinted runs; other puzzles keep the old rule.
     const recordBestTime = recordFastest || isTodaysDaily;
     let coinsAwarded = 0;
@@ -652,6 +675,7 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
           bestTime: nextBestTime,
           elapsedTime: completionTime,
           lastPlayedAt: new Date(),
+          ...(isDailyPuzzle ? { dailyStatsCounted: true } : {}),
         },
         $setOnInsert: {
           userId: user._id,
@@ -681,15 +705,17 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
 
     userNeedsSave = true;
 
-    // Lifetime daily-puzzle stats (profile card) + first-solver bonus
-    const isDailyPuzzle = await DailyPuzzle.exists({ puzzleId });
+    // Lifetime daily-puzzle stats (profile card) + first-solver bonus.
+    // A replay updates fastest time and today's rank, not the unique solve count or streak.
     if (isDailyPuzzle) {
       if (!user.dailyPuzzleStats) {
         user.dailyPuzzleStats = emptyDailyPuzzleStats();
       }
 
-      user.dailyPuzzleStats.solvedCount += 1;
-      applyDailyStreak(user.dailyPuzzleStats);
+      if (!alreadyCounted) {
+        user.dailyPuzzleStats.solvedCount += 1;
+        applyDailyStreak(user.dailyPuzzleStats);
+      }
       userNeedsSave = true;
 
       // Atomically claim first solver for this daily (per language assignment)
@@ -783,7 +809,7 @@ export const deleteProgress = async (req: AuthRequest, res: Response) => {
       puzzleId
     });
 
-    if (progress && (progress.hintsUsed ?? 0) > 0) {
+    if (progress && ((progress.hintsUsed ?? 0) > 0 || progress.dailyStatsCounted)) {
       progress.completedClueIds = [];
       progress.completedCluesCount = 0;
       progress.isCompleted = false;
