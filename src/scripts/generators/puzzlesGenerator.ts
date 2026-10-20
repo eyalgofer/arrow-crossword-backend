@@ -68,6 +68,9 @@ export interface DailyGenerationOptions {
   fillerWords?: string[];
 }
 
+/** Daily clues aim a bit easier than the 1–3 midpoint, without the full easy preset. */
+export const DAILY_TARGET_DIFFICULTY = 1.2;
+
 export const DEFAULT_DAILY_TAG_CAPS: Record<string, number> = {
   'cat:geography': 3,
   'cat:people': 3,
@@ -479,7 +482,7 @@ export class PuzzleGenerator {
       // would drop the easy-clue words that mix still needs, so it stays off then.
       const difficultyMiss =
         !weights && options.wordDifficultyWeight && tier != null
-          ? Math.abs(tier - (options.targetDifficulty ?? 1.5)) * options.wordDifficultyWeight
+          ? Math.abs(tier - (options.targetDifficulty ?? DAILY_TARGET_DIFFICULTY)) * options.wordDifficultyWeight
           : 0;
       const maxClueLen = this.language === 'he' ? 28 : 50;
       const hasDominant =
@@ -505,7 +508,7 @@ export class PuzzleGenerator {
     const tagCaps = options.tagCaps ?? DEFAULT_DAILY_TAG_CAPS;
     const targets = dailyTargetsFor(wantImages, { rows, cols });
     const clueSelection = {
-      targetDifficulty: options.targetDifficulty ?? dominant ?? 1.5,
+      targetDifficulty: options.targetDifficulty ?? dominant ?? DAILY_TARGET_DIFFICULTY,
       difficultyWeights: weights,
       avoidClues: new Set(options.avoidClues ?? []),
     };
