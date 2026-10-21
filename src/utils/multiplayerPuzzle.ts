@@ -14,6 +14,59 @@ export interface PickedMultiplayerPuzzle {
 }
 
 /**
+ * Which queue a linked board belongs to.
+ * A Hebrew slot stays in the Hebrew queue. A Hebrew puzzle whose slot was saved
+ * as English (the schema default) joins that queue too.
+ */
+export function poolLanguage(
+  puzzleLanguage: unknown,
+  slotLanguage: unknown
+): Language {
+  const slot = asLanguage(slotLanguage);
+  const puzzle = asLanguage(puzzleLanguage);
+  if (slot === 'he' || slot === 'he-en') return slot;
+  if (puzzle === 'he' || puzzle === 'he-en') return puzzle;
+  return 'en';
+}
+
+function asLanguage(value: unknown): Language | null {
+  if (value === 'en' || value === 'he' || value === 'he-en') return value;
+  return null;
+}
+
+/** Image answers that make one board feel like another. Whitespace is ignored. */
+export function imageAnswerKey(answer: string): string {
+  return answer.replace(/\s+/g, '');
+}
+
+/**
+ * Boards to draw from. Recent boards are skipped while any other is eligible.
+ * Among those, boards that repeat an image from a recent match are skipped
+ * while any other board is eligible.
+ */
+export function variedPool(
+  ids: readonly string[],
+  avoid: ReadonlySet<string>,
+  imagesById: ReadonlyMap<string, readonly string[]>
+): string[] {
+  if (ids.length === 0) return [];
+  const fresh = ids.filter(id => !avoid.has(id));
+  const base = fresh.length > 0 ? fresh : [...ids];
+
+  const recentImages = new Set<string>();
+  for (const id of ids) {
+    if (!avoid.has(id)) continue;
+    for (const image of imagesById.get(id) ?? []) recentImages.add(image);
+  }
+  if (recentImages.size === 0) return base;
+
+  const varied = base.filter(id =>
+    (imagesById.get(id) ?? []).every(image => !recentImages.has(image))
+  );
+  return varied.length > 0 ? varied : base;
+}
+
+/**
  * Uniform pick. Recent ids are skipped while any other board is eligible.
  * If every board was just played, one of them is still returned.
  */
@@ -52,13 +105,17 @@ async function pickForLanguage(
 ): Promise<PickedMultiplayerPuzzle | null> {
   const assigned = await assignedPuzzles(language);
   const ids = assigned.map(puzzle => puzzle._id.toString());
-  const eligible = ids.filter(id => !avoid.has(id)).length;
+  const imagesById = new Map(
+    assigned.map(puzzle => [puzzle._id.toString(), imageAnswers(puzzle)])
+  );
+  const pool = variedPool(ids, avoid, imagesById);
+  const fresh = ids.filter(id => !avoid.has(id)).length;
   console.log(
-    `[PUZZLE] ${language} multiplayer pool ${eligible} eligible of ${assigned.length} assigned` +
-      ` (${avoid.size} recent skipped)`
+    `[PUZZLE] ${language} multiplayer pool ${pool.length} chosen from ${ids.length} linked` +
+      ` (${fresh} not in the last ${RECENT_MATCHES} matches)`
   );
 
-  const chosenId = choosePuzzleId(ids, avoid);
+  const chosenId = choosePuzzleId(pool, new Set());
   const chosen = chosenId ? assigned.find(puzzle => puzzle._id.toString() === chosenId) : undefined;
   if (chosen) {
     return { puzzle: chosen, puzzleId: chosen._id };
@@ -72,20 +129,38 @@ async function pickForLanguage(
   return { puzzle: sampled, puzzleId: sampled._id };
 }
 
+function imageAnswers(puzzle: IPuzzle): string[] {
+  const keys: string[] = [];
+  for (const item of puzzle.puzzleItems ?? []) {
+    if (item.clueType !== 'image' || !item.answer) continue;
+    keys.push(imageAnswerKey(item.answer));
+  }
+  return keys;
+}
+
 async function assignedPuzzles(language: Language): Promise<IPuzzle[]> {
-  const assignments = await MultiplayerPuzzle.find({ language: languageFilter(language) })
-    .select('puzzleId')
-    .lean();
-  const ids = assignments
-    .map(assignment => assignment.puzzleId)
-    .filter((id): id is mongoose.Types.ObjectId => id != null);
+  const assignments = await MultiplayerPuzzle.find().select('puzzleId language').lean();
+  const slotLanguageByPuzzle = new Map<string, unknown>();
+  const ids: mongoose.Types.ObjectId[] = [];
+  for (const assignment of assignments) {
+    const id = toObjectId(assignment.puzzleId);
+    if (!id) continue;
+    const key = id.toString();
+    if (slotLanguageByPuzzle.has(key)) continue;
+    slotLanguageByPuzzle.set(key, assignment.language);
+    ids.push(id);
+  }
   if (ids.length === 0) {
     return [];
   }
-  return Puzzle.find({
+
+  const puzzles = await Puzzle.find({
     _id: { $in: ids },
     isActive: { $ne: false }
   });
+  return puzzles.filter(
+    puzzle => poolLanguage(puzzle.language, slotLanguageByPuzzle.get(String(puzzle._id))) === language
+  );
 }
 
 async function sampleActivePuzzle(
