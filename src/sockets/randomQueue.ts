@@ -416,7 +416,7 @@ async function startLiveMatch(
         matchId: match._id,
         puzzle: picked.puzzle,
         opponent: opponent ? {
-          userId: opponent.userId,
+          userId: opponent.firebaseUid,
           displayName: opponent.displayName,
           photoURL: opponent.photoURL
         } : null,

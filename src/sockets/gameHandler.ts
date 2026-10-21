@@ -159,7 +159,7 @@ export const setupSocketHandlers = (io: Server) => {
         socket.join(matchId);
         socket.matchId = matchId;
 
-        const clock = await noteLivePlayerJoined(match, user._id.toString());
+        const clock = await noteLivePlayerJoined(match);
         const timing = clock.timing ?? {
           timed: match.timed !== false,
           durationSeconds: match.durationSeconds ?? null,

@@ -3,8 +3,6 @@ import { MatchStatus } from '../types';
 import { createMatchTiming, getMatchTimingFields, MatchTiming } from '../utils/matchTiming';
 import { parseMatchSettings } from '../utils/matchSettings';
 
-const arrived = new Map<string, Set<string>>();
-
 export interface ClockNote {
   timing: MatchTiming | null;
   /** True only for the join that first starts the clock. */
@@ -12,21 +10,13 @@ export interface ClockNote {
 }
 
 /**
- * Random matches are created before anyone enters, so the clock waits until
- * every player has joined. A match_found sent during a boost ad stays valid,
- * and the board time starts when that player comes in after the ad.
+ * Random matches are created before anyone enters. The clock starts when the
+ * first player opens the board, after a boost ad, and the start is stored so
+ * every server process shares the same end time.
  */
-export async function noteLivePlayerJoined(match: IMatch, userId: string): Promise<ClockNote> {
+export async function noteLivePlayerJoined(match: IMatch): Promise<ClockNote> {
   if (match.startedAt || match.opponentKind !== 'live') {
     return { timing: getMatchTimingFields(match), startedNow: false };
-  }
-
-  const matchId = match._id.toString();
-  const joined = arrived.get(matchId) ?? new Set<string>();
-  joined.add(userId);
-  arrived.set(matchId, joined);
-  if (joined.size < match.players.length) {
-    return { timing: null, startedNow: false };
   }
 
   const settings = parseMatchSettings({ mode: match.mode, timed: match.timed });
@@ -47,7 +37,6 @@ export async function noteLivePlayerJoined(match: IMatch, userId: string): Promi
     },
     { new: true }
   );
-  arrived.delete(matchId);
   if (!updated) {
     const current = await Match.findById(match._id);
     return {

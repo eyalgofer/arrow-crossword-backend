@@ -100,12 +100,9 @@ export async function loadClientUserIds(ids: unknown[]): Promise<Map<string, str
 
 export async function clientIdsForMatch(
   matchId: string,
-  kind: string | null | undefined,
+  _kind: string | null | undefined,
   playerIds: unknown[]
 ): Promise<ReadonlyMap<string, string> | null> {
-  if (kind !== 'group') {
-    return null;
-  }
   const cached = clientIdCache.get(matchId);
   if (cached) {
     return cached;
