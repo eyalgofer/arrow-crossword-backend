@@ -5,7 +5,7 @@ import { User } from '../models/User';
 import { MatchCompletionReason, MatchMode, MatchStatus } from '../types';
 import { isMatchTimedOut } from '../utils/matchTiming';
 import { removeActiveGame } from '../sockets/activeGames';
-import { isBoardFullyClaimed, serializeClaimedWords, winnerIdFromClaimedCount } from './wordClaims';
+import { clearMatchWordClaims, isBoardFullyClaimed, serializeClaimedWords, winnerIdFromClaimedCount } from './wordClaims';
 import { isQuickMatch } from '../utils/matchSettings';
 import { isGhostOpponentId, isReplaySeat } from '../utils/ghost';
 import { buildPlacements, Placement, placementMode, placementsForMatch, winnerIdFromPlacements } from './placements';
@@ -168,6 +168,12 @@ export async function completeMatch(
 
   if (!match) {
     return null;
+  }
+
+  try {
+    await clearMatchWordClaims(match._id);
+  } catch (error) {
+    console.error(`Failed to clear word claims for match ${match._id}:`, error);
   }
 
   await applyPrizeSettlement(match);

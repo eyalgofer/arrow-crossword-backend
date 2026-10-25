@@ -22,6 +22,7 @@ import { startLobbyExpiryJob } from './jobs/lobbyExpiryJob';
 import { startOvernightDailyPrizeJob } from './jobs/overnightDailyPrizeJob';
 import { startGhostTicker } from './services/ghostMatch';
 import { refundAllSearchingHolds } from './services/matchmakingHold';
+import { clearFinishedMatchWordClaims } from './services/wordClaims';
 import './models/MatchWordClaim';
 
 dotenv.config();
@@ -175,6 +176,16 @@ const startServer = async () => {
 
     await refundAllSearchingHolds();
     console.log('✅ Leftover matchmaking holds refunded');
+
+    void clearFinishedMatchWordClaims()
+      .then(removed => {
+        if (removed > 0) {
+          console.log(`✅ Cleared ${removed} word claim(s) from finished matches`);
+        }
+      })
+      .catch(error => {
+        console.error('Failed to clear word claims for finished matches:', error);
+      });
 
     setupSocketHandlers(io);
     console.log('✅ Socket.io configured');

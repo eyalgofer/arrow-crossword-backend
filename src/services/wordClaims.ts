@@ -330,6 +330,61 @@ export async function tryClaimWord(options: {
   };
 }
 
+const FINISHED_CLAIM_BATCH = 200;
+
+/** Drops the first-write lock rows once the match no longer needs them. */
+export async function clearMatchWordClaims(
+  matchId: mongoose.Types.ObjectId | string | Array<mongoose.Types.ObjectId | string>
+): Promise<void> {
+  const matchIds = Array.isArray(matchId) ? matchId : [matchId];
+  if (matchIds.length === 0) {
+    return;
+  }
+  await MatchWordClaim.deleteMany({ matchId: { $in: matchIds } });
+}
+
+/**
+ * Removes claim rows for matches that are no longer in progress, including
+ * rows whose match document is already gone. In-progress rows stay, so a
+ * claim that is still the first-write lock is not deleted.
+ */
+export async function clearFinishedMatchWordClaims(): Promise<number> {
+  let removed = 0;
+  let after: mongoose.Types.ObjectId | undefined;
+
+  for (;;) {
+    const page = await MatchWordClaim.find(after ? { _id: { $gt: after } } : {})
+      .sort({ _id: 1 })
+      .limit(FINISHED_CLAIM_BATCH)
+      .select('_id matchId')
+      .lean();
+
+    if (page.length === 0) {
+      break;
+    }
+
+    after = page[page.length - 1]._id;
+    const matchIds = [...new Set(page.map(row => row.matchId.toString()))];
+    const live = await Match.find({
+      _id: { $in: matchIds },
+      status: MatchStatus.IN_PROGRESS
+    }).select('_id').lean();
+    const liveIds = new Set(live.map(match => match._id.toString()));
+    const finished = matchIds.filter(id => !liveIds.has(id));
+
+    if (finished.length > 0) {
+      const result = await MatchWordClaim.deleteMany({ matchId: { $in: finished } });
+      removed += result.deletedCount ?? 0;
+    }
+
+    if (page.length < FINISHED_CLAIM_BATCH) {
+      break;
+    }
+  }
+
+  return removed;
+}
+
 function isDuplicateKeyError(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && (error as { code: number }).code === 11000;
 }

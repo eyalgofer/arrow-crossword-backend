@@ -9,6 +9,9 @@
  *   npx ts-node src/scripts/seedFavPuzzles.ts --small    # 9 text-only 9×9/8×8 boards: 4 easy, 4 medium, 1 hard
  *   add --append to keep current favorites, --dry-run to generate without touching the database
  *
+ * Without --append, this language's fav_puzzles rows are replaced so only the new
+ * week is listed. Puzzle documents from earlier weeks stay in the puzzles collection.
+ *
  * Default is the daily profile (framed two-clue layout, scored fill). Each slot is generated
  * at its own difficulty — clue choice and word choice lean easy / medium / medium / hard.
  */
@@ -482,7 +485,6 @@ async function main() {
   }
 
   const previous = await FavPuzzle.find({ language: LANGUAGE }).lean();
-  const previousIds = APPEND ? [] : previous.map((row) => row.puzzleId).filter(Boolean);
   const orderBase = APPEND ? Math.max(-1, ...previous.map((row) => row.order)) + 1 : 0;
 
   if (!APPEND) await FavPuzzle.deleteMany({ language: LANGUAGE });
@@ -511,16 +513,11 @@ async function main() {
     }))
   );
 
-  if (previousIds.length) {
-    await Puzzle.deleteMany({
-      _id: { $in: previousIds },
-      packageId: { $exists: false },
-    });
-  }
-
   console.log(
     `\n✅ Wired ${saved.length} puzzles to fav_puzzles ` +
-      (APPEND ? `(appended after ${previous.length})` : `(replaced ${previousIds.length})`)
+      (APPEND
+        ? `(appended after ${previous.length})`
+        : `(replaced ${previous.length} favorites; previous puzzle documents kept)`)
   );
   for (let i = 0; i < saved.length; i++) {
     const images = collected[i].puzzleItems.filter((item) => item.clueType === 'image');

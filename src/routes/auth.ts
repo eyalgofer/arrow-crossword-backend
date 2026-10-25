@@ -18,6 +18,7 @@ import { authenticateToken, AuthRequest } from '../middleware/auth';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { Match } from '../models/Match';
 import { Invite } from '../models/Invite';
+import { clearMatchWordClaims } from '../services/wordClaims';
 import { getUserNumber, notifyNewUser } from '../services/slack';
 
 function parseDevice(value: unknown): DevicePlatform | null {
@@ -313,13 +314,15 @@ router.delete('/delete-account', authenticateToken, async (req: AuthRequest, res
     }
 
     const userObjectId = user._id;
+    const matchIds = await Match.find({
+      players: { $elemMatch: { userId: userObjectId, replay: { $ne: true } } }
+    }).distinct('_id');
 
     // Delete all associated data in parallel for better performance
     await Promise.all([
       UserPuzzleProgress.deleteMany({ userId: userObjectId }),
-      Match.deleteMany({
-        players: { $elemMatch: { userId: userObjectId, replay: { $ne: true } } }
-      }),
+      clearMatchWordClaims(matchIds),
+      Match.deleteMany({ _id: { $in: matchIds } }),
       Invite.deleteMany({
         $or: [
           { from: userObjectId },
