@@ -10,7 +10,7 @@ import { User } from '../models/User';
 import { AuthRequest, ProgressSummary } from '../types';
 import { resolveLanguage, languageFilter } from '../utils/language';
 import { withoutSingleWordEnumeration } from '../utils/enumeration';
-import { liveDailyKey } from '../utils/dailyClock';
+import { dailyGameDateString, liveDailyKey } from '../utils/dailyClock';
 import { isTodaysDailyPuzzle } from '../utils/dailyPuzzleUtils';
 import {
   applyDailyStreak,
@@ -124,7 +124,12 @@ export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
 
       const data = fallbackPuzzle.toObject();
       data.puzzleItems = (data.puzzleItems || []).map(item => withoutSingleWordEnumeration(item));
-      return res.json({ puzzle: data });
+      return res.json({
+        puzzle: {
+          ...data,
+          gameDate: dailyGameDateString(),
+        },
+      });
     }
 
     const puzzle = dailyPuzzle.puzzleId as any;
@@ -142,6 +147,7 @@ export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
         clues: puzzle.clues,
         dailyPuzzleDate: dailyPuzzle.date,
         dayOfYear: dailyPuzzle.dayOfYear,
+        gameDate: dailyGameDateString(),
       },
     });
   } catch (error) {
