@@ -46,14 +46,14 @@ export function escrowPool(stake: number, playerCount: number, boostTotal: numbe
 /**
  * Coin credits applied at match end, after escrow has already lowered balances.
  * Calling this twice with the same input returns the same deltas.
+ *
+ * A replay or solver is not a payable seat. The caller lists only the human,
+ * and the house funds the other side of the pot: a win pays that pot, a loss
+ * or forfeit pays no one, and a draw returns the human's own stake and boost.
  */
 export function settlePrize(input: PrizeSettlementInput): PrizeSettlement {
   const players = input.players;
-  if (
-    input.stake <= 0
-    || input.opponentKind === 'replay'
-    || input.opponentKind === 'solver'
-  ) {
+  if (input.stake <= 0) {
     return {
       stake: 0,
       pot: 0,

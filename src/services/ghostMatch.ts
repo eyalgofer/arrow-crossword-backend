@@ -13,6 +13,9 @@ import { generateThemedNickname, ghostOpponentObjectId, isGhostOpponentId, isRep
 import { isDisplayNameTaken } from '../utils/displayName';
 import { buildReplayClaimSchedule, buildSolverClaimSchedule, ReplayClaimSource } from './ghostSchedule';
 import { completeMatch, completeMatchIfBoardClaimed } from './matchCompletion';
+import { claimSearchHolds, claimedBoostsFromHolds, releaseMatchedHolds } from './matchmakingHold';
+import { headlinePot } from './prizeSettlement';
+import { removeActiveGame } from '../sockets/activeGames';
 import {
   clueIdForItem,
   lockedCellsFromClaims,
@@ -34,6 +37,16 @@ function nicknameLanguage(language: Language): 'en' | 'he' {
   return language === 'he' || language === 'he-en' ? 'he' : 'en';
 }
 
+export type GhostMatchStart =
+  | { ok: true }
+  | { ok: false; error?: string; coins?: number };
+
+/**
+ * Start a replay or solver match for a random search that found nobody.
+ * `escrowUserId` keeps that player's search hold as the match stake. The hold
+ * is claimed only after the puzzle is chosen, so a cancel during setup still
+ * refunds a searching hold. If the match does not start, the claim is returned.
+ */
 export async function startGhostMatch(
   io: Server,
   socketId: string,
@@ -44,20 +57,16 @@ export async function startGhostMatch(
   },
   language: Language,
   stillSearching: () => boolean = () => true,
-  coins?: number
-): Promise<void> {
+  escrowUserId?: string
+): Promise<GhostMatchStart> {
   const socket = io.sockets.sockets.get(socketId);
-  const fail = (message: string) => {
-    socket?.emit('error', { message });
-  };
 
   const picked = await pickMultiplayerPuzzle(language, [user._id]);
   if (!stillSearching()) {
-    return;
+    return { ok: false };
   }
   if (!picked) {
-    fail('No multiplayer puzzles configured');
-    return;
+    return { ok: false, error: 'No multiplayer puzzles configured' };
   }
 
   const replay = await findReplay(picked.puzzleId, user._id);
@@ -76,7 +85,7 @@ export async function startGhostMatch(
   const schedule = claimEvents.length > 0 ? claimEvents : solverEvents;
   const kind: OpponentKind = claimEvents.length > 0 ? 'replay' : 'solver';
   if (!stillSearching()) {
-    return;
+    return { ok: false };
   }
 
   const ghostId = ghostOpponentObjectId();
@@ -90,62 +99,100 @@ export async function startGhostMatch(
     photoURL: kind === 'replay' ? replay?.photoURL : undefined
   };
 
-  const match = new Match({
-    players: [
-      {
-        userId: user._id,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
-        progress: 0,
-        claimedCount: 0
-      },
-      {
-        userId: seatId,
-        displayName: opponent.displayName,
-        photoURL: opponent.photoURL,
-        progress: 0,
-        claimedCount: 0,
-        ...(kind === 'replay' ? { replay: true } : {})
-      }
-    ],
-    puzzleId: picked.puzzleId,
-    claimedWords: [],
-    mode: settings.mode,
-    timed: timing.timed,
-    startedAt: timing.startedAt,
-    durationSeconds: timing.durationSeconds,
-    endsAt: timing.endsAt,
-    status: MatchStatus.IN_PROGRESS,
-    opponentKind: kind,
-    stake: 0,
-    pot: 0,
-    boosts: [],
-    ghostEvents: schedule,
-    ghostApplied: 0
-  });
-  await match.save();
-  if (!stillSearching()) {
-    await Match.updateOne(
-      { _id: match._id, status: MatchStatus.IN_PROGRESS },
-      { $set: { status: MatchStatus.CANCELLED } }
-    );
-    return;
+  let holds: Awaited<ReturnType<typeof claimSearchHolds>> = null;
+  if (escrowUserId) {
+    holds = await claimSearchHolds([escrowUserId]);
+    if (!holds) {
+      return stillSearching()
+        ? { ok: false, error: 'Failed to find match' }
+        : { ok: false };
+    }
   }
 
-  rememberGame(match, picked.puzzle, timing);
-  socket?.join(match._id.toString());
-  socket?.emit('match_found', {
-    matchId: match._id,
-    puzzle: picked.puzzle,
-    opponent,
-    opponentKind: kind,
-    mode: settings.mode,
-    stake: 0,
-    ...(coins == null ? {} : { coins }),
-    ...serializeTimingFields(timing)
-  });
+  const stake = holds?.[0]?.stake ?? 0;
+  const boosts = holds ? claimedBoostsFromHolds(holds) : [];
+  const coins = holds?.[0]?.coins;
+  const boostTotal = boosts.reduce((sum, boost) => sum + boost.amount, 0);
+  const pot = headlinePot(stake, boostTotal);
 
-  console.log(`[MATCH] ${kind} opponent for ${user._id} on puzzle ${picked.puzzleId} (${schedule.length} events)`);
+  const release = async (): Promise<number | undefined> => {
+    if (!holds) {
+      return undefined;
+    }
+    const refunded = await releaseMatchedHolds(holds);
+    holds = null;
+    return refunded ?? undefined;
+  };
+
+  let matchId: string | null = null;
+  try {
+    const match = new Match({
+      players: [
+        {
+          userId: user._id,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          progress: 0,
+          claimedCount: 0
+        },
+        {
+          userId: seatId,
+          displayName: opponent.displayName,
+          photoURL: opponent.photoURL,
+          progress: 0,
+          claimedCount: 0,
+          ...(kind === 'replay' ? { replay: true } : {})
+        }
+      ],
+      puzzleId: picked.puzzleId,
+      claimedWords: [],
+      mode: settings.mode,
+      timed: timing.timed,
+      startedAt: timing.startedAt,
+      durationSeconds: timing.durationSeconds,
+      endsAt: timing.endsAt,
+      status: MatchStatus.IN_PROGRESS,
+      opponentKind: kind,
+      stake,
+      pot,
+      boosts,
+      ghostEvents: schedule,
+      ghostApplied: 0
+    });
+    await match.save();
+    matchId = match._id.toString();
+    if (!stillSearching()) {
+      await Match.deleteOne({ _id: match._id });
+      matchId = null;
+      const refunded = await release();
+      return { ok: false, coins: refunded };
+    }
+
+    rememberGame(match, picked.puzzle, timing);
+    socket?.join(matchId);
+    socket?.emit('match_found', {
+      matchId: match._id,
+      puzzle: picked.puzzle,
+      opponent,
+      opponentKind: kind,
+      mode: settings.mode,
+      stake,
+      ...(stake > 0 ? { pot } : {}),
+      ...(coins == null ? {} : { coins }),
+      ...serializeTimingFields(timing)
+    });
+
+    console.log(`[MATCH] ${kind} opponent for ${user._id} on puzzle ${picked.puzzleId} (${schedule.length} events)`);
+    return { ok: true };
+  } catch (error) {
+    console.error('Ghost match error:', error);
+    if (matchId) {
+      removeActiveGame(matchId);
+      await Match.deleteOne({ _id: matchId }).catch(() => undefined);
+    }
+    const refunded = await release();
+    return { ok: false, error: 'Failed to find match', coins: refunded };
+  }
 }
 
 export async function advanceGhostMatch(

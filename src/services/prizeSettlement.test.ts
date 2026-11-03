@@ -138,18 +138,53 @@ describe('prize settlement', () => {
     assert.equal(paid, 300);
   });
 
-  it('pays nothing against a replay or solver', () => {
+  it('pays the human the pot for beating a ghost, including a claimed boost', () => {
     const result = settlePrize({
       kind: 'duel',
       stake: 100,
       opponentKind: 'solver',
       reason: 'completed',
       winnerId: 'user_a',
-      players: [{ userId: 'user_a', rank: 1 }]
+      players: [{ userId: 'user_a', rank: 1, boost: 100 }]
     });
-    assert.equal(result.stake, 0);
-    assert.equal(result.pot, 0);
-    assert.deepEqual(result.settlement, [{ userId: 'user_a', coinsDelta: 0 }]);
+    assert.equal(result.stake, 100);
+    assert.equal(result.pot, 300);
+    assert.deepEqual(result.settlement, [{ userId: 'user_a', coinsDelta: 300 }]);
+  });
+
+  it('pays no one when the ghost wins or the human forfeits', () => {
+    const loss = settlePrize({
+      kind: 'duel',
+      stake: 100,
+      opponentKind: 'replay',
+      reason: 'completed',
+      winnerId: 'ghost',
+      players: [{ userId: 'user_a', rank: 2 }]
+    });
+    assert.equal(loss.pot, 200);
+    assert.deepEqual(loss.settlement, [{ userId: 'user_a', coinsDelta: 0 }]);
+
+    const forfeit = settlePrize({
+      kind: 'duel',
+      stake: 100,
+      opponentKind: 'solver',
+      reason: 'forfeit',
+      winnerId: 'ghost',
+      players: [{ userId: 'user_a', rank: 2, left: true }]
+    });
+    assert.deepEqual(forfeit.settlement, [{ userId: 'user_a', coinsDelta: 0 }]);
+  });
+
+  it('returns the human stake when a ghost match draws', () => {
+    const result = settlePrize({
+      kind: 'duel',
+      stake: 100,
+      opponentKind: 'solver',
+      reason: 'timeout',
+      winnerId: null,
+      players: [{ userId: 'user_a', rank: 1, boost: 100 }]
+    });
+    assert.deepEqual(result.settlement, [{ userId: 'user_a', coinsDelta: 200 }]);
   });
 
   it('returns the same deltas when settlement is calculated again', () => {

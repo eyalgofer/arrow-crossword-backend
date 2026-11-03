@@ -24,6 +24,7 @@ export const GHOST_TICK_MS = 1_000;
 
 /**
  * Player id used for replay and solver opponents.
- * Not a user account, so match rewards never land on a real person.
+ * Not a user account, so a staked ghost match never pays this id.
+ * The house funds the other side of the pot when the human wins.
  */
 export const GHOST_OPPONENT_ID = '0000000000000000000000aa';

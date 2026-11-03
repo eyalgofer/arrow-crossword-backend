@@ -124,7 +124,8 @@ export async function claimSearchHolds(userIds: string[]): Promise<IMatchmakingH
 }
 
 /** Give back stake and a claimed boost for holds we matched but will not start. */
-export async function releaseMatchedHolds(holds: IMatchmakingHold[]): Promise<void> {
+export async function releaseMatchedHolds(holds: IMatchmakingHold[]): Promise<number | null> {
+  let coins: number | null = null;
   for (const hold of holds) {
     const locked = await MatchmakingHold.findOneAndUpdate(
       { _id: hold._id, status: 'matched' },
@@ -134,8 +135,9 @@ export async function releaseMatchedHolds(holds: IMatchmakingHold[]): Promise<vo
     if (!locked) {
       continue;
     }
-    await creditUser(locked.userId.toString(), boostCredit(locked));
+    coins = await creditUser(locked.userId.toString(), boostCredit(locked));
   }
+  return coins;
 }
 
 export async function createQueueBoost(userId: string): Promise<

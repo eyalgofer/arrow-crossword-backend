@@ -50,6 +50,7 @@ const searchTokens = new Map<string, object>();
  * One queue per language. `mode` on this event is ignored: a client that omits
  * it, or sends any other mode, still pairs here. The match is always quick.
  * If nobody else arrives, the search falls back to a replay or a paced solver.
+ * A staked search keeps its escrow: the house covers the other side of the pot.
  */
 export async function handleFindMatch(
   io: Server,
@@ -260,20 +261,35 @@ async function fallbackToGhost(io: Server, entry: WaitingPlayer, token: object):
   }
 
   const stillSearching = () => searchTokens.get(entry.firebaseUid) === token;
+  const socket = io.sockets.sockets.get(current.socketId);
   try {
-    const refunded = await refundSearchHold(current.userId);
-    if (!stillSearching()) {
-      return;
-    }
-    await startGhostMatch(io, current.socketId, {
+    const result = await startGhostMatch(io, current.socketId, {
       _id: new mongoose.Types.ObjectId(current.userId),
       displayName: current.displayName,
       photoURL: current.photoURL
-    }, current.language, stillSearching, refunded ?? undefined);
+    }, current.language, stillSearching, current.escrowed ? current.userId : undefined);
+
+    if (result.ok) {
+      return;
+    }
+
+    const coins = result.coins ?? (current.escrowed ? await refundSearchHold(current.userId) : null);
+    if (result.error && stillSearching()) {
+      socket?.emit('error', {
+        message: result.error,
+        ...(coins == null ? {} : { coins })
+      });
+    } else if (!stillSearching() && coins != null) {
+      socket?.emit('matchmaking_cancelled', { coins });
+    }
   } catch (error) {
     console.error('Ghost match error:', error);
+    const coins = current.escrowed ? await refundSearchHold(current.userId) : null;
     if (stillSearching()) {
-      io.sockets.sockets.get(current.socketId)?.emit('error', { message: 'Failed to find match' });
+      socket?.emit('error', {
+        message: 'Failed to find match',
+        ...(coins == null ? {} : { coins })
+      });
     }
   } finally {
     if (searchTokens.get(entry.firebaseUid) === token) {
