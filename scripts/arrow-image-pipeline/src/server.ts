@@ -13,8 +13,14 @@ app.use(express.json({ limit: "1mb" }));
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.resolve(__dirname, "../public");
-const candidatesPath = path.join(pipelineRoot, "data/candidates_v2.json");
+const candidatesPath = path.join(pipelineRoot, "data/candidates_israeli.json");
 const approvalsPath = path.join(pipelineRoot, "data/approvals_v2.json");
+const legacyApprovalsPath = path.join(pipelineRoot, "data/approvals.json");
+const processedCatalogPath = path.join(pipelineRoot, "data/processed-catalog.json");
+const generatedCatalogPath = path.resolve(
+  pipelineRoot,
+  "../../src/scripts/generators/imageClues.generated.json",
+);
 const previewDir = path.join(pipelineRoot, "data/previews");
 
 app.use(express.static(publicDir));
@@ -145,6 +151,49 @@ app.get("/api/approvals", async (_req, res) => {
   } catch {
     res.json([]);
   }
+});
+
+function normalizeAnswer(value: string): string {
+  return value.replace(/\s+/g, "");
+}
+
+/** Clues already approved or uploaded, so the review page can skip them. */
+app.get("/api/known", async (_req, res) => {
+  const ids = new Set<string>();
+  const answers = new Set<string>();
+
+  async function addApprovals(file: string) {
+    try {
+      const records = await readJson<ApprovalRecord[]>(file);
+      for (const record of records) {
+        if (record.clueId) ids.add(record.clueId);
+      }
+    } catch {
+      // optional file missing
+    }
+  }
+
+  async function addCatalog(file: string) {
+    try {
+      const entries = await readJson<Array<{ id?: string; answer?: string }>>(file);
+      for (const entry of entries) {
+        if (entry.id) ids.add(entry.id);
+        const answer = normalizeAnswer(entry.answer ?? "");
+        if (answer) answers.add(answer);
+      }
+    } catch {
+      // optional file missing
+    }
+  }
+
+  await Promise.all([
+    addApprovals(approvalsPath),
+    addApprovals(legacyApprovalsPath),
+    addCatalog(processedCatalogPath),
+    addCatalog(generatedCatalogPath),
+  ]);
+
+  res.json({ ids: [...ids], answers: [...answers] });
 });
 
 app.get("/api/preview/:candidateId", async (req, res) => {

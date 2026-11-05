@@ -79,30 +79,58 @@ function buildQueries(clue: ImageClueSeed): string[] {
   return [subject];
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+let nextSlot = 0;
+const REQUEST_GAP_MS = 1200;
+
+async function pace(): Promise<void> {
+  const now = Date.now();
+  const start = Math.max(now, nextSlot);
+  nextSlot = start + REQUEST_GAP_MS;
+  if (start > now) await sleep(start - now);
+}
+
 async function api(params: Record<string, string>) {
   const qs = new URLSearchParams({
     format: "json",
     origin: "*",
     ...params,
   });
+  let lastError = "Commons API failed";
 
-  const res = await fetch(`${API}?${qs}`, {
-    headers: { "User-Agent": config.userAgent },
-  });
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await pace();
+    const res = await fetch(`${API}?${qs}`, {
+      headers: { "User-Agent": config.userAgent },
+    });
+    if (res.ok) return res.json() as Promise<any>;
 
-  if (!res.ok) {
-    throw new Error(`Commons API ${res.status}: ${await res.text()}`);
+    const body = (await res.text()).replace(/\s+/g, " ").slice(0, 180);
+    lastError = `Commons API ${res.status}: ${body}`;
+    if (res.status !== 429 && res.status !== 503) throw new Error(lastError);
+
+    const retryAfter = Number(res.headers.get("retry-after"));
+    const wait = Number.isFinite(retryAfter) && retryAfter > 0
+      ? retryAfter * 1000
+      : [5000, 12000, 25000, 40000][attempt] ?? 40000;
+    console.warn(`  Commons ${res.status}, waiting ${Math.round(wait / 1000)}s`);
+    await sleep(wait);
   }
-  return res.json() as Promise<any>;
+
+  throw new Error(lastError);
 }
 
-async function searchFiles(query: string, limit: number) {
+async function searchFiles(query: string, limit: number, offset = 0) {
   const json = await api({
     action: "query",
     generator: "search",
     gsrsearch: query,
     gsrnamespace: "6",
     gsrlimit: String(limit),
+    gsroffset: String(offset),
     prop: "imageinfo",
     iiprop: "url|size|mime|extmetadata",
     iiurlwidth: "720",
@@ -115,15 +143,18 @@ async function searchFiles(query: string, limit: number) {
 
 export async function discoverCommonsCandidates(
   clue: ImageClueSeed,
-  desiredCount: number
+  desiredCount: number,
+  skipTitles: Set<string> = new Set(),
 ): Promise<CommonsCandidate[]> {
-  const seen = new Set<string>();
+  const seen = new Set<string>(skipTitles);
   const out: CommonsCandidate[] = [];
 
   for (const query of buildQueries(clue)) {
     if (out.length >= desiredCount) break;
 
-    const pages = await searchFiles(query, Math.max(10, desiredCount * 2));
+    for (let offset = 0; offset <= 30 && out.length < desiredCount; offset += 10) {
+      const pages = await searchFiles(query, 10, offset);
+      if (!pages.length) break;
 
     for (const page of pages) {
       if (out.length >= desiredCount) break;
@@ -169,6 +200,7 @@ export async function discoverCommonsCandidates(
               : decision.reason,
         searchQuery: query,
       });
+    }
     }
   }
 

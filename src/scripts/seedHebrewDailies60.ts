@@ -500,8 +500,11 @@ const main = async () => {
     );
 
     const generated = await generateDailies(CATALOG_FILE, catalog, COUNT, recent);
+    if (generated.length === 0) {
+      throw new Error(`Only generated 0/${COUNT} daily puzzles`);
+    }
     if (generated.length < COUNT) {
-      throw new Error(`Only generated ${generated.length}/${COUNT} daily puzzles`);
+      console.warn(`Only generated ${generated.length}/${COUNT}; assigning the boards that filled.`);
     }
 
     await ensureMongoConnection();
@@ -529,7 +532,7 @@ const main = async () => {
 
     console.log(`\n✅ Assigned ${savedIds.length}/${COUNT} Hebrew dailies`);
     console.log(`📊 Total daily assignments: ${await DailyPuzzle.countDocuments()}`);
-    await closeDatabaseAndExit(savedIds.length === COUNT ? 0 : 1);
+    await closeDatabaseAndExit(savedIds.length === generated.length ? 0 : 1);
   } catch (error) {
     await handleScriptError(error);
   }

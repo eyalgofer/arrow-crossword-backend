@@ -69,7 +69,7 @@ export interface DailyGenerationOptions {
 }
 
 /** Daily clues aim a bit easier than the 1–3 midpoint, without the full easy preset. */
-export const DAILY_TARGET_DIFFICULTY = 1.2;
+export const DAILY_TARGET_DIFFICULTY = 1;
 
 export const DEFAULT_DAILY_TAG_CAPS: Record<string, number> = {
   'cat:geography': 3,

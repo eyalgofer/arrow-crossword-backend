@@ -1,12 +1,15 @@
 import mongoose from 'mongoose';
+import { DailyPuzzle } from '../models/DailyPuzzle';
 import { Match } from '../models/Match';
 import { MultiplayerPuzzle } from '../models/MultiplayerPuzzle';
 import { Puzzle, IPuzzle } from '../models/Puzzle';
 import { Language, MatchStatus } from '../types';
+import { isBeforeLiveDailyKey } from './dailyClock';
 import { languageFilter } from './language';
 import { toObjectId } from './objectId';
 
-const RECENT_MATCHES = 30;
+/** Per player, so one busy opponent cannot crowd the other out of the window. */
+const HISTORY_MATCHES = 200;
 
 export interface PickedMultiplayerPuzzle {
   puzzle: IPuzzle;
@@ -67,6 +70,53 @@ export function variedPool(
 }
 
 /**
+ * How recently this board, or any image on it, was shown to these players.
+ * Zero means neither the board nor its images appear in their history.
+ */
+export function exposureOf(
+  id: string,
+  images: readonly string[],
+  seenBoards: ReadonlyMap<string, number>,
+  seenImages: ReadonlyMap<string, number>
+): number {
+  let at = seenBoards.get(id) ?? 0;
+  for (const image of images) {
+    const seen = seenImages.get(image) ?? 0;
+    if (seen > at) at = seen;
+  }
+  return at;
+}
+
+/**
+ * Uniform among the boards seen least recently. An unseen board (exposure 0)
+ * beats one that only repeats an image the players already saw. When every
+ * board repeats something, the one exposed longest ago wins.
+ */
+export function chooseLeastExposed(
+  ids: readonly string[],
+  imagesById: ReadonlyMap<string, readonly string[]>,
+  seenBoards: ReadonlyMap<string, number>,
+  seenImages: ReadonlyMap<string, number>,
+  random: () => number = Math.random
+): string | null {
+  if (ids.length === 0) return null;
+  let best = Infinity;
+  const tied: string[] = [];
+  for (const id of ids) {
+    const score = exposureOf(id, imagesById.get(id) ?? [], seenBoards, seenImages);
+    if (score < best) {
+      best = score;
+      tied.length = 0;
+      tied.push(id);
+    } else if (score === best) {
+      tied.push(id);
+    }
+  }
+  const index = Math.min(tied.length - 1, Math.floor(random() * tied.length));
+  return tied[index] ?? null;
+}
+
+/**
  * Uniform pick. Recent ids are skipped while any other board is eligible.
  * If every board was just played, one of them is still returned.
  */
@@ -84,44 +134,62 @@ export function choosePuzzleId(
   return pool[index] ?? null;
 }
 
+interface PlayerExposure {
+  boards: Map<string, number>;
+  images: Map<string, number>;
+}
+
 export async function pickMultiplayerPuzzle(
   language: Language,
   avoidUserIds: readonly unknown[] = []
 ): Promise<PickedMultiplayerPuzzle | null> {
-  const avoid = await recentPuzzleIds(avoidUserIds);
-  const picked = await pickForLanguage(language, avoid);
+  const exposure = await playerExposure(avoidUserIds);
+  const picked = await pickForLanguage(language, exposure);
   if (picked) {
     return picked;
   }
   if (language !== 'en') {
-    return pickForLanguage('en', avoid);
+    return pickForLanguage('en', exposure);
   }
   return null;
 }
 
 async function pickForLanguage(
   language: Language,
-  avoid: ReadonlySet<string>
+  exposure: PlayerExposure
 ): Promise<PickedMultiplayerPuzzle | null> {
-  const assigned = await assignedPuzzles(language);
+  const slots = await assignedPuzzles(language);
+  const past = await pastDailyPuzzles(language);
+  const byId = new Map<string, IPuzzle>();
+  for (const puzzle of slots) byId.set(puzzle._id.toString(), puzzle);
+  let dailyAdded = 0;
+  for (const puzzle of past) {
+    const key = puzzle._id.toString();
+    if (byId.has(key)) continue;
+    byId.set(key, puzzle);
+    dailyAdded += 1;
+  }
+
+  const assigned = [...byId.values()];
   const ids = assigned.map(puzzle => puzzle._id.toString());
   const imagesById = new Map(
     assigned.map(puzzle => [puzzle._id.toString(), imageAnswers(puzzle)])
   );
-  const pool = variedPool(ids, avoid, imagesById);
-  const fresh = ids.filter(id => !avoid.has(id)).length;
+  const unseen = ids.filter(
+    id => exposureOf(id, imagesById.get(id) ?? [], exposure.boards, exposure.images) === 0
+  ).length;
   console.log(
-    `[PUZZLE] ${language} multiplayer pool ${pool.length} chosen from ${ids.length} linked` +
-      ` (${fresh} not in the last ${RECENT_MATCHES} matches)`
+    `[PUZZLE] ${language} pool ${ids.length} from ${slots.length} slots and ${dailyAdded} past dailies` +
+      ` (${unseen} unseen)`
   );
 
-  const chosenId = choosePuzzleId(pool, new Set());
-  const chosen = chosenId ? assigned.find(puzzle => puzzle._id.toString() === chosenId) : undefined;
+  const chosenId = chooseLeastExposed(ids, imagesById, exposure.boards, exposure.images);
+  const chosen = chosenId ? byId.get(chosenId) : undefined;
   if (chosen) {
     return { puzzle: chosen, puzzleId: chosen._id };
   }
 
-  const sampled = await sampleActivePuzzle(language, avoid);
+  const sampled = await sampleActivePuzzle(language, new Set(exposure.boards.keys()));
   if (!sampled) {
     return null;
   }
@@ -129,7 +197,9 @@ async function pickForLanguage(
   return { puzzle: sampled, puzzleId: sampled._id };
 }
 
-function imageAnswers(puzzle: IPuzzle): string[] {
+function imageAnswers(puzzle: {
+  puzzleItems?: Array<{ clueType?: string | null; answer?: string | null }> | null;
+}): string[] {
   const keys: string[] = [];
   for (const item of puzzle.puzzleItems ?? []) {
     if (item.clueType !== 'image' || !item.answer) continue;
@@ -161,6 +231,29 @@ async function assignedPuzzles(language: Language): Promise<IPuzzle[]> {
   return puzzles.filter(
     puzzle => poolLanguage(puzzle.language, slotLanguageByPuzzle.get(String(puzzle._id))) === language
   );
+}
+
+/** Dailies whose date is already over. Today and anything still scheduled stay out. */
+async function pastDailyPuzzles(language: Language): Promise<IPuzzle[]> {
+  const rows = await DailyPuzzle.find({ language: languageFilter(language) })
+    .select('puzzleId year dayOfYear')
+    .lean();
+  const ids: mongoose.Types.ObjectId[] = [];
+  const seen = new Set<string>();
+  for (const row of rows) {
+    if (!isBeforeLiveDailyKey(row.year, row.dayOfYear)) continue;
+    const id = toObjectId(row.puzzleId);
+    if (!id) continue;
+    const key = id.toString();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    ids.push(id);
+  }
+  if (ids.length === 0) return [];
+  return Puzzle.find({
+    _id: { $in: ids },
+    isActive: { $ne: false }
+  });
 }
 
 async function sampleActivePuzzle(
@@ -199,20 +292,61 @@ async function sampleOne(
   return Puzzle.findById(id);
 }
 
-async function recentPuzzleIds(userIds: readonly unknown[]): Promise<Set<string>> {
-  const ids = userIds
+function seenAt(value: unknown): number {
+  const at = value instanceof Date ? value.getTime() : new Date(String(value)).getTime();
+  return Number.isFinite(at) && at > 0 ? at : 1;
+}
+
+async function playerExposure(userIds: readonly unknown[]): Promise<PlayerExposure> {
+  const boards = new Map<string, number>();
+  const images = new Map<string, number>();
+  const ids: mongoose.Types.ObjectId[] = [];
+  const seenUsers = new Set<string>();
+  for (const userId of userIds) {
+    const id = toObjectId(userId);
+    if (!id) continue;
+    const key = id.toString();
+    if (seenUsers.has(key)) continue;
+    seenUsers.add(key);
+    ids.push(id);
+  }
+  if (ids.length === 0) return { boards, images };
+
+  const perPlayer = await Promise.all(ids.map(id =>
+    Match.find({
+      players: { $elemMatch: { userId: id, replay: { $ne: true } } },
+      status: { $in: [MatchStatus.IN_PROGRESS, MatchStatus.COMPLETED] }
+    })
+      .sort({ createdAt: -1 })
+      .limit(HISTORY_MATCHES)
+      .select('puzzleId createdAt')
+      .lean()
+  ));
+
+  for (const matches of perPlayer) {
+    for (const match of matches) {
+      const puzzleId = String(match.puzzleId);
+      const at = seenAt(match.createdAt);
+      const prev = boards.get(puzzleId) ?? 0;
+      if (at > prev) boards.set(puzzleId, at);
+    }
+  }
+
+  const playedIds = [...boards.keys()]
     .map(id => toObjectId(id))
     .filter((id): id is mongoose.Types.ObjectId => id != null);
-  if (ids.length === 0) {
-    return new Set();
-  }
-  const matches = await Match.find({
-    players: { $elemMatch: { userId: { $in: ids }, replay: { $ne: true } } },
-    status: { $in: [MatchStatus.IN_PROGRESS, MatchStatus.COMPLETED] }
-  })
-    .sort({ createdAt: -1 })
-    .limit(RECENT_MATCHES)
-    .select('puzzleId')
+  if (playedIds.length === 0) return { boards, images };
+
+  const played = await Puzzle.find({ _id: { $in: playedIds } })
+    .select('puzzleItems.clueType puzzleItems.answer')
     .lean();
-  return new Set(matches.map(match => String(match.puzzleId)));
+  for (const puzzle of played) {
+    const at = boards.get(String(puzzle._id)) ?? 0;
+    if (at <= 0) continue;
+    for (const image of imageAnswers(puzzle)) {
+      const prev = images.get(image) ?? 0;
+      if (at > prev) images.set(image, at);
+    }
+  }
+  return { boards, images };
 }

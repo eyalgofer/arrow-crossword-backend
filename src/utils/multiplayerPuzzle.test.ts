@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { choosePuzzleId, poolLanguage, variedPool } from './multiplayerPuzzle';
+import { chooseLeastExposed, choosePuzzleId, poolLanguage, variedPool } from './multiplayerPuzzle';
 
 test('an empty pool picks nothing', () => {
   assert.equal(choosePuzzleId([], new Set()), null);
@@ -48,4 +48,45 @@ test('boards stay eligible when every one repeats a recent image', () => {
   ]);
   const pool = variedPool(['seen', 'again'], new Set(['seen']), images);
   assert.deepEqual(pool, ['again']);
+});
+
+test('an unseen board is chosen over one that shares a seen image', () => {
+  const images = new Map<string, readonly string[]>([
+    ['tokyo', ['טוקיו']],
+    ['fresh', ['סידני']],
+  ]);
+  const picked = chooseLeastExposed(
+    ['tokyo', 'fresh'],
+    images,
+    new Map(),
+    new Map([['טוקיו', 100]]),
+    () => 0
+  );
+  assert.equal(picked, 'fresh');
+});
+
+test('when every board shares a seen image, the least recently exposed one is chosen', () => {
+  const images = new Map<string, readonly string[]>([
+    ['newer', ['טוקיו', 'סידני']],
+    ['older', ['טוקיו']],
+  ]);
+  const picked = chooseLeastExposed(
+    ['newer', 'older'],
+    images,
+    new Map([['newer', 80]]),
+    new Map([
+      ['טוקיו', 50],
+      ['סידני', 200],
+    ]),
+    () => 0
+  );
+  assert.equal(picked, 'older');
+});
+
+test('ties among equally fresh boards stay uniform', () => {
+  const ids = ['a', 'b', 'c'];
+  const images = new Map<string, readonly string[]>(ids.map(id => [id, [id]]));
+  assert.equal(chooseLeastExposed(ids, images, new Map(), new Map(), () => 0), 'a');
+  assert.equal(chooseLeastExposed(ids, images, new Map(), new Map(), () => 0.34), 'b');
+  assert.equal(chooseLeastExposed(ids, images, new Map(), new Map(), () => 0.999), 'c');
 });

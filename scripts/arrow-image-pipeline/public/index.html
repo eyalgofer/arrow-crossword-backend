@@ -36,13 +36,15 @@
 <body>
 <header>
   <h1>Arrow Image Clue Approval</h1>
-  <p class="sub">People only. Israeli names are mixed through the list. Cards load as you scroll. Each card is the square crop that will be uploaded. An orange badge means no face was found — skip that photo.</p>
+  <p class="sub">Israeli people who are not uploaded yet. Cards load as you scroll. Each card is the square crop that will be uploaded. An orange badge means no face was found — skip that photo.</p>
   <div id="stats">Loading…</div>
 </header>
 <main id="app"></main>
 <script>
   const BATCH = 2;
   let approvals = new Map();
+  let knownIds = new Set();
+  let knownAnswers = new Set();
   let queue = [];
   let rendered = 0;
   let israeliCount = 0;
@@ -73,6 +75,14 @@
     return Array.from(String(answer || "").replace(/\s+/g, "")).length;
   }
 
+  function normalizeAnswer(answer) {
+    return String(answer || "").replace(/\s+/g, "");
+  }
+
+  function alreadyKnown(clue) {
+    return knownIds.has(clue.id) || knownAnswers.has(normalizeAnswer(clue.answer_hebrew));
+  }
+
   /** 5–8 letter answers fill 14×14 image blocks; keep those ahead of longer names. */
   function shortFirst(list) {
     const short = [];
@@ -89,6 +99,7 @@
     const pending = groups.filter((group) =>
       group.clue?.type === "person" &&
       !approvals.has(group.clue.id) &&
+      !alreadyKnown(group.clue) &&
       hasPhoto(group)
     );
     const israeli = shortFirst(pending.filter((group) => isIsraeli(group.clue)));
@@ -118,11 +129,14 @@
   }
 
   async function load() {
-    const [groups, approved] = await Promise.all([
+    const [groups, approved, known] = await Promise.all([
       fetch("/api/candidates").then((r) => r.json()),
       fetch("/api/approvals").then((r) => r.json()),
+      fetch("/api/known").then((r) => r.ok ? r.json() : { ids: [], answers: [] }),
     ]);
     approvals = new Map(approved.map((item) => [item.clueId, item.candidateId]));
+    knownIds = new Set(known.ids || []);
+    knownAnswers = new Set(known.answers || []);
     queue = buildQueue(groups);
     rendered = 0;
     document.querySelector("#app").innerHTML = queue.length

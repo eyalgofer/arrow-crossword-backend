@@ -2662,5 +2662,213 @@
     "type": "person",
     "subject": "Kygo",
     "letterLength": 5
+  },
+  {
+    "id": "img_0560",
+    "answer": "שון קונרי",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0560-sean-connery.jpg",
+    "type": "person",
+    "subject": "Sean Connery",
+    "letterLength": 8
+  },
+  {
+    "id": "img_0616",
+    "answer": "פאבארוטי",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0616-pavarotti.jpg",
+    "type": "person",
+    "subject": "Pavarotti",
+    "letterLength": 8
+  },
+  {
+    "id": "img_0703",
+    "answer": "פיודיפאי",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0703-pewdiepie.jpg",
+    "type": "person",
+    "subject": "PewDiePie",
+    "letterLength": 8
+  },
+  {
+    "id": "img_0706",
+    "answer": "קנדל ג'נר",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0706-kendall-jenner.jpg",
+    "type": "person",
+    "subject": "Kendall Jenner",
+    "letterLength": 8
+  },
+  {
+    "id": "img_0808",
+    "answer": "אסף אבידן",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0808-asaf-avidan.jpg",
+    "type": "person",
+    "subject": "Asaf Avidan",
+    "letterLength": 8
+  },
+  {
+    "id": "img_0900",
+    "answer": "ג'ק מא",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0900-jack-ma.jpg",
+    "type": "person",
+    "subject": "Jack Ma",
+    "letterLength": 5
+  },
+  {
+    "id": "img_0908",
+    "answer": "שון מנדס",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0908-shawn-mendes.jpg",
+    "type": "person",
+    "subject": "Shawn Mendes",
+    "letterLength": 7
+  },
+  {
+    "id": "img_0909",
+    "answer": "סם סמית'",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0909-sam-smith.jpg",
+    "type": "person",
+    "subject": "Sam Smith",
+    "letterLength": 7
+  },
+  {
+    "id": "img_0918",
+    "answer": "ד\"ר דרה",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0918-dr-dre.jpg",
+    "type": "person",
+    "subject": "Dr Dre",
+    "letterLength": 6
+  },
+  {
+    "id": "img_0919",
+    "answer": "פיפטי סנט",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0919-50-cent.jpg",
+    "type": "person",
+    "subject": "50 Cent",
+    "letterLength": 8
+  },
+  {
+    "id": "img_0807",
+    "answer": "עמרי כספי",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0807-omri-casspi.jpg",
+    "type": "person",
+    "subject": "Omri Casspi",
+    "letterLength": 8
+  },
+  {
+    "id": "img_0925",
+    "answer": "באד באני",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0925-bad-bunny.jpg",
+    "type": "person",
+    "subject": "Bad Bunny",
+    "letterLength": 7
+  },
+  {
+    "id": "img_0933",
+    "answer": "ויין רוני",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0933-wayne-rooney.jpg",
+    "type": "person",
+    "subject": "Wayne Rooney",
+    "letterLength": 8
+  },
+  {
+    "id": "img_0002",
+    "answer": "עומר אדם",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0002-omer-adam.jpg",
+    "type": "person",
+    "subject": "Omer Adam",
+    "letterLength": 7
+  },
+  {
+    "id": "img_0003",
+    "answer": "נועה קירל",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0003-noa-kirel.jpg",
+    "type": "person",
+    "subject": "Noa Kirel",
+    "letterLength": 8
+  },
+  {
+    "id": "img_0013",
+    "answer": "אביב גפן",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0013-aviv-geffen.jpg",
+    "type": "person",
+    "subject": "Aviv Geffen",
+    "letterLength": 7
+  },
+  {
+    "id": "img_0018",
+    "answer": "ארז טל",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0018-erez-tal.jpg",
+    "type": "person",
+    "subject": "Erez Tal",
+    "letterLength": 5
+  },
+  {
+    "id": "img_0019",
+    "answer": "רותם סלע",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0019-rotem-sela.jpg",
+    "type": "person",
+    "subject": "Rotem Sela",
+    "letterLength": 7
+  },
+  {
+    "id": "img_0023",
+    "answer": "עדן בן זקן",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0023-eden-ben-zaken.jpg",
+    "type": "person",
+    "subject": "Eden Ben Zaken",
+    "letterLength": 8
+  },
+  {
+    "id": "img_0024",
+    "answer": "עדן חסון",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0024-eden-hason.jpg",
+    "type": "person",
+    "subject": "Eden Hason",
+    "letterLength": 7
+  },
+  {
+    "id": "img_0032",
+    "answer": "שרית חדד",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0032-sarit-hadad.jpg",
+    "type": "person",
+    "subject": "Sarit Hadad",
+    "letterLength": 7
+  },
+  {
+    "id": "img_0039",
+    "answer": "חיים כהן",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0039-haim-cohen.jpg",
+    "type": "person",
+    "subject": "Haim Cohen",
+    "letterLength": 7
+  },
+  {
+    "id": "img_0053",
+    "answer": "ברי סחרוף",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0053-berry-sakharof.jpg",
+    "type": "person",
+    "subject": "Berry Sakharof",
+    "letterLength": 8
+  },
+  {
+    "id": "img_0061",
+    "answer": "אנה זק",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0061-anna-zak.jpg",
+    "type": "person",
+    "subject": "Anna Zak",
+    "letterLength": 5
+  },
+  {
+    "id": "img_0064",
+    "answer": "קרן מור",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0064-keren-mor.jpg",
+    "type": "person",
+    "subject": "Keren Mor",
+    "letterLength": 6
+  },
+  {
+    "id": "img_1274",
+    "answer": "שגיא מוקי",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1274-sagi-muki.jpg",
+    "type": "person",
+    "subject": "Sagi Muki",
+    "letterLength": 8
   }
 ]

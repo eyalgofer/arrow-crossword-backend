@@ -44,6 +44,7 @@ async function loadCandidateGroups(): Promise<CandidateGroup[]> {
   const paths = [
     path.join(pipelineRoot, "data/candidates.json"),
     path.join(pipelineRoot, "data/candidates_v2.json"),
+    path.join(pipelineRoot, "data/candidates_israeli.json"),
   ];
   const byId = new Map<string, CandidateGroup>();
   for (const p of paths) {
