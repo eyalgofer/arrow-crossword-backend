@@ -189,6 +189,27 @@ const packageDefinitionsByLanguage: Record<Language, Array<{
       puzzleCount: 10,
       puzzleMix: HE_EN_PUZZLE_MIX,
     },
+    {
+      name: 'מאנגלית לעברית 3',
+      description: '10 תשחצים ללימוד אנגלית',
+      theme: 'מעורב',
+      puzzleCount: 10,
+      puzzleMix: HE_EN_PUZZLE_MIX,
+    },
+    {
+      name: 'מאנגלית לעברית 4',
+      description: '10 תשחצים ללימוד אנגלית',
+      theme: 'מעורב',
+      puzzleCount: 10,
+      puzzleMix: HE_EN_PUZZLE_MIX,
+    },
+    {
+      name: 'מאנגלית לעברית 5',
+      description: '10 תשחצים ללימוד אנגלית',
+      theme: 'מעורב',
+      puzzleCount: 10,
+      puzzleMix: HE_EN_PUZZLE_MIX,
+    },
   ],
 };
 
@@ -296,11 +317,13 @@ type PackageSlot = {
   size: GridSize;
 };
 
-function buildHebrewPackageSlots(): PackageSlot[] {
+function buildHebrewPackageSlots(packageOrders?: number[]): PackageSlot[] {
   const slots: PackageSlot[] = [];
+  const selected = new Set(packageOrders ?? packageDefinitions.map((_, i) => i));
   /** he-en uses 8–10 boards — bilingual pool is smaller than full Hebrew. */
   const sizeMix = language === 'he-en' ? HE_EN_GRID_SIZE_MIX : undefined;
   for (let i = 0; i < packageDefinitions.length; i++) {
+    if (!selected.has(i)) continue;
     const def = packageDefinitions[i];
     const difficultyDistribution = getDifficultyDistribution(def);
     const sizes = mixSizes(def.puzzleCount, sizeMix);
@@ -395,10 +418,13 @@ function loadExistingSlotPuzzle(packageOrder: number, slotInPackage: number): an
   return null;
 }
 
-/** Generate all Hebrew package puzzles via parallel workers (daily-style). */
-async function generateAllHebrewPackagesInParallel(): Promise<PreparedPackage[]> {
+/** Generate Hebrew package puzzles via parallel workers (daily-style). */
+async function generateAllHebrewPackagesInParallel(
+  packageOrders?: number[]
+): Promise<PreparedPackage[]> {
   fs.mkdirSync(PACKAGE_OUT_DIR, { recursive: true });
-  const slots = buildHebrewPackageSlots();
+  const selected = packageOrders ?? packageDefinitions.map((_, i) => i);
+  const slots = buildHebrewPackageSlots(selected);
   const results: Array<any | null> = Array(slots.length).fill(null);
   const launchesForSlot = Array(slots.length).fill(0);
   let inFlight = 0;
@@ -510,7 +536,7 @@ async function generateAllHebrewPackagesInParallel(): Promise<PreparedPackage[]>
   }
 
   const prepared: PreparedPackage[] = [];
-  for (let i = 0; i < packageDefinitions.length; i++) {
+  for (const i of selected) {
     const def = packageDefinitions[i];
     const difficultyDistribution = getDifficultyDistribution(def);
     const ordered = slots
@@ -668,6 +694,37 @@ const seedPackages = async () => {
     }
 
     console.log(`📦 Creating ${packageDefinitions.length} packages (${language}) with difficulty distribution...\n`);
+
+    // he-en uses the same parallel 12×12 daily workers as --force, but only
+    // for packages that are not already seeded. Existing packs stay put.
+    if (language === 'he-en') {
+      const missing: number[] = [];
+      for (let i = 0; i < packageDefinitions.length; i++) {
+        const def = packageDefinitions[i];
+        const existing = await PuzzlePackage.findOne({ name: def.name, language });
+        if (existing) {
+          console.log(`\n📦 Skipping ${def.name} — already exists (${existing.puzzleCount} puzzles)`);
+        } else {
+          missing.push(i);
+        }
+      }
+      if (missing.length === 0) {
+        await printSummary();
+        console.log('\n✅ Package seeding completed successfully!');
+        await closeDatabaseAndExit(0);
+        return;
+      }
+      console.log(`\n📦 Generating ${missing.length} new he-en package(s) in parallel\n`);
+      await mongoose.connection.close().catch(() => undefined);
+      const prepared = await generateAllHebrewPackagesInParallel(missing);
+      await connectToDatabase();
+      console.log('💾 Inserting new packages...\n');
+      await persistPreparedPackages(prepared);
+      await printSummary();
+      console.log('\n✅ Package seeding completed successfully!');
+      await closeDatabaseAndExit(0);
+      return;
+    }
 
     let globalPuzzleIndex = 1;
     for (let i = 0; i < packageDefinitions.length; i++) {

@@ -15,6 +15,7 @@ dotenv.config();
 
 import fs from 'fs';
 import path from 'path';
+import { isEchoEnglishClue } from '../core/echoEnglishClue';
 import {
   BILINGUAL_PREFERRED_CATEGORIES,
   Difficulty,
@@ -83,6 +84,7 @@ function sanitizeEnglishClue(raw: any, answer: string): Required<HebrewClue> | n
   if (bare.length >= 3 && text.replace(/\s+/g, '').toLowerCase().includes(bare.toLowerCase())) {
     return null;
   }
+  if (isEchoEnglishClue(answer, text)) return null;
   return {
     text,
     difficulty: clamp(raw.difficulty, 1, 3, 2) as Difficulty,

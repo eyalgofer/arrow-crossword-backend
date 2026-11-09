@@ -12,6 +12,7 @@ dotenv.config();
 
 import fs from 'fs';
 import path from 'path';
+import { isEchoEnglishClue } from '../core/echoEnglishClue';
 import {
   BILINGUAL_PREFERRED_CATEGORIES,
   Difficulty,
@@ -76,9 +77,10 @@ function shouldQueue(entry: RawHebrewEntry): boolean {
   return BILINGUAL_PREFERRED_CATEGORIES.has(category as any);
 }
 
-function toClue(text: string, difficulty: Difficulty, quality: number) {
+function toClue(text: string, answer: string, difficulty: Difficulty, quality: number) {
   const cleaned = titleCase(text).slice(0, MAX_CLUE_LENGTH);
   if (!cleaned || !looksEnglish(cleaned)) return null;
+  if (isEchoEnglishClue(answer, cleaned)) return null;
   return { text: cleaned, difficulty, quality };
 }
 
@@ -107,7 +109,7 @@ async function main() {
       await sleep(DELAY_MS);
       const englishClues: EnglishClueResult['englishClues'] = [];
       if (gloss) {
-        const clue = toClue(gloss, 1, 4);
+        const clue = toClue(gloss, entry.answer, 1, 4);
         if (clue) englishClues.push(clue);
       }
       if (ALSO_CLUES) {
@@ -117,7 +119,7 @@ async function main() {
           const clueGloss = await translateHeToEn(firstHe);
           await sleep(DELAY_MS);
           if (clueGloss) {
-            const clue = toClue(clueGloss, 2, 3);
+            const clue = toClue(clueGloss, entry.answer, 2, 3);
             if (clue && !englishClues.some((c) => c.text === clue.text)) {
               englishClues.push(clue);
             }

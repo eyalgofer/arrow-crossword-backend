@@ -9,6 +9,7 @@
  */
 
 import path from 'path';
+import { isEchoEnglishClue } from '../core/echoEnglishClue';
 import { readHebrewClues, writeHebrewClues } from '../core/hebrewClueStore';
 import {
   DEFAULT_ENGLISH_CLUES_FILE,
@@ -58,7 +59,9 @@ function main() {
       missing += 1;
       continue;
     }
-    const clues = result.englishClues.filter((c) => c.quality >= MIN_QUALITY);
+    const clues = result.englishClues.filter(
+      (c) => c.quality >= MIN_QUALITY && !isEchoEnglishClue(result.answer, c.text)
+    );
     if (clues.length === 0) {
       skipped += 1;
       continue;
