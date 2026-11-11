@@ -25,6 +25,12 @@ import { DAILY_HINT_LIMIT, FIRST_DAILY_SOLVER_BONUS, dailyHintCost } from '../co
 import { purchasePuzzleHint } from '../services/dailyHints';
 import { buildDailyResult, maybeClaimOvernightFastest } from '../services/dailyResult';
 import { loadDailyProfilePlacements } from '../services/dailyProfileStats';
+import {
+  applyStarterClues,
+  firstPackageHeadStart,
+  puzzleProgressPercent,
+  starterClueIdsForPuzzle,
+} from '../services/starterClues';
 
 export const getPuzzles = async (req: AuthRequest, res: Response) => {
   try {
@@ -438,6 +444,13 @@ export const saveProgress = async (req: AuthRequest, res: Response) => {
     }
 
     const now = new Date();
+    const starterIds = await starterClueIdsForPuzzle(puzzle);
+    const seeded = applyStarterClues({
+      completedClueIds,
+      completedCluesCount,
+      isCompleted: isCompleted === true,
+      starterIds,
+    });
 
     // Atomic upsert avoids VersionError when the client autosaves progress
     // concurrently with complete / another progress write.
@@ -449,10 +462,12 @@ export const saveProgress = async (req: AuthRequest, res: Response) => {
       .lean();
 
     const $set: Record<string, unknown> = {
-      completedClueIds,
+      completedClueIds: seeded.completedClueIds,
       lastPlayedAt: now,
     };
-    if (completedCluesCount !== undefined) $set.completedCluesCount = completedCluesCount;
+    if (completedCluesCount !== undefined || starterIds.length > 0) {
+      $set.completedCluesCount = seeded.completedCluesCount;
+    }
     if (totalClues !== undefined) $set.totalClues = totalClues;
     if (isCompleted !== undefined) $set.isCompleted = isCompleted;
     if (elapsedTime !== undefined) $set.elapsedTime = elapsedTime;
@@ -473,7 +488,7 @@ export const saveProgress = async (req: AuthRequest, res: Response) => {
       hintsUsed: 0,
     };
     // Only set defaults on insert when not already provided in $set (Mongo forbids overlap).
-    if (completedCluesCount === undefined) $setOnInsert.completedCluesCount = 0;
+    if ($set.completedCluesCount === undefined) $setOnInsert.completedCluesCount = 0;
     if (totalClues === undefined) $setOnInsert.totalClues = puzzle.puzzleItems.length;
     if (isCompleted === undefined) $setOnInsert.isCompleted = false;
     if (elapsedTime === undefined) $setOnInsert.elapsedTime = 0;
@@ -539,18 +554,45 @@ export const getProgress = async (req: AuthRequest, res: Response) => {
       puzzleId
     });
 
+    const starterIds = await starterClueIdsForPuzzle(puzzle);
     const hintLimit = (await isTodaysDailyPuzzle(puzzleId)) ? DAILY_HINT_LIMIT : null;
     const hintsUsed = progress?.hintsUsed ?? 0;
 
     if (!progress) {
-      return res.json({ progress: null, hintsUsed, hintLimit });
+      if (starterIds.length === 0) {
+        return res.json({ progress: null, hintsUsed, hintLimit });
+      }
+      const seeded = applyStarterClues({ starterIds });
+      return res.json({
+        progress: {
+          puzzleId: puzzle._id,
+          completedClueIds: seeded.completedClueIds,
+          completedCluesCount: seeded.completedCluesCount,
+          totalClues: puzzle.puzzleItems.length,
+          isCompleted: false,
+          lastPlayedAt: null,
+          elapsedTime: 0,
+          bestTime: null,
+          hintsUsed,
+          hintLimit
+        },
+        hintsUsed,
+        hintLimit
+      });
     }
+
+    const seeded = applyStarterClues({
+      completedClueIds: progress.completedClueIds,
+      completedCluesCount: progress.completedCluesCount,
+      isCompleted: progress.isCompleted,
+      starterIds,
+    });
 
     res.json({
       progress: {
         puzzleId: progress.puzzleId,
-        completedClueIds: progress.completedClueIds || [],
-        completedCluesCount: progress.completedCluesCount,
+        completedClueIds: seeded.completedClueIds,
+        completedCluesCount: seeded.completedCluesCount,
         totalClues: progress.totalClues,
         isCompleted: progress.isCompleted,
         lastPlayedAt: progress.lastPlayedAt,
@@ -579,15 +621,24 @@ export const getAllProgress = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const progressList = await UserPuzzleProgress.find({ userId: user._id });
+    const [progressList, headStart] = await Promise.all([
+      UserPuzzleProgress.find({ userId: user._id }),
+      firstPackageHeadStart(resolveLanguage(req)),
+    ]);
 
     const summaries: ProgressSummary[] = progressList.map((p) => {
-      const progressPercent = p.totalClues > 0 
-        ? Math.round((p.completedCluesCount / p.totalClues) * 100) 
-        : 0;
-      
+      const puzzleId = p.puzzleId.toString();
+      const isHeadStart = headStart?.puzzleId === puzzleId && !p.isCompleted;
+      const progressPercent = puzzleProgressPercent({
+        isCompleted: p.isCompleted,
+        completedClueIds: isHeadStart ? p.completedClueIds : undefined,
+        completedCluesCount: p.completedCluesCount,
+        totalClues: p.totalClues || (isHeadStart ? headStart.totalClues : 0),
+        starterIds: isHeadStart ? headStart.starterIds : undefined,
+      });
+
       return {
-        puzzleId: p.puzzleId.toString(),
+        puzzleId,
         progress: progressPercent,
         isCompleted: p.isCompleted,
         isInProgress: progressPercent > 0 && !p.isCompleted,
@@ -595,6 +646,27 @@ export const getAllProgress = async (req: AuthRequest, res: Response) => {
         lastPlayedAt: p.lastPlayedAt
       };
     });
+
+    if (
+      headStart &&
+      headStart.starterIds.length > 0 &&
+      !summaries.some(summary => summary.puzzleId === headStart.puzzleId)
+    ) {
+      const progressPercent = puzzleProgressPercent({
+        totalClues: headStart.totalClues,
+        starterIds: headStart.starterIds,
+      });
+      if (progressPercent > 0) {
+        summaries.push({
+          puzzleId: headStart.puzzleId,
+          progress: progressPercent,
+          isCompleted: false,
+          isInProgress: true,
+          bestTime: null,
+          lastPlayedAt: null,
+        });
+      }
+    }
 
     res.json({ progress: summaries });
   } catch (error) {
@@ -815,9 +887,10 @@ export const deleteProgress = async (req: AuthRequest, res: Response) => {
       puzzleId
     });
 
+    const starterIds = await starterClueIdsForPuzzle(puzzle);
     if (progress && ((progress.hintsUsed ?? 0) > 0 || progress.dailyStatsCounted)) {
-      progress.completedClueIds = [];
-      progress.completedCluesCount = 0;
+      progress.completedClueIds = starterIds;
+      progress.completedCluesCount = starterIds.length;
       progress.isCompleted = false;
       progress.elapsedTime = 0;
       progress.bestTime = null;

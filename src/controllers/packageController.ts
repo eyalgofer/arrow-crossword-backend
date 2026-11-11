@@ -4,6 +4,7 @@ import { PuzzlePackage } from '../models/PuzzlePackage';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { User } from '../models/User';
 import { AuthRequest } from '../types';
+import { firstPackageHeadStart, puzzleProgressPercent } from '../services/starterClues';
 import { resolveLanguage, languageFilter } from '../utils/language';
 
 /**
@@ -63,9 +64,13 @@ export const getPackagesProgress = async (req: AuthRequest, res: Response) => {
     }
 
     // Get all packages in the user's language ordered by display order
-    const packages = await PuzzlePackage.find({ language: languageFilter(resolveLanguage(req)) })
-      .sort({ order: 1 })
-      .lean();
+    const language = resolveLanguage(req);
+    const [packages, headStart] = await Promise.all([
+      PuzzlePackage.find({ language: languageFilter(language) })
+        .sort({ order: 1 })
+        .lean(),
+      firstPackageHeadStart(language),
+    ]);
 
     const allPuzzleIds = packages.flatMap(pkg => pkg.puzzleIds);
     const progressDocs = allPuzzleIds.length
@@ -73,7 +78,7 @@ export const getPackagesProgress = async (req: AuthRequest, res: Response) => {
           userId: user._id,
           puzzleId: { $in: allPuzzleIds }
         })
-          .select('puzzleId completedCluesCount totalClues isCompleted lastPlayedAt')
+          .select('puzzleId completedClueIds completedCluesCount totalClues isCompleted lastPlayedAt')
           .lean()
       : [];
 
@@ -85,8 +90,16 @@ export const getPackagesProgress = async (req: AuthRequest, res: Response) => {
       let lastPlayedAt: Date | undefined;
 
       const puzzles = pkg.puzzleIds.map(puzzleId => {
-        const saved = progressByPuzzleId.get(puzzleId.toString());
-        const percent = puzzleProgressPercent(saved);
+        const puzzleKey = puzzleId.toString();
+        const saved = progressByPuzzleId.get(puzzleKey);
+        const isHeadStart = headStart?.puzzleId === puzzleKey && !saved?.isCompleted;
+        const percent = puzzleProgressPercent({
+          isCompleted: saved?.isCompleted,
+          completedClueIds: isHeadStart ? saved?.completedClueIds : undefined,
+          completedCluesCount: saved?.completedCluesCount,
+          totalClues: saved?.totalClues || (isHeadStart ? headStart.totalClues : 0),
+          starterIds: isHeadStart ? headStart.starterIds : undefined,
+        });
         const entry: {
           puzzleId: string;
           progress: number;
@@ -154,22 +167,3 @@ export const getPackage = async (req: AuthRequest, res: Response) => {
   }
 };
 
-function puzzleProgressPercent(
-  saved?: {
-    isCompleted?: boolean;
-    completedCluesCount?: number;
-    totalClues?: number;
-  }
-): number {
-  if (!saved) {
-    return 0;
-  }
-  if (saved.isCompleted) {
-    return 100;
-  }
-  const total = saved.totalClues ?? 0;
-  if (total <= 0) {
-    return 0;
-  }
-  return Math.round(((saved.completedCluesCount ?? 0) / total) * 100);
-}

@@ -153,5 +153,5 @@ export interface ProgressSummary {
   isCompleted: boolean;
   isInProgress: boolean;
   bestTime: number | null;
-  lastPlayedAt: Date;
+  lastPlayedAt: Date | null;
 }
