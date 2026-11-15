@@ -306,8 +306,8 @@ async function refreshProgress(
 
 async function buildSlots(): Promise<PackageSlot[]> {
   const packages = await PuzzlePackage.find({ language: 'he' }).sort({ order: 1 }).lean();
-  if (packages.length !== 10) {
-    throw new Error(`Expected 10 Hebrew packages, found ${packages.length}`);
+  if (packages.length !== 15) {
+    throw new Error(`Expected 15 Hebrew packages, found ${packages.length}`);
   }
   const slots: PackageSlot[] = [];
   let sizeCursor = 0;

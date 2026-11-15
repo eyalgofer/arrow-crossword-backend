@@ -541,8 +541,8 @@ export class PuzzleGenerator {
         attempts: wantImages > 0 && !reuse ? 5 : 30,
       });
       if (!template) continue;
-      if (wantImages > 0 && !reuse) workingPlans.push(pristinePlan);
       if (!this.bindImageClues(template, imagePlan, this.imageClueCatalog)) continue;
+      if (wantImages > 0 && !reuse) workingPlans.push(pristinePlan);
       const layoutMisses = dailyTargetMisses(scoreTemplate(template), targets);
       if (layoutMisses.length > 0) continue;
 

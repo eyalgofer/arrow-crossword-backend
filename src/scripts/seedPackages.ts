@@ -16,7 +16,8 @@ import {
   filterValidPuzzles,
   clearPackagesForLanguage,
 } from './utils/scriptUtils';
-import { GridSize, mixSizes, HE_EN_GRID_SIZE_MIX } from './utils/gridSizes';
+import { GridSize, mixSizes, HE_EN_GRID_SIZE_MIX, PACKAGE_GRID_SIZE_MIX } from './utils/gridSizes';
+import { writeRecentDailyContent } from './utils/recentDailyContent';
 
 dotenv.config();
 
@@ -60,12 +61,18 @@ const gradientPalette = [
   ['#F97316', '#EA580C'], // Orange
   ['#A78BFA', '#8B5CF6'], // Violet
   ['#06B6D4', '#0891B2'], // Cyan
+  ['#84CC16', '#65A30D'], // Lime
+  ['#F43F5E', '#E11D48'], // Rose
+  ['#6366F1', '#4F46E5'], // Indigo
+  ['#EAB308', '#CA8A04'], // Yellow
+  ['#0EA5E9', '#0284C7'], // Sky
 ];
 
 // Icon names for packages
 const iconNames = [
   'leaf', 'text.book.closed', 'star', 'pawprint', 'globe',
-  'flask', 'sportscourt', 'music.note', 'clock', 'film'
+  'flask', 'sportscourt', 'music.note', 'clock', 'film',
+  'sun.max', 'moon.stars', 'lightbulb', 'flag', 'bolt',
 ];
 
 const HEBREW_PUZZLE_MIX: Array<{ difficulty: Difficulty; count: number }> = [
@@ -168,6 +175,41 @@ const packageDefinitionsByLanguage: Record<Language, Array<{
     },
     {
       name: 'אוסף תשחצים 10',
+      description: '10 תשחצים לפתרון',
+      theme: 'מעורב',
+      puzzleCount: 10,
+      puzzleMix: HEBREW_PUZZLE_MIX,
+    },
+    {
+      name: 'אוסף תשחצים 11',
+      description: '10 תשחצים לפתרון',
+      theme: 'מעורב',
+      puzzleCount: 10,
+      puzzleMix: HEBREW_PUZZLE_MIX,
+    },
+    {
+      name: 'אוסף תשחצים 12',
+      description: '10 תשחצים לפתרון',
+      theme: 'מעורב',
+      puzzleCount: 10,
+      puzzleMix: HEBREW_PUZZLE_MIX,
+    },
+    {
+      name: 'אוסף תשחצים 13',
+      description: '10 תשחצים לפתרון',
+      theme: 'מעורב',
+      puzzleCount: 10,
+      puzzleMix: HEBREW_PUZZLE_MIX,
+    },
+    {
+      name: 'אוסף תשחצים 14',
+      description: '10 תשחצים לפתרון',
+      theme: 'מעורב',
+      puzzleCount: 10,
+      puzzleMix: HEBREW_PUZZLE_MIX,
+    },
+    {
+      name: 'אוסף תשחצים 15',
       description: '10 תשחצים לפתרון',
       theme: 'מעורב',
       puzzleCount: 10,
@@ -317,11 +359,55 @@ type PackageSlot = {
   size: GridSize;
 };
 
-function buildHebrewPackageSlots(packageOrders?: number[]): PackageSlot[] {
+/** Incremental Hebrew seed only. --force keeps the legacy out dir and generator. */
+const HE_DAILY_OUT_DIR = path.join(ROOT, 'tmp-package-he-new');
+const HE_DAILY_BUDGET_MS = 120000;
+
+type ParallelGenOptions = {
+  /** 10–12 daily boards for Hebrew packages that are not in the database yet. */
+  dailyHebrew?: boolean;
+  /** Answers already used by Hebrew packages in the database. */
+  avoidAnswers?: string[];
+};
+
+function puzzleAnswers(puzzle: { puzzleItems?: Array<{ clueType?: string; answer?: string }> } | null): string[] {
+  return (puzzle?.puzzleItems ?? [])
+    .filter((item) => item.clueType !== 'image' && item.answer)
+    .map((item) => String(item.answer));
+}
+
+function writeAvoidFile(file: string, answers: Set<string>): void {
+  writeRecentDailyContent(file, { answers: [...answers], clues: [] });
+}
+
+async function loadExistingHebrewPackageAnswers(): Promise<string[]> {
+  const packages = await PuzzlePackage.find({ language: 'he' }).select('puzzleIds').lean();
+  const ids = packages.flatMap((pkg) => pkg.puzzleIds);
+  if (ids.length === 0) return [];
+  const puzzles = await Puzzle.find({ _id: { $in: ids } })
+    .select('puzzleItems.answer puzzleItems.clueType')
+    .lean();
+  const answers = new Set<string>();
+  for (const puzzle of puzzles) {
+    for (const answer of puzzleAnswers(puzzle)) answers.add(answer);
+  }
+  return [...answers];
+}
+
+function puzzleMatchesSlot(puzzle: any, slot: PackageSlot): boolean {
+  return (
+    puzzle?.grid?.rows === slot.size.rows &&
+    puzzle?.grid?.cols === slot.size.cols &&
+    puzzle?.difficulty === slot.difficulty &&
+    (puzzle.puzzleItems?.length ?? 0) > 0
+  );
+}
+
+function buildHebrewPackageSlots(packageOrders?: number[], sizeMixOverride?: GridSize[]): PackageSlot[] {
   const slots: PackageSlot[] = [];
   const selected = new Set(packageOrders ?? packageDefinitions.map((_, i) => i));
-  /** he-en uses 8–10 boards — bilingual pool is smaller than full Hebrew. */
-  const sizeMix = language === 'he-en' ? HE_EN_GRID_SIZE_MIX : undefined;
+  /** he-en uses fixed 12×12 boards. Daily Hebrew packages use the 10–12 mix. */
+  const sizeMix = sizeMixOverride ?? (language === 'he-en' ? HE_EN_GRID_SIZE_MIX : undefined);
   for (let i = 0; i < packageDefinitions.length; i++) {
     if (!selected.has(i)) continue;
     const def = packageDefinitions[i];
@@ -348,7 +434,8 @@ function buildHebrewPackageSlots(packageOrders?: number[]): PackageSlot[] {
 function runPackageWorker(
   launchIndex: number,
   slot: PackageSlot,
-  outPath: string
+  outPath: string,
+  options?: { dailyHebrew?: boolean; recentFile?: string }
 ): Promise<any | null> {
   return new Promise((resolve) => {
     const args = [
@@ -372,6 +459,15 @@ function runPackageWorker(
     // he-en: daily profile on 12×12; longer budget for the smaller bilingual pool.
     if (language === 'he-en') {
       args.push('--profile', 'daily', '--budget', '240000');
+    } else if (options?.dailyHebrew && options.recentFile) {
+      args.push(
+        '--profile',
+        'daily',
+        '--budget',
+        String(HE_DAILY_BUDGET_MS),
+        '--recent',
+        options.recentFile
+      );
     }
     const child = spawn('npx', args, { cwd: ROOT, stdio: 'inherit' });
     child.on('exit', (code) => {
@@ -380,7 +476,12 @@ function runPackageWorker(
         return;
       }
       try {
-        resolve(JSON.parse(fs.readFileSync(outPath, 'utf8')));
+        const puzzle = JSON.parse(fs.readFileSync(outPath, 'utf8'));
+        if (options?.dailyHebrew && !puzzleMatchesSlot(puzzle, slot)) {
+          resolve(null);
+          return;
+        }
+        resolve(puzzle);
       } catch {
         resolve(null);
       }
@@ -389,12 +490,17 @@ function runPackageWorker(
   });
 }
 
-function loadExistingSlotPuzzle(packageOrder: number, slotInPackage: number): any | null {
-  if (!fs.existsSync(PACKAGE_OUT_DIR)) return null;
+function loadExistingSlotPuzzle(
+  packageOrder: number,
+  slotInPackage: number,
+  outDir: string = PACKAGE_OUT_DIR,
+  expected?: PackageSlot
+): any | null {
+  if (!fs.existsSync(outDir)) return null;
   const minSize = language === 'he-en' ? 12 : 13;
   const prefix = `pkg-${packageOrder + 1}-${slotInPackage + 1}-try`;
   const files = fs
-    .readdirSync(PACKAGE_OUT_DIR)
+    .readdirSync(outDir)
     .filter((name) => name.startsWith(prefix) && name.endsWith('.json'))
     .sort((a, b) => {
       const tryA = parseInt(a.slice(prefix.length).replace(/\.json$/, ''), 10);
@@ -403,7 +509,11 @@ function loadExistingSlotPuzzle(packageOrder: number, slotInPackage: number): an
     });
   for (const file of files) {
     try {
-      const puzzle = JSON.parse(fs.readFileSync(path.join(PACKAGE_OUT_DIR, file), 'utf8'));
+      const puzzle = JSON.parse(fs.readFileSync(path.join(outDir, file), 'utf8'));
+      if (expected) {
+        if (puzzleMatchesSlot(puzzle, expected)) return puzzle;
+        continue;
+      }
       if (
         puzzle?.grid?.rows >= minSize &&
         puzzle?.grid?.cols >= minSize &&
@@ -420,11 +530,15 @@ function loadExistingSlotPuzzle(packageOrder: number, slotInPackage: number): an
 
 /** Generate Hebrew package puzzles via parallel workers (daily-style). */
 async function generateAllHebrewPackagesInParallel(
-  packageOrders?: number[]
+  packageOrders?: number[],
+  options?: ParallelGenOptions
 ): Promise<PreparedPackage[]> {
-  fs.mkdirSync(PACKAGE_OUT_DIR, { recursive: true });
+  const dailyHebrew = options?.dailyHebrew === true;
+  const outDir = dailyHebrew ? HE_DAILY_OUT_DIR : PACKAGE_OUT_DIR;
+  const recentFile = path.join(outDir, 'recent.json');
+  fs.mkdirSync(outDir, { recursive: true });
   const selected = packageOrders ?? packageDefinitions.map((_, i) => i);
-  const slots = buildHebrewPackageSlots(selected);
+  const slots = buildHebrewPackageSlots(selected, dailyHebrew ? PACKAGE_GRID_SIZE_MIX : undefined);
   const results: Array<any | null> = Array(slots.length).fill(null);
   const launchesForSlot = Array(slots.length).fill(0);
   let inFlight = 0;
@@ -432,8 +546,14 @@ async function generateAllHebrewPackagesInParallel(
   let completed = 0;
 
   // Resume: reuse ready JSON from a prior run so we don't throw away finished slots.
+  // Daily Hebrew resumes only when size and difficulty match that slot.
   for (let i = 0; i < slots.length; i++) {
-    const existing = loadExistingSlotPuzzle(slots[i].packageOrder, slots[i].slotInPackage);
+    const existing = loadExistingSlotPuzzle(
+      slots[i].packageOrder,
+      slots[i].slotInPackage,
+      outDir,
+      dailyHebrew ? slots[i] : undefined
+    );
     if (!existing) continue;
     results[i] = existing;
     completed += 1;
@@ -443,9 +563,20 @@ async function generateAllHebrewPackagesInParallel(
     );
   }
 
+  const avoid = new Set<string>(dailyHebrew ? options?.avoidAnswers ?? [] : []);
+  if (dailyHebrew) {
+    for (const puzzle of results) {
+      for (const answer of puzzleAnswers(puzzle)) avoid.add(answer);
+    }
+    writeAvoidFile(recentFile, avoid);
+  }
+
   console.log(
     `🚀 Parallel generate ${slots.length} package puzzles ` +
-      `(workers=${PACKAGE_PARALLEL}, attempts=${PACKAGE_WORKER_ATTEMPTS}, ` +
+      `(workers=${PACKAGE_PARALLEL}, ` +
+      (dailyHebrew
+        ? `budget=${HE_DAILY_BUDGET_MS}ms, avoiding ${avoid.size} answers, `
+        : `attempts=${PACKAGE_WORKER_ATTEMPTS}, `) +
       `already have ${completed})`
   );
 
@@ -490,7 +621,7 @@ async function generateAllHebrewPackagesInParallel(
         inFlight += 1;
         const launchId = launchCounter;
         const outPath = path.join(
-          PACKAGE_OUT_DIR,
+          outDir,
           `pkg-${slot.packageOrder + 1}-${slot.slotInPackage + 1}-try${launchesForSlot[slotIndex]}.json`
         );
         console.log(
@@ -499,12 +630,16 @@ async function generateAllHebrewPackagesInParallel(
             `(in-flight ${inFlight}, done ${completed}/${slots.length}) ——`
         );
         const capturedSlot = slotIndex;
-        runPackageWorker(launchId, slot, outPath)
+        runPackageWorker(launchId, slot, outPath, dailyHebrew ? { dailyHebrew: true, recentFile } : undefined)
           .then((puzzle) => {
             inFlight -= 1;
             if (puzzle && results[capturedSlot] == null) {
               results[capturedSlot] = puzzle;
               completed += 1;
+              if (dailyHebrew) {
+                for (const answer of puzzleAnswers(puzzle)) avoid.add(answer);
+                writeAvoidFile(recentFile, avoid);
+              }
               console.log(
                 `✅ Slot package ${slot.packageOrder + 1}/#${slot.slotInPackage + 1} ready ` +
                   `(${completed}/${slots.length})`
@@ -694,6 +829,44 @@ const seedPackages = async () => {
     }
 
     console.log(`📦 Creating ${packageDefinitions.length} packages (${language}) with difficulty distribution...\n`);
+
+    // Hebrew: daily 10–12 boards for packages that are not already seeded.
+    // Existing packs stay put. --force is unchanged and still wipes everything.
+    if (language === 'he') {
+      const missing: number[] = [];
+      for (let i = 0; i < packageDefinitions.length; i++) {
+        const def = packageDefinitions[i];
+        const existing = await PuzzlePackage.findOne({ name: def.name, language });
+        if (existing) {
+          console.log(`\n📦 Skipping ${def.name} — already exists (${existing.puzzleCount} puzzles)`);
+        } else {
+          missing.push(i);
+        }
+      }
+      if (missing.length === 0) {
+        await printSummary();
+        console.log('\n✅ Package seeding completed successfully!');
+        await closeDatabaseAndExit(0);
+        return;
+      }
+      const avoidAnswers = await loadExistingHebrewPackageAnswers();
+      console.log(
+        `\n📦 Generating ${missing.length} new Hebrew package(s), daily 10–12 ` +
+          `(avoiding ${avoidAnswers.length} answers already in packages)\n`
+      );
+      await mongoose.connection.close().catch(() => undefined);
+      const prepared = await generateAllHebrewPackagesInParallel(missing, {
+        dailyHebrew: true,
+        avoidAnswers,
+      });
+      await connectToDatabase();
+      console.log('💾 Inserting new packages...\n');
+      await persistPreparedPackages(prepared);
+      await printSummary();
+      console.log('\n✅ Package seeding completed successfully!');
+      await closeDatabaseAndExit(0);
+      return;
+    }
 
     // he-en uses the same parallel 12×12 daily workers as --force, but only
     // for packages that are not already seeded. Existing packs stay put.

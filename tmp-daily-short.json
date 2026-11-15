@@ -1,0 +1,82 @@
+[
+  {
+    "id": "img_0156",
+    "answer": "ג'וני דפ",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0156-johnny-depp.jpg",
+    "type": "person",
+    "subject": "Johnny Depp",
+    "letterLength": 7
+  },
+  {
+    "id": "img_0585",
+    "answer": "ג'ו רוגן",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0585-joe-rogan.jpg",
+    "type": "person",
+    "subject": "Joe Rogan",
+    "letterLength": 7
+  },
+  {
+    "id": "img_0539",
+    "answer": "יו ג'קמן",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0539-hugh-jackman.jpg",
+    "type": "person",
+    "subject": "Hugh Jackman",
+    "letterLength": 7
+  },
+  {
+    "id": "img_0609",
+    "answer": "ג'יי זי",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0609-jay-z.jpg",
+    "type": "person",
+    "subject": "Jay-Z",
+    "letterLength": 6
+  },
+  {
+    "id": "img_0702",
+    "answer": "אביצ'י",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0702-avicii.jpg",
+    "type": "person",
+    "subject": "Avicii",
+    "letterLength": 6
+  },
+  {
+    "id": "img_0937",
+    "answer": "צ'אבי",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0937-xavi-hernandez.jpg",
+    "type": "person",
+    "subject": "Xavi Hernandez",
+    "letterLength": 5
+  },
+  {
+    "id": "img_0994",
+    "answer": "ג'ט לי",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0994-jet-li.jpg",
+    "type": "person",
+    "subject": "Jet Li",
+    "letterLength": 5
+  },
+  {
+    "id": "img_0900",
+    "answer": "ג'ק מא",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0900-jack-ma.jpg",
+    "type": "person",
+    "subject": "Jack Ma",
+    "letterLength": 5
+  },
+  {
+    "id": "img_0909",
+    "answer": "סם סמית'",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0909-sam-smith.jpg",
+    "type": "person",
+    "subject": "Sam Smith",
+    "letterLength": 7
+  },
+  {
+    "id": "img_0918",
+    "answer": "ד\"ר דרה",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0918-dr-dre.jpg",
+    "type": "person",
+    "subject": "Dr Dre",
+    "letterLength": 6
+  }
+]
