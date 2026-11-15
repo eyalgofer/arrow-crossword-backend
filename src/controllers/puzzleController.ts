@@ -20,7 +20,8 @@ import {
   toLocalDateString,
 } from '../utils/dailyPuzzleStats';
 import { countsTowardFastestTime } from '../utils/dailyHints';
-import { buildPuzzlePreview, FAV_PICK_ACCENTS, toCardDifficulty } from '../utils/puzzlePreview';
+import { buildPuzzlePreview, FAV_PICK_ACCENTS, PREVIEW_PUZZLE_SELECT, toCardDifficulty } from '../utils/puzzlePreview';
+import { attachOpenerClueIds } from '../services/packageCatalog';
 import { DAILY_HINT_LIMIT, FIRST_DAILY_SOLVER_BONUS, dailyHintCost } from '../constants/daily';
 import { purchasePuzzleHint } from '../services/dailyHints';
 import { buildDailyResult, maybeClaimOvernightFastest } from '../services/dailyResult';
@@ -291,7 +292,7 @@ export const getFavoritePuzzles = async (req: AuthRequest, res: Response) => {
       isActive: { $ne: false },
     })
       .sort({ order: 1 })
-      .populate('puzzleId')
+      .populate({ path: 'puzzleId', select: PREVIEW_PUZZLE_SELECT })
       .lean();
 
     const active = favs.filter((fav) => fav.puzzleId);
@@ -344,7 +345,7 @@ export const getCategoryPuzzles = async (req: AuthRequest, res: Response) => {
       isActive: { $ne: false },
     })
       .sort({ order: 1 })
-      .populate('puzzleId')
+      .populate({ path: 'puzzleId', select: PREVIEW_PUZZLE_SELECT })
       .lean();
 
     const active = rows.filter((row) => row.puzzleId);
@@ -622,9 +623,12 @@ export const getAllProgress = async (req: AuthRequest, res: Response) => {
     }
 
     const [progressList, headStart] = await Promise.all([
-      UserPuzzleProgress.find({ userId: user._id }),
+      UserPuzzleProgress.find({ userId: user._id })
+        .select('puzzleId isCompleted completedCluesCount totalClues bestTime lastPlayedAt')
+        .lean(),
       firstPackageHeadStart(resolveLanguage(req)),
     ]);
+    await attachOpenerClueIds(user._id, headStart, progressList);
 
     const summaries: ProgressSummary[] = progressList.map((p) => {
       const puzzleId = p.puzzleId.toString();

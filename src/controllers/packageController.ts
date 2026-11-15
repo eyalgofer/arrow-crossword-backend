@@ -1,11 +1,20 @@
 import { Response } from 'express';
-import mongoose from 'mongoose';
 import { PuzzlePackage } from '../models/PuzzlePackage';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { User } from '../models/User';
 import { AuthRequest } from '../types';
-import { firstPackageHeadStart, puzzleProgressPercent } from '../services/starterClues';
+import { firstPackageHeadStart } from '../services/starterClues';
+import {
+  attachOpenerClueIds,
+  buildPackageProgress,
+  catalogEtagSource,
+  loadRingDifficulties,
+  progressEtagSource,
+  withRingDifficulties,
+} from '../services/packageCatalog';
+import { sendCachedJson } from '../utils/conditionalGet';
 import { resolveLanguage, languageFilter } from '../utils/language';
+import { toIdString } from '../utils/objectId';
 
 /**
  * GET /api/packages
@@ -13,39 +22,22 @@ import { resolveLanguage, languageFilter } from '../utils/language';
  */
 export const getPackages = async (req: AuthRequest, res: Response) => {
   try {
-    // Log connection details for debugging
-    const db = mongoose.connection.db;
-    const dbName = (db as any)?.databaseName || mongoose.connection.name || 'UNKNOWN';
-    const collectionName = PuzzlePackage.collection.name;
-    const connectionState = mongoose.connection.readyState; // 0=disconnected, 1=connected, 2=connecting, 3=disconnecting
-    
-    console.log(`🔍 Querying packages:`);
-    console.log(`   Connection state: ${connectionState} (0=disconnected, 1=connected)`);
-    console.log(`   Database: ${dbName}`);
-    console.log(`   Collection: ${collectionName}`);
-    console.log(`   Model name: ${PuzzlePackage.modelName}`);
-    console.log(`   Connection host: ${mongoose.connection.host || 'unknown'}`);
-
-    // Check total count first for debugging
-    const totalCount = await PuzzlePackage.countDocuments();
-    console.log(`📦 Total packages in database: ${totalCount}`);
-
-    // Also try raw collection query to see if documents exist
-    const rawCount = await PuzzlePackage.collection.countDocuments();
-    console.log(`📦 Raw collection count: ${rawCount}`);
-
-    // Try listing all collections to see what's available
-    if (mongoose.connection.db) {
-      const collections = await mongoose.connection.db.listCollections().toArray();
-      console.log(`📚 Available collections: ${collections.map(c => c.name).join(', ')}`);
-    }
-
-    // Israeli users get Hebrew packages (names, themes, and puzzles in Hebrew)
-    const packages = await PuzzlePackage.find({ language: languageFilter(resolveLanguage(req)) })
+    // Israeli users get Hebrew packages (names, themes, and puzzles in Hebrew).
+    // he, en, and he-en are separate catalogs.
+    const language = resolveLanguage(req);
+    const packages = await PuzzlePackage.find({ language: languageFilter(language) })
       .sort({ order: 1 })
       .lean();
 
-    res.json({ packages });
+    const difficultyById = await loadRingDifficulties(
+      packages.flatMap(pkg => pkg.puzzleIds ?? [])
+    );
+
+    // No If-None-Match: 200 and the package fields already in production, plus
+    // optional ring difficulty. A matching validator skips that body.
+    sendCachedJson(req, res, catalogEtagSource(language, packages, difficultyById), () => ({
+      packages: withRingDifficulties(packages, difficultyById),
+    }));
   } catch (error) {
     console.error('Get packages error:', error);
     res.status(500).json({ error: 'Failed to get packages' });
@@ -67,6 +59,7 @@ export const getPackagesProgress = async (req: AuthRequest, res: Response) => {
     const language = resolveLanguage(req);
     const [packages, headStart] = await Promise.all([
       PuzzlePackage.find({ language: languageFilter(language) })
+        .select('_id puzzleIds')
         .sort({ order: 1 })
         .lean(),
       firstPackageHeadStart(language),
@@ -78,68 +71,20 @@ export const getPackagesProgress = async (req: AuthRequest, res: Response) => {
           userId: user._id,
           puzzleId: { $in: allPuzzleIds }
         })
-          .select('puzzleId completedClueIds completedCluesCount totalClues isCompleted lastPlayedAt')
+          .select('puzzleId completedCluesCount totalClues isCompleted lastPlayedAt')
           .lean()
       : [];
+    await attachOpenerClueIds(user._id, headStart, progressDocs);
 
-    const progressByPuzzleId = new Map(
-      progressDocs.map(p => [p.puzzleId.toString(), p])
+    const userId = toIdString(user._id) ?? String(user._id);
+    // Progress rows stay { puzzleId, progress, lastPlayedAt }. The etag is this
+    // user's rings for this language, so one player's 304 cannot be reused.
+    sendCachedJson(
+      req,
+      res,
+      progressEtagSource({ userId, language, packages, headStart, progressDocs }),
+      () => buildPackageProgress({ packages, headStart, progressDocs })
     );
-
-    const progress = packages.map(pkg => {
-      let lastPlayedAt: Date | undefined;
-
-      const puzzles = pkg.puzzleIds.map(puzzleId => {
-        const puzzleKey = puzzleId.toString();
-        const saved = progressByPuzzleId.get(puzzleKey);
-        const isHeadStart = headStart?.puzzleId === puzzleKey && !saved?.isCompleted;
-        const percent = puzzleProgressPercent({
-          isCompleted: saved?.isCompleted,
-          completedClueIds: isHeadStart ? saved?.completedClueIds : undefined,
-          completedCluesCount: saved?.completedCluesCount,
-          totalClues: saved?.totalClues || (isHeadStart ? headStart.totalClues : 0),
-          starterIds: isHeadStart ? headStart.starterIds : undefined,
-        });
-        const entry: {
-          puzzleId: string;
-          progress: number;
-          lastPlayedAt?: Date;
-        } = {
-          puzzleId: puzzleId.toString(),
-          progress: percent
-        };
-
-        if (saved?.lastPlayedAt) {
-          entry.lastPlayedAt = saved.lastPlayedAt;
-          if (!lastPlayedAt || saved.lastPlayedAt > lastPlayedAt) {
-            lastPlayedAt = saved.lastPlayedAt;
-          }
-        }
-
-        return entry;
-      });
-
-      const completedCount = puzzles.filter(p => p.progress === 100).length;
-
-      return {
-        packageId: pkg._id,
-        completedCount,
-        isCompleted: pkg.puzzleIds.length > 0 && completedCount === pkg.puzzleIds.length,
-        ...(lastPlayedAt ? { lastPlayedAt } : {}),
-        puzzles
-      };
-    });
-
-    // Calculate total completed puzzles across all packages
-    const totalCompletedPuzzles = progress.reduce(
-      (sum, p) => sum + p.completedCount,
-      0
-    );
-
-    res.json({
-      progress,
-      totalCompletedPuzzles
-    });
   } catch (error) {
     console.error('Get packages progress error:', error);
     res.status(500).json({ error: 'Failed to get packages progress' });

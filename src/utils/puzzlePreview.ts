@@ -69,6 +69,20 @@ function cellKey(row: number, col: number): string {
  * 5×5 silhouette of a puzzle: blocked clue/image cells plus a handful of letters.
  * Deterministic so the same puzzle always renders the same card preview.
  */
+/** Fields the card silhouette reads. Clue text stays in the database. */
+export const PREVIEW_PUZZLE_SELECT = [
+  'difficulty',
+  'grid.rows',
+  'grid.cols',
+  'puzzleItems.clueType',
+  'puzzleItems.direction',
+  'puzzleItems.startRow',
+  'puzzleItems.startCol',
+  'puzzleItems.exitRow',
+  'puzzleItems.exitCol',
+  'puzzleItems.answer',
+].join(' ');
+
 export function buildPuzzlePreview(
   grid: { rows: number; cols: number },
   puzzleItems: PuzzleItem[]
