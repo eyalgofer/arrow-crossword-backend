@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { invalidatePicks } from '../services/playTabStamp';
 import { Language } from '../types';
 
 export const CATEGORY_PUZZLE_KEYS = [
@@ -65,5 +66,17 @@ const categoryPuzzleSchema = new Schema<ICategoryPuzzle>({
 categoryPuzzleSchema.index({ language: 1, order: 1 }, { unique: true });
 categoryPuzzleSchema.index({ language: 1, isActive: 1, order: 1 });
 categoryPuzzleSchema.index({ puzzleId: 1 });
+
+const dropPicks = () => {
+  invalidatePicks();
+};
+categoryPuzzleSchema.post('save', dropPicks);
+categoryPuzzleSchema.post('insertMany', dropPicks);
+categoryPuzzleSchema.post('updateOne', dropPicks);
+categoryPuzzleSchema.post('updateMany', dropPicks);
+categoryPuzzleSchema.post('findOneAndUpdate', dropPicks);
+categoryPuzzleSchema.post('replaceOne', dropPicks);
+categoryPuzzleSchema.post('deleteOne', dropPicks);
+categoryPuzzleSchema.post('deleteMany', dropPicks);
 
 export const CategoryPuzzle = mongoose.model<ICategoryPuzzle>('CategoryPuzzle', categoryPuzzleSchema);

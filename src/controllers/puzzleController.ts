@@ -33,7 +33,18 @@ import {
   starterClueIdsForPuzzle,
 } from '../services/starterClues';
 import { toDailyCard, viewerProgress } from '../services/dailyCard';
-import { invalidateUserProgress } from '../services/playTabStamp';
+import { entityTag, sendConditionalJson, sendNotModified } from '../utils/conditionalGet';
+import { toIdString } from '../utils/objectId';
+import {
+  dailyCardKey,
+  invalidateCommunity,
+  invalidateUserProgress,
+  matchingStamp,
+  readEpochs,
+  readViewerStamp,
+  rememberSolvedEtag,
+  rememberViewerCard,
+} from '../services/playTabStamp';
 
 export const getPuzzles = async (req: AuthRequest, res: Response) => {
   try {
@@ -173,9 +184,50 @@ export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
 /**
  * Play-tab daily card. `?card=1` only. Shipped apps omit it and still receive the crossword.
  */
+async function storeStamp(remember: () => Promise<void>): Promise<void> {
+  try {
+    await remember();
+  } catch (error) {
+    console.error('Failed to store play-tab stamp:', error);
+  }
+}
+
+async function loadViewerContext(req: AuthRequest): Promise<{
+  userId: string;
+  epochs: Awaited<ReturnType<typeof readEpochs>>;
+  viewer: Awaited<ReturnType<typeof readViewerStamp>> | null;
+}> {
+  const user = await User.findOne({ firebaseUid: req.user!.uid }).select('_id').lean();
+  const userId = user ? toIdString(user._id) ?? String(user._id) : '';
+  const [epochs, viewer] = await Promise.all([
+    readEpochs(),
+    userId ? readViewerStamp(userId) : Promise.resolve(null),
+  ]);
+  return { userId, epochs, viewer };
+}
+
 async function sendDailyCard(req: AuthRequest, res: Response) {
   const { year, dayOfYear } = liveDailyKey();
   const language = resolveLanguage(req);
+  const user = await User.findOne({ firebaseUid: req.user!.uid }).select('_id').lean();
+  const userId = user ? toIdString(user._id) ?? String(user._id) : '';
+  const [epochs, viewer] = await Promise.all([
+    readEpochs(),
+    userId ? readViewerStamp(userId) : Promise.resolve(null),
+  ]);
+  const cardKey = dailyCardKey(language, year, dayOfYear);
+  const cached = viewer
+    ? matchingStamp(viewer.cards.daily?.[cardKey], req.headers['if-none-match'], {
+        catalog: epochs.catalog,
+        daily: epochs.daily,
+        progress: viewer.generation,
+      })
+    : null;
+  if (cached) {
+    sendNotModified(res, cached);
+    return;
+  }
+
   const assigned = await DailyPuzzle.findOne({
     dayOfYear,
     year,
@@ -208,14 +260,25 @@ async function sendDailyCard(req: AuthRequest, res: Response) {
     return;
   }
 
-  const user = await User.findOne({ firebaseUid: req.user!.uid }).select('_id').lean();
   const progress = user
     ? await UserPuzzleProgress.findOne({ userId: user._id, puzzleId: puzzle._id })
         .select('isCompleted completedCluesCount totalClues bestTime elapsedTime')
         .lean()
     : null;
 
-  res.json({ puzzle: toDailyCard(puzzle, progress) });
+  const body = { puzzle: toDailyCard(puzzle, progress) };
+  const etag = entityTag(body);
+  if (userId && viewer) {
+    await storeStamp(() =>
+      rememberViewerCard(userId, 'daily', cardKey, viewer.generation, {
+        etag,
+        catalog: epochs.catalog,
+        daily: epochs.daily,
+        progress: viewer.generation,
+      })
+    );
+  }
+  sendConditionalJson(req, res, etag, body);
 }
 
 async function withViewerProgress<T extends { id: string }>(
@@ -243,6 +306,17 @@ export const getDailyPuzzleSolvedCount = async (req: AuthRequest, res: Response)
   try {
     const { year, dayOfYear } = liveDailyKey();
     const language = resolveLanguage(req);
+    const epochs = await readEpochs();
+    const solvedKey = dailyCardKey(language, year, dayOfYear);
+    const cached = matchingStamp(
+      { etag: epochs.solvedEtags[solvedKey] },
+      req.headers['if-none-match'],
+      {}
+    );
+    if (cached) {
+      sendNotModified(res, cached);
+      return;
+    }
 
     const dailyPuzzle = await DailyPuzzle.findOne({
       dayOfYear,
@@ -251,7 +325,11 @@ export const getDailyPuzzleSolvedCount = async (req: AuthRequest, res: Response)
     }).select('puzzleId').lean();
 
     if (!dailyPuzzle) {
-      return res.json({ solvedCount: 0, fastestSeconds: null });
+      const empty = { solvedCount: 0, fastestSeconds: null };
+      const etag = entityTag(empty);
+      await storeStamp(() => rememberSolvedEtag(solvedKey, epochs.community, epochs.daily, etag));
+      sendConditionalJson(req, res, etag, empty);
+      return;
     }
 
     const [stats] = await UserPuzzleProgress.aggregate<{
@@ -278,10 +356,13 @@ export const getDailyPuzzleSolvedCount = async (req: AuthRequest, res: Response)
         ? Math.floor(fastest)
         : null;
 
-    res.json({
+    const body = {
       solvedCount: stats?.solvedCount ?? 0,
       fastestSeconds,
-    });
+    };
+    const etag = entityTag(body);
+    await storeStamp(() => rememberSolvedEtag(solvedKey, epochs.community, epochs.daily, etag));
+    sendConditionalJson(req, res, etag, body);
   } catch (error) {
     console.error('Get daily puzzle solved count error:', error);
     res.status(500).json({ error: 'Failed to get daily puzzle solved count' });
@@ -359,6 +440,19 @@ export const getDailyPuzzleStats = async (req: AuthRequest, res: Response) => {
 export const getFavoritePuzzles = async (req: AuthRequest, res: Response) => {
   try {
     const language = resolveLanguage(req);
+    const { userId, epochs, viewer } = await loadViewerContext(req);
+    const cached = viewer
+      ? matchingStamp(viewer.cards.favorites?.[language], req.headers['if-none-match'], {
+          catalog: epochs.catalog,
+          progress: viewer.generation,
+          picks: epochs.picks,
+          community: epochs.community,
+        })
+      : null;
+    if (cached) {
+      sendNotModified(res, cached);
+      return;
+    }
     const favs = await FavPuzzle.find({
       language: languageFilter(language),
       isActive: { $ne: false },
@@ -394,7 +488,20 @@ export const getFavoritePuzzles = async (req: AuthRequest, res: Response) => {
       };
     });
 
-    res.json({ picks: await withViewerProgress(req, picks) });
+    const body = { picks: await withViewerProgress(req, picks) };
+    const etag = entityTag(body);
+    if (userId && viewer) {
+      await storeStamp(() =>
+        rememberViewerCard(userId, 'favorites', language, viewer.generation, {
+          etag,
+          catalog: epochs.catalog,
+          progress: viewer.generation,
+          picks: epochs.picks,
+          community: epochs.community,
+        })
+      );
+    }
+    sendConditionalJson(req, res, etag, body);
   } catch (error) {
     console.error('Get favorite puzzles error:', error);
     res.status(500).json({ error: 'Failed to get favorite puzzles' });
@@ -410,6 +517,20 @@ export const getCategoryPuzzles = async (req: AuthRequest, res: Response) => {
     const language = resolveLanguage(req);
     if (language !== 'he') {
       return res.json({ picks: [] });
+    }
+
+    const { userId, epochs, viewer } = await loadViewerContext(req);
+    const cached = viewer
+      ? matchingStamp(viewer.cards.categories?.[language], req.headers['if-none-match'], {
+          catalog: epochs.catalog,
+          progress: viewer.generation,
+          picks: epochs.picks,
+          community: epochs.community,
+        })
+      : null;
+    if (cached) {
+      sendNotModified(res, cached);
+      return;
     }
 
     const rows = await CategoryPuzzle.find({
@@ -448,7 +569,20 @@ export const getCategoryPuzzles = async (req: AuthRequest, res: Response) => {
       };
     });
 
-    res.json({ picks: await withViewerProgress(req, picks) });
+    const body = { picks: await withViewerProgress(req, picks) };
+    const etag = entityTag(body);
+    if (userId && viewer) {
+      await storeStamp(() =>
+        rememberViewerCard(userId, 'categories', language, viewer.generation, {
+          etag,
+          catalog: epochs.catalog,
+          progress: viewer.generation,
+          picks: epochs.picks,
+          community: epochs.community,
+        })
+      );
+    }
+    sendConditionalJson(req, res, etag, body);
   } catch (error) {
     console.error('Get category puzzles error:', error);
     res.status(500).json({ error: 'Failed to get category puzzles' });
@@ -531,7 +665,7 @@ export const saveProgress = async (req: AuthRequest, res: Response) => {
       userId: user._id,
       puzzleId,
     })
-      .select('hintsUsed bestTime')
+      .select('hintsUsed bestTime isCompleted')
       .lean();
 
     const $set: Record<string, unknown> = {
@@ -580,6 +714,12 @@ export const saveProgress = async (req: AuthRequest, res: Response) => {
     const hintLimit = (await isTodaysDailyPuzzle(puzzleId)) ? DAILY_HINT_LIMIT : null;
     const hintsUsed = progress.hintsUsed ?? 0;
     invalidateUserProgress(user._id);
+    if (
+      ($set.isCompleted !== undefined && $set.isCompleted !== existing?.isCompleted) ||
+      shouldSetBestTime
+    ) {
+      invalidateCommunity();
+    }
 
     res.json({
       success: true,
@@ -906,6 +1046,7 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
       await user.save();
     }
     invalidateUserProgress(user._id);
+    invalidateCommunity();
 
     let dailyResult = undefined;
     if (isTodaysDaily) {
@@ -964,6 +1105,9 @@ export const deleteProgress = async (req: AuthRequest, res: Response) => {
       userId: user._id,
       puzzleId
     });
+    const wasPublic =
+      progress?.isCompleted === true ||
+      (typeof progress?.bestTime === 'number' && progress.bestTime > 0);
 
     const starterIds = await starterClueIdsForPuzzle(puzzle);
     if (progress && ((progress.hintsUsed ?? 0) > 0 || progress.dailyStatsCounted)) {
@@ -978,6 +1122,7 @@ export const deleteProgress = async (req: AuthRequest, res: Response) => {
       await progress.deleteOne();
     }
     invalidateUserProgress(user._id);
+    if (wasPublic) invalidateCommunity();
 
     res.json({ success: true });
   } catch (error) {

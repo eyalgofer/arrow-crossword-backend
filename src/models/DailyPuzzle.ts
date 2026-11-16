@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { invalidateDailyAssignment, updatesDailyAssignment } from '../services/playTabStamp';
 import { Language } from '../types';
 
 export interface IDailyPuzzle extends Document {
@@ -85,5 +86,19 @@ dailyPuzzleSchema.index({ dayOfYear: 1, year: 1, language: 1 }, { unique: true }
 dailyPuzzleSchema.index({ date: 1, language: 1 }, { unique: true });
 // Index for puzzleId lookups (if you need to find which days a puzzle was used)
 dailyPuzzleSchema.index({ puzzleId: 1 });
+
+function dropDailyAssignment(this: { getUpdate?: () => unknown }) {
+  const update = typeof this.getUpdate === 'function' ? this.getUpdate() : null;
+  if (updatesDailyAssignment(update)) invalidateDailyAssignment();
+}
+
+dailyPuzzleSchema.post('save', () => invalidateDailyAssignment());
+dailyPuzzleSchema.post('insertMany', () => invalidateDailyAssignment());
+dailyPuzzleSchema.post('updateOne', dropDailyAssignment);
+dailyPuzzleSchema.post('updateMany', dropDailyAssignment);
+dailyPuzzleSchema.post('findOneAndUpdate', dropDailyAssignment);
+dailyPuzzleSchema.post('replaceOne', () => invalidateDailyAssignment());
+dailyPuzzleSchema.post('deleteOne', () => invalidateDailyAssignment());
+dailyPuzzleSchema.post('deleteMany', () => invalidateDailyAssignment());
 
 export const DailyPuzzle = mongoose.model<IDailyPuzzle>('DailyPuzzle', dailyPuzzleSchema);

@@ -4,6 +4,7 @@ import { DailyPuzzle } from '../models/DailyPuzzle';
 import { DevicePlatform, User } from '../models/User';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { revokeAllRefreshTokens, verifyAccessToken } from './authTokens';
+import { invalidateCommunity, invalidateUserProgress } from './playTabStamp';
 import { DailyPuzzleStatsFields } from '../utils/dailyPuzzleStats';
 
 export const GUEST_UID_PREFIX = 'guest:';
@@ -163,6 +164,9 @@ async function mergeGuestIntoExisting(
   };
 
   await migratePuzzleProgress(guest._id as mongoose.Types.ObjectId, existing._id as mongoose.Types.ObjectId);
+  invalidateUserProgress(guest._id);
+  invalidateUserProgress(existing._id);
+  invalidateCommunity();
   const guestId = guest._id as mongoose.Types.ObjectId;
   const targetId = existing._id as mongoose.Types.ObjectId;
   await DailyPuzzle.updateMany({ fastestSolverId: guestId }, { $set: { fastestSolverId: targetId } });

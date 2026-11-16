@@ -26,6 +26,20 @@ export function setPrivateEtag(res: Response, etag: string): void {
   res.set('Cache-Control', 'private');
 }
 
+export function sendConditionalJson(
+  req: Request,
+  res: Response,
+  etag: string,
+  body: unknown
+): void {
+  if (ifNoneMatchMatches(req.headers['if-none-match'], etag)) {
+    sendNotModified(res, etag);
+    return;
+  }
+  setPrivateEtag(res, etag);
+  res.json(body);
+}
+
 export function sendNotModified(res: Response, etag: string): void {
   setPrivateEtag(res, etag);
   res.status(304);

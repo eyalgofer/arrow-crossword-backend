@@ -19,6 +19,7 @@ import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { Match } from '../models/Match';
 import { Invite } from '../models/Invite';
 import { clearMatchWordClaims } from '../services/wordClaims';
+import { invalidateCommunity, invalidateUserProgress } from '../services/playTabStamp';
 import { getUserNumber, notifyNewUser } from '../services/slack';
 
 function parseDevice(value: unknown): DevicePlatform | null {
@@ -334,6 +335,8 @@ router.delete('/delete-account', authenticateToken, async (req: AuthRequest, res
 
     // Finally, delete the user account itself
     await User.deleteOne({ _id: userObjectId });
+    invalidateUserProgress(userObjectId);
+    invalidateCommunity();
 
     console.log(`✅ Account deleted for user: ${user.email} (${userId})`);
 

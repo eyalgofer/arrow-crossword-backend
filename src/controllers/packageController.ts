@@ -12,15 +12,24 @@ import {
   progressEtagSource,
   withRingDifficulties,
 } from '../services/packageCatalog';
-import { entityTag, ifNoneMatchMatches, sendNotModified, setPrivateEtag } from '../utils/conditionalGet';
+import { entityTag, sendConditionalJson, sendNotModified } from '../utils/conditionalGet';
 import {
-  catalogStampHit,
-  progressStampHit,
-  rememberCatalogStamp,
-  rememberProgressStamp,
+  matchingStamp,
+  readEpochs,
+  readViewerStamp,
+  rememberCatalogEtag,
+  rememberProgressEtag,
 } from '../services/playTabStamp';
 import { resolveLanguage, languageFilter } from '../utils/language';
 import { toIdString } from '../utils/objectId';
+
+async function storeStamp(remember: () => Promise<void>): Promise<void> {
+  try {
+    await remember();
+  } catch (error) {
+    console.error('Failed to store play-tab stamp:', error);
+  }
+}
 
 /**
  * GET /api/packages
@@ -31,7 +40,12 @@ export const getPackages = async (req: AuthRequest, res: Response) => {
     // Israeli users get Hebrew packages (names, themes, and puzzles in Hebrew).
     // he, en, and he-en are separate catalogs.
     const language = resolveLanguage(req);
-    const cached = await catalogStampHit(language, req.headers['if-none-match']);
+    const epochs = await readEpochs();
+    const cached = matchingStamp(
+      { etag: epochs.catalogEtags[language] },
+      req.headers['if-none-match'],
+      {}
+    );
     if (cached) {
       sendNotModified(res, cached);
       return;
@@ -45,16 +59,12 @@ export const getPackages = async (req: AuthRequest, res: Response) => {
       packages.flatMap(pkg => pkg.puzzleIds ?? [])
     );
 
-    const etag = entityTag(catalogEtagSource(language, packages, difficultyById));
-    await rememberCatalogStamp(language, etag);
-    if (ifNoneMatchMatches(req.headers['if-none-match'], etag)) {
-      sendNotModified(res, etag);
-      return;
-    }
-    setPrivateEtag(res, etag);
-    res.json({
+    const body = {
       packages: withRingDifficulties(packages, difficultyById),
-    });
+    };
+    const etag = entityTag(catalogEtagSource(language, packages, difficultyById));
+    await storeStamp(() => rememberCatalogEtag(language, epochs.catalog, etag));
+    sendConditionalJson(req, res, etag, body);
   } catch (error) {
     console.error('Get packages error:', error);
     res.status(500).json({ error: 'Failed to get packages' });
@@ -74,7 +84,12 @@ export const getPackagesProgress = async (req: AuthRequest, res: Response) => {
 
     const language = resolveLanguage(req);
     const userId = toIdString(user._id) ?? String(user._id);
-    const cached = await progressStampHit(userId, language, req.headers['if-none-match']);
+    const [epochs, viewer] = await Promise.all([readEpochs(), readViewerStamp(userId)]);
+    const cached = matchingStamp(
+      { etag: viewer.etags[language], catalog: viewer.catalogGeneration },
+      req.headers['if-none-match'],
+      { catalog: epochs.catalog }
+    );
     if (cached) {
       sendNotModified(res, cached);
       return;
@@ -100,14 +115,12 @@ export const getPackagesProgress = async (req: AuthRequest, res: Response) => {
       : [];
     await attachOpenerClueIds(user._id, headStart, progressDocs);
 
+    const body = buildPackageProgress({ packages, headStart, progressDocs });
     const etag = entityTag(progressEtagSource({ userId, language, packages, headStart, progressDocs }));
-    await rememberProgressStamp(userId, language, etag);
-    if (ifNoneMatchMatches(req.headers['if-none-match'], etag)) {
-      sendNotModified(res, etag);
-      return;
-    }
-    setPrivateEtag(res, etag);
-    res.json(buildPackageProgress({ packages, headStart, progressDocs }));
+    await storeStamp(() =>
+      rememberProgressEtag(userId, language, viewer.generation, epochs.catalog, etag)
+    );
+    sendConditionalJson(req, res, etag, body);
   } catch (error) {
     console.error('Get packages progress error:', error);
     res.status(500).json({ error: 'Failed to get packages progress' });
