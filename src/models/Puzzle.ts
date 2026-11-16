@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { PuzzleGrid, Difficulty, PuzzleItem, Language } from '../types';
 import { publicEnumeration } from '../utils/enumeration';
+import { invalidateCatalog } from '../services/playTabStamp';
 
 export interface IPuzzle extends Document {
   title: string;
@@ -113,5 +114,17 @@ puzzleSchema.index({ difficulty: 1, isActive: 1 });
 puzzleSchema.index({ category: 1, isActive: 1 });
 puzzleSchema.index({ packageId: 1 });
 puzzleSchema.index({ language: 1, isActive: 1 });
+
+const dropCatalogStamp = () => {
+  invalidateCatalog();
+};
+puzzleSchema.post('save', dropCatalogStamp);
+puzzleSchema.post('insertMany', dropCatalogStamp);
+puzzleSchema.post('updateOne', dropCatalogStamp);
+puzzleSchema.post('updateMany', dropCatalogStamp);
+puzzleSchema.post('findOneAndUpdate', dropCatalogStamp);
+puzzleSchema.post('replaceOne', dropCatalogStamp);
+puzzleSchema.post('deleteOne', dropCatalogStamp);
+puzzleSchema.post('deleteMany', dropCatalogStamp);
 
 export const Puzzle = mongoose.model<IPuzzle>('Puzzle', puzzleSchema);

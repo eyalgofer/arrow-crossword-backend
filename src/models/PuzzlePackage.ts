@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { Language } from '../types';
+import { invalidateCatalog } from '../services/playTabStamp';
 
 export interface IPuzzlePackage extends Document {
   name: string;
@@ -65,5 +66,16 @@ const puzzlePackageSchema = new Schema<IPuzzlePackage>({
 puzzlePackageSchema.index({ order: 1 });
 puzzlePackageSchema.index({ language: 1, order: 1 });
 puzzlePackageSchema.index({ name: 1, language: 1 }, { unique: true });
+
+const dropCatalogStamp = () => {
+  invalidateCatalog();
+};
+puzzlePackageSchema.post('save', dropCatalogStamp);
+puzzlePackageSchema.post('insertMany', dropCatalogStamp);
+puzzlePackageSchema.post('updateOne', dropCatalogStamp);
+puzzlePackageSchema.post('updateMany', dropCatalogStamp);
+puzzlePackageSchema.post('findOneAndUpdate', dropCatalogStamp);
+puzzlePackageSchema.post('deleteOne', dropCatalogStamp);
+puzzlePackageSchema.post('deleteMany', dropCatalogStamp);
 
 export const PuzzlePackage = mongoose.model<IPuzzlePackage>('PuzzlePackage', puzzlePackageSchema);

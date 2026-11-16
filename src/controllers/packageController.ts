@@ -12,7 +12,13 @@ import {
   progressEtagSource,
   withRingDifficulties,
 } from '../services/packageCatalog';
-import { sendCachedJson } from '../utils/conditionalGet';
+import { entityTag, ifNoneMatchMatches, sendNotModified, setPrivateEtag } from '../utils/conditionalGet';
+import {
+  catalogStampHit,
+  progressStampHit,
+  rememberCatalogStamp,
+  rememberProgressStamp,
+} from '../services/playTabStamp';
 import { resolveLanguage, languageFilter } from '../utils/language';
 import { toIdString } from '../utils/objectId';
 
@@ -25,6 +31,12 @@ export const getPackages = async (req: AuthRequest, res: Response) => {
     // Israeli users get Hebrew packages (names, themes, and puzzles in Hebrew).
     // he, en, and he-en are separate catalogs.
     const language = resolveLanguage(req);
+    const cached = await catalogStampHit(language, req.headers['if-none-match']);
+    if (cached) {
+      sendNotModified(res, cached);
+      return;
+    }
+
     const packages = await PuzzlePackage.find({ language: languageFilter(language) })
       .sort({ order: 1 })
       .lean();
@@ -33,11 +45,16 @@ export const getPackages = async (req: AuthRequest, res: Response) => {
       packages.flatMap(pkg => pkg.puzzleIds ?? [])
     );
 
-    // No If-None-Match: 200 and the package fields already in production, plus
-    // optional ring difficulty. A matching validator skips that body.
-    sendCachedJson(req, res, catalogEtagSource(language, packages, difficultyById), () => ({
+    const etag = entityTag(catalogEtagSource(language, packages, difficultyById));
+    await rememberCatalogStamp(language, etag);
+    if (ifNoneMatchMatches(req.headers['if-none-match'], etag)) {
+      sendNotModified(res, etag);
+      return;
+    }
+    setPrivateEtag(res, etag);
+    res.json({
       packages: withRingDifficulties(packages, difficultyById),
-    }));
+    });
   } catch (error) {
     console.error('Get packages error:', error);
     res.status(500).json({ error: 'Failed to get packages' });
@@ -50,13 +67,20 @@ export const getPackages = async (req: AuthRequest, res: Response) => {
  */
 export const getPackagesProgress = async (req: AuthRequest, res: Response) => {
   try {
-    const user = await User.findOne({ firebaseUid: req.user!.uid });
+    const user = await User.findOne({ firebaseUid: req.user!.uid }).select('_id');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Get all packages in the user's language ordered by display order
     const language = resolveLanguage(req);
+    const userId = toIdString(user._id) ?? String(user._id);
+    const cached = await progressStampHit(userId, language, req.headers['if-none-match']);
+    if (cached) {
+      sendNotModified(res, cached);
+      return;
+    }
+
+    // Get all packages in the user's language ordered by display order
     const [packages, headStart] = await Promise.all([
       PuzzlePackage.find({ language: languageFilter(language) })
         .select('_id puzzleIds')
@@ -76,15 +100,14 @@ export const getPackagesProgress = async (req: AuthRequest, res: Response) => {
       : [];
     await attachOpenerClueIds(user._id, headStart, progressDocs);
 
-    const userId = toIdString(user._id) ?? String(user._id);
-    // Progress rows stay { puzzleId, progress, lastPlayedAt }. The etag is this
-    // user's rings for this language, so one player's 304 cannot be reused.
-    sendCachedJson(
-      req,
-      res,
-      progressEtagSource({ userId, language, packages, headStart, progressDocs }),
-      () => buildPackageProgress({ packages, headStart, progressDocs })
-    );
+    const etag = entityTag(progressEtagSource({ userId, language, packages, headStart, progressDocs }));
+    await rememberProgressStamp(userId, language, etag);
+    if (ifNoneMatchMatches(req.headers['if-none-match'], etag)) {
+      sendNotModified(res, etag);
+      return;
+    }
+    setPrivateEtag(res, etag);
+    res.json(buildPackageProgress({ packages, headStart, progressDocs }));
   } catch (error) {
     console.error('Get packages progress error:', error);
     res.status(500).json({ error: 'Failed to get packages progress' });

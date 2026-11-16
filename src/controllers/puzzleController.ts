@@ -32,6 +32,8 @@ import {
   puzzleProgressPercent,
   starterClueIdsForPuzzle,
 } from '../services/starterClues';
+import { toDailyCard, viewerProgress } from '../services/dailyCard';
+import { invalidateUserProgress } from '../services/playTabStamp';
 
 export const getPuzzles = async (req: AuthRequest, res: Response) => {
   try {
@@ -103,6 +105,11 @@ export const getPuzzles = async (req: AuthRequest, res: Response) => {
 
 export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
   try {
+    if (req.query.card === '1') {
+      await sendDailyCard(req, res);
+      return;
+    }
+
     const { year, dayOfYear } = liveDailyKey();
 
     const language = resolveLanguage(req);
@@ -162,6 +169,71 @@ export const getDailyPuzzle = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ error: 'Failed to get daily puzzle' });
   }
 };
+
+/**
+ * Play-tab daily card. `?card=1` only. Shipped apps omit it and still receive the crossword.
+ */
+async function sendDailyCard(req: AuthRequest, res: Response) {
+  const { year, dayOfYear } = liveDailyKey();
+  const language = resolveLanguage(req);
+  const assigned = await DailyPuzzle.findOne({
+    dayOfYear,
+    year,
+    language: languageFilter(language),
+  })
+    .select('puzzleId')
+    .lean();
+
+  let puzzle = assigned?.puzzleId
+    ? await Puzzle.findById(assigned.puzzleId).select('_id difficulty grid').lean()
+    : null;
+
+  if (!puzzle) {
+    puzzle = await Puzzle.findOne({
+      isActive: { $ne: false },
+      language: languageFilter(language),
+    })
+      .select('_id difficulty grid')
+      .sort({ createdAt: 1 })
+      .lean();
+  }
+  if (!puzzle && language !== 'en') {
+    puzzle = await Puzzle.findOne({ isActive: { $ne: false } })
+      .select('_id difficulty grid')
+      .sort({ createdAt: 1 })
+      .lean();
+  }
+  if (!puzzle) {
+    res.status(404).json({ error: 'No daily puzzle available' });
+    return;
+  }
+
+  const user = await User.findOne({ firebaseUid: req.user!.uid }).select('_id').lean();
+  const progress = user
+    ? await UserPuzzleProgress.findOne({ userId: user._id, puzzleId: puzzle._id })
+        .select('isCompleted completedCluesCount totalClues bestTime elapsedTime')
+        .lean()
+    : null;
+
+  res.json({ puzzle: toDailyCard(puzzle, progress) });
+}
+
+async function withViewerProgress<T extends { id: string }>(
+  req: AuthRequest,
+  picks: T[]
+): Promise<Array<T & ReturnType<typeof viewerProgress>>> {
+  const user = await User.findOne({ firebaseUid: req.user!.uid }).select('_id').lean();
+  const rows = user && picks.length
+    ? await UserPuzzleProgress.find({
+        userId: user._id,
+        puzzleId: { $in: picks.map((pick) => pick.id) },
+      })
+        .select('puzzleId isCompleted completedCluesCount totalClues')
+        .lean()
+    : [];
+  const byId = new Map(rows.map((row) => [String(row.puzzleId), row]));
+  return picks.map((pick) => ({ ...pick, ...viewerProgress(byId.get(pick.id)) }));
+}
 
 /**
  * GET /api/puzzles/daily/solved-count
@@ -322,7 +394,7 @@ export const getFavoritePuzzles = async (req: AuthRequest, res: Response) => {
       };
     });
 
-    res.json({ picks });
+    res.json({ picks: await withViewerProgress(req, picks) });
   } catch (error) {
     console.error('Get favorite puzzles error:', error);
     res.status(500).json({ error: 'Failed to get favorite puzzles' });
@@ -376,7 +448,7 @@ export const getCategoryPuzzles = async (req: AuthRequest, res: Response) => {
       };
     });
 
-    res.json({ picks });
+    res.json({ picks: await withViewerProgress(req, picks) });
   } catch (error) {
     console.error('Get category puzzles error:', error);
     res.status(500).json({ error: 'Failed to get category puzzles' });
@@ -507,6 +579,7 @@ export const saveProgress = async (req: AuthRequest, res: Response) => {
 
     const hintLimit = (await isTodaysDailyPuzzle(puzzleId)) ? DAILY_HINT_LIMIT : null;
     const hintsUsed = progress.hintsUsed ?? 0;
+    invalidateUserProgress(user._id);
 
     res.json({
       success: true,
@@ -832,6 +905,7 @@ export const completePuzzle = async (req: AuthRequest, res: Response) => {
     if (userNeedsSave) {
       await user.save();
     }
+    invalidateUserProgress(user._id);
 
     let dailyResult = undefined;
     if (isTodaysDaily) {
@@ -903,6 +977,7 @@ export const deleteProgress = async (req: AuthRequest, res: Response) => {
     } else if (progress) {
       await progress.deleteOne();
     }
+    invalidateUserProgress(user._id);
 
     res.json({ success: true });
   } catch (error) {
