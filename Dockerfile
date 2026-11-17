@@ -32,6 +32,8 @@ RUN npm install --omit=dev && npm cache clean --force
 
 # Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
+# The five-letter game accepts every real five-letter word from this list.
+COPY --from=builder /app/src/scripts/core/hebrewClues.json ./dist/data/hebrewClues.json
 
 # Switch to non-root user
 USER nodejs

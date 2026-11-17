@@ -15,6 +15,7 @@ export const GROUP_INVITE_NOTIFICATION_TYPE = 'group_invite';
 export const LOBBY_STARTED_NOTIFICATION_TYPE = 'lobby_started';
 export const LOBBY_CANCELLED_NOTIFICATION_TYPE = 'lobby_cancelled';
 export const DAILY_OVERNIGHT_PRIZE_NOTIFICATION_TYPE = 'daily_overnight_prize';
+export const FIVE_LETTER_HOUR_PRIZE_NOTIFICATION_TYPE = 'five_letter_hour_prize';
 
 export type MatchKindLabel = 'quick' | 'normal' | 'unlimited time';
 
@@ -337,6 +338,45 @@ export function buildDailyOvernightPrizeCopy(params: {
       he: `השלמת את התשחץ היומי הכי מהר אתמול. ${coins} מטבעות מחכים לך!`,
     },
   };
+}
+
+export function buildFiveLetterHourPrizeCopy(params: {
+  prizeCoins: number;
+}): { headings: Record<string, string>; contents: Record<string, string> } {
+  const coins = params.prizeCoins;
+  return {
+    headings: {
+      en: 'Hour prize!',
+      he: 'סיימת את המילה של השעה מהר מכולם!',
+    },
+    contents: {
+      en: `You had the fastest 5-letter solve this hour. ${coins} coins are waiting for you!`,
+      he: `השלמת את המילה של השעה הכי מהר. ${coins} מטבעות מחכים לך!`,
+    },
+  };
+}
+
+/** Push for the hour that just ended (coins already credited). */
+export async function sendFiveLetterHourPrizePush(params: {
+  toUserId: string;
+  prizeCoins: number;
+  hour: string;
+}): Promise<boolean> {
+  const { headings, contents } = buildFiveLetterHourPrizeCopy({
+    prizeCoins: params.prizeCoins,
+  });
+
+  return sendPushToExternalUser({
+    externalUserId: params.toUserId,
+    headings,
+    contents,
+    data: {
+      type: FIVE_LETTER_HOUR_PRIZE_NOTIFICATION_TYPE,
+      hour: params.hour,
+      prizeCoins: String(params.prizeCoins),
+      screen: 'five-letters',
+    },
+  });
 }
 
 /** Morning push for yesterday's overnight #1 (coins already credited at midnight). */

@@ -1,6 +1,7 @@
 import { Request } from 'express';
 import mongoose from 'mongoose';
 import { DailyPuzzle } from '../models/DailyPuzzle';
+import { FiveLetterDay } from '../models/FiveLetterDay';
 import { DevicePlatform, User } from '../models/User';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { revokeAllRefreshTokens, verifyAccessToken } from './authTokens';
@@ -171,6 +172,7 @@ async function mergeGuestIntoExisting(
   const targetId = existing._id as mongoose.Types.ObjectId;
   await DailyPuzzle.updateMany({ fastestSolverId: guestId }, { $set: { fastestSolverId: targetId } });
   await DailyPuzzle.updateMany({ firstSolverId: guestId }, { $set: { firstSolverId: targetId } });
+  await FiveLetterDay.updateMany({ fastestSolverId: guestId }, { $set: { fastestSolverId: targetId } });
   await existing.save();
   await revokeAllRefreshTokens(guestUid);
   await User.deleteOne({ _id: guest._id });

@@ -7,6 +7,10 @@ import {
   isBeforeLiveDailyKey,
   jerusalemCalendarDate,
   liveDailyKey,
+  isBeforeLiveJerusalemHour,
+  jerusalemHourKey,
+  nextJerusalemHour,
+  nextJerusalemMidnight,
 } from './dailyClock';
 
 describe('daily clock', () => {
@@ -78,5 +82,61 @@ describe('daily clock', () => {
     assert.equal(isBeforeLiveDailyKey(live.year, live.dayOfYear, afterMidnight), false);
     assert.equal(isBeforeLiveDailyKey(live.year, live.dayOfYear - 1, afterMidnight), true);
     assert.equal(isBeforeLiveDailyKey(2025, 365, afterMidnight), true);
+  });
+
+  it('ends the Israel day at the next Jerusalem midnight', () => {
+    // Winter, UTC+2. Nov 17 ends at Nov 18 00:00 IST = Nov 17 22:00 UTC.
+    assert.equal(
+      nextJerusalemMidnight(new Date('2026-11-17T10:00:00.000Z')).toISOString(),
+      '2026-11-17T22:00:00.000Z'
+    );
+    assert.equal(
+      nextJerusalemMidnight(new Date('2026-11-17T21:59:00.000Z')).toISOString(),
+      '2026-11-17T22:00:00.000Z'
+    );
+    assert.equal(
+      nextJerusalemMidnight(new Date('2026-11-17T22:00:00.000Z')).toISOString(),
+      '2026-11-18T22:00:00.000Z'
+    );
+
+    // Summer, UTC+3. Oct 5 ends at Oct 6 00:00 IDT = Oct 5 21:00 UTC.
+    assert.equal(
+      nextJerusalemMidnight(new Date('2026-10-05T12:00:00.000Z')).toISOString(),
+      '2026-10-05T21:00:00.000Z'
+    );
+    assert.equal(
+      nextJerusalemMidnight(new Date('2026-10-05T20:59:00.000Z')).toISOString(),
+      '2026-10-05T21:00:00.000Z'
+    );
+    assert.equal(
+      nextJerusalemMidnight(new Date('2026-10-05T21:00:00.000Z')).toISOString(),
+      '2026-10-06T21:00:00.000Z'
+    );
+  });
+
+  it('ends the five-letter word at the next Israel hour', () => {
+    // Winter, UTC+2. 12:30 IST is 10:30 UTC. The next hour is 13:00 IST.
+    const during = new Date('2026-11-17T10:30:00.000Z');
+    assert.equal(jerusalemHourKey(during), '2026-11-17T12');
+    assert.equal(nextJerusalemHour(during).toISOString(), '2026-11-17T11:00:00.000Z');
+
+    // 23:30 IST rolls to the next midnight.
+    const late = new Date('2026-11-17T21:30:00.000Z');
+    assert.equal(jerusalemHourKey(late), '2026-11-17T23');
+    assert.equal(nextJerusalemHour(late).toISOString(), '2026-11-17T22:00:00.000Z');
+    assert.equal(jerusalemHourKey(nextJerusalemHour(late)), '2026-11-18T00');
+
+    // Summer, UTC+3. 15:15 IDT is 12:15 UTC. The next hour is 16:00 IDT.
+    const summer = new Date('2026-10-05T12:15:00.000Z');
+    assert.equal(jerusalemHourKey(summer), '2026-10-05T15');
+    assert.equal(nextJerusalemHour(summer).toISOString(), '2026-10-05T13:00:00.000Z');
+  });
+
+  it('treats only an earlier hour key as closed', () => {
+    const now = new Date('2026-11-17T10:30:00.000Z');
+    assert.equal(isBeforeLiveJerusalemHour('2026-11-17T11', now), true);
+    assert.equal(isBeforeLiveJerusalemHour('2026-11-17T12', now), false);
+    assert.equal(isBeforeLiveJerusalemHour('2026-11-17T13', now), false);
+    assert.equal(isBeforeLiveJerusalemHour('2026-11-17', now), false);
   });
 });

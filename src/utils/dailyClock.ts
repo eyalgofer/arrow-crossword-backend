@@ -116,3 +116,146 @@ export function isBeforeLiveDailyKey(
   if (year > live.year) return false;
   return dayOfYear < live.dayOfYear;
 }
+
+function addCalendarDays(date: CalendarDate, days: number): CalendarDate {
+  const shifted = new Date(Date.UTC(date.year, date.month - 1, date.day + days));
+  return {
+    year: shifted.getUTCFullYear(),
+    month: shifted.getUTCMonth() + 1,
+    day: shifted.getUTCDate(),
+  };
+}
+
+/** Israel wall-clock fields of an instant, as if those fields were UTC. */
+function jerusalemWallAsUtc(instant: Date): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: DAILY_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(instant);
+
+  const read = (type: Intl.DateTimeFormatPartTypes): number => {
+    const value = parts.find((part) => part.type === type)?.value;
+    if (value == null) {
+      throw new Error(`Missing ${type} for ${DAILY_TIME_ZONE}`);
+    }
+    return Number(value);
+  };
+
+  let hour = read('hour');
+  let day = read('day');
+  let month = read('month');
+  let year = read('year');
+  if (hour === 24) {
+    hour = 0;
+    const next = addCalendarDays({ year, month, day }, 1);
+    year = next.year;
+    month = next.month;
+    day = next.day;
+  }
+
+  return Date.UTC(year, month - 1, day, hour, read('minute'), read('second'));
+}
+
+/** UTC instant of a civil time in Asia/Jerusalem. Midnight is never inside the DST gap. */
+export function jerusalemLocalToUtc(
+  year: number,
+  month: number,
+  day: number,
+  hour = 0,
+  minute = 0,
+  second = 0
+): Date {
+  const localAsUtc = Date.UTC(year, month - 1, day, hour, minute, second);
+  const offset = jerusalemWallAsUtc(new Date(localAsUtc)) - localAsUtc;
+  const utc = localAsUtc - offset;
+  const offsetAtUtc = jerusalemWallAsUtc(new Date(utc)) - utc;
+  if (offsetAtUtc !== offset) {
+    return new Date(localAsUtc - offsetAtUtc);
+  }
+  return new Date(utc);
+}
+
+/** The next midnight in Asia/Jerusalem after `date`. That instant ends today's daily. */
+export function nextJerusalemMidnight(date: Date = new Date()): Date {
+  const next = addCalendarDays(jerusalemCalendarDate(date), 1);
+  return jerusalemLocalToUtc(next.year, next.month, next.day);
+}
+
+function pad2(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+/**
+ * Israel wall-clock hour the instant falls in, as `YYYY-MM-DDTHH`.
+ * Hour 24 from Intl is the next midnight.
+ */
+export function jerusalemHourKey(date: Date = new Date()): string {
+  const calendar = jerusalemCalendarDate(date);
+  let { hour } = jerusalemWallTime(date);
+  let { year, month, day } = calendar;
+  if (hour === 24) {
+    hour = 0;
+    const next = addCalendarDays(calendar, 1);
+    year = next.year;
+    month = next.month;
+    day = next.day;
+  }
+  return `${year}-${pad2(month)}-${pad2(day)}T${pad2(hour)}`;
+}
+
+const HOUR_KEY = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})$/;
+
+function hourKeyParts(key: string): { year: number; month: number; day: number; hour: number } | null {
+  const match = HOUR_KEY.exec(key);
+  if (!match) return null;
+  return {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+    hour: Number(match[4]),
+  };
+}
+
+/** Start of the next Israel hour. That instant ends the current five-letter word. */
+export function nextJerusalemHour(date: Date = new Date()): Date {
+  const current = jerusalemHourKey(date);
+  const parts = hourKeyParts(current);
+  if (!parts) {
+    throw new Error(`Bad Israel hour key ${current}`);
+  }
+  let { year, month, day, hour } = parts;
+  hour += 1;
+  if (hour >= 24) {
+    const next = addCalendarDays({ year, month, day }, 1);
+    year = next.year;
+    month = next.month;
+    day = next.day;
+    hour = 0;
+  }
+  let instant = jerusalemLocalToUtc(year, month, day, hour);
+  // A spring-forward gap has no civil time for the skipped hour.
+  if (jerusalemHourKey(instant) <= current) {
+    hour += 1;
+    if (hour >= 24) {
+      const next = addCalendarDays({ year, month, day }, 1);
+      year = next.year;
+      month = next.month;
+      day = next.day;
+      hour = 0;
+    }
+    instant = jerusalemLocalToUtc(year, month, day, hour);
+  }
+  return instant;
+}
+
+/** True when `key` is a five-letter hour that has already ended at `date`. */
+export function isBeforeLiveJerusalemHour(key: string, date: Date = new Date()): boolean {
+  if (!HOUR_KEY.test(key)) return false;
+  return key < jerusalemHourKey(date);
+}

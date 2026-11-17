@@ -16,13 +16,16 @@ import groupRoutes from './routes/groups';
 import lobbyRoutes from './routes/lobbies';
 import matchmakingRoutes from './routes/matchmaking';
 import rewardSpinRoutes from './routes/rewardSpins';
+import wordRoutes from './routes/words';
 import { setupSocketHandlers } from './sockets/gameHandler';
 import { startMatchTimeoutJob } from './jobs/matchTimeoutJob';
 import { startLobbyExpiryJob } from './jobs/lobbyExpiryJob';
 import { startOvernightDailyPrizeJob } from './jobs/overnightDailyPrizeJob';
+import { startFiveLetterHourPrizeJob } from './jobs/fiveLetterHourPrizeJob';
 import { startGhostTicker } from './services/ghostMatch';
 import { refundAllSearchingHolds } from './services/matchmakingHold';
 import { clearFinishedMatchWordClaims } from './services/wordClaims';
+import { ensureFiveLetterSeed } from './services/fiveLetters';
 import './models/MatchWordClaim';
 
 dotenv.config();
@@ -161,6 +164,7 @@ app.use('/api/groups', groupRoutes);
 app.use('/api/lobbies', lobbyRoutes);
 app.use('/api/matchmaking', matchmakingRoutes);
 app.use('/api/reward-spins', rewardSpinRoutes);
+app.use('/api/words', wordRoutes);
 
 // 404 handler for API routes - must be before errorHandler
 app.use('/api/*', (req, res) => {
@@ -173,6 +177,9 @@ const startServer = async () => {
   try {
     await connectDatabase();
     console.log('✅ MongoDB connected');
+
+    await ensureFiveLetterSeed();
+    console.log('✅ Five letter word ready');
 
     await refundAllSearchingHolds();
     console.log('✅ Leftover matchmaking holds refunded');
@@ -198,6 +205,9 @@ const startServer = async () => {
 
     startOvernightDailyPrizeJob();
     console.log('✅ Overnight daily prize job started');
+
+    startFiveLetterHourPrizeJob();
+    console.log('✅ Five letter hour prize job started');
 
     startGhostTicker(io);
     console.log('✅ Ghost opponent ticker started');
