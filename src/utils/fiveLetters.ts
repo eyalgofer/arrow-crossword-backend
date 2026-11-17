@@ -119,7 +119,7 @@ export function wholeSeconds(value: unknown): number | null {
 
 /**
  * Not five regular Hebrew letters → `wrong_length`, including letters that
- * are not Hebrew. A real five-letter word that is missing from the collection
+ * are not Hebrew. A five-letter string missing from the Hebrew dictionary
  * is rejected later as `not_a_word`.
  */
 export function classifyGuess(

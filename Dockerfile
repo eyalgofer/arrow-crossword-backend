@@ -32,8 +32,9 @@ RUN npm install --omit=dev && npm cache clean --force
 
 # Copy built files from builder stage
 COPY --from=builder /app/dist ./dist
-# The five-letter game accepts every real five-letter word from this list.
+# Clue answers choose the hour's word. The dictionary decides which guesses count.
 COPY --from=builder /app/src/scripts/core/hebrewClues.json ./dist/data/hebrewClues.json
+COPY --from=builder /app/src/scripts/core/hebrewFiveLetterWords.txt ./dist/data/hebrewFiveLetterWords.txt
 
 # Switch to non-root user
 USER nodejs

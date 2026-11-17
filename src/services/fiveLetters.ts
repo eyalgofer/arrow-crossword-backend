@@ -429,8 +429,8 @@ export async function submitFiveLetterGuess(firebaseUid: string, body: unknown, 
   }
 
   const day = await ensureDay(now);
-  // Any real five-letter word counts. This hour's answer stays valid even if
-  // the clue list does not contain it.
+  // Dictionary words count. This hour's answer stays valid even if the
+  // dictionary does not contain it.
   const answer = normalizeFiveWord(day.word);
   if (classified.word !== answer && !isRealFiveLetterWord(classified.word)) {
     return { status: 200 as const, body: { valid: false, reason: 'not_a_word' as const } };
