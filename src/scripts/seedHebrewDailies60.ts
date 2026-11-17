@@ -5,7 +5,7 @@
  * Usage:
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 14 --start 2026-09-16
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 7 --from-tomorrow
- *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 7 --from-tomorrow --size 14 --images 2 --fresh
+ *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 7 --from-tomorrow --size 14 --images 2 --difficulty easy --fresh
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 2 --start 2026-10-19 --rows 14 --cols 13 --images 2 --fresh
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 7 --from-tomorrow --legacy   # old generator
  *
@@ -80,6 +80,7 @@ const FORCE_SIZE = argValue('--size') ? Number(argValue('--size')) : undefined;
 const FORCE_ROWS = argValue('--rows') ? Number(argValue('--rows')) : FORCE_SIZE;
 const FORCE_COLS = argValue('--cols') ? Number(argValue('--cols')) : FORCE_SIZE;
 const FORCE_IMAGES = argValue('--images') ? Number(argValue('--images')) : undefined;
+const FORCE_DIFFICULTY = argValue('--difficulty');
 const FALLBACK_PRESETS: Array<{ size: 14 | 15; images: number }> =
   FORCE_IMAGES
     ? [{ size: (FORCE_SIZE ?? 14) as 14 | 15, images: FORCE_IMAGES }]
@@ -262,6 +263,7 @@ function runWorker(
         '--cols',
         String(cols),
         ...(LEGACY ? [] : ['--profile', 'daily', '--recent', RECENT_FILE]),
+        ...(FORCE_DIFFICULTY ? ['--difficulty', FORCE_DIFFICULTY] : []),
       ],
       { cwd: ROOT, stdio: 'inherit' }
     );

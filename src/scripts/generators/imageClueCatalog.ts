@@ -310,12 +310,12 @@ export function planImageClues(
 
   function pickAnswerLength(available: number): number | null {
     if (available < 5) return null;
-    const prefs = lengthPrefs.filter((len) => len >= 5 && len <= 8);
+    const prefs = lengthPrefs.filter((len) => len >= 5 && len <= 9);
     const ordered = prefs.length > 0 ? prefs : [8, 7, 6, 5];
     for (const len of ordered) {
       if (len <= available) return len;
     }
-    return Math.min(8, available);
+    return Math.min(9, available);
   }
 
   function isImageInterior(
@@ -417,8 +417,8 @@ export function planImageClues(
     }
     blocked.add(`${chosen.exitRow},${chosen.exitCol}`);
     const start = firstAnswerCell(chosen.exitRow, chosen.exitCol, chosen.direction);
-    // Reserve room for a 5–8 letter image answer (planner + repair will terminate).
-    const corridor = Math.min(Math.max(chosen.answerLength, 5), 8);
+    // Reserve room for a 5–9 letter image answer (planner + repair will terminate).
+    const corridor = Math.min(Math.max(chosen.answerLength, 5), 9);
     for (let i = 0; i < corridor; i++) {
       blocked.add(`${start.row + i * start.flowRow},${start.col + i * start.flowCol}`);
     }

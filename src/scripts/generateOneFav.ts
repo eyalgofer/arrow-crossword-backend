@@ -86,6 +86,7 @@ function main() {
   let puzzle: GeneratedPuzzle | null;
   if (profile === 'daily') {
     const recent = readRecentDailyContent(arg('--recent'));
+    const budget = parseInt(arg('--budget', '240000') ?? '240000', 10);
     const difficulty = arg('--difficulty') as Difficulty | undefined;
     const tuning = difficulty ? DIFFICULTY_TUNING[difficulty] : undefined;
     if (difficulty && !tuning) {
@@ -101,6 +102,7 @@ function main() {
       imageClueCatalog: catalog,
       avoidAnswers: recent.answers,
       avoidClues: recent.clues,
+      timeBudgetMs: budget,
       ...(tuning && difficulty ? { ...tuning, difficulty } : {}),
     });
   } else {
