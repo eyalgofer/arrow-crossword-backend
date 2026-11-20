@@ -1,12 +1,8 @@
 /**
  * Slack incoming-webhook notifications.
  *
- * Each webhook is bound to one channel, so new-users and random-play use
- * separate URLs. Keep both in Secrets Manager / .env only.
- *
  * Env:
  * - SLACK_WEBHOOK_URL — #new-users
- * - SLACK_RANDOM_PLAY_WEBHOOK_URL — #random-play
  */
 
 import { User } from '../models/User';
@@ -19,12 +15,6 @@ type NewUserSlackFields = {
   kind?: 'new' | 'guest' | 'guest_upgrade';
   provider?: 'google' | 'apple';
   linkedExisting?: boolean;
-};
-
-type RandomPlaySlackFields = {
-  displayName?: string | null;
-  language?: string | null;
-  device?: string | null;
 };
 
 function deviceLabel(device?: string | null): string {
@@ -83,21 +73,4 @@ export async function notifyNewUser(fields: NewUserSlackFields): Promise<void> {
   }
 
   await postSlack(webhookUrl, lines.join('\n'), `new-user (#${fields.userNumber})`);
-}
-
-export async function notifyRandomPlaySearch(fields: RandomPlaySlackFields): Promise<void> {
-  const webhookUrl = process.env.SLACK_RANDOM_PLAY_WEBHOOK_URL?.trim();
-  if (!webhookUrl) {
-    console.warn('[Slack] Skipping random-play notify — set SLACK_RANDOM_PLAY_WEBHOOK_URL');
-    return;
-  }
-
-  const lines = [
-    '🎲 Random play search',
-    `Player: ${fields.displayName || 'unknown'}`,
-    `Language: ${fields.language || 'unknown'}`,
-    `Device: ${deviceLabel(fields.device)}`,
-  ];
-
-  await postSlack(webhookUrl, lines.join('\n'), 'random-play');
 }

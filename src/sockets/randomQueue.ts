@@ -9,7 +9,6 @@ import { GameState, Language, DEFAULT_LANGUAGE, MatchMode, MatchStatus } from '.
 import { pickMultiplayerPuzzle } from '../utils/multiplayerPuzzle';
 import { durationSecondsForSettings } from '../utils/matchSettings';
 import { startGhostMatch } from '../services/ghostMatch';
-import { notifyRandomPlaySearch } from '../services/slack';
 import { InsufficientCoinsError, insufficientCoinsBody } from '../services/prizeEscrow';
 import { headlinePot } from '../services/prizeSettlement';
 import {
@@ -122,11 +121,6 @@ export async function handleFindMatch(
       paused: false
     };
     waitingPlayers.set(firebaseUid, entry);
-    void notifyRandomPlaySearch({
-      displayName: user.displayName,
-      language: entry.language,
-      device: user.device,
-    });
 
     const opponent = findOpponent(entry);
     if (opponent) {

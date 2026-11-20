@@ -1,0 +1,1345 @@
+{
+  "difficulty": "easy",
+  "title": "שבת גדול",
+  "category": "יומי",
+  "language": "he",
+  "grid": {
+    "rows": 20,
+    "cols": 20
+  },
+  "puzzleItems": [
+    {
+      "number": 1,
+      "direction": "right-down",
+      "clue": "דמות באגדות",
+      "answer": "פיה",
+      "enumeration": null,
+      "startRow": 0,
+      "startCol": 0,
+      "clueType": "text"
+    },
+    {
+      "number": 2,
+      "direction": "down-across",
+      "clue": "אינטרנציונלי",
+      "answer": "בין לאומי",
+      "enumeration": [
+        3,
+        5
+      ],
+      "startRow": 0,
+      "startCol": 0,
+      "clueType": "text"
+    },
+    {
+      "number": 3,
+      "direction": "right-down",
+      "clue": "לבן שיורד בחורף",
+      "answer": "שלג",
+      "enumeration": null,
+      "startRow": 0,
+      "startCol": 2,
+      "clueType": "text"
+    },
+    {
+      "number": 4,
+      "direction": "down",
+      "clue": "להבה קטנה על שעווה",
+      "answer": "נר",
+      "enumeration": null,
+      "startRow": 0,
+      "startCol": 2,
+      "clueType": "text"
+    },
+    {
+      "number": 5,
+      "direction": "right-down",
+      "clue": "זוג",
+      "answer": "דו",
+      "enumeration": null,
+      "startRow": 0,
+      "startCol": 4,
+      "clueType": "text"
+    },
+    {
+      "number": 6,
+      "direction": "down",
+      "clue": "לבקן",
+      "answer": "אלבינו",
+      "enumeration": null,
+      "startRow": 0,
+      "startCol": 4,
+      "clueType": "text"
+    },
+    {
+      "number": 7,
+      "direction": "right-down",
+      "clue": "נוזל כתיבה",
+      "answer": "דיו",
+      "enumeration": null,
+      "startRow": 0,
+      "startCol": 6,
+      "clueType": "text"
+    },
+    {
+      "number": 8,
+      "direction": "down",
+      "clue": "אובליגטורי",
+      "answer": "מחייב",
+      "enumeration": null,
+      "startRow": 0,
+      "startCol": 6,
+      "clueType": "text"
+    },
+    {
+      "number": 9,
+      "direction": "right-down",
+      "clue": "בן הצאן הקטן",
+      "answer": "שה",
+      "enumeration": null,
+      "startRow": 0,
+      "startCol": 8,
+      "clueType": "text"
+    },
+    {
+      "number": 10,
+      "direction": "right-down",
+      "clue": "מכשיר קשר נייד",
+      "answer": "סלולר",
+      "enumeration": null,
+      "startRow": 0,
+      "startCol": 10,
+      "clueType": "text"
+    },
+    {
+      "number": 11,
+      "direction": "down",
+      "clue": "מושך בקשת על במה",
+      "answer": "כנר",
+      "enumeration": null,
+      "startRow": 0,
+      "startCol": 10,
+      "clueType": "text"
+    },
+    {
+      "number": 12,
+      "direction": "right-down",
+      "clue": "תפל",
+      "answer": "חסר מלח",
+      "enumeration": [
+        3,
+        3
+      ],
+      "startRow": 0,
+      "startCol": 12,
+      "clueType": "text"
+    },
+    {
+      "number": 13,
+      "direction": "down",
+      "clue": "כעך",
+      "answer": "בייגלה",
+      "enumeration": null,
+      "startRow": 0,
+      "startCol": 12,
+      "clueType": "text"
+    },
+    {
+      "number": 14,
+      "direction": "right-down",
+      "clue": "אופנתי, עכשווי",
+      "answer": "טרנדי",
+      "enumeration": null,
+      "startRow": 0,
+      "startCol": 14,
+      "clueType": "text"
+    },
+    {
+      "number": 15,
+      "direction": "down",
+      "clue": "כאבו",
+      "answer": "דוו",
+      "enumeration": null,
+      "startRow": 0,
+      "startCol": 14,
+      "clueType": "text"
+    },
+    {
+      "number": 16,
+      "direction": "down",
+      "clue": "לבוש לא חגיגי",
+      "answer": "בגדי חול",
+      "enumeration": [
+        4,
+        3
+      ],
+      "startRow": 0,
+      "startCol": 19,
+      "clueType": "text"
+    },
+    {
+      "number": 17,
+      "direction": "across",
+      "clue": "אל דאגה!",
+      "answer": "הכל בסדר",
+      "enumeration": [
+        3,
+        4
+      ],
+      "startRow": 1,
+      "startCol": 8,
+      "clueType": "text"
+    },
+    {
+      "number": 18,
+      "direction": "down",
+      "clue": "כותב שירים",
+      "answer": "משורר",
+      "enumeration": null,
+      "startRow": 1,
+      "startCol": 8,
+      "clueType": "text"
+    },
+    {
+      "number": 19,
+      "direction": "across",
+      "clue": "טבע שני",
+      "answer": "הרגל",
+      "enumeration": null,
+      "startRow": 2,
+      "startCol": 0,
+      "clueType": "text"
+    },
+    {
+      "number": 20,
+      "direction": "across",
+      "clue": "גם צבע, גם טמפרטורה וגם קדחת",
+      "answer": "חום",
+      "enumeration": null,
+      "startRow": 2,
+      "startCol": 5,
+      "clueType": "text"
+    },
+    {
+      "number": 21,
+      "direction": "down",
+      "clue": "צמצום, הפחתה",
+      "answer": "רדוקציה",
+      "enumeration": null,
+      "startRow": 2,
+      "startCol": 5,
+      "clueType": "text"
+    },
+    {
+      "number": 22,
+      "direction": "across",
+      "clue": "תא עצב",
+      "answer": "נוירון",
+      "enumeration": null,
+      "startRow": 2,
+      "startCol": 9,
+      "clueType": "text"
+    },
+    {
+      "number": 23,
+      "direction": "down",
+      "clue": "אוטוסטרדה",
+      "answer": "כביש מהיר",
+      "enumeration": [
+        4,
+        4
+      ],
+      "startRow": 2,
+      "startCol": 9,
+      "clueType": "text"
+    },
+    {
+      "number": 24,
+      "direction": "down",
+      "clue": "IMAGE",
+      "answer": "רונאלדו",
+      "enumeration": null,
+      "startRow": 0,
+      "startCol": 16,
+      "clueType": "image",
+      "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0105-cristiano-ronaldo.jpg",
+      "exitRow": 2,
+      "exitCol": 17
+    },
+    {
+      "number": 25,
+      "direction": "across",
+      "clue": "גבינה צרפתית",
+      "answer": "ברי",
+      "enumeration": null,
+      "startRow": 3,
+      "startCol": 3,
+      "clueType": "text"
+    },
+    {
+      "number": 26,
+      "direction": "across",
+      "clue": "תשלום עבור חינוך",
+      "answer": "שכר לימוד",
+      "enumeration": [
+        3,
+        5
+      ],
+      "startRow": 3,
+      "startCol": 7,
+      "clueType": "text"
+    },
+    {
+      "number": 27,
+      "direction": "down",
+      "clue": "חומר אלסטי",
+      "answer": "גומי",
+      "enumeration": null,
+      "startRow": 3,
+      "startCol": 7,
+      "clueType": "text"
+    },
+    {
+      "number": 28,
+      "direction": "down",
+      "clue": "שיבח",
+      "answer": "הלל",
+      "enumeration": null,
+      "startRow": 3,
+      "startCol": 16,
+      "clueType": "text"
+    },
+    {
+      "number": 29,
+      "direction": "down",
+      "clue": "מכין נשק לירי",
+      "answer": "דורך",
+      "enumeration": null,
+      "startRow": 3,
+      "startCol": 18,
+      "clueType": "text"
+    },
+    {
+      "number": 30,
+      "direction": "across",
+      "clue": "IMAGE",
+      "answer": "גידי גוב",
+      "enumeration": [
+        4,
+        3
+      ],
+      "startRow": 3,
+      "startCol": 0,
+      "clueType": "image",
+      "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0835-gidi-gov.jpg",
+      "exitRow": 4,
+      "exitCol": 2
+    },
+    {
+      "number": 31,
+      "direction": "across",
+      "clue": "חלק בגוף",
+      "answer": "רגל",
+      "enumeration": null,
+      "startRow": 4,
+      "startCol": 10,
+      "clueType": "text"
+    },
+    {
+      "number": 32,
+      "direction": "down",
+      "clue": "אבן שמככבת במטבחים ובפסלים",
+      "answer": "שיש",
+      "enumeration": null,
+      "startRow": 4,
+      "startCol": 10,
+      "clueType": "text"
+    },
+    {
+      "number": 33,
+      "direction": "across",
+      "clue": "בן לעם ישראל",
+      "answer": "יהודי",
+      "enumeration": null,
+      "startRow": 4,
+      "startCol": 14,
+      "clueType": "text"
+    },
+    {
+      "number": 34,
+      "direction": "down",
+      "clue": "שולחים יד ברכוש",
+      "answer": "מועלים",
+      "enumeration": null,
+      "startRow": 4,
+      "startCol": 14,
+      "clueType": "text"
+    },
+    {
+      "number": 35,
+      "direction": "across",
+      "clue": "מתעשר חדש",
+      "answer": "נובו ריש",
+      "enumeration": [
+        4,
+        3
+      ],
+      "startRow": 5,
+      "startCol": 3,
+      "clueType": "text"
+    },
+    {
+      "number": 36,
+      "direction": "down",
+      "clue": "הניחו",
+      "answer": "שמו",
+      "enumeration": null,
+      "startRow": 5,
+      "startCol": 3,
+      "clueType": "text"
+    },
+    {
+      "number": 37,
+      "direction": "across",
+      "clue": "מאפה בסיסי",
+      "answer": "לחם",
+      "enumeration": null,
+      "startRow": 5,
+      "startCol": 11,
+      "clueType": "text"
+    },
+    {
+      "number": 38,
+      "direction": "down",
+      "clue": "מאיתן",
+      "answer": "מהן",
+      "enumeration": null,
+      "startRow": 5,
+      "startCol": 11,
+      "clueType": "text"
+    },
+    {
+      "number": 39,
+      "direction": "across",
+      "clue": "לעשות הפוגה",
+      "answer": "לנוח",
+      "enumeration": null,
+      "startRow": 5,
+      "startCol": 15,
+      "clueType": "text"
+    },
+    {
+      "number": 40,
+      "direction": "down",
+      "clue": "לא אתם ולא הם",
+      "answer": "אנו",
+      "enumeration": null,
+      "startRow": 5,
+      "startCol": 15,
+      "clueType": "text"
+    },
+    {
+      "number": 41,
+      "direction": "right-down",
+      "clue": "זגוגית",
+      "answer": "שמשה",
+      "enumeration": null,
+      "startRow": 6,
+      "startCol": 0,
+      "clueType": "text"
+    },
+    {
+      "number": 42,
+      "direction": "down-across",
+      "clue": "רבי משה בן מימון, ר\"ת",
+      "answer": "רמבם",
+      "enumeration": null,
+      "startRow": 6,
+      "startCol": 0,
+      "clueType": "text"
+    },
+    {
+      "number": 43,
+      "direction": "across",
+      "clue": "מחנה יהודה, למשל",
+      "answer": "שוק",
+      "enumeration": null,
+      "startRow": 6,
+      "startCol": 2,
+      "clueType": "text"
+    },
+    {
+      "number": 44,
+      "direction": "down",
+      "clue": "אחרי הזמן שנקבע",
+      "answer": "באיחור",
+      "enumeration": null,
+      "startRow": 6,
+      "startCol": 2,
+      "clueType": "text"
+    },
+    {
+      "number": 45,
+      "direction": "across",
+      "clue": "מעוררת התפעלות",
+      "answer": "מרשימה",
+      "enumeration": null,
+      "startRow": 6,
+      "startCol": 6,
+      "clueType": "text"
+    },
+    {
+      "number": 46,
+      "direction": "down",
+      "clue": "מורדים, מרדנים",
+      "answer": "בני מרי",
+      "enumeration": [
+        3,
+        3
+      ],
+      "startRow": 6,
+      "startCol": 6,
+      "clueType": "text"
+    },
+    {
+      "number": 47,
+      "direction": "across",
+      "clue": "סוג של קנגורו",
+      "answer": "ואלארו",
+      "enumeration": null,
+      "startRow": 6,
+      "startCol": 13,
+      "clueType": "text"
+    },
+    {
+      "number": 48,
+      "direction": "down",
+      "clue": "חנק",
+      "answer": "שנק",
+      "enumeration": null,
+      "startRow": 6,
+      "startCol": 13,
+      "clueType": "text"
+    },
+    {
+      "number": 49,
+      "direction": "across",
+      "clue": "בע\"ח קל רגליים",
+      "answer": "צבי",
+      "enumeration": null,
+      "startRow": 7,
+      "startCol": 4,
+      "clueType": "text"
+    },
+    {
+      "number": 50,
+      "direction": "down",
+      "clue": "משחק הרכבה מחלקי פלסטיק",
+      "answer": "לגו",
+      "enumeration": null,
+      "startRow": 7,
+      "startCol": 4,
+      "clueType": "text"
+    },
+    {
+      "number": 51,
+      "direction": "across",
+      "clue": "אחיו של אהרן",
+      "answer": "משה",
+      "enumeration": null,
+      "startRow": 7,
+      "startCol": 8,
+      "clueType": "text"
+    },
+    {
+      "number": 52,
+      "direction": "down",
+      "clue": "צורך באחר",
+      "answer": "תלות",
+      "enumeration": null,
+      "startRow": 7,
+      "startCol": 8,
+      "clueType": "text"
+    },
+    {
+      "number": 53,
+      "direction": "across",
+      "clue": "מתקן שעונים",
+      "answer": "שען",
+      "enumeration": null,
+      "startRow": 7,
+      "startCol": 12,
+      "clueType": "text"
+    },
+    {
+      "number": 54,
+      "direction": "down",
+      "clue": "לבנים",
+      "answer": "תחתונים",
+      "enumeration": null,
+      "startRow": 7,
+      "startCol": 12,
+      "clueType": "text"
+    },
+    {
+      "number": 55,
+      "direction": "across",
+      "clue": "עבור כולם",
+      "answer": "לכל",
+      "enumeration": null,
+      "startRow": 7,
+      "startCol": 16,
+      "clueType": "text"
+    },
+    {
+      "number": 56,
+      "direction": "down",
+      "clue": "ינצח בגדול",
+      "answer": "יביס",
+      "enumeration": null,
+      "startRow": 7,
+      "startCol": 16,
+      "clueType": "text"
+    },
+    {
+      "number": 57,
+      "direction": "across",
+      "clue": "מנזר בודהיסטי בסין",
+      "answer": "שאולין",
+      "enumeration": null,
+      "startRow": 8,
+      "startCol": 0,
+      "clueType": "text"
+    },
+    {
+      "number": 58,
+      "direction": "down-across",
+      "clue": "יתקיים יתרחש",
+      "answer": "יהי",
+      "enumeration": null,
+      "startRow": 8,
+      "startCol": 0,
+      "clueType": "text"
+    },
+    {
+      "number": 59,
+      "direction": "across",
+      "clue": "חליטה בכוס",
+      "answer": "תה",
+      "enumeration": null,
+      "startRow": 8,
+      "startCol": 7,
+      "clueType": "text"
+    },
+    {
+      "number": 60,
+      "direction": "across",
+      "clue": "תמך בו",
+      "answer": "נתן לו יד",
+      "enumeration": [
+        3,
+        2,
+        2
+      ],
+      "startRow": 8,
+      "startCol": 10,
+      "clueType": "text"
+    },
+    {
+      "number": 61,
+      "direction": "down",
+      "clue": "נטיעת עצים בשטח גדול",
+      "answer": "יעור",
+      "enumeration": null,
+      "startRow": 8,
+      "startCol": 10,
+      "clueType": "text"
+    },
+    {
+      "number": 62,
+      "direction": "down",
+      "clue": "נסיעה לאחור",
+      "answer": "רוורס",
+      "enumeration": null,
+      "startRow": 8,
+      "startCol": 18,
+      "clueType": "text"
+    },
+    {
+      "number": 63,
+      "direction": "down",
+      "clue": "בן מעמד האצולה בפרוסיה",
+      "answer": "יונקר",
+      "enumeration": null,
+      "startRow": 8,
+      "startCol": 19,
+      "clueType": "text"
+    },
+    {
+      "number": 64,
+      "direction": "across",
+      "clue": "חמאה הודית",
+      "answer": "גהי",
+      "enumeration": null,
+      "startRow": 9,
+      "startCol": 3,
+      "clueType": "text"
+    },
+    {
+      "number": 65,
+      "direction": "down",
+      "clue": "מקום מלא בסכנות ובאויבים",
+      "answer": "גב אריות",
+      "enumeration": [
+        2,
+        5
+      ],
+      "startRow": 9,
+      "startCol": 3,
+      "clueType": "text"
+    },
+    {
+      "number": 66,
+      "direction": "across",
+      "clue": "שרשרת פרחים בהוואי",
+      "answer": "ליי",
+      "enumeration": null,
+      "startRow": 9,
+      "startCol": 7,
+      "clueType": "text"
+    },
+    {
+      "number": 67,
+      "direction": "down",
+      "clue": "שמירה מפני סכנה",
+      "answer": "אבטחה",
+      "enumeration": null,
+      "startRow": 9,
+      "startCol": 7,
+      "clueType": "text"
+    },
+    {
+      "number": 68,
+      "direction": "across",
+      "clue": "גוון במדים צבאיים",
+      "answer": "חקי",
+      "enumeration": null,
+      "startRow": 9,
+      "startCol": 11,
+      "clueType": "text"
+    },
+    {
+      "number": 69,
+      "direction": "down",
+      "clue": "אלת אהבה רומית",
+      "answer": "ונוס",
+      "enumeration": null,
+      "startRow": 9,
+      "startCol": 11,
+      "clueType": "text"
+    },
+    {
+      "number": 70,
+      "direction": "across",
+      "clue": "קיפון בצלחת",
+      "answer": "בורי",
+      "enumeration": null,
+      "startRow": 9,
+      "startCol": 15,
+      "clueType": "text"
+    },
+    {
+      "number": 71,
+      "direction": "down",
+      "clue": "מקח וממכר",
+      "answer": "סחר",
+      "enumeration": null,
+      "startRow": 9,
+      "startCol": 15,
+      "clueType": "text"
+    },
+    {
+      "number": 72,
+      "direction": "down-across",
+      "clue": "השחתת המידות",
+      "answer": "סאוב",
+      "enumeration": null,
+      "startRow": 10,
+      "startCol": 0,
+      "clueType": "text"
+    },
+    {
+      "number": 73,
+      "direction": "across",
+      "clue": "סבבו במעגל",
+      "answer": "חגו",
+      "enumeration": null,
+      "startRow": 10,
+      "startCol": 1,
+      "clueType": "text"
+    },
+    {
+      "number": 74,
+      "direction": "down",
+      "clue": "שכונה ערבית בירושלים",
+      "answer": "אבו תור",
+      "enumeration": [
+        3,
+        3
+      ],
+      "startRow": 10,
+      "startCol": 1,
+      "clueType": "text"
+    },
+    {
+      "number": 75,
+      "direction": "across",
+      "clue": "קורות, היסטוריה",
+      "answer": "מאורעות",
+      "enumeration": null,
+      "startRow": 10,
+      "startCol": 5,
+      "clueType": "text"
+    },
+    {
+      "number": 76,
+      "direction": "down",
+      "clue": "עיר המקובלים בגליל",
+      "answer": "צפת",
+      "enumeration": null,
+      "startRow": 10,
+      "startCol": 5,
+      "clueType": "text"
+    },
+    {
+      "number": 77,
+      "direction": "across",
+      "clue": "כוכב כדורגל בנבחרת ארגנטינה",
+      "answer": "מסי",
+      "enumeration": null,
+      "startRow": 10,
+      "startCol": 13,
+      "clueType": "text"
+    },
+    {
+      "number": 78,
+      "direction": "down",
+      "clue": "מוסיף סוכר",
+      "answer": "ממתיק",
+      "enumeration": null,
+      "startRow": 10,
+      "startCol": 13,
+      "clueType": "text"
+    },
+    {
+      "number": 79,
+      "direction": "across",
+      "clue": "קרס לתלייה",
+      "answer": "וו",
+      "enumeration": null,
+      "startRow": 10,
+      "startCol": 17,
+      "clueType": "text"
+    },
+    {
+      "number": 80,
+      "direction": "down",
+      "clue": "כפשוטו",
+      "answer": "כמאמרו",
+      "enumeration": null,
+      "startRow": 10,
+      "startCol": 17,
+      "clueType": "text"
+    },
+    {
+      "number": 81,
+      "direction": "across",
+      "clue": "עודף חומציות בקיבה",
+      "answer": "צרבת",
+      "enumeration": null,
+      "startRow": 11,
+      "startCol": 4,
+      "clueType": "text"
+    },
+    {
+      "number": 82,
+      "direction": "down",
+      "clue": "ברווז דיסני",
+      "answer": "דונלד דאק",
+      "enumeration": [
+        5,
+        3
+      ],
+      "startRow": 11,
+      "startCol": 4,
+      "clueType": "text"
+    },
+    {
+      "number": 83,
+      "direction": "across",
+      "clue": "רעל, ארס",
+      "answer": "ונום",
+      "enumeration": null,
+      "startRow": 11,
+      "startCol": 9,
+      "clueType": "text"
+    },
+    {
+      "number": 84,
+      "direction": "down",
+      "clue": "זריז",
+      "answer": "מהיר",
+      "enumeration": null,
+      "startRow": 11,
+      "startCol": 9,
+      "clueType": "text"
+    },
+    {
+      "number": 85,
+      "direction": "across",
+      "clue": "הימנעות מבזבוז",
+      "answer": "חסכון",
+      "enumeration": null,
+      "startRow": 11,
+      "startCol": 14,
+      "clueType": "text"
+    },
+    {
+      "number": 86,
+      "direction": "down",
+      "clue": "נערם",
+      "answer": "התגבב",
+      "enumeration": null,
+      "startRow": 11,
+      "startCol": 14,
+      "clueType": "text"
+    },
+    {
+      "number": 87,
+      "direction": "across",
+      "clue": "כוכב מועדון קרב",
+      "answer": "בראד פיט",
+      "enumeration": [
+        4,
+        3
+      ],
+      "startRow": 12,
+      "startCol": 0,
+      "clueType": "text"
+    },
+    {
+      "number": 88,
+      "direction": "down-across",
+      "clue": "פקודה",
+      "answer": "צו",
+      "enumeration": null,
+      "startRow": 12,
+      "startCol": 0,
+      "clueType": "text"
+    },
+    {
+      "number": 89,
+      "direction": "across",
+      "clue": "טרגי, נוראי, רע ומר",
+      "answer": "מר ונמהר",
+      "enumeration": [
+        2,
+        5
+      ],
+      "startRow": 12,
+      "startCol": 8,
+      "clueType": "text"
+    },
+    {
+      "number": 90,
+      "direction": "down",
+      "clue": "מוסד חינוכי הכולל מגורים",
+      "answer": "פנימיה",
+      "enumeration": null,
+      "startRow": 12,
+      "startCol": 8,
+      "clueType": "text"
+    },
+    {
+      "number": 91,
+      "direction": "across",
+      "clue": "קערה חמה עם כף",
+      "answer": "מרק",
+      "enumeration": null,
+      "startRow": 12,
+      "startCol": 16,
+      "clueType": "text"
+    },
+    {
+      "number": 92,
+      "direction": "down",
+      "clue": "טון צליל",
+      "answer": "נימה",
+      "enumeration": null,
+      "startRow": 12,
+      "startCol": 16,
+      "clueType": "text"
+    },
+    {
+      "number": 93,
+      "direction": "across",
+      "clue": "מגילה מקראית",
+      "answer": "רות",
+      "enumeration": null,
+      "startRow": 13,
+      "startCol": 2,
+      "clueType": "text"
+    },
+    {
+      "number": 94,
+      "direction": "down",
+      "clue": "חלק רוחני באדם",
+      "answer": "נפש",
+      "enumeration": null,
+      "startRow": 13,
+      "startCol": 2,
+      "clueType": "text"
+    },
+    {
+      "number": 95,
+      "direction": "across",
+      "clue": "שמר על; גונן; איבטח",
+      "answer": "חפה",
+      "enumeration": null,
+      "startRow": 13,
+      "startCol": 6,
+      "clueType": "text"
+    },
+    {
+      "number": 96,
+      "direction": "down",
+      "clue": "עצן",
+      "answer": "ליגנין",
+      "enumeration": null,
+      "startRow": 13,
+      "startCol": 6,
+      "clueType": "text"
+    },
+    {
+      "number": 97,
+      "direction": "across",
+      "clue": "עיצב אבן באיזמל",
+      "answer": "סיתת",
+      "enumeration": null,
+      "startRow": 13,
+      "startCol": 10,
+      "clueType": "text"
+    },
+    {
+      "number": 98,
+      "direction": "down",
+      "clue": "להקת צאן",
+      "answer": "עדר",
+      "enumeration": null,
+      "startRow": 13,
+      "startCol": 10,
+      "clueType": "text"
+    },
+    {
+      "number": 99,
+      "direction": "across",
+      "clue": "נכלא",
+      "answer": "נאסר",
+      "enumeration": null,
+      "startRow": 13,
+      "startCol": 15,
+      "clueType": "text"
+    },
+    {
+      "number": 100,
+      "direction": "down",
+      "clue": "ריקוד על קצות האצבעות",
+      "answer": "בלט",
+      "enumeration": null,
+      "startRow": 13,
+      "startCol": 15,
+      "clueType": "text"
+    },
+    {
+      "number": 101,
+      "direction": "across",
+      "clue": "זוחל ענק עם שיניים",
+      "answer": "תנין",
+      "enumeration": null,
+      "startRow": 14,
+      "startCol": 0,
+      "clueType": "text"
+    },
+    {
+      "number": 102,
+      "direction": "down-across",
+      "clue": "אהוד מקובל",
+      "answer": "פופולרי",
+      "enumeration": null,
+      "startRow": 14,
+      "startCol": 0,
+      "clueType": "text"
+    },
+    {
+      "number": 103,
+      "direction": "across",
+      "clue": "לגרום לדבר שיתרחש",
+      "answer": "להניע",
+      "enumeration": null,
+      "startRow": 14,
+      "startCol": 5,
+      "clueType": "text"
+    },
+    {
+      "number": 104,
+      "direction": "down",
+      "clue": "שיטת טיפול אלטרנטיבית",
+      "answer": "רייקי",
+      "enumeration": null,
+      "startRow": 14,
+      "startCol": 5,
+      "clueType": "text"
+    },
+    {
+      "number": 105,
+      "direction": "across",
+      "clue": "סוג של מקווה מים זמני",
+      "answer": "מי גבים",
+      "enumeration": [
+        2,
+        4
+      ],
+      "startRow": 14,
+      "startCol": 11,
+      "clueType": "text"
+    },
+    {
+      "number": 106,
+      "direction": "down",
+      "clue": "אבדו",
+      "answer": "נעלמו",
+      "enumeration": null,
+      "startRow": 14,
+      "startCol": 11,
+      "clueType": "text"
+    },
+    {
+      "number": 107,
+      "direction": "down",
+      "clue": "מילונאי אמריקאי",
+      "answer": "ובסטר",
+      "enumeration": null,
+      "startRow": 14,
+      "startCol": 18,
+      "clueType": "text"
+    },
+    {
+      "number": 108,
+      "direction": "down",
+      "clue": "מין עוף דורס",
+      "answer": "תנשמת",
+      "enumeration": null,
+      "startRow": 14,
+      "startCol": 19,
+      "clueType": "text"
+    },
+    {
+      "number": 109,
+      "direction": "across",
+      "clue": "גובלת עם ישראל",
+      "answer": "ירדן",
+      "enumeration": null,
+      "startRow": 15,
+      "startCol": 7,
+      "clueType": "text"
+    },
+    {
+      "number": 110,
+      "direction": "down",
+      "clue": "שאיפה להישגים מעבר ליכולת",
+      "answer": "ימרה",
+      "enumeration": null,
+      "startRow": 15,
+      "startCol": 7,
+      "clueType": "text"
+    },
+    {
+      "number": 111,
+      "direction": "across",
+      "clue": "סר למשמעת",
+      "answer": "קבל מרות",
+      "enumeration": [
+        3,
+        4
+      ],
+      "startRow": 15,
+      "startCol": 12,
+      "clueType": "text"
+    },
+    {
+      "number": 112,
+      "direction": "down",
+      "clue": "כמה זה עולה",
+      "answer": "מחיר",
+      "enumeration": null,
+      "startRow": 15,
+      "startCol": 12,
+      "clueType": "text"
+    },
+    {
+      "number": 113,
+      "direction": "across",
+      "clue": "רשת המשמשת לדיג",
+      "answer": "רשת דיגים",
+      "enumeration": [
+        3,
+        5
+      ],
+      "startRow": 16,
+      "startCol": 0,
+      "clueType": "text"
+    },
+    {
+      "number": 114,
+      "direction": "across",
+      "clue": "נשמע אחרי הברק",
+      "answer": "רעם",
+      "enumeration": null,
+      "startRow": 16,
+      "startCol": 9,
+      "clueType": "text"
+    },
+    {
+      "number": 115,
+      "direction": "down",
+      "clue": "טורף עם חברבורות",
+      "answer": "נמר",
+      "enumeration": null,
+      "startRow": 16,
+      "startCol": 13,
+      "clueType": "text"
+    },
+    {
+      "number": 116,
+      "direction": "across",
+      "clue": "חומר נפץ",
+      "answer": "דינמיט",
+      "enumeration": null,
+      "startRow": 17,
+      "startCol": 3,
+      "clueType": "text"
+    },
+    {
+      "number": 117,
+      "direction": "across",
+      "clue": "ניגון",
+      "answer": "לחן",
+      "enumeration": null,
+      "startRow": 17,
+      "startCol": 10,
+      "clueType": "text"
+    },
+    {
+      "number": 118,
+      "direction": "down",
+      "clue": "סוחבים אותו על הגב",
+      "answer": "שק",
+      "enumeration": null,
+      "startRow": 17,
+      "startCol": 10,
+      "clueType": "text"
+    },
+    {
+      "number": 119,
+      "direction": "up-across",
+      "clue": "IMAGE",
+      "answer": "בטהובן",
+      "enumeration": null,
+      "startRow": 17,
+      "startCol": 14,
+      "clueType": "image",
+      "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0615-beethoven.jpg",
+      "exitRow": 17,
+      "exitCol": 14
+    },
+    {
+      "number": 120,
+      "direction": "across",
+      "clue": "סוף שבוע",
+      "answer": "סש",
+      "enumeration": null,
+      "startRow": 17,
+      "startCol": 17,
+      "clueType": "text"
+    },
+    {
+      "number": 121,
+      "direction": "down-across",
+      "clue": "מנע חדירת אוויר",
+      "answer": "אטם",
+      "enumeration": null,
+      "startRow": 17,
+      "startCol": 17,
+      "clueType": "text"
+    },
+    {
+      "number": 122,
+      "direction": "across",
+      "clue": "IMAGE",
+      "answer": "שאקירה",
+      "enumeration": null,
+      "startRow": 17,
+      "startCol": 0,
+      "clueType": "image",
+      "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0149-shakira.jpg",
+      "exitRow": 18,
+      "exitCol": 2
+    },
+    {
+      "number": 123,
+      "direction": "across",
+      "clue": "רקיע",
+      "answer": "שמים",
+      "enumeration": null,
+      "startRow": 18,
+      "startCol": 9,
+      "clueType": "text"
+    },
+    {
+      "number": 124,
+      "direction": "across",
+      "clue": "שיר אבל",
+      "answer": "קינה",
+      "enumeration": null,
+      "startRow": 19,
+      "startCol": 3,
+      "clueType": "text"
+    },
+    {
+      "number": 125,
+      "direction": "across",
+      "clue": "מצונן",
+      "answer": "מקורר",
+      "enumeration": null,
+      "startRow": 19,
+      "startCol": 8,
+      "clueType": "text"
+    },
+    {
+      "number": 126,
+      "direction": "across",
+      "clue": "ראשי תיבות",
+      "answer": "רת",
+      "enumeration": null,
+      "startRow": 19,
+      "startCol": 17,
+      "clueType": "text"
+    }
+  ],
+  "estimatedTime": 2520,
+  "coinReward": 32,
+  "metadata": {
+    "templateId": "template_1795170789917_vrvqz9tis",
+    "generationMethod": "daily-framed"
+  }
+}
