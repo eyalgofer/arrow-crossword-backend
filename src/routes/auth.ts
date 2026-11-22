@@ -21,12 +21,19 @@ import { Invite } from '../models/Invite';
 import { clearMatchWordClaims } from '../services/wordClaims';
 import { invalidateCommunity, invalidateUserProgress } from '../services/playTabStamp';
 import { getUserNumber, notifyNewUser } from '../services/slack';
+import { deleteUserDevices, parseDeviceRecord, recordUserDevice } from '../services/devices';
 
 function parseDevice(value: unknown): DevicePlatform | null {
   if (value === 'ios' || value === 'android') {
     return value;
   }
   return null;
+}
+
+async function recordSignInDevice(user: InstanceType<typeof User>, body: unknown): Promise<void> {
+  const parsed = parseDeviceRecord(body);
+  if (!parsed) return;
+  await recordUserDevice(user._id, parsed);
 }
 
 function notifyNewUserCreated(
@@ -114,6 +121,7 @@ router.post('/google', async (req: Request, res: Response) => {
       console.log('Existing user signed in:', user.email);
     }
 
+    await recordSignInDevice(user, req.body);
     res.json(await authPayload(user, isNewUser));
   } catch (error: any) {
     console.error('❌ Google auth error:', error?.message || error);
@@ -180,6 +188,7 @@ router.post('/apple', async (req: Request, res: Response) => {
       console.log('Existing Apple user signed in:', user.email);
     }
 
+    await recordSignInDevice(user, req.body);
     res.json(await authPayload(user, isNewUser));
   } catch (error: any) {
     console.error('❌ Apple auth error:', error?.message || error);
@@ -213,6 +222,7 @@ router.post('/guest', async (req: Request, res: Response) => {
     if (isNewUser) {
       notifyNewUserCreated(user, { kind: 'guest' });
     }
+    await recordSignInDevice(user, req.body);
     res.json(await authPayload(user, isNewUser));
   } catch (error: any) {
     console.error('❌ Guest auth error:', error?.message || error);
@@ -246,6 +256,7 @@ router.post('/demo', async (req: Request, res: Response) => {
       await user.save();
     }
     console.log('Demo user signed in:', user.email);
+    await recordSignInDevice(user, req.body);
     res.json(await authPayload(user, true));
   } catch (error: any) {
     console.error('❌ Demo auth error:', error?.message || error);
@@ -330,7 +341,8 @@ router.delete('/delete-account', authenticateToken, async (req: AuthRequest, res
           { to: userObjectId }
         ]
       }),
-      revokeAllRefreshTokens(userId)
+      revokeAllRefreshTokens(userId),
+      deleteUserDevices(userObjectId)
     ]);
 
     // Finally, delete the user account itself

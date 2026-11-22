@@ -5,13 +5,13 @@ import { FiveLetterDay } from '../models/FiveLetterDay';
 import { DevicePlatform, User } from '../models/User';
 import { UserPuzzleProgress } from '../models/UserPuzzleProgress';
 import { revokeAllRefreshTokens, verifyAccessToken } from './authTokens';
+import { isValidDeviceId, reassignDevices } from './devices';
 import { invalidateCommunity, invalidateUserProgress } from './playTabStamp';
 import { DailyPuzzleStatsFields } from '../utils/dailyPuzzleStats';
 
 export const GUEST_UID_PREFIX = 'guest:';
 export const GUEST_EMAIL_DOMAIN = 'guest.invalid';
 export const NEW_USER_STARTER_COINS = 100;
-const DEVICE_ID_PATTERN = /^[a-zA-Z0-9-]{16,64}$/;
 
 export type ProviderIdentity = {
   firebaseUid: string;
@@ -20,7 +20,7 @@ export type ProviderIdentity = {
 };
 
 export function isValidGuestDeviceId(value: unknown): value is string {
-  return typeof value === 'string' && DEVICE_ID_PATTERN.test(value);
+  return isValidDeviceId(value);
 }
 
 export function guestFirebaseUid(deviceId: string): string {
@@ -173,6 +173,7 @@ async function mergeGuestIntoExisting(
   await DailyPuzzle.updateMany({ fastestSolverId: guestId }, { $set: { fastestSolverId: targetId } });
   await DailyPuzzle.updateMany({ firstSolverId: guestId }, { $set: { firstSolverId: targetId } });
   await FiveLetterDay.updateMany({ fastestSolverId: guestId }, { $set: { fastestSolverId: targetId } });
+  await reassignDevices(guestId, targetId);
   await existing.save();
   await revokeAllRefreshTokens(guestUid);
   await User.deleteOne({ _id: guest._id });
