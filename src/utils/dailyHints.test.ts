@@ -30,7 +30,7 @@ describe('daily hint purchase', () => {
     assert.equal(word.kind, 'purchase');
     if (word.kind !== 'purchase') return;
     assert.equal(word.nextHintsUsed, 2);
-    assert.equal(word.body.coins, 100);
+    assert.equal(word.body.coins, 115 - WORD_HINT_COST);
   });
 
   it('rejects the fourth hint without charging', () => {
@@ -64,7 +64,7 @@ describe('daily hint purchase', () => {
     const decision = decideHintPurchase({
       isTodaysDaily: false,
       hintsUsed: 3,
-      coins: 20,
+      coins: WORD_HINT_COST + 5,
       cost: WORD_HINT_COST,
     });
     assert.equal(decision.kind, 'purchase');

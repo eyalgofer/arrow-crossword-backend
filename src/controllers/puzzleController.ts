@@ -1133,7 +1133,7 @@ export const deleteProgress = async (req: AuthRequest, res: Response) => {
 
 /**
  * POST /api/puzzles/:puzzleId/hints
- * Buy one letter (5) or word (15) hint.
+ * Buy one letter (5) or word (25) hint.
  * Today's daily allows 3 successful purchases; coins and hintsUsed commit together.
  */
 export const purchaseHint = async (req: AuthRequest, res: Response) => {

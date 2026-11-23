@@ -11,7 +11,7 @@ export const OVERNIGHT_PRIZE_PUSH_HOUR_ISRAEL = 9;
 export const DAILY_HINT_LIMIT = 3;
 
 export const LETTER_HINT_COST = 5;
-export const WORD_HINT_COST = 15;
+export const WORD_HINT_COST = 25;
 
 export type DailyHintType = 'letter' | 'word';
 
