@@ -2870,5 +2870,317 @@
     "type": "person",
     "subject": "Sagi Muki",
     "letterLength": 8
+  },
+  {
+    "id": "img_0044",
+    "answer": "גל פרידמן",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0044-gal-fridman.jpg",
+    "type": "person",
+    "subject": "Gal Fridman",
+    "letterLength": 8
+  },
+  {
+    "id": "img_0052",
+    "answer": "דודו טסה",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0052-dudu-tassa.jpg",
+    "type": "person",
+    "subject": "Dudu Tassa",
+    "letterLength": 7
+  },
+  {
+    "id": "img_0055",
+    "answer": "משה פרץ",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0055-moshe-peretz.jpg",
+    "type": "person",
+    "subject": "Moshe Peretz",
+    "letterLength": 6
+  },
+  {
+    "id": "img_0057",
+    "answer": "ישי ריבו",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0057-ishay-ribo.jpg",
+    "type": "person",
+    "subject": "Ishay Ribo",
+    "letterLength": 7
+  },
+  {
+    "id": "img_0091",
+    "answer": "ניב סולטן",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0091-niv-sultan.jpg",
+    "type": "person",
+    "subject": "Niv Sultan",
+    "letterLength": 8
+  },
+  {
+    "id": "img_0836",
+    "answer": "אחמד טיבי",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0836-ahmed-tibi.jpg",
+    "type": "person",
+    "subject": "Ahmed Tibi",
+    "letterLength": 8
+  },
+  {
+    "id": "img_0852",
+    "answer": "עדה יונת",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0852-ada-yonath.jpg",
+    "type": "person",
+    "subject": "Ada Yonath",
+    "letterLength": 7
+  },
+  {
+    "id": "img_1284",
+    "answer": "גיא זו ארץ",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1284-guy-zu-aretz.jpg",
+    "type": "person",
+    "subject": "Guy Zu-Aretz",
+    "letterLength": 8
+  },
+  {
+    "id": "img_1294",
+    "answer": "שחר צוברי",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1294-shahar-zubari.jpg",
+    "type": "person",
+    "subject": "Shahar Zubari",
+    "letterLength": 8
+  },
+  {
+    "id": "img_1307",
+    "answer": "יאיר גולן",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1307-yair-golan.jpg",
+    "type": "person",
+    "subject": "Yair Golan",
+    "letterLength": 8
+  },
+  {
+    "id": "img_1326",
+    "answer": "דב מורן",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1326-dov-moran.jpg",
+    "type": "person",
+    "subject": "Dov Moran",
+    "letterLength": 6
+  },
+  {
+    "id": "img_1508",
+    "answer": "אהוד מנור",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1508-ehud-manor.jpg",
+    "type": "person",
+    "subject": "Ehud Manor",
+    "letterLength": 8
+  },
+  {
+    "id": "img_1511",
+    "answer": "משה איבגי",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1511-moshe-ivgy.jpg",
+    "type": "person",
+    "subject": "Moshe Ivgy",
+    "letterLength": 8
+  },
+  {
+    "id": "img_1513",
+    "answer": "נועה קולר",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1513-noa-koler.jpg",
+    "type": "person",
+    "subject": "Noa Koler",
+    "letterLength": 8
+  },
+  {
+    "id": "img_1521",
+    "answer": "גלי עטרי",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1521-gali-atari.jpg",
+    "type": "person",
+    "subject": "Gali Atari",
+    "letterLength": 7
+  },
+  {
+    "id": "img_1515",
+    "answer": "אלי אוחנה",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1515-eli-ohana.jpg",
+    "type": "person",
+    "subject": "Eli Ohana",
+    "letterLength": 8
+  },
+  {
+    "id": "img_1514",
+    "answer": "אברי גלעד",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1514-avri-gilad.jpg",
+    "type": "person",
+    "subject": "Avri Gilad",
+    "letterLength": 8
+  },
+  {
+    "id": "img_1523",
+    "answer": "קובי אוז",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1523-kobi-oz.jpg",
+    "type": "person",
+    "subject": "Kobi Oz",
+    "letterLength": 7
+  },
+  {
+    "id": "img_1524",
+    "answer": "שלומי שבן",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1524-shlomi-shaban.jpg",
+    "type": "person",
+    "subject": "Shlomi Shaban",
+    "letterLength": 8
+  },
+  {
+    "id": "img_0062",
+    "answer": "שירי מימון",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0062-shiri-maimon.jpg",
+    "type": "person",
+    "subject": "Shiri Maimon",
+    "letterLength": 9
+  },
+  {
+    "id": "img_0060",
+    "answer": "מרגי",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0060-mergui.jpg",
+    "type": "person",
+    "subject": "Mergui",
+    "letterLength": 4
+  },
+  {
+    "id": "img_0059",
+    "answer": "נסרין קדרי",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0059-nasrin-kadri.jpg",
+    "type": "person",
+    "subject": "Nasrin Kadri",
+    "letterLength": 9
+  },
+  {
+    "id": "img_0050",
+    "answer": "יובל המבולבל",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0050-yuval-hamebulbal.jpg",
+    "type": "person",
+    "subject": "Yuval Hamebulbal",
+    "letterLength": 11
+  },
+  {
+    "id": "img_0041",
+    "answer": "מנור סולומון",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0041-manor-solomon.jpg",
+    "type": "person",
+    "subject": "Manor Solomon",
+    "letterLength": 11
+  },
+  {
+    "id": "img_0005",
+    "answer": "בנימין נתניהו",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0005-benjamin-netanyahu.jpg",
+    "type": "person",
+    "subject": "Benjamin Netanyahu",
+    "letterLength": 12
+  },
+  {
+    "id": "img_1528",
+    "answer": "יובל רפאל",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1528-yuval-raphael.jpg",
+    "type": "person",
+    "subject": "Yuval Raphael",
+    "letterLength": 8
+  },
+  {
+    "id": "img_0065",
+    "answer": "מוני מושונוב",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0065-moni-moshonov.jpg",
+    "type": "person",
+    "subject": "Moni Moshonov",
+    "letterLength": 11
+  },
+  {
+    "id": "img_0094",
+    "answer": "מרינה מקסימיליאן",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0094-marina-maximilian.jpg",
+    "type": "person",
+    "subject": "Marina Maximilian",
+    "letterLength": 15
+  },
+  {
+    "id": "img_0845",
+    "answer": "רונה לי שמעון",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_0845-rona-lee-shimon.jpg",
+    "type": "person",
+    "subject": "Rona-Lee Shimon",
+    "letterLength": 11
+  },
+  {
+    "id": "img_1263",
+    "answer": "אלון אבוטבול",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1263-alon-aboutboul.jpg",
+    "type": "person",
+    "subject": "Alon Aboutboul",
+    "letterLength": 11
+  },
+  {
+    "id": "img_1265",
+    "answer": "אסתי גינזבורג",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1265-esti-ginzburg.jpg",
+    "type": "person",
+    "subject": "Esti Ginzburg",
+    "letterLength": 12
+  },
+  {
+    "id": "img_1273",
+    "answer": "פטר פלצ'יק",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1273-peter-paltchik.jpg",
+    "type": "person",
+    "subject": "Peter Paltchik",
+    "letterLength": 9
+  },
+  {
+    "id": "img_1280",
+    "answer": "שלומי קוריאט",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1280-shlomi-koriat.jpg",
+    "type": "person",
+    "subject": "Shlomi Koriat",
+    "letterLength": 11
+  },
+  {
+    "id": "img_1285",
+    "answer": "אגם רודברג",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1285-agam-rudberg.jpg",
+    "type": "person",
+    "subject": "Agam Rudberg",
+    "letterLength": 9
+  },
+  {
+    "id": "img_1300",
+    "answer": "נורית גלרון",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1300-nurit-galron.jpg",
+    "type": "person",
+    "subject": "Nurit Galron",
+    "letterLength": 10
+  },
+  {
+    "id": "img_1302",
+    "answer": "קורין אלאל",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1302-corinne-allal.jpg",
+    "type": "person",
+    "subject": "Corinne Allal",
+    "letterLength": 9
+  },
+  {
+    "id": "img_1308",
+    "answer": "מרב מיכאלי",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1308-merav-michaeli.jpg",
+    "type": "person",
+    "subject": "Merav Michaeli",
+    "letterLength": 9
+  },
+  {
+    "id": "img_1310",
+    "answer": "איימן עודה",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1310-ayman-odeh.jpg",
+    "type": "person",
+    "subject": "Ayman Odeh",
+    "letterLength": 9
+  },
+  {
+    "id": "img_1501",
+    "answer": "דודו אהרון",
+    "imageUrl": "https://arrow-crossword-clue-images.s3.eu-north-1.amazonaws.com/image-clues/person/img_1501-dudu-aharon.jpg",
+    "type": "person",
+    "subject": "Dudu Aharon",
+    "letterLength": 9
   }
 ]

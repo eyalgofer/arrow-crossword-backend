@@ -6,6 +6,7 @@
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 14 --start 2026-09-16
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 7 --from-tomorrow
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 7 --from-tomorrow --size 14 --images 2 --difficulty easy --fresh
+ *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 10 --start 2026-11-24 --size 16 --images 3 --difficulty easy --fresh
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 2 --start 2026-10-19 --rows 14 --cols 13 --images 2 --fresh
  *   npx ts-node src/scripts/seedHebrewDailies60.ts --count 7 --from-tomorrow --legacy   # old generator
  *
@@ -264,6 +265,9 @@ function runWorker(
         String(cols),
         ...(LEGACY ? [] : ['--profile', 'daily', '--recent', RECENT_FILE]),
         ...(FORCE_DIFFICULTY ? ['--difficulty', FORCE_DIFFICULTY] : []),
+        ...(Math.max(rows, cols) >= 16
+          ? ['--budget', '480000', '--solve-ms', '6000']
+          : []),
       ],
       { cwd: ROOT, stdio: 'inherit' }
     );
@@ -445,7 +449,11 @@ const main = async () => {
     const mongoCatalog = await loadImageClueCatalogFromMongo();
     const localCatalog = loadGeneratedImageClueCatalog();
     const merged = mergeCatalogs(mongoCatalog, localCatalog);
-    const available = merged.filter((entry) => !usedImages.has(normalizeWord(entry.answer)));
+    const available = merged.filter((entry) => {
+      const answer = normalizeWord(entry.answer);
+      // Apostrophes and quotes become cells no dictionary word can cross.
+      return !usedImages.has(answer) && /^[\u05D0-\u05EA]+$/.test(answer);
+    });
     // Prefer fillable image lengths (5–8). Keep longer ones only as last resort.
     const byLen = (entry: ImageClueCatalogEntry) => normalizeWord(entry.answer).length;
     const preferred = available.filter((entry) => {

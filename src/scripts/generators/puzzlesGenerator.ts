@@ -295,7 +295,10 @@ export class PuzzleGenerator {
 
       const cutoutCells =
         imagePlan.length > 0 ? imageBlockCutouts(imagePlan) : undefined;
-      const imageLocks = imagePlan.length > 0 ? imageExitLocks(imagePlan) : [];
+      const imageLocks = (imagePlan.length > 0 ? imageExitLocks(imagePlan) : []).filter(
+        (lock): lock is { row: number; col: number; type: '0' | '1' | '2' | '3' | '4' | '5' | '6' } =>
+          lock.type !== 'C'
+      );
       // Don't force (0,0) to a text clue — references often put a photo there.
       const lockedCells = imageLocks.length ? imageLocks : undefined;
       const protectedCells = imageLocks.length ? imageLocks : undefined;
@@ -537,7 +540,7 @@ export class PuzzleGenerator {
         cols,
         name: `${rows}x${cols} daily`,
         cutoutCells: imagePlan.length ? imageBlockCutouts(imagePlan) : undefined,
-        lockedCells: imagePlan.length ? imageExitLocks(imagePlan) : undefined,
+        lockedCells: imagePlan.length ? imageExitLocks(imagePlan, { rows, cols }) : undefined,
         attempts: wantImages > 0 && !reuse ? 5 : 30,
       });
       if (!template) continue;

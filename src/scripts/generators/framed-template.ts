@@ -174,7 +174,11 @@ function pieceOk(length: number, min: number): boolean {
 function breakLongRuns(board: Board, targetMax: number, minLen: number, allowSingles = false): boolean {
   const perpendicularMin = allowSingles ? 1 : 2;
   for (let guard = 0; guard < board.rows * board.cols; guard++) {
-    const long = board.runs().filter((run) => run.cells.length > targetMax);
+    const long = board.runs().filter((run) => {
+      if (run.cells.length <= targetMax) return false;
+      // An image answer pinned to a catalog length (usually 8) must stay whole.
+      return !run.cells.every((cell) => board.protectedLetters.has(`${cell.row},${cell.col}`));
+    });
     if (long.length === 0) return true;
     const run = shuffle(long).sort((a, b) => b.cells.length - a.cells.length)[0];
 
@@ -354,12 +358,16 @@ function buildOnce(options: Required<Pick<FramedTemplateOptions, 'rows' | 'cols'
 
   const protectedLetters = new Set<string>();
   const lockedArrows = new Map<string, ArrowType>();
+  const stops: Array<{ row: number; col: number }> = [];
   for (const lock of options.lockedCells ?? []) {
+    if (lock.row < 0 || lock.col < 0 || lock.row >= rows || lock.col >= cols) continue;
     if (lock.type === '0') protectedLetters.add(`${lock.row},${lock.col}`);
+    else if (lock.type === 'C') stops.push({ row: lock.row, col: lock.col });
     else lockedArrows.set(`${lock.row},${lock.col}`, lock.type as ArrowType);
   }
   const board = new Board(rows, cols, protectedLetters, lockedArrows);
   for (const { row, col } of options.cutoutCells ?? []) board.kinds[row][col] = 'X';
+  for (const { row, col } of stops) board.kinds[row][col] = 'C';
   for (const key of lockedArrows.keys()) {
     const [r, c] = key.split(',').map(Number);
     board.kinds[r][c] = 'C';

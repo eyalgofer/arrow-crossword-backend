@@ -17,7 +17,8 @@ import { Difficulty } from '../types';
 const DIFFICULTY_TUNING: Partial<
   Record<Difficulty, { targetDifficulty: number; wordDifficultyWeight: number }>
 > = {
-  [Difficulty.EASY]: { targetDifficulty: 1, wordDifficultyWeight: 1.5 },
+  // 0.4 prefers easy-clue words without starving a large board. 1.5 stopped 14×14 and 20×20 fills.
+  [Difficulty.EASY]: { targetDifficulty: 1, wordDifficultyWeight: 0.4 },
   [Difficulty.MEDIUM]: { targetDifficulty: 1.8, wordDifficultyWeight: 1 },
   [Difficulty.HARD]: { targetDifficulty: 3, wordDifficultyWeight: 5 },
 };
@@ -87,6 +88,7 @@ function main() {
   if (profile === 'daily') {
     const recent = readRecentDailyContent(arg('--recent'));
     const budget = parseInt(arg('--budget', '240000') ?? '240000', 10);
+    const solveMs = parseInt(arg('--solve-ms', '2500') ?? '2500', 10);
     const difficulty = arg('--difficulty') as Difficulty | undefined;
     const tuning = difficulty ? DIFFICULTY_TUNING[difficulty] : undefined;
     if (difficulty && !tuning) {
@@ -103,6 +105,7 @@ function main() {
       avoidAnswers: recent.answers,
       avoidClues: recent.clues,
       timeBudgetMs: budget,
+      solveMsPerTemplate: solveMs,
       ...(tuning && difficulty ? { ...tuning, difficulty } : {}),
     });
   } else {

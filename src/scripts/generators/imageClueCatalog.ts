@@ -113,23 +113,29 @@ export function imageExitLocks(
     fieldType: ImageExitFieldType;
     direction: Direction;
     answerLength?: number;
-  }>
-): Array<{ row: number; col: number; type: ImageExitFieldType | '0' }> {
-  const locks: Array<{ row: number; col: number; type: ImageExitFieldType | '0' }> = [];
+  }>,
+  grid?: { rows: number; cols: number }
+): Array<{ row: number; col: number; type: ImageExitFieldType | '0' | 'C' }> {
+  const locks: Array<{ row: number; col: number; type: ImageExitFieldType | '0' | 'C' }> = [];
   for (const b of blocks) {
     locks.push({ row: b.exitRow, col: b.exitCol, type: b.fieldType });
     const start = firstAnswerCell(b.exitRow, b.exitCol, b.direction);
-    // Protect only the first few letters so repair can still place a splitter
-    // at the catalog target length (5–8). Full-length protection made image
-    // words run to the edge (>9) and bind failed, while locked stoppers
-    // created unfixable short words.
-    const protectedLetters = 4;
-    for (let i = 0; i < protectedLetters; i++) {
+    // Short names stay splittable. An 8-letter name has to keep all 8 cells,
+    // then stop, or the slot grows past the catalog and never binds.
+    const span = b.answerLength != null && b.answerLength >= 8 ? Math.min(b.answerLength, 8) : 4;
+    for (let i = 0; i < span; i++) {
       locks.push({
         row: start.row + i * start.flowRow,
         col: start.col + i * start.flowCol,
         type: '0',
       });
+    }
+    if (grid && span >= 8) {
+      const row = start.row + span * start.flowRow;
+      const col = start.col + span * start.flowCol;
+      if (row >= 0 && row < grid.rows && col >= 0 && col < grid.cols) {
+        locks.push({ row, col, type: 'C' });
+      }
     }
   }
   return locks;
@@ -315,7 +321,7 @@ export function planImageClues(
     for (const len of ordered) {
       if (len <= available) return len;
     }
-    return Math.min(9, available);
+    return null;
   }
 
   function isImageInterior(
