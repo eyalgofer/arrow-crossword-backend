@@ -3,6 +3,7 @@ import { AuthRequest } from '../middleware/auth';
 import {
   getHiveCardForUser,
   getHiveTodayForUser,
+  saveHiveElapsedForUser,
   submitHiveGuess,
 } from '../services/hive';
 import { entityTag, sendConditionalJson } from '../utils/conditionalGet';
@@ -31,6 +32,15 @@ export const getHiveToday = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const postHiveElapsed = async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await saveHiveElapsedForUser(req.user!.uid, req.body);
+    res.status(result.status).json(result.body);
+  } catch (error) {
+    console.error('Hive elapsed error:', error);
+    res.status(500).json({ error: 'Failed to save hive time' });
+  }
+};
 export const postHiveGuess = async (req: AuthRequest, res: Response) => {
   try {
     const result = await submitHiveGuess(req.user!.uid, req.body);

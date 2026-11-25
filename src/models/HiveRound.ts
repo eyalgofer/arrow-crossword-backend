@@ -9,6 +9,9 @@ export interface IHiveRound extends Document {
   date: string;
   found: string[];
   score: number;
+  /** Whole seconds spent playing. Stops when every word is found. */
+  elapsedSeconds?: number | null;
+  completionSeconds?: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,6 +35,14 @@ const hiveRoundSchema = new Schema<IHiveRound>(
       type: Number,
       default: 0,
       required: true,
+    },
+    elapsedSeconds: {
+      type: Number,
+      default: 0,
+    },
+    completionSeconds: {
+      type: Number,
+      default: null,
     },
   },
   {

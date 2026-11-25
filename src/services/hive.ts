@@ -17,6 +17,7 @@ import {
   type HiveRank,
   type QualifiedHive,
 } from '../utils/hive';
+import { wholeSeconds } from '../utils/fiveLetters';
 import { playableWords, sortedHives } from './hiveLexicon';
 
 export interface HiveCard {
@@ -24,6 +25,7 @@ export interface HiveCard {
   score: number;
   wordCount: number;
   rank: HiveRank;
+  totalWords: number;
 }
 
 export interface HiveRoundView {
@@ -35,6 +37,9 @@ export interface HiveRoundView {
   score: number;
   maxScore: number;
   rank: HiveRank;
+  totalWords: number;
+  elapsedSeconds: number;
+  won: boolean;
 }
 
 interface DayAssignment {
@@ -124,7 +129,13 @@ function opened(day: DayAssignment): DayAssignment {
   };
 }
 
-function viewFor(day: DayAssignment, found: string[], score: number): HiveRoundView {
+function viewFor(
+  day: DayAssignment,
+  found: string[],
+  score: number,
+  elapsedSeconds: number,
+  won: boolean,
+): HiveRoundView {
   return {
     date: day.date,
     endsAt: day.endsAt,
@@ -134,7 +145,23 @@ function viewFor(day: DayAssignment, found: string[], score: number): HiveRoundV
     score,
     maxScore: day.maxScore,
     rank: hiveRank(score, day.maxScore),
+    totalWords: day.answers.length,
+    elapsedSeconds,
+    won,
   };
+}
+
+function clockOf(
+  foundCount: number,
+  totalWords: number,
+  elapsedSeconds: number | null | undefined,
+  completionSeconds: number | null | undefined,
+): { elapsedSeconds: number; won: boolean } {
+  const won = totalWords > 0 && foundCount >= totalWords;
+  const elapsed = won
+    ? (completionSeconds ?? elapsedSeconds ?? 0)
+    : (elapsedSeconds ?? 0);
+  return { elapsedSeconds: Math.max(0, Math.floor(elapsed)), won };
 }
 
 function cardFor(day: DayAssignment, found: string[], score: number): HiveCard {
@@ -143,6 +170,7 @@ function cardFor(day: DayAssignment, found: string[], score: number): HiveCard {
     score,
     wordCount: found.length,
     rank: hiveRank(score, day.maxScore),
+    totalWords: day.answers.length,
   };
 }
 
@@ -172,9 +200,10 @@ export async function getHiveTodayForUser(firebaseUid: string, now = new Date())
 
   const day = opened(await ensureDay(now));
   const round = await playerRound(user._id, day.date);
+  const clock = clockOf(round?.found.length ?? 0, day.answers.length, round?.elapsedSeconds, round?.completionSeconds);
   return {
     status: 200 as const,
-    body: viewFor(day, round?.found ?? [], round?.score ?? 0),
+    body: viewFor(day, round?.found ?? [], round?.score ?? 0, clock.elapsedSeconds, clock.won),
   };
 }
 
@@ -183,8 +212,9 @@ async function storeFound(
   date: string,
   word: string,
   scoreGain: number,
-  answerCount: number
-): Promise<{ found: string[]; score: number } | 'closed' | 'duplicate'> {
+  answerCount: number,
+  elapsed: number | null,
+): Promise<{ found: string[]; score: number; elapsedSeconds: number; won: boolean } | 'closed' | 'duplicate'> {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const current = await HiveRound.findOne({ userId, date });
     const found = current?.found ?? [];
@@ -192,6 +222,8 @@ async function storeFound(
     if (found.includes(word)) return 'duplicate';
     const nextFound = [...found, word].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
     const nextScore = (current?.score ?? 0) + scoreGain;
+    const elapsedSeconds = elapsed ?? current?.elapsedSeconds ?? 0;
+    const won = nextFound.length >= answerCount;
 
     if (!current) {
       try {
@@ -200,8 +232,10 @@ async function storeFound(
           date,
           found: nextFound,
           score: nextScore,
+          elapsedSeconds,
+          completionSeconds: won ? elapsedSeconds : null,
         });
-        return { found: nextFound, score: nextScore };
+        return { found: nextFound, score: nextScore, elapsedSeconds, won };
       } catch (error) {
         if (isDuplicateKey(error)) continue;
         throw error;
@@ -213,9 +247,16 @@ async function storeFound(
         _id: current._id,
         $expr: { $eq: [{ $size: '$found' }, found.length] },
       },
-      { $set: { found: nextFound, score: nextScore } }
+      {
+        $set: {
+          found: nextFound,
+          score: nextScore,
+          elapsedSeconds,
+          ...(won ? { completionSeconds: elapsedSeconds } : {}),
+        },
+      }
     );
-    if (saved.matchedCount === 1) return { found: nextFound, score: nextScore };
+    if (saved.matchedCount === 1) return { found: nextFound, score: nextScore, elapsedSeconds, won };
   }
   throw new Error('Failed to store hive guess');
 }
@@ -227,6 +268,7 @@ export async function submitHiveGuess(firebaseUid: string, body: unknown, now = 
   const day = opened(await ensureDay(now));
   const round = await playerRound(user._id, day.date);
   const found = new Set(round?.found ?? []);
+  const elapsed = wholeSeconds(bodyOf(body)?.elapsedSeconds);
   const classified = classifyHiveGuess(
     bodyOf(body)?.word,
     {
@@ -245,7 +287,8 @@ export async function submitHiveGuess(firebaseUid: string, body: unknown, now = 
     day.date,
     classified.word,
     classified.score,
-    day.answers.length
+    day.answers.length,
+    elapsed,
   );
   if (stored === 'closed') {
     return { status: 200 as const, body: { valid: false, reason: 'day_closed' } };
@@ -255,6 +298,33 @@ export async function submitHiveGuess(firebaseUid: string, body: unknown, now = 
   }
   return {
     status: 200 as const,
-    body: { valid: true, round: viewFor(day, stored.found, stored.score) },
+    body: {
+      valid: true,
+      round: viewFor(day, stored.found, stored.score, stored.elapsedSeconds, stored.won),
+    },
   };
+}
+
+export async function saveHiveElapsedForUser(firebaseUid: string, body: unknown, now = new Date()) {
+  const seconds = wholeSeconds(bodyOf(body)?.elapsedSeconds);
+  if (seconds == null) return { status: 200 as const, body: { ok: true } };
+
+  const user = await requireUser(firebaseUid);
+  if (!user) return { status: 404 as const, body: { error: 'User not found' } };
+
+  const day = opened(await ensureDay(now));
+  const round = await playerRound(user._id, day.date);
+  if (round && day.answers.length > 0 && round.found.length >= day.answers.length) {
+    return { status: 200 as const, body: { ok: true } };
+  }
+
+  await HiveRound.updateOne(
+    { userId: user._id, date: day.date },
+    {
+      $set: { elapsedSeconds: seconds },
+      $setOnInsert: { found: [], score: 0, completionSeconds: null },
+    },
+    { upsert: true },
+  );
+  return { status: 200 as const, body: { ok: true } };
 }
