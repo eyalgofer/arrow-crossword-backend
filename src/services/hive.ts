@@ -12,8 +12,11 @@ import {
   hiveDayNumber,
   hiveMaskOf,
   hiveRank,
+  hiveWordScore,
+  HIVE_WORD_COST,
   keepPinnedHive,
   pickHive,
+  pickUnfoundHiveWord,
   type HiveRank,
   type QualifiedHive,
 } from '../utils/hive';
@@ -327,4 +330,64 @@ export async function saveHiveElapsedForUser(firebaseUid: string, body: unknown,
     { upsert: true },
   );
   return { status: 200 as const, body: { ok: true } };
+}
+
+export async function buyHiveWordForUser(firebaseUid: string, body: unknown, now = new Date()) {
+  const user = await requireUser(firebaseUid);
+  if (!user) return { status: 404 as const, body: { error: 'User not found' } };
+
+  const day = opened(await ensureDay(now));
+  const round = await playerRound(user._id, day.date);
+  const found = new Set(round?.found ?? []);
+  const word = pickUnfoundHiveWord(day.answers, found);
+  if (!word) {
+    return { status: 200 as const, body: { valid: false, reason: 'day_closed' as const } };
+  }
+
+  const charged = await User.findOneAndUpdate(
+    { _id: user._id, coins: { $gte: HIVE_WORD_COST } },
+    { $inc: { coins: -HIVE_WORD_COST } },
+    { new: true },
+  ).select('coins');
+  if (!charged) {
+    const current = await User.findById(user._id).select('coins');
+    return {
+      status: 400 as const,
+      body: {
+        error: 'Insufficient coins',
+        code: 'insufficient_coins' as const,
+        coins: current?.coins ?? 0,
+      },
+    };
+  }
+
+  try {
+    const stored = await storeFound(
+      user._id,
+      day.date,
+      word,
+      hiveWordScore(word, hiveMaskOf(day.center, day.outer)),
+      day.answers.length,
+      wholeSeconds(bodyOf(body)?.elapsedSeconds),
+    );
+    if (stored === 'closed' || stored === 'duplicate') {
+      await User.updateOne({ _id: user._id }, { $inc: { coins: HIVE_WORD_COST } });
+      return {
+        status: 200 as const,
+        body: { valid: false, reason: stored === 'closed' ? 'day_closed' as const : 'already_found' as const },
+      };
+    }
+    return {
+      status: 200 as const,
+      body: {
+        valid: true,
+        word,
+        coins: charged.coins,
+        round: viewFor(day, stored.found, stored.score, stored.elapsedSeconds, stored.won),
+      },
+    };
+  } catch (error) {
+    await User.updateOne({ _id: user._id }, { $inc: { coins: HIVE_WORD_COST } });
+    throw error;
+  }
 }

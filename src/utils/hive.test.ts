@@ -8,6 +8,7 @@ import {
   keepPinnedHive,
   letterMask,
   pickHive,
+  pickUnfoundHiveWord,
   qualifyHive,
   type HivePuzzle,
 } from './hive';
@@ -161,5 +162,10 @@ describe('hive guesses', () => {
 
   it('builds a mask from the center and the six outer letters', () => {
     assert.equal(hiveMaskOf('א', ['ב', 'ג', 'ד', 'ה', 'ו', 'ז']), MASK);
+  });
+
+  it('picks an answer the player has not found', () => {
+    assert.equal(pickUnfoundHiveWord(['אבג', 'אבד'], new Set(['אבג']), () => 0), 'אבד');
+    assert.equal(pickUnfoundHiveWord(['אבג'], new Set(['אבג'])), null);
   });
 });

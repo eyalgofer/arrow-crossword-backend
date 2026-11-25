@@ -9,6 +9,7 @@ export const HIVE_MAX_ANSWERS = 36;
 export const HIVE_SHORT_SHARE = 0.7;
 export const HIVE_CENTER_SHARE = 0.5;
 export const HIVE_PANGRAM_BONUS = 7;
+export const HIVE_WORD_COST = 100;
 
 /** Regular Hebrew letters. Final forms are folded before this set is checked. */
 export const HIVE_LETTERS = 'אבגדהוזחטיכלמנסעפצקרשת';
@@ -100,6 +101,18 @@ export function hiveWordScore(word: string, hiveMask: number): number {
   const used = letterMask(word);
   if (used != null && used === hiveMask) return score + HIVE_PANGRAM_BONUS;
   return score;
+}
+
+/** One answer this player has not found yet. */
+export function pickUnfoundHiveWord(
+  answers: readonly string[],
+  found: ReadonlySet<string>,
+  roll: () => number = Math.random,
+): string | null {
+  const remaining = answers.filter((word) => !found.has(word));
+  if (remaining.length === 0) return null;
+  const index = Math.min(remaining.length - 1, Math.max(0, Math.floor(roll() * remaining.length)));
+  return remaining[index] ?? null;
 }
 
 export function hiveRank(score: number, maxScore: number): HiveRank {

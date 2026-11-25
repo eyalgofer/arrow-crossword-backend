@@ -5,6 +5,7 @@ import {
   getHiveTodayForUser,
   saveHiveElapsedForUser,
   submitHiveGuess,
+  buyHiveWordForUser,
 } from '../services/hive';
 import { entityTag, sendConditionalJson } from '../utils/conditionalGet';
 
@@ -39,6 +40,15 @@ export const postHiveElapsed = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Hive elapsed error:', error);
     res.status(500).json({ error: 'Failed to save hive time' });
+  }
+};
+export const postHiveWord = async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await buyHiveWordForUser(req.user!.uid, req.body);
+    res.status(result.status).json(result.body);
+  } catch (error) {
+    console.error('Hive word purchase error:', error);
+    res.status(500).json({ error: 'Failed to buy hive word' });
   }
 };
 export const postHiveGuess = async (req: AuthRequest, res: Response) => {

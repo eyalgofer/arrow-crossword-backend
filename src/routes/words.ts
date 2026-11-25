@@ -6,7 +6,7 @@ import {
   postFiveLetterElapsed,
   postFiveLetterGuess,
 } from '../controllers/fiveLetterController';
-import { getHiveCard, getHiveToday, postHiveElapsed, postHiveGuess } from '../controllers/hiveController';
+import { getHiveCard, getHiveToday, postHiveElapsed, postHiveGuess, postHiveWord } from '../controllers/hiveController';
 import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
@@ -20,6 +20,7 @@ router.post('/five/elapsed', authenticateToken, postFiveLetterElapsed);
 router.get('/hive/card', authenticateToken, getHiveCard);
 router.get('/hive/today', authenticateToken, getHiveToday);
 router.post('/hive/guess', authenticateToken, postHiveGuess);
+router.post('/hive/word', authenticateToken, postHiveWord);
 router.post('/hive/elapsed', authenticateToken, postHiveElapsed);
 
 export default router;
