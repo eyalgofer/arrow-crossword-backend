@@ -41,6 +41,7 @@ export interface HiveRoundView {
   maxScore: number;
   rank: HiveRank;
   totalWords: number;
+  goalFound: number;
   elapsedSeconds: number;
   won: boolean;
 }
@@ -50,8 +51,11 @@ interface DayAssignment {
   endsAt: string;
   center: string;
   outer: string[];
+  /** The short common list. Finding every one of these wins the day. */
   answers: string[];
   maxScore: number;
+  /** Dictionary words plus the common list. Extras score, but they are not required. */
+  accepted: Set<string>;
 }
 
 function isDuplicateKey(error: unknown): boolean {
@@ -71,6 +75,7 @@ function fromStored(endsAt: string, day: Pick<IHiveDay, 'date' | 'center' | 'out
     outer: day.outer,
     answers: day.answers,
     maxScore: day.maxScore,
+    accepted: new Set(day.answers),
   };
 }
 
@@ -118,18 +123,23 @@ async function ensureDay(now: Date): Promise<DayAssignment> {
   }
 }
 
-/** The pinned letters stay. The words a player may enter come from the dictionary. */
+/** The pinned common list stays the goal. Any real hive word may still be entered. */
 function opened(day: DayAssignment): DayAssignment {
   const playable = playableWords(day.center, day.outer);
-  if (playable.answers.length === 0) return day;
-  const answers = [...new Set([...playable.answers, ...day.answers])].sort((left, right) => (
-    left < right ? -1 : left > right ? 1 : 0
-  ));
-  return {
-    ...day,
-    answers,
-    maxScore: playable.maxScore,
-  };
+  const accepted = new Set(day.answers);
+  for (const word of playable.answers) accepted.add(word);
+  return { ...day, accepted };
+}
+
+function covers(goal: readonly string[], found: readonly string[]): boolean {
+  if (goal.length === 0) return false;
+  const have = new Set(found);
+  return goal.every((word) => have.has(word));
+}
+
+function goalFoundCount(goal: readonly string[], found: readonly string[]): number {
+  const have = new Set(found);
+  return goal.reduce((count, word) => count + (have.has(word) ? 1 : 0), 0);
 }
 
 function viewFor(
@@ -149,18 +159,17 @@ function viewFor(
     maxScore: day.maxScore,
     rank: hiveRank(score, day.maxScore),
     totalWords: day.answers.length,
+    goalFound: goalFoundCount(day.answers, found),
     elapsedSeconds,
     won,
   };
 }
 
 function clockOf(
-  foundCount: number,
-  totalWords: number,
+  won: boolean,
   elapsedSeconds: number | null | undefined,
   completionSeconds: number | null | undefined,
 ): { elapsedSeconds: number; won: boolean } {
-  const won = totalWords > 0 && foundCount >= totalWords;
   const elapsed = won
     ? (completionSeconds ?? elapsedSeconds ?? 0)
     : (elapsedSeconds ?? 0);
@@ -171,7 +180,7 @@ function cardFor(day: DayAssignment, found: string[], score: number): HiveCard {
   return {
     date: day.date,
     score,
-    wordCount: found.length,
+    wordCount: goalFoundCount(day.answers, found),
     rank: hiveRank(score, day.maxScore),
     totalWords: day.answers.length,
   };
@@ -203,7 +212,8 @@ export async function getHiveTodayForUser(firebaseUid: string, now = new Date())
 
   const day = opened(await ensureDay(now));
   const round = await playerRound(user._id, day.date);
-  const clock = clockOf(round?.found.length ?? 0, day.answers.length, round?.elapsedSeconds, round?.completionSeconds);
+  const won = covers(day.answers, round?.found ?? []);
+  const clock = clockOf(won, round?.elapsedSeconds, round?.completionSeconds);
   return {
     status: 200 as const,
     body: viewFor(day, round?.found ?? [], round?.score ?? 0, clock.elapsedSeconds, clock.won),
@@ -215,18 +225,18 @@ async function storeFound(
   date: string,
   word: string,
   scoreGain: number,
-  answerCount: number,
+  goal: readonly string[],
   elapsed: number | null,
 ): Promise<{ found: string[]; score: number; elapsedSeconds: number; won: boolean } | 'closed' | 'duplicate'> {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const current = await HiveRound.findOne({ userId, date });
     const found = current?.found ?? [];
-    if (found.length >= answerCount) return 'closed';
+    if (covers(goal, found)) return 'closed';
     if (found.includes(word)) return 'duplicate';
     const nextFound = [...found, word].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
     const nextScore = (current?.score ?? 0) + scoreGain;
     const elapsedSeconds = elapsed ?? current?.elapsedSeconds ?? 0;
-    const won = nextFound.length >= answerCount;
+    const won = covers(goal, nextFound);
 
     if (!current) {
       try {
@@ -277,7 +287,8 @@ export async function submitHiveGuess(firebaseUid: string, body: unknown, now = 
     {
       center: day.center,
       hiveMask: hiveMaskOf(day.center, day.outer),
-      answers: new Set(day.answers),
+      answers: day.accepted,
+      goal: new Set(day.answers),
     },
     found
   );
@@ -290,7 +301,7 @@ export async function submitHiveGuess(firebaseUid: string, body: unknown, now = 
     day.date,
     classified.word,
     classified.score,
-    day.answers.length,
+    day.answers,
     elapsed,
   );
   if (stored === 'closed') {
@@ -317,7 +328,7 @@ export async function saveHiveElapsedForUser(firebaseUid: string, body: unknown,
 
   const day = opened(await ensureDay(now));
   const round = await playerRound(user._id, day.date);
-  if (round && day.answers.length > 0 && round.found.length >= day.answers.length) {
+  if (round && covers(day.answers, round.found)) {
     return { status: 200 as const, body: { ok: true } };
   }
 
@@ -367,7 +378,7 @@ export async function buyHiveWordForUser(firebaseUid: string, body: unknown, now
       day.date,
       word,
       hiveWordScore(word, hiveMaskOf(day.center, day.outer)),
-      day.answers.length,
+      day.answers,
       wholeSeconds(bodyOf(body)?.elapsedSeconds),
     );
     if (stored === 'closed' || stored === 'duplicate') {

@@ -133,8 +133,8 @@ function dictionaryWords(): readonly PreparedWord[] {
 }
 
 /**
- * Words a player may enter for these letters. Wider than the list that picked
- * the hive: any dictionary or crossword word that uses the center.
+ * Words a player may enter for these letters. Wider than the common list
+ * that wins the day: any dictionary or crossword word that uses the center.
  */
 export function playableWords(
   center: string,

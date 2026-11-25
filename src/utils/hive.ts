@@ -36,7 +36,10 @@ export interface QualifiedHive {
 export interface HivePuzzle {
   center: string;
   hiveMask: number;
+  /** Every word the player may enter. */
   answers: ReadonlySet<string>;
+  /** The short list that wins the day. Defaults to `answers`. */
+  goal?: ReadonlySet<string>;
 }
 
 const LETTER_INDEX = new Map(
@@ -213,12 +216,21 @@ export function pickHive<T>(hives: readonly T[], dayNumber: number): T | null {
   return hives[index];
 }
 
+function coversGoal(goal: ReadonlySet<string>, found: ReadonlySet<string>): boolean {
+  if (goal.size === 0) return false;
+  for (const word of goal) {
+    if (!found.has(word)) return false;
+  }
+  return true;
+}
+
 export function classifyHiveGuess(
   guess: unknown,
   puzzle: HivePuzzle,
   found: ReadonlySet<string>
 ): { ok: true; word: string; score: number } | { ok: false; reason: HiveRejectReason } {
-  if (puzzle.answers.size > 0 && found.size >= puzzle.answers.size) {
+  const goal = puzzle.goal ?? puzzle.answers;
+  if (coversGoal(goal, found)) {
     return { ok: false, reason: 'day_closed' };
   }
   if (typeof guess !== 'string') return { ok: false, reason: 'too_short' };
