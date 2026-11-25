@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { HIVE_CENTER_SHARE, HIVE_MAX_ANSWERS, HIVE_MIN_ANSWERS, HIVE_SHORT_SHARE } from '../utils/hive';
-import { buildHives, sortedHives } from './hiveLexicon';
+import { buildHives, playableWords, sortedHives } from './hiveLexicon';
+test('a dictionary word is playable even when it is not one of the crossword answers that picked the hive', () => {
+  const played = playableWords('ו', ['א', 'ב', 'ע', 'צ', 'ת', 'כ']);
+  assert.equal(played.answers.includes('צוותא'), true);
+  assert.ok(played.answers.length > 18);
+  assert.ok(played.maxScore > 0);
+});
 
 test('a common four-letter answer can join a hive and a rare one cannot', () => {
   const hives = buildHives([

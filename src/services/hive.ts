@@ -17,7 +17,7 @@ import {
   type HiveRank,
   type QualifiedHive,
 } from '../utils/hive';
-import { sortedHives } from './hiveLexicon';
+import { playableWords, sortedHives } from './hiveLexicon';
 
 export interface HiveCard {
   date: string;
@@ -110,6 +110,20 @@ async function ensureDay(now: Date): Promise<DayAssignment> {
   }
 }
 
+/** The pinned letters stay. The words a player may enter come from the dictionary. */
+function opened(day: DayAssignment): DayAssignment {
+  const playable = playableWords(day.center, day.outer);
+  if (playable.answers.length === 0) return day;
+  const answers = [...new Set([...playable.answers, ...day.answers])].sort((left, right) => (
+    left < right ? -1 : left > right ? 1 : 0
+  ));
+  return {
+    ...day,
+    answers,
+    maxScore: playable.maxScore,
+  };
+}
+
 function viewFor(day: DayAssignment, found: string[], score: number): HiveRoundView {
   return {
     date: day.date,
@@ -144,7 +158,7 @@ export async function getHiveCardForUser(firebaseUid: string, now = new Date()) 
   const user = await requireUser(firebaseUid);
   if (!user) return { status: 404 as const, body: { error: 'User not found' } };
 
-  const day = await ensureDay(now);
+  const day = opened(await ensureDay(now));
   const round = await playerRound(user._id, day.date);
   return {
     status: 200 as const,
@@ -156,7 +170,7 @@ export async function getHiveTodayForUser(firebaseUid: string, now = new Date())
   const user = await requireUser(firebaseUid);
   if (!user) return { status: 404 as const, body: { error: 'User not found' } };
 
-  const day = await ensureDay(now);
+  const day = opened(await ensureDay(now));
   const round = await playerRound(user._id, day.date);
   return {
     status: 200 as const,
@@ -210,7 +224,7 @@ export async function submitHiveGuess(firebaseUid: string, body: unknown, now = 
   const user = await requireUser(firebaseUid);
   if (!user) return { status: 404 as const, body: { error: 'User not found' } };
 
-  const day = await ensureDay(now);
+  const day = opened(await ensureDay(now));
   const round = await playerRound(user._id, day.date);
   const found = new Set(round?.found ?? []);
   const classified = classifyHiveGuess(
