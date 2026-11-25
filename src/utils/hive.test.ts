@@ -164,15 +164,21 @@ describe('hive guesses', () => {
     assert.equal(hiveMaskOf('א', ['ב', 'ג', 'ד', 'ה', 'ו', 'ז']), MASK);
   });
 
-  it('stays open until the short goal is found, even after extra words', () => {
+  it('closes only after every accepted word is found', () => {
     const puzzle = {
       center: 'א',
       hiveMask: MASK,
       answers: new Set(['אבגדהו', 'אבאב']),
-      goal: new Set(['אבגדהו']),
+      goal: new Set(['אבגדהו', 'אבאב']),
     };
     assert.deepEqual(classifyHiveGuess('אבאג', puzzle, new Set(['אבאב'])), { ok: false, reason: 'not_a_word' });
-    assert.deepEqual(classifyHiveGuess('אבאג', puzzle, new Set(['אבגדהו'])), { ok: false, reason: 'day_closed' });
+    assert.deepEqual(classifyHiveGuess('אבאג', puzzle, new Set(['אבאב', 'אבגדהו'])), { ok: false, reason: 'day_closed' });
+  });
+
+  it('still accepts a listed word after many other words are found', () => {
+    const live = puzzle(['אבגדהו', 'אבאב']);
+    const found = new Set(Array.from({ length: 40 }, (_, index) => `אחר${index}`));
+    assert.equal(classifyHiveGuess('אבאב', live, found).ok, true);
   });
 
   it('picks an answer the player has not found', () => {

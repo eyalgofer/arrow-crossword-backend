@@ -9,7 +9,7 @@ export interface IHiveRound extends Document {
   date: string;
   found: string[];
   score: number;
-  /** Whole seconds spent playing. Stops when every word is found. */
+  /** Whole seconds spent playing. Stops when the daily target is reached. */
   elapsedSeconds?: number | null;
   completionSeconds?: number | null;
   createdAt: Date;

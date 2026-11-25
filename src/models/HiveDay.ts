@@ -11,6 +11,8 @@ export interface IHiveDay extends Document {
   outer: string[];
   answers: string[];
   maxScore: number;
+  solvedCount: number;
+  fastestSeconds: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,6 +39,14 @@ const hiveDaySchema = new Schema<IHiveDay>(
     maxScore: {
       type: Number,
       required: true,
+    },
+    solvedCount: {
+      type: Number,
+      default: 0,
+    },
+    fastestSeconds: {
+      type: Number,
+      default: null,
     },
   },
   {

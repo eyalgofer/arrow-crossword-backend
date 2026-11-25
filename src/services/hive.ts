@@ -13,6 +13,7 @@ import {
   hiveMaskOf,
   hiveRank,
   hiveWordScore,
+  HIVE_WIN_COUNT,
   HIVE_WORD_COST,
   keepPinnedHive,
   pickHive,
@@ -29,6 +30,9 @@ export interface HiveCard {
   wordCount: number;
   rank: HiveRank;
   totalWords: number;
+  goalFound: number;
+  solvedCount: number;
+  fastestSeconds: number | null;
 }
 
 export interface HiveRoundView {
@@ -44,6 +48,8 @@ export interface HiveRoundView {
   goalFound: number;
   elapsedSeconds: number;
   won: boolean;
+  solvedCount: number;
+  fastestSeconds: number | null;
 }
 
 interface DayAssignment {
@@ -54,8 +60,10 @@ interface DayAssignment {
   /** The short common list. Finding every one of these wins the day. */
   answers: string[];
   maxScore: number;
-  /** Dictionary words plus the common list. Extras score, but they are not required. */
+  /** Dictionary words plus the common list. Any of these may be entered. */
   accepted: Set<string>;
+  solvedCount: number;
+  fastestSeconds: number | null;
 }
 
 function isDuplicateKey(error: unknown): boolean {
@@ -67,7 +75,7 @@ function bodyOf(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
-function fromStored(endsAt: string, day: Pick<IHiveDay, 'date' | 'center' | 'outer' | 'answers' | 'maxScore'>): DayAssignment {
+function fromStored(endsAt: string, day: Pick<IHiveDay, 'date' | 'center' | 'outer' | 'answers' | 'maxScore' | 'solvedCount' | 'fastestSeconds'>): DayAssignment {
   return {
     date: day.date,
     endsAt,
@@ -76,6 +84,8 @@ function fromStored(endsAt: string, day: Pick<IHiveDay, 'date' | 'center' | 'out
     answers: day.answers,
     maxScore: day.maxScore,
     accepted: new Set(day.answers),
+    solvedCount: day.solvedCount ?? 0,
+    fastestSeconds: day.fastestSeconds ?? null,
   };
 }
 
@@ -123,7 +133,7 @@ async function ensureDay(now: Date): Promise<DayAssignment> {
   }
 }
 
-/** The pinned common list stays the goal. Any real hive word may still be entered. */
+/** The pinned letters stay. Any real hive word may be entered, and 40 of them win the day. */
 function opened(day: DayAssignment): DayAssignment {
   const playable = playableWords(day.center, day.outer);
   const accepted = new Set(day.answers);
@@ -131,15 +141,13 @@ function opened(day: DayAssignment): DayAssignment {
   return { ...day, accepted };
 }
 
-function covers(goal: readonly string[], found: readonly string[]): boolean {
-  if (goal.length === 0) return false;
-  const have = new Set(found);
-  return goal.every((word) => have.has(word));
+function reachedGoal(target: number, foundCount: number): boolean {
+  return target > 0 && foundCount >= target;
 }
 
-function goalFoundCount(goal: readonly string[], found: readonly string[]): number {
-  const have = new Set(found);
-  return goal.reduce((count, word) => count + (have.has(word) ? 1 : 0), 0);
+function winTarget(playableCount: number): number {
+  if (playableCount <= 0) return 0;
+  return Math.min(HIVE_WIN_COUNT, playableCount);
 }
 
 function viewFor(
@@ -158,10 +166,12 @@ function viewFor(
     score,
     maxScore: day.maxScore,
     rank: hiveRank(score, day.maxScore),
-    totalWords: day.answers.length,
-    goalFound: goalFoundCount(day.answers, found),
+    totalWords: winTarget(day.accepted.size),
+    goalFound: found.length,
     elapsedSeconds,
     won,
+    solvedCount: day.solvedCount,
+    fastestSeconds: day.fastestSeconds,
   };
 }
 
@@ -180,9 +190,12 @@ function cardFor(day: DayAssignment, found: string[], score: number): HiveCard {
   return {
     date: day.date,
     score,
-    wordCount: goalFoundCount(day.answers, found),
+    wordCount: found.length,
     rank: hiveRank(score, day.maxScore),
-    totalWords: day.answers.length,
+    totalWords: winTarget(day.accepted.size),
+    goalFound: found.length,
+    solvedCount: day.solvedCount,
+    fastestSeconds: day.fastestSeconds,
   };
 }
 
@@ -212,8 +225,9 @@ export async function getHiveTodayForUser(firebaseUid: string, now = new Date())
 
   const day = opened(await ensureDay(now));
   const round = await playerRound(user._id, day.date);
-  const won = covers(day.answers, round?.found ?? []);
-  const clock = clockOf(won, round?.elapsedSeconds, round?.completionSeconds);
+  const foundWords = round?.found ?? [];
+  const won = reachedGoal(winTarget(day.accepted.size), foundWords.length);
+  const clock = clockOf(won, round?.elapsedSeconds, won ? round?.completionSeconds : null);
   return {
     status: 200 as const,
     body: viewFor(day, round?.found ?? [], round?.score ?? 0, clock.elapsedSeconds, clock.won),
@@ -225,18 +239,22 @@ async function storeFound(
   date: string,
   word: string,
   scoreGain: number,
-  goal: readonly string[],
+  target: number,
   elapsed: number | null,
-): Promise<{ found: string[]; score: number; elapsedSeconds: number; won: boolean } | 'closed' | 'duplicate'> {
+): Promise<{ found: string[]; score: number; elapsedSeconds: number; won: boolean; justWon: boolean } | 'duplicate'> {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const current = await HiveRound.findOne({ userId, date });
     const found = current?.found ?? [];
-    if (covers(goal, found)) return 'closed';
     if (found.includes(word)) return 'duplicate';
     const nextFound = [...found, word].sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
     const nextScore = (current?.score ?? 0) + scoreGain;
-    const elapsedSeconds = elapsed ?? current?.elapsedSeconds ?? 0;
-    const won = covers(goal, nextFound);
+    const alreadyWon = reachedGoal(target, found.length);
+    const elapsedSeconds = alreadyWon
+      ? (current?.completionSeconds ?? current?.elapsedSeconds ?? 0)
+      : (elapsed ?? current?.elapsedSeconds ?? 0);
+    const won = reachedGoal(target, nextFound.length);
+    const justWon = won && !alreadyWon;
+    const completionSeconds = justWon ? elapsedSeconds : (current?.completionSeconds ?? null);
 
     if (!current) {
       try {
@@ -246,9 +264,9 @@ async function storeFound(
           found: nextFound,
           score: nextScore,
           elapsedSeconds,
-          completionSeconds: won ? elapsedSeconds : null,
+          completionSeconds,
         });
-        return { found: nextFound, score: nextScore, elapsedSeconds, won };
+        return { found: nextFound, score: nextScore, elapsedSeconds, won, justWon };
       } catch (error) {
         if (isDuplicateKey(error)) continue;
         throw error;
@@ -265,13 +283,44 @@ async function storeFound(
           found: nextFound,
           score: nextScore,
           elapsedSeconds,
-          ...(won ? { completionSeconds: elapsedSeconds } : {}),
+          ...(justWon ? { completionSeconds } : {}),
         },
       }
     );
-    if (saved.matchedCount === 1) return { found: nextFound, score: nextScore, elapsedSeconds, won };
+    if (saved.matchedCount === 1) return { found: nextFound, score: nextScore, elapsedSeconds, won, justWon };
   }
   throw new Error('Failed to store hive guess');
+}
+
+async function recordHiveWin(date: string, completionSeconds: number): Promise<{ solvedCount: number; fastestSeconds: number | null }> {
+  await HiveDay.updateOne({ date }, [
+    {
+      $set: {
+        solvedCount: { $add: [{ $ifNull: ['$solvedCount', 0] }, 1] },
+        fastestSeconds: {
+          $cond: {
+            if: {
+              $or: [
+                { $eq: [{ $ifNull: ['$fastestSeconds', null] }, null] },
+                { $lt: [completionSeconds, '$fastestSeconds'] },
+              ],
+            },
+            then: completionSeconds,
+            else: '$fastestSeconds',
+          },
+        },
+      },
+    },
+  ]);
+  const fresh = await HiveDay.findOne({ date }).select('solvedCount fastestSeconds');
+  return {
+    solvedCount: fresh?.solvedCount ?? 0,
+    fastestSeconds: fresh?.fastestSeconds ?? completionSeconds,
+  };
+}
+
+function withStats(day: DayAssignment, stats: { solvedCount: number; fastestSeconds: number | null }): DayAssignment {
+  return { ...day, solvedCount: stats.solvedCount, fastestSeconds: stats.fastestSeconds };
 }
 
 export async function submitHiveGuess(firebaseUid: string, body: unknown, now = new Date()) {
@@ -296,25 +345,24 @@ export async function submitHiveGuess(firebaseUid: string, body: unknown, now = 
     return { status: 200 as const, body: { valid: false, reason: classified.reason } };
   }
 
+  const target = winTarget(day.accepted.size);
   const stored = await storeFound(
     user._id,
     day.date,
     classified.word,
     classified.score,
-    day.answers,
+    target,
     elapsed,
   );
-  if (stored === 'closed') {
-    return { status: 200 as const, body: { valid: false, reason: 'day_closed' } };
-  }
   if (stored === 'duplicate') {
     return { status: 200 as const, body: { valid: false, reason: 'already_found' } };
   }
+  const stats = stored.justWon ? await recordHiveWin(day.date, stored.elapsedSeconds) : day;
   return {
     status: 200 as const,
     body: {
       valid: true,
-      round: viewFor(day, stored.found, stored.score, stored.elapsedSeconds, stored.won),
+      round: viewFor(withStats(day, stats), stored.found, stored.score, stored.elapsedSeconds, stored.won),
     },
   };
 }
@@ -328,7 +376,7 @@ export async function saveHiveElapsedForUser(firebaseUid: string, body: unknown,
 
   const day = opened(await ensureDay(now));
   const round = await playerRound(user._id, day.date);
-  if (round && covers(day.answers, round.found)) {
+  if (round && reachedGoal(winTarget(day.accepted.size), round.found.length)) {
     return { status: 200 as const, body: { ok: true } };
   }
 
@@ -350,7 +398,7 @@ export async function buyHiveWordForUser(firebaseUid: string, body: unknown, now
   const day = opened(await ensureDay(now));
   const round = await playerRound(user._id, day.date);
   const found = new Set(round?.found ?? []);
-  const word = pickUnfoundHiveWord(day.answers, found);
+  const word = pickUnfoundHiveWord([...day.accepted], found);
   if (!word) {
     return { status: 200 as const, body: { valid: false, reason: 'day_closed' as const } };
   }
@@ -378,23 +426,24 @@ export async function buyHiveWordForUser(firebaseUid: string, body: unknown, now
       day.date,
       word,
       hiveWordScore(word, hiveMaskOf(day.center, day.outer)),
-      day.answers,
+      winTarget(day.accepted.size),
       wholeSeconds(bodyOf(body)?.elapsedSeconds),
     );
-    if (stored === 'closed' || stored === 'duplicate') {
+    if (stored === 'duplicate') {
       await User.updateOne({ _id: user._id }, { $inc: { coins: HIVE_WORD_COST } });
       return {
         status: 200 as const,
-        body: { valid: false, reason: stored === 'closed' ? 'day_closed' as const : 'already_found' as const },
+        body: { valid: false, reason: 'already_found' as const },
       };
     }
+    const stats = stored.justWon ? await recordHiveWin(day.date, stored.elapsedSeconds) : day;
     return {
       status: 200 as const,
       body: {
         valid: true,
         word,
         coins: charged.coins,
-        round: viewFor(day, stored.found, stored.score, stored.elapsedSeconds, stored.won),
+        round: viewFor(withStats(day, stats), stored.found, stored.score, stored.elapsedSeconds, stored.won),
       },
     };
   } catch (error) {

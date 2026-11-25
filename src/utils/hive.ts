@@ -10,6 +10,8 @@ export const HIVE_SHORT_SHARE = 0.7;
 export const HIVE_CENTER_SHARE = 0.5;
 export const HIVE_PANGRAM_BONUS = 7;
 export const HIVE_WORD_COST = 100;
+/** Finding this many words wins the day. More words can still be entered. */
+export const HIVE_WIN_COUNT = 40;
 
 /** Regular Hebrew letters. Final forms are folded before this set is checked. */
 export const HIVE_LETTERS = 'אבגדהוזחטיכלמנסעפצקרשת';
@@ -38,7 +40,7 @@ export interface HivePuzzle {
   hiveMask: number;
   /** Every word the player may enter. */
   answers: ReadonlySet<string>;
-  /** The short list that wins the day. Defaults to `answers`. */
+  /** How many words finish the day. Any accepted word counts. */
   goal?: ReadonlySet<string>;
 }
 
@@ -216,21 +218,12 @@ export function pickHive<T>(hives: readonly T[], dayNumber: number): T | null {
   return hives[index];
 }
 
-function coversGoal(goal: ReadonlySet<string>, found: ReadonlySet<string>): boolean {
-  if (goal.size === 0) return false;
-  for (const word of goal) {
-    if (!found.has(word)) return false;
-  }
-  return true;
-}
-
 export function classifyHiveGuess(
   guess: unknown,
   puzzle: HivePuzzle,
   found: ReadonlySet<string>
 ): { ok: true; word: string; score: number } | { ok: false; reason: HiveRejectReason } {
-  const goal = puzzle.goal ?? puzzle.answers;
-  if (coversGoal(goal, found)) {
+  if (puzzle.answers.size > 0 && [...puzzle.answers].every((word) => found.has(word))) {
     return { ok: false, reason: 'day_closed' };
   }
   if (typeof guess !== 'string') return { ok: false, reason: 'too_short' };
